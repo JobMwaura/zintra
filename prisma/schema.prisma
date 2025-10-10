@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum SubscriptionTier {
+  NONE
+  BASIC
+  PREMIUM
+  DIAMOND
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String?  @unique
+  password      String
+  role          UserRole @default(CUSTOMER)
+  firstName     String?
+  lastName      String?
+  isVerified    Boolean  @default(false)
+  verificationCode String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  vendorProfile VendorProfile?
+  
+  @@index([email])
+  @@index([phone])
+}
+
+model VendorProfile {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessName      String
+  businessDescription String            @db.Text
+  county            String
+  specificLocation  String
+  logoUrl           String?
+  
+  whatsappNumber    String?
+  instagramHandle   String?
+  facebookPage      String?
+  websiteUrl        String?
+  
+  categories        VendorCategory[]
+  priceRangeMin     Int?
+  priceRangeMax     Int?
+  portfolioImages   PortfolioImage[]
+  certifications    Certification[]
+  
+  subscriptionTier  SubscriptionTier   @default(NONE)
+  subscriptionStart DateTime?
+  subscriptionEnd   DateTime?
+  
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt        DateTime?
+  rejectionReason   String?
+  
+  profileViews      Int                @default(0)
+  rfqsReceived      Int                @default(0)
+  responseRate      Float              @default(0)
+  
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@index([county])
+  @@index([verificationStatus])
+  @@index([subscriptionTier])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?
+  
+  vendors     VendorCategory[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VendorCategory {
+  id              String        @id @default(cuid())
+  vendorProfileId String
+  vendorProfile   VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  isPrimary       Boolean       @default(false)
+  
+  @@unique([vendorProfileId, categoryId])
+  @@index([categoryId])
+}
+
+model PortfolioImage {
+  id              String        @id @default(cuid())
+  vendorProfileId String
+  vendorProfile   VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  
+  imageUrl        String
+  caption         String?
+  displayOrder    Int           @default(0)
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([vendorProfileId])
+}
+
+model Certification {
+  id              String        @id @default(cuid())
+  vendorProfileId String
+  vendorProfile   VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  
+  fileUrl         String
+  fileName        String
+  fileType        String
+  
+  uploadedAt      DateTime      @default(now())
+  
+  @@index([vendorProfileId])
+}
+
+model Subscription {
+  id              String           @id @default(cuid())
+  vendorProfileId String
+  
+  tier            SubscriptionTier
+  amount          Int
+  mpesaCode       String           @unique
+  phoneNumber     String
+  
+  status          String
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  createdAt       DateTime         @default(now())
+  
+  @@index([vendorProfileId])
+  @@index([mpesaCode])
+}
