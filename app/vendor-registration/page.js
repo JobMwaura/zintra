@@ -35,20 +35,6 @@ const categories = [
 
 const plans = [
   {
-    id: 'free',
-    name: 'Free (for now)',
-    tag: 'New',
-    price: 'KSh 0',
-    period: '/month',
-    features: [
-      'List in 1 category',
-      'Standard search visibility',
-      '3 RFQ responses per month',
-      'Basic profile badge',
-      'Great for trying Zintra risk-free',
-    ],
-  },
-  {
     id: 'basic',
     name: 'Basic',
     price: 'KSh 1,000',
@@ -259,6 +245,12 @@ export default function VendorRegistration() {
 
         userId = data?.user?.id || null;
         userEmail = data?.user?.email || formData.email.trim();
+
+        if (!userId) {
+          setMessage('Account created. Please verify your email, then sign in to complete your vendor profile.');
+          setIsLoading(false);
+          return;
+        }
       }
 
       const response = await fetch('/api/vendor/create', {
