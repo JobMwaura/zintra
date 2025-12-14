@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user is already logged in
     const checkUser = async () => {
       try {
         const { data: { user: currentUser }, error } = await supabase.auth.getUser();
@@ -30,6 +31,7 @@ export function AuthProvider({ children }) {
 
     checkUser();
 
+    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session?.user) {
@@ -45,6 +47,7 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // ✅ FIXED: Added signIn function
   const signIn = async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -66,6 +69,7 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // ✅ FIXED: Added signUp function
   const signUp = async (email, password) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -83,6 +87,7 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // ✅ FIXED: Added logout function
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();

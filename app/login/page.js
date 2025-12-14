@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
+  const { signIn } = useAuth();
   const [activeTab, setActiveTab] = useState('user');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -14,6 +16,7 @@ export default function Login() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -48,33 +51,53 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
 
+    if (!validateForm()) return;
     setIsLoading(true);
+    setMessage('');
 
-    setTimeout(() => {
-      console.log('Login attempt:', {
-        userType: activeTab,
-        email: formData.email,
-        rememberMe: formData.rememberMe
-      });
-      
-      const urlParams = new URLSearchParams(window.location.search);
-      const returnUrl = urlParams.get('returnUrl');
-      
-      if (returnUrl) {
-        window.location.href = returnUrl;
-      } else if (activeTab === 'vendor') {
-        window.location.href = '/';
-      } else {
-        window.location.href = '/browse';
+    try {
+      const { email, password } = formData;
+
+      console.log('🔹 Attempting login:', { email, activeTab });
+
+      // FIXED: Properly destructure both data and error from signIn
+      const { data, error } = await signIn(email, password);
+
+      if (error) {
+        console.error('❌ Supabase login error:', error);
+        setMessage('❌ ' + error.message);
+        setIsLoading(false);
+        return;
       }
-      
+
+      if (!data || !data.user) {
+        console.error('❌ No user data returned');
+        setMessage('❌ Login failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('✅ Supabase login success:', data);
+      console.log('🔹 User object:', data.user);
+      console.log('🔹 Active tab:', activeTab);
+      setMessage('✅ Login successful! Redirecting...');
+
+      // ✅ FIXED: Changed from /dashboard/vendor to /dashboard
+      const redirectUrl = activeTab === 'vendor' ? '/dashboard' : '/browse';
+      console.log('🔹 Redirecting to:', redirectUrl);
+
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 1200); // short delay to ensure Supabase session propagates
+
+    } catch (err) {
+      console.error('❌ Unexpected login error:', err);
+      setMessage('❌ Something went wrong: ' + err.message);
       setIsLoading(false);
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -111,24 +134,36 @@ export default function Login() {
 
             <div className="flex border-b border-gray-200 mb-6">
               <button
-                onClick={() => setActiveTab('user')}
+                type="button"
+                onClick={() => {
+                  console.log('✓ Switching to user tab');
+                  setActiveTab('user');
+                  setMessage('');
+                  setFormData({ email: '', password: '', rememberMe: false });
+                }}
                 className={`flex-1 py-3 text-center font-medium transition-colors ${
                   activeTab === 'user'
                     ? 'border-b-2 text-gray-900'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
-                style={activeTab === 'user' ? { borderColor: '#ea8f1e', color: '#ea8f1e' } : {}}
+                style={activeTab === 'user' ? { borderBottomColor: '#ea8f1e', borderBottomWidth: '2px', color: '#ea8f1e' } : {}}
               >
                 User Login
               </button>
               <button
-                onClick={() => setActiveTab('vendor')}
+                type="button"
+                onClick={() => {
+                  console.log('✓ Switching to vendor tab');
+                  setActiveTab('vendor');
+                  setMessage('');
+                  setFormData({ email: '', password: '', rememberMe: false });
+                }}
                 className={`flex-1 py-3 text-center font-medium transition-colors ${
                   activeTab === 'vendor'
                     ? 'border-b-2 text-gray-900'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
-                style={activeTab === 'vendor' ? { borderColor: '#ea8f1e', color: '#ea8f1e' } : {}}
+                style={activeTab === 'vendor' ? { borderBottomColor: '#ea8f1e', borderBottomWidth: '2px', color: '#ea8f1e' } : {}}
               >
                 Vendor Login
               </button>
@@ -199,6 +234,16 @@ export default function Login() {
                   </Link>
                 </div>
 
+                {message && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    message.includes('✅') 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {message}
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -220,7 +265,7 @@ export default function Login() {
             </div>
 
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-center py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition">
+              <button type="button" className="w-full flex items-center justify-center py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition">
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>

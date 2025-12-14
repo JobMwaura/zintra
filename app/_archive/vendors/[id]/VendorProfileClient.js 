@@ -1,0 +1,768 @@
+'use client';
+
+// /app/vendors/[id]/VendorProfileClient.js
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import DirectRFQPopup from '@/components/DirectRFQPopup';
+import {
+  Star,
+  Phone,
+  Mail,
+  Globe,
+  MessageSquare,
+  MapPin,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Award,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Share2,
+  Bookmark,
+} from 'lucide-react';
+
+/**
+ * BRAND TOKENS (keep it here so we stay on-brand)
+ */
+const BRAND = {
+  primary: '#ea8f1e', // Zintra orange
+  primaryHover: '#d88013',
+  slate900: 'rgb(15 23 42)',
+  slate800: 'rgb(30 41 59)',
+  slate700: 'rgb(51 65 85)',
+  slate600: 'rgb(71 85 105)',
+  slate500: 'rgb(100 116 139)',
+  slate200: 'rgb(226 232 240)',
+  slate100: 'rgb(241 245 249)',
+  white: '#ffffff',
+};
+
+// Tabs shown across the page
+const tabs = ['Overview', 'Products', 'Services', 'Gallery', 'Reviews', 'FAQ'];
+
+/** Small helper – star row */
+const StarRow = ({ value = 0, size = 'text-base' }) => {
+  const full = Math.floor(Number(value) || 0);
+  const half = (Number(value) || 0) - full >= 0.5;
+
+  return (
+    <div className={`flex items-center ${size}`}>
+      {Array.from({ length: full }).map((_, i) => (
+        <Star
+          key={`f-${i}`}
+          className="w-4 h-4 fill-current"
+          style={{ color: BRAND.primary }}
+        />
+      ))}
+      {half && (
+        <Star className="w-4 h-4 fill-current" style={{ color: BRAND.primary }} />
+      )}
+      {Array.from({ length: 5 - full - (half ? 1 : 0) }).map((_, i) => (
+        <Star key={`o-${i}`} className="w-4 h-4 text-slate-300" />
+      ))}
+    </div>
+  );
+};
+
+/** Reusable sidebar item */
+function SidebarItem({ icon, title, subtitle }) {
+  if (!title && !subtitle) return null;
+
+  return (
+    <div className="flex items-start gap-3 border-b border-slate-200 py-3 last:border-0">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+        {icon}
+      </div>
+      <div>
+        {title && (
+          <div className="text-sm font-medium text-slate-900">{title}</div>
+        )}
+        {subtitle && (
+          <div className="text-xs text-slate-500">{subtitle}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Simple accordion for FAQ */
+function Accordion({ items = [] }) {
+  const [open, setOpen] = useState(-1);
+  if (!Array.isArray(items) || items.length === 0) {
+    return <div className="text-sm text-slate-500">No FAQs available.</div>;
+  }
+  return (
+    <div className="divide-y divide-slate-200 rounded-xl border border-slate-200">
+      {items.map((it, i) => {
+        const isOpen = open === i;
+        // Support both {q, a} and {question, answer} shapes
+        const q = it.q || it.question || 'Question';
+        const a = it.a || it.answer || '';
+        return (
+          <div key={i}>
+            <button
+              onClick={() => setOpen(isOpen ? -1 : i)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="text-sm font-medium text-slate-900">{q}</span>
+              {isOpen ? (
+                <ChevronUp className="h-4 w-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-slate-500" />
+              )}
+            </button>
+            {isOpen && <div className="px-4 pb-4 text-sm text-slate-700">{a}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function VendorProfileClient({ vendor }) {
+  // Tabs + RFQ popup
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [showPopup, setShowPopup] = useState(false);
+
+  // Normalize vendor data to avoid crashes if any field is null/empty
+  const safeVendor = useMemo(() => {
+    const v = vendor || {};
+    return {
+      company_name: v.company_name || 'Vendor',
+      tagline: v.tagline || '',
+      logo: v.logo || null,
+      category: v.category || 'General',
+      location: v.location || '',
+      county: v.county || '',
+      rating: typeof v.rating === 'number' ? v.rating : Number(v.rating) || 0,
+      review_count: typeof v.review_count === 'number' ? v.review_count : 0,
+      projects_completed: v.projects_completed || 0,
+      response_time: v.response_time || '—',
+      member_since: v.member_since || '—',
+      verified: !!v.verified,
+      badge: v.badge || '',
+      description: v.description || '',
+      price_range: v.price_range || '',
+      certifications: Array.isArray(v.certifications) ? v.certifications : [],
+      phone: v.phone || '',
+      email: v.email || '',
+      website: v.website || '',
+      whatsapp: v.whatsapp || '',
+      created_at: v.created_at || null,
+      // JSONB fields
+      gallery: Array.isArray(v.gallery) ? v.gallery : [],
+      services: Array.isArray(v.services) ? v.services : [],
+      products: Array.isArray(v.products) ? v.products : [],
+      faq: Array.isArray(v.faq) ? v.faq : [],
+      reviews: Array.isArray(v.reviews) ? v.reviews : [],
+    };
+  }, [vendor]);
+
+  const statCard = (label, value, icon) => (
+    <div className="rounded-xl border border-slate-200 bg-white/80 p-4 text-center shadow-sm">
+      <div className="mb-2 flex justify-center">{icon}</div>
+      <p className="text-xl font-semibold text-slate-900">{value}</p>
+      <p className="text-sm text-slate-500">{label}</p>
+    </div>
+  );
+
+  // Derive initials for placeholder logo tile
+  const initials = safeVendor.company_name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('');
+
+  // Products (supports your products jsonb OR graceful empty state)
+  const products = safeVendor.products;
+  // Services (supports array of {title, desc} or {name, description})
+  const services = safeVendor.services.map((s) => ({
+    title: s.title || s.name || 'Service',
+    desc: s.desc || s.description || '',
+  }));
+  // Gallery (supports {imageUrl, title} or simple strings)
+  const gallery = safeVendor.gallery.map((g, i) => {
+    if (typeof g === 'string') {
+      return { id: i + 1, title: '', imageUrl: g };
+    }
+    return {
+      id: g.id || i + 1,
+      title: g.title || g.caption || '',
+      imageUrl: g.imageUrl || g.url || g.src || '',
+    };
+  });
+  // Reviews (supports your jsonb reviews OR empty)
+  const reviews = safeVendor.reviews.map((r, i) => ({
+    id: r.id || i + 1,
+    name: r.name || r.author || 'Anonymous',
+    rating: r.rating || 0,
+    date: r.date || r.created_at || '',
+    text: r.text || r.comment || '',
+  }));
+  // FAQ
+  const faq = safeVendor.faq.map((f) => ({
+    q: f.q || f.question || '',
+    a: f.a || f.answer || '',
+  }));
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Top banner */}
+      <div className="relative w-full bg-gradient-to-br from-slate-800 to-slate-900 text-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-6">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-300">
+              Zintra Verified Professionals
+            </div>
+            <div className="text-sm text-slate-300">
+              Connecting you with trusted construction experts
+            </div>
+          </div>
+          <div className="hidden gap-8 md:flex">
+            <div className="text-center">
+              <div className="text-xl font-semibold">2,500+</div>
+              <div className="text-xs text-slate-300">Verified Vendors</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-semibold">15,000+</div>
+              <div className="text-xs text-slate-300">Projects Completed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Header card */}
+      <div className="-mt-4">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="relative rounded-2xl bg-white p-6 shadow-lg">
+            <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                {/* Logo / initials */}
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-xl text-xl font-bold text-white shadow-md overflow-hidden"
+                  style={{ backgroundColor: BRAND.primary }}
+                >
+                  {safeVendor.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={safeVendor.logo} alt="Logo" className="h-full w-full object-cover" />
+                  ) : (
+                    initials || 'Z'
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-slate-900">
+                      {safeVendor.company_name}
+                    </h1>
+                    {safeVendor.verified && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                        style={{ backgroundColor: BRAND.primary }}
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> {safeVendor.badge || 'Verified'}
+                      </span>
+                    )}
+                  </div>
+                  {safeVendor.tagline && (
+                    <p className="text-slate-600">{safeVendor.tagline}</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                    {safeVendor.location ? (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-4 w-4" /> {safeVendor.location}
+                      </span>
+                    ) : null}
+                    {safeVendor.category ? (
+                      <span className="inline-flex items-center gap-1">
+                        <FileText className="h-4 w-4" /> {safeVendor.category}
+                      </span>
+                    ) : null}
+                    <span className="inline-flex items-center gap-1">
+                      <Star className="h-4 w-4" style={{ color: BRAND.primary }} />
+                      {Number(safeVendor.rating || 0).toFixed(1)} (
+                      {safeVendor.review_count} reviews)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+                {safeVendor.email && (
+                  <a
+                    href={`mailto:${safeVendor.email}`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-white shadow-sm md:w-auto"
+                    style={{ backgroundColor: BRAND.primary }}
+                  >
+                    <Mail className="h-4 w-4" />
+                    Contact Vendor
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowPopup(true)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-900 hover:bg-slate-50 md:w-auto"
+                >
+                  <FileText className="h-4 w-4" />
+                  Request Quote
+                </button>
+                <button
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-900 hover:bg-slate-50 md:w-auto"
+                  title="Save Vendor"
+                >
+                  <Bookmark className="h-4 w-4" />
+                  Save
+                </button>
+              </div>
+            </div>
+
+            {/* Quick stats */}
+            <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+              {statCard(
+                'Rating',
+                `${Number(safeVendor.rating || 0).toFixed(1)} / 5.0`,
+                <StarRow value={safeVendor.rating} />
+              )}
+              {statCard(
+                'Reviews',
+                safeVendor.review_count,
+                <Star className="h-5 w-5" style={{ color: BRAND.primary }} />
+              )}
+              {statCard(
+                'Projects',
+                safeVendor.projects_completed,
+                <ChevronRight className="h-5 w-5 text-slate-400" />
+              )}
+              {statCard(
+                'Response Time',
+                safeVendor.response_time || '—',
+                <Clock className="h-5 w-5 text-slate-400" />
+              )}
+              {statCard(
+                'Member Since',
+                safeVendor.member_since || '—',
+                <Award className="h-5 w-5 text-slate-400" />
+              )}
+            </div>
+
+            {/* Tabs */}
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              {tabs.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    activeTab === t ? 'bg-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200'
+                  }`}
+                  style={
+                    activeTab === t
+                      ? { border: `1px solid ${BRAND.primary}`, color: BRAND.primary }
+                      : {}
+                  }
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="mx-auto mt-6 max-w-7xl px-4 pb-16">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+          {/* LEFT: tab content */}
+          <div className="flex flex-col gap-6">
+            {/* Overview */}
+            {activeTab === 'Overview' && (
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">
+                  About {safeVendor.company_name}
+                </h3>
+                <div
+                  className="mb-4 h-1 w-24 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                <div className="mb-3 flex flex-wrap gap-2 text-sm">
+                  {safeVendor.category && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+                      {safeVendor.category}
+                    </span>
+                  )}
+                  {safeVendor.location && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+                      📍 {safeVendor.location}
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-700">{safeVendor.description || '—'}</p>
+              </section>
+            )}
+
+            {/* Products */}
+            {(activeTab === 'Overview' || activeTab === 'Products') && (
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">
+                  Featured Products
+                </h3>
+                <div
+                  className="mb-4 h-1 w-24 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                {products.length === 0 ? (
+                  <div className="text-sm text-slate-500">No products listed.</div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {products.map((p, idx) => (
+                      <div
+                        key={p.id || idx}
+                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                      >
+                        {/* Placeholder image box */}
+                        <div className="mb-3 h-28 w-full rounded-lg bg-slate-100 overflow-hidden" />
+                        <div className="mb-1 text-sm font-medium text-slate-900">
+                          {p.name || p.title || 'Product'}
+                        </div>
+                        <div className="mb-3 text-sm text-slate-600">
+                          {p.blurb || p.description || ''}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-900">
+                            {p.price || ''}
+                          </span>
+                          {(p.status || p.stock) && (
+                            <span
+                              className="rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                              style={{ backgroundColor: BRAND.primary }}
+                            >
+                              {p.status || p.stock}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {activeTab === 'Overview' && products.length > 0 && (
+                  <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-900">
+                    View all products <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </section>
+            )}
+
+            {/* Services */}
+            {(activeTab === 'Overview' || activeTab === 'Services') && (
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">
+                  Services Offered
+                </h3>
+                <div
+                  className="mb-4 h-1 w-24 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                {services.length === 0 ? (
+                  <div className="text-sm text-slate-500">No services listed.</div>
+                ) : (
+                  <ul className="space-y-3">
+                    {services.map((s, i) => (
+                      <li key={i} className="rounded-lg border border-slate-200 p-3">
+                        <div className="font-medium text-slate-900">{s.title}</div>
+                        {s.desc && <div className="text-sm text-slate-600">{s.desc}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {activeTab === 'Overview' && services.length > 0 && (
+                  <button className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-900">
+                    View all services <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </section>
+            )}
+
+            {/* Gallery */}
+            {(activeTab === 'Overview' || activeTab === 'Gallery') && (
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">
+                  Project Gallery
+                </h3>
+                <div
+                  className="mb-4 h-1 w-24 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                {gallery.length === 0 ? (
+                  <div className="text-sm text-slate-500">No gallery items.</div>
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {gallery.map((g) => (
+                      <div
+                        key={g.id}
+                        className="min-w-[200px] rounded-lg bg-slate-100 overflow-hidden"
+                        title={g.title || ''}
+                      >
+                        {g.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={g.imageUrl}
+                            alt={g.title || 'Project'}
+                            className="h-36 w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-36 w-full" />
+                        )}
+                        {g.title && (
+                          <div className="p-2 text-center text-xs text-slate-700">
+                            {g.title}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Reviews */}
+            {(activeTab === 'Overview' || activeTab === 'Reviews') && (
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">
+                  Customer Reviews
+                </h3>
+                <div
+                  className="mb-4 h-1 w-24 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                <div className="mb-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-4xl font-semibold" style={{ color: BRAND.primary }}>
+                      {Number(safeVendor.rating || 0).toFixed(1)}
+                    </div>
+                    <StarRow value={safeVendor.rating} />
+                    <div className="text-sm text-slate-600">
+                      Based on {safeVendor.review_count} reviews
+                    </div>
+                  </div>
+                  <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50">
+                    <Share2 className="h-4 w-4" />
+                    Share vendor
+                  </button>
+                </div>
+
+                {reviews.length === 0 ? (
+                  <div className="text-sm text-slate-500">No reviews yet.</div>
+                ) : (
+                  <div className="space-y-5">
+                    {reviews.map((r) => (
+                      <div
+                        key={r.id}
+                        className="border-b border-slate-200 pb-5 last:border-0 last:pb-0"
+                      >
+                        <div className="mb-1 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-white"
+                              style={{ backgroundColor: BRAND.primary }}
+                            >
+                              {(r.name || 'A N')
+                                .split(' ')
+                                .slice(0, 2)
+                                .map((w) => w[0])
+                                .join('')}
+                            </div>
+                            <div>
+                              <div className="font-medium text-slate-900">
+                                {r.name || 'Anonymous'}
+                              </div>
+                              <StarRow value={r.rating} size="text-xs" />
+                            </div>
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {r.date ? String(r.date) : ''}
+                          </div>
+                        </div>
+                        <p className="text-sm text-slate-700">{r.text || ''}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* FAQ */}
+            {(activeTab === 'Overview' || activeTab === 'FAQ') && (
+              <section className="rounded-2xl bg-white p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900">FAQ</h3>
+                <div
+                  className="mb-4 h-1 w-24 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                <Accordion items={faq} />
+              </section>
+            )}
+          </div>
+
+          {/* RIGHT: sidebar */}
+          <aside className="flex flex-col gap-6">
+            {/* Contact */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h4 className="mb-2 text-base font-semibold text-slate-900">
+                Contact Information
+              </h4>
+              <div
+                className="mb-4 h-1 w-20 rounded"
+                style={{
+                  background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                }}
+              />
+              <SidebarItem
+                icon={<Phone className="h-4 w-4" />}
+                title={safeVendor.phone}
+                subtitle="Primary Phone"
+              />
+              <SidebarItem
+                icon={<Mail className="h-4 w-4" />}
+                title={safeVendor.email}
+                subtitle="Business Email"
+              />
+              <SidebarItem
+                icon={<Globe className="h-4 w-4" />}
+                title={safeVendor.website}
+                subtitle="Company Website"
+              />
+              <SidebarItem
+                icon={<MessageSquare className="h-4 w-4" />}
+                title={safeVendor.whatsapp ? 'WhatsApp Business' : ''}
+                subtitle={safeVendor.whatsapp}
+              />
+            </div>
+
+            {/* Price Range */}
+            {(safeVendor.price_range || '').trim() !== '' && (
+              <div className="rounded-2xl bg-white p-6 shadow-sm">
+                <h4 className="mb-2 text-base font-semibold text-slate-900">
+                  Price Range
+                </h4>
+                <div
+                  className="mb-4 h-1 w-20 rounded"
+                  style={{
+                    background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                  }}
+                />
+                <div className="rounded-xl border-2 border-orange-200 bg-orange-50 p-4 text-center">
+                  <div className="text-sm text-slate-700">Typical Project Range</div>
+                  <div className="mt-1 text-xl font-semibold text-orange-800">
+                    {safeVendor.price_range}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    Varies by project scope and complexity
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Certifications */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h4 className="mb-2 text-base font-semibold text-slate-900">
+                Certifications & Awards
+              </h4>
+              <div
+                className="mb-4 h-1 w-20 rounded"
+                style={{
+                  background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                }}
+              />
+              {safeVendor.certifications.length === 0 ? (
+                <div className="text-sm text-slate-500">No certifications added.</div>
+              ) : (
+                <ul className="space-y-2">
+                  {safeVendor.certifications.map((c, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                    >
+                      <Award className="h-4 w-4 text-slate-500" />
+                      {c}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h4 className="mb-2 text-base font-semibold text-slate-900">Actions</h4>
+              <div
+                className="mb-4 h-1 w-20 rounded"
+                style={{
+                  background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.primaryHover})`,
+                }}
+              />
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => setShowPopup(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-white shadow-sm"
+                  style={{ backgroundColor: BRAND.primary }}
+                >
+                  <FileText className="h-4 w-4" />
+                  Request Quote
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Footer (light) */}
+        <div className="mt-12 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-900">Zintra</span>
+              <span className="text-slate-400">•</span>
+              <span>
+                Connecting construction professionals with quality materials and services.
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link href="#" className="hover:underline">
+                How it works
+              </Link>
+              <Link href="#" className="hover:underline">
+                Browse categories
+              </Link>
+              <Link href="#" className="hover:underline">
+                Help Center
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* RFQ popup */}
+        {showPopup && (
+          <DirectRFQPopup
+            isOpen={showPopup}
+            onClose={() => setShowPopup(false)}
+            vendor={{
+              company_name: safeVendor.company_name,
+              email: safeVendor.email,
+              id: vendor?.id, // pass through actual vendor id for RFQ linkage if you wire it
+            }}
+            user={null} // you can pass the logged-in user when you wire Supabase Auth client-side
+          />
+        )}
+      </div>
+    </div>
+  );
+}

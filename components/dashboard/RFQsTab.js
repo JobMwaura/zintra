@@ -1,0 +1,760 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { FileText, Search, Filter, Plus, Eye, Send, DollarSign, Calendar, MapPin, AlertCircle, Check, X, User, Clock } from 'lucide-react';
+
+export default function RFQsTab() {
+  const [user, setUser] = useState(null);
+  const [vendor, setVendor] = useState(null);
+  
+  // RFQ data states
+  const [userRFQs, setUserRFQs] = useState([]); // From rfq_requests (user → vendor)
+  const [adminRFQs, setAdminRFQs] = useState([]); // From rfqs (admin broadcast)
+  const [myResponses, setMyResponses] = useState([]); // From rfq_responses
+  
+  // UI states
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('user-rfqs'); // 'user-rfqs', 'admin-rfqs', 'my-responses'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRFQ, setSelectedRFQ] = useState(null);
+  const [showResponseForm, setShowResponseForm] = useState(false);
+  const [responseData, setResponseData] = useState({
+    amount: '',
+    message: '',
+    attachment_url: '',
+  });
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setMessage('');
+
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !currentUser) {
+        setMessage('❌ Please log in');
+        setLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
+
+      // Get vendor profile
+      const { data: vendorData } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (vendorData) {
+        setVendor(vendorData);
+      }
+
+      // ===== FETCH USER RFQs (from rfq_requests) =====
+      const { data: userRfqRequests, error: userRfqError } = await supabase
+        .from('rfq_requests')
+        .select(`
+          *,
+          rfqs:rfq_id (*)
+        `)
+        .eq('vendor_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (userRfqError) {
+        console.error('Error fetching user RFQs:', userRfqError);
+      } else {
+        setUserRFQs(userRfqRequests || []);
+      }
+
+      // ===== FETCH ADMIN RFQs (broadcast by category) =====
+      if (vendorData?.category) {
+        const { data: adminRfqs, error: adminRfqError } = await supabase
+          .from('rfqs')
+          .select('*')
+          .eq('status', 'open')
+          .eq('category', vendorData.category)
+          .order('created_at', { ascending: false });
+
+        if (adminRfqError) {
+          console.error('Error fetching admin RFQs:', adminRfqError);
+        } else {
+          setAdminRFQs(adminRfqs || []);
+        }
+      }
+
+      // ===== FETCH MY RESPONSES =====
+      const { data: responses, error: responseError } = await supabase
+        .from('rfq_responses')
+        .select(`
+          *,
+          rfqs:rfq_id (*),
+          rfq_requests:rfq_id (*)
+        `)
+        .eq('vendor_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (responseError) {
+        console.error('Error fetching responses:', responseError);
+      } else {
+        setMyResponses(responses || []);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setMessage(`❌ Error: ${err.message}`);
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitResponse = async (e) => {
+    e.preventDefault();
+
+    if (!responseData.amount.trim()) {
+      setMessage('❌ Please enter a quote amount');
+      return;
+    }
+
+    if (!responseData.message.trim()) {
+      setMessage('❌ Please write a message');
+      return;
+    }
+
+    try {
+      setSending(true);
+      setMessage('');
+
+      const { error } = await supabase
+        .from('rfq_responses')
+        .insert([{
+          rfq_id: selectedRFQ.rfq_id || selectedRFQ.id,
+          vendor_id: user.id,
+          amount: parseFloat(responseData.amount),
+          message: responseData.message,
+          attachment_url: responseData.attachment_url || null,
+        }]);
+
+      if (error) {
+        console.error('Error submitting response:', error);
+        setMessage(`❌ Error: ${error.message}`);
+        setSending(false);
+        return;
+      }
+
+      setMessage('✅ Quote submitted successfully!');
+      setShowResponseForm(false);
+      setSelectedRFQ(null);
+      setResponseData({ amount: '', message: '', attachment_url: '' });
+      
+      setTimeout(() => {
+        fetchData();
+      }, 2000);
+
+      setSending(false);
+    } catch (err) {
+      console.error('Error submitting response:', err);
+      setMessage(`❌ Error: ${err.message}`);
+      setSending(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading RFQs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================
+  // USER RFQs TAB (Individual users sent to you)
+  // ========================================
+  if (activeTab === 'user-rfqs') {
+    return (
+      <div className="space-y-6">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-6 border-b border-gray-200 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('user-rfqs')}
+            className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'user-rfqs'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            User RFQs ({userRFQs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('admin-rfqs')}
+            className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'admin-rfqs'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Admin RFQs ({adminRFQs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('my-responses')}
+            className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'my-responses'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            My Quotes ({myResponses.length})
+          </button>
+        </div>
+
+        {/* Status Message */}
+        {message && (
+          <div className={`p-4 rounded-lg flex items-center gap-3 ${
+            message.includes('✅') 
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {message.includes('✅') ? (
+              <Check className="w-5 h-5 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span>{message}</span>
+          </div>
+        )}
+
+        {/* Search */}
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search RFQs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+        </div>
+
+        {/* User RFQs List */}
+        {userRFQs.length === 0 ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+            <FileText className="w-12 h-12 text-blue-600 mx-auto mb-3" />
+            <p className="text-blue-900 font-medium mb-2">No RFQs from Users</p>
+            <p className="text-blue-700 text-sm">
+              Users can send you individual RFQs. They'll appear here when they do!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {userRFQs
+              .filter(rfq =>
+                rfq.rfqs?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                rfq.rfqs?.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                rfq.rfqs?.location?.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map(rfqReq => (
+                <div
+                  key={rfqReq.id}
+                  className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 border-blue-600 p-6"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{rfqReq.rfqs?.title || 'Project'}</h3>
+                      <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        From: {rfqReq.rfqs?.buyer_id ? 'User' : 'Unknown'}
+                      </p>
+                    </div>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                      Direct Invite
+                    </span>
+                  </div>
+
+                  {/* RFQ Details */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 py-4 border-t border-b border-gray-100">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Budget</p>
+                      <p className="font-semibold text-gray-900">{rfqReq.rfqs?.budget_range || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        Location
+                      </p>
+                      <p className="font-semibold text-gray-900">{rfqReq.rfqs?.location || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Timeline
+                      </p>
+                      <p className="font-semibold text-gray-900">{rfqReq.rfqs?.timeline || 'Flexible'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Sent</p>
+                      <p className="font-semibold text-gray-900">
+                        {new Date(rfqReq.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {rfqReq.rfqs?.description && (
+                    <p className="text-sm text-gray-700 mb-4 p-3 bg-gray-50 rounded">
+                      {rfqReq.rfqs.description}
+                    </p>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setSelectedRFQ({ ...rfqReq.rfqs, rfq_id: rfqReq.rfq_id });
+                        setShowResponseForm(true);
+                      }}
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      Submit Quote
+                    </button>
+                    <button
+                      onClick={() => setSelectedRFQ(rfqReq.rfqs)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Details
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Response Form Modal */}
+        {showResponseForm && selectedRFQ && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Submit Quote</h3>
+                <button
+                  onClick={() => {
+                    setShowResponseForm(false);
+                    setResponseData({ amount: '', message: '', attachment_url: '' });
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitResponse} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quote Amount (KSh) *</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                    <input
+                      type="number"
+                      value={responseData.amount}
+                      onChange={(e) => setResponseData({ ...responseData, amount: e.target.value })}
+                      placeholder="Enter your quote amount"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Proposal Message *</label>
+                  <textarea
+                    value={responseData.message}
+                    onChange={(e) => setResponseData({ ...responseData, message: e.target.value })}
+                    placeholder="Describe your approach, timeline, and why you're the best fit..."
+                    rows="4"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio Link (Optional)</label>
+                  <input
+                    type="url"
+                    value={responseData.attachment_url}
+                    onChange={(e) => setResponseData({ ...responseData, attachment_url: e.target.value })}
+                    placeholder="Link to your portfolio or document"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 font-medium"
+                  >
+                    {sending ? 'Submitting...' : 'Submit Quote'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowResponseForm(false);
+                      setResponseData({ amount: '', message: '', attachment_url: '' });
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ========================================
+  // ADMIN RFQs TAB (Broadcast by category)
+  // ========================================
+  if (activeTab === 'admin-rfqs') {
+    return (
+      <div className="space-y-6">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-6 border-b border-gray-200 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('user-rfqs')}
+            className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'user-rfqs'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            User RFQs ({userRFQs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('admin-rfqs')}
+            className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'admin-rfqs'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Admin RFQs ({adminRFQs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('my-responses')}
+            className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'my-responses'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            My Quotes ({myResponses.length})
+          </button>
+        </div>
+
+        {/* Status Message */}
+        {message && (
+          <div className={`p-4 rounded-lg flex items-center gap-3 ${
+            message.includes('✅') 
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {message.includes('✅') ? (
+              <Check className="w-5 h-5 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span>{message}</span>
+          </div>
+        )}
+
+        {/* Admin RFQs List */}
+        {adminRFQs.length === 0 ? (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-8 text-center">
+            <FileText className="w-12 h-12 text-purple-600 mx-auto mb-3" />
+            <p className="text-purple-900 font-medium mb-2">No Admin RFQs in Your Category</p>
+            <p className="text-purple-700 text-sm">
+              Admin will broadcast RFQs in your category here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {adminRFQs
+              .filter(rfq =>
+                rfq.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                rfq.category?.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map(rfq => (
+                <div
+                  key={rfq.id}
+                  className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 border-purple-600 p-6"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{rfq.title || 'Project'}</h3>
+                      <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Broadcast from Admin
+                      </p>
+                    </div>
+                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                      Broadcast
+                    </span>
+                  </div>
+
+                  {/* RFQ Details */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 py-4 border-t border-b border-gray-100">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Budget</p>
+                      <p className="font-semibold text-gray-900">{rfq.budget_range || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        Location
+                      </p>
+                      <p className="font-semibold text-gray-900">{rfq.location || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Timeline
+                      </p>
+                      <p className="font-semibold text-gray-900">{rfq.timeline || 'Flexible'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Posted</p>
+                      <p className="font-semibold text-gray-900">
+                        {new Date(rfq.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {rfq.description && (
+                    <p className="text-sm text-gray-700 mb-4 p-3 bg-gray-50 rounded">
+                      {rfq.description}
+                    </p>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setSelectedRFQ(rfq);
+                        setShowResponseForm(true);
+                      }}
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      Submit Quote
+                    </button>
+                    <button
+                      onClick={() => setSelectedRFQ(rfq)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Details
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Response Form Modal */}
+        {showResponseForm && selectedRFQ && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Submit Quote</h3>
+                <button
+                  onClick={() => {
+                    setShowResponseForm(false);
+                    setResponseData({ amount: '', message: '', attachment_url: '' });
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitResponse} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quote Amount (KSh) *</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                    <input
+                      type="number"
+                      value={responseData.amount}
+                      onChange={(e) => setResponseData({ ...responseData, amount: e.target.value })}
+                      placeholder="Enter your quote amount"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Proposal Message *</label>
+                  <textarea
+                    value={responseData.message}
+                    onChange={(e) => setResponseData({ ...responseData, message: e.target.value })}
+                    placeholder="Describe your approach, timeline, and why you're the best fit..."
+                    rows="4"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio Link (Optional)</label>
+                  <input
+                    type="url"
+                    value={responseData.attachment_url}
+                    onChange={(e) => setResponseData({ ...responseData, attachment_url: e.target.value })}
+                    placeholder="Link to your portfolio or document"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 font-medium"
+                  >
+                    {sending ? 'Submitting...' : 'Submit Quote'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowResponseForm(false);
+                      setResponseData({ amount: '', message: '', attachment_url: '' });
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ========================================
+  // MY RESPONSES TAB (All submitted quotes)
+  // ========================================
+  return (
+    <div className="space-y-6">
+      {/* Tab Navigation */}
+      <div className="flex gap-4 mb-6 border-b border-gray-200 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('user-rfqs')}
+          className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === 'user-rfqs'
+              ? 'border-orange-600 text-orange-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          User RFQs ({userRFQs.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('admin-rfqs')}
+          className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === 'admin-rfqs'
+              ? 'border-orange-600 text-orange-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Admin RFQs ({adminRFQs.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('my-responses')}
+          className={`pb-3 px-4 font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === 'my-responses'
+              ? 'border-orange-600 text-orange-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          My Quotes ({myResponses.length})
+        </button>
+      </div>
+
+      {/* My Responses List */}
+      {myResponses.length === 0 ? (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
+          <FileText className="w-12 h-12 text-green-600 mx-auto mb-3" />
+          <p className="text-green-900 font-medium mb-2">No Quotes Submitted Yet</p>
+          <p className="text-green-700 text-sm mb-4">
+            Go to "User RFQs" or "Admin RFQs" and submit your first quote!
+          </p>
+          <button
+            onClick={() => setActiveTab('user-rfqs')}
+            className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
+          >
+            Browse RFQs
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {myResponses.map(response => (
+            <div
+              key={response.id}
+              className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 border-green-600 p-6"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {response.rfqs?.title || 'Project'}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(response.amount).toLocaleString()}</span>
+                  </p>
+                </div>
+                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                  Submitted
+                </span>
+              </div>
+
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-700">{response.message}</p>
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
+                <span>
+                  📅 {new Date(response.created_at).toLocaleDateString()}
+                </span>
+                {response.attachment_url && (
+                  <a 
+                    href={response.attachment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-600 hover:underline font-medium"
+                  >
+                    View Portfolio
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
