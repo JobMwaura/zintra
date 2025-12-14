@@ -193,8 +193,18 @@ export default function VendorProfilePage() {
             <Link href="/post-rfq">Post RFQ</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
+            {canEdit && <Link href="/vendor-messages">Inbox</Link>}
           </div>
-          <Link href="/login" className="text-amber-700">Login</Link>
+          {currentUser ? (
+            <button
+              onClick={() => supabase.auth.signOut().then(() => (window.location.href = '/'))}
+              className="text-amber-700 hover:underline"
+            >
+              Logout
+            </button>
+          ) : (
+            <Link href="/login" className="text-amber-700">Login</Link>
+          )}
         </div>
       </nav>
 
@@ -247,31 +257,42 @@ export default function VendorProfilePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100">
-                <MessageSquare className="w-5 h-5" /> Contact Vendor
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300">
-                Request Quote
-              </button>
-              <button
-                onClick={() => setSaved((s) => !s)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${
-                  saved
-                    ? 'border-amber-500 text-amber-700 bg-amber-50'
-                    : 'border-slate-200 text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
-                Save
-              </button>
-              {canEdit && (
-                <button
-                  onClick={() => (editing ? handleSave() : setEditing(true))}
-                  disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 disabled:opacity-60"
-                >
-                  {editing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
-                </button>
+              {canEdit ? (
+                <>
+                  <button
+                    onClick={() => (editing ? handleSave() : setEditing(true))}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 disabled:opacity-60"
+                  >
+                    {editing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+                  </button>
+                  <Link
+                    href="/vendor-messages"
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100"
+                  >
+                    <MessageSquare className="w-5 h-5" /> Inbox
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100">
+                    <MessageSquare className="w-5 h-5" /> Contact Vendor
+                  </button>
+                  <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300">
+                    Request Quote
+                  </button>
+                  <button
+                    onClick={() => setSaved((s) => !s)}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${
+                      saved
+                        ? 'border-amber-500 text-amber-700 bg-amber-50'
+                        : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
+                    Save
+                  </button>
+                </>
               )}
             </div>
           </div>
