@@ -170,8 +170,8 @@ export default function BrowseVendors() {
                     )}
                   </div>
 
-                  {/* ✅ Navigation to Vendor Profile */}
-                  <Link href={`/vendor/${vendors.id}`}>
+                  {/* ✅ Navigation to redesigned Vendor Profile */}
+                  <Link href={`/vendor-profile/${vendor.id}`}>
                     <button
                       className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium transition-colors"
                     >
