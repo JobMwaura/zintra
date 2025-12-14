@@ -4,5 +4,6 @@
 
 /* Custom global styles */
 body {
-  @apply bg-white text-gray-900;
+  background-color: white;
+  color: rgb(17, 24, 39);
 }
