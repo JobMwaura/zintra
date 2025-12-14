@@ -66,7 +66,11 @@ export default function Login() {
 
       if (error) {
         console.error('❌ Supabase login error:', error);
-        setMessage('❌ ' + error.message);
+        const friendly =
+          error.message === 'Invalid login credentials'
+            ? '❌ Invalid credentials. If you just signed up, verify your email first or reset your password.'
+            : '❌ ' + error.message;
+        setMessage(friendly);
         setIsLoading(false);
         return;
       }
@@ -83,8 +87,8 @@ export default function Login() {
       console.log('🔹 Active tab:', activeTab);
       setMessage('✅ Login successful! Redirecting...');
 
-      // ✅ FIXED: Changed from /dashboard/vendor to /dashboard
-      const redirectUrl = activeTab === 'vendor' ? '/dashboard' : '/browse';
+      // Vendors go to vendor dashboard/profile, users to browse
+      const redirectUrl = activeTab === 'vendor' ? '/dashboard/vendor' : '/browse';
       console.log('🔹 Redirecting to:', redirectUrl);
 
       setTimeout(() => {
