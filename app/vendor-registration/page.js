@@ -3,7 +3,77 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon } from 'lucide-react';
+
+const brand = {
+  primary: '#c28a3a',
+  primaryDark: '#a9742f',
+  slate: '#475569',
+  border: '#e2e8f0',
+  bg: '#f8fafc',
+};
+
+const steps = [
+  { id: 1, label: 'Account' },
+  { id: 2, label: 'Business Details' },
+  { id: 3, label: 'Services & Portfolio' },
+  { id: 4, label: 'Subscription' },
+  { id: 5, label: 'Complete' },
+];
+
+const categories = [
+  'Building & Structural Materials',
+  'Doors, Windows & Hardware',
+  'Electrical & Lighting',
+  'Plumbing & Sanitation',
+  'Flooring & Wall Finishes',
+  'Wood & Timber Solutions',
+  'Roofing & Waterproofing',
+  'Kitchen & Interior Fittings',
+  'HVAC & Climate',
+];
+
+const plans = [
+  {
+    id: 'basic',
+    name: 'Basic',
+    price: 'KSh 1,000',
+    period: '/month',
+    features: [
+      'List in 2 categories',
+      'Standard search visibility',
+      '5 RFQ responses per month',
+      'Basic profile badge',
+    ],
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    tag: 'Popular',
+    price: 'KSh 2,500',
+    period: '/month',
+    features: [
+      'List in 5 categories',
+      'Priority search visibility',
+      '20 RFQ responses per month',
+      'Premium profile badge',
+      'Featured in category listings',
+    ],
+  },
+  {
+    id: 'diamond',
+    name: 'Diamond',
+    price: 'KSh 5,000',
+    period: '/month',
+    features: [
+      'List in all categories',
+      'Top search visibility',
+      'Unlimited RFQ responses',
+      'Diamond profile badge',
+      'Featured on homepage',
+    ],
+  },
+];
 
 export default function VendorRegistration() {
   const router = useRouter();
@@ -25,18 +95,17 @@ export default function VendorRegistration() {
     instagramHandle: '',
     facebookPage: '',
     websiteUrl: '',
-    selectedPlan: 'premium'
+    selectedPlan: 'premium',
   });
 
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
 
-  // Get current user on mount
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
+
         if (!currentUser) {
           router.push('/login');
           return;
@@ -57,11 +126,32 @@ export default function VendorRegistration() {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     });
 
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
+    }
+  };
+
+  const toggleCategory = (category) => {
+    setFormData((prev) => {
+      const alreadySelected = prev.selectedCategories.includes(category);
+      if (alreadySelected) {
+        return {
+          ...prev,
+          selectedCategories: prev.selectedCategories.filter((c) => c !== category),
+        };
+      }
+
+      if (prev.selectedCategories.length >= 5) {
+        return prev;
+      }
+
+      return { ...prev, selectedCategories: [...prev.selectedCategories, category] };
+    });
+    if (errors.selectedCategories) {
+      setErrors({ ...errors, selectedCategories: '' });
     }
   };
 
@@ -83,7 +173,9 @@ export default function VendorRegistration() {
         newErrors.specificLocation = 'Location is required';
       }
     } else if (currentStep === 3) {
-      // All fields optional on step 3
+      if (formData.selectedCategories.length === 0) {
+        newErrors.selectedCategories = 'Select at least 1 category';
+      }
     }
 
     setErrors(newErrors);
@@ -92,14 +184,12 @@ export default function VendorRegistration() {
 
   const handleNextStep = () => {
     if (validateStep()) {
-      setCurrentStep(currentStep + 1);
+      setCurrentStep((s) => Math.min(s + 1, steps.length));
     }
   };
 
   const handlePreviousStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+    setCurrentStep((s) => Math.max(1, s - 1));
   };
 
   const handleSubmit = async (e) => {
@@ -110,46 +200,29 @@ export default function VendorRegistration() {
     setMessage('');
 
     try {
-      if (!user) {
+      if (!user?.id) {
         alert('You must be logged in to create a vendor profile.');
         setIsLoading(false);
         return;
       }
 
-      if (!user.id) {
-        alert('Error: Invalid user ID. Please log in again.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (!formData.businessName || !user.email) {
-        alert('Please fill in Business Name.');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Creating vendor with user_id:', user.id);
-
-      // Call API endpoint to create vendor
       const response = await fetch('/api/vendor/create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
           company_name: formData.businessName,
           description: formData.businessDescription || null,
           phone: formData.phone || null,
-          email: user.email, // Use email from authenticated user
+          email: user.email,
           county: formData.county || null,
           location: formData.specificLocation || null,
           plan: formData.selectedPlan || 'premium',
           whatsapp: formData.whatsappNumber || null,
           website: formData.websiteUrl || null,
-          categories: formData.selectedCategories && formData.selectedCategories.length > 0 ? formData.selectedCategories : null,
-          price_min: formData.priceRangeMin ? parseInt(formData.priceRangeMin) : null,
-          price_max: formData.priceRangeMax ? parseInt(formData.priceRangeMax) : null,
+          categories: formData.selectedCategories.length ? formData.selectedCategories : null,
+          price_min: formData.priceRangeMin ? parseInt(formData.priceRangeMin, 10) : null,
+          price_max: formData.priceRangeMax ? parseInt(formData.priceRangeMax, 10) : null,
         }),
       });
 
@@ -162,13 +235,12 @@ export default function VendorRegistration() {
         return;
       }
 
-      console.log('✅ Vendor profile created successfully!');
       setMessage('✅ Vendor profile created successfully!');
-      alert('✅ Vendor profile created successfully!');
-      
+      setCurrentStep(5);
+
       setTimeout(() => {
         router.push('/dashboard/vendor');
-      }, 1500);
+      }, 1600);
     } catch (err) {
       console.error('Unexpected error:', err);
       alert('Error: ' + (err.message || 'Something went wrong'));
@@ -184,325 +256,432 @@ export default function VendorRegistration() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold" style={{ color: '#5f6466' }}>
-              Vendor Registration
-            </h1>
-            <p className="text-gray-600 mt-2">Join Zintra and connect with customers looking for your services</p>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="flex justify-between items-center mb-8">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <div key={step} className="flex items-center flex-1">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                  style={{ backgroundColor: currentStep >= step ? '#ea8f1e' : '#e5e7eb' }}
-                >
-                  {step}
-                </div>
-                {step < 5 && (
-                  <div
-                    className="flex-1 h-1 mx-2"
-                    style={{ backgroundColor: currentStep > step ? '#ea8f1e' : '#e5e7eb' }}
-                  ></div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mb-8">
-            <p className="text-sm text-gray-600">
-              {currentStep === 1 && 'Step 1: Business Information'}
-              {currentStep === 2 && 'Step 2: Location'}
-              {currentStep === 3 && 'Step 3: Additional Details'}
-              {currentStep === 4 && 'Step 4: Review'}
-              {currentStep === 5 && 'Step 5: Complete'}
+  const renderStepContent = () => {
+    if (currentStep === 1) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <label className="text-sm font-medium text-slate-700">Account</label>
+            <p className="text-sm text-slate-500 mt-1">
+              You are signing in as <span className="font-semibold text-slate-800">{user?.email}</span>
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Step 1: Business Information */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold mb-4" style={{ color: '#5f6466' }}>Business Information</h2>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Email Address*
-                  </label>
-                  <input
-                    type="email"
-                    disabled
-                    value={user?.email || ''}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Your registered email (cannot be changed)</p>
-                </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">Business Name*</label>
+              <input
+                type="text"
+                name="businessName"
+                value={formData.businessName}
+                onChange={handleInputChange}
+                placeholder="Enter your business name"
+                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                  errors.businessName ? 'border-red-400' : 'border-slate-200'
+                }`}
+              />
+              {errors.businessName && <p className="text-xs text-red-500 mt-1">{errors.businessName}</p>}
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Business Name*
-                  </label>
-                  <input
-                    type="text"
-                    name="businessName"
-                    value={formData.businessName}
-                    onChange={handleInputChange}
-                    placeholder="Enter your business name"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                      errors.businessName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.businessName && <p className="text-red-500 text-xs mt-1">{errors.businessName}</p>}
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">Business Description*</label>
+              <textarea
+                name="businessDescription"
+                value={formData.businessDescription}
+                onChange={handleInputChange}
+                rows={3}
+                placeholder="Describe your business, services, and expertise..."
+                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                  errors.businessDescription ? 'border-red-400' : 'border-slate-200'
+                }`}
+              />
+              {errors.businessDescription && (
+                <p className="text-xs text-red-500 mt-1">{errors.businessDescription}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Business Description*
-                  </label>
-                  <textarea
-                    name="businessDescription"
-                    value={formData.businessDescription}
-                    onChange={handleInputChange}
-                    placeholder="Describe your business and services"
-                    rows="4"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                      errors.businessDescription ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.businessDescription && <p className="text-red-500 text-xs mt-1">{errors.businessDescription}</p>}
-                </div>
+    if (currentStep === 2) {
+      return (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-slate-800">Business Details</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">County*</label>
+              <input
+                type="text"
+                name="county"
+                value={formData.county}
+                onChange={handleInputChange}
+                placeholder="Select county"
+                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                  errors.county ? 'border-red-400' : 'border-slate-200'
+                }`}
+              />
+              {errors.county && <p className="text-xs text-red-500">{errors.county}</p>}
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="Enter your phone number"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">Specific Location*</label>
+              <input
+                type="text"
+                name="specificLocation"
+                value={formData.specificLocation}
+                onChange={handleInputChange}
+                placeholder="e.g., Westlands, CBD"
+                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                  errors.specificLocation ? 'border-red-400' : 'border-slate-200'
+                }`}
+              />
+              {errors.specificLocation && <p className="text-xs text-red-500">{errors.specificLocation}</p>}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">Phone Number</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="+254..."
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">WhatsApp Number</label>
+              <input
+                type="tel"
+                name="whatsappNumber"
+                value={formData.whatsappNumber}
+                onChange={handleInputChange}
+                placeholder="+254..."
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">Facebook Page</label>
+              <input
+                type="text"
+                name="facebookPage"
+                value={formData.facebookPage}
+                onChange={handleInputChange}
+                placeholder="facebook.com/yourpage"
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">Instagram Handle</label>
+              <input
+                type="text"
+                name="instagramHandle"
+                value={formData.instagramHandle}
+                onChange={handleInputChange}
+                placeholder="@yourhandle"
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-800">Website URL</label>
+            <input
+              type="url"
+              name="websiteUrl"
+              value={formData.websiteUrl}
+              onChange={handleInputChange}
+              placeholder="https://www.example.com"
+              className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-800">Business Logo</label>
+            <div className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-6 text-center bg-slate-50">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+                <Upload className="h-5 w-5 text-slate-500" />
               </div>
-            )}
+              <p className="mt-3 text-sm text-slate-700">Click to upload or drag and drop</p>
+              <p className="text-xs text-slate-500">SVG, PNG, or JPG (max 800x400px)</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-            {/* Step 2: Location */}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold mb-4" style={{ color: '#5f6466' }}>Location</h2>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    County*
-                  </label>
-                  <select
-                    name="county"
-                    value={formData.county}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                      errors.county ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select county</option>
-                    <option value="Nairobi">Nairobi</option>
-                    <option value="Mombasa">Mombasa</option>
-                    <option value="Kisumu">Kisumu</option>
-                    <option value="Nakuru">Nakuru</option>
-                    <option value="Kiambu">Kiambu</option>
-                  </select>
-                  {errors.county && <p className="text-red-500 text-xs mt-1">{errors.county}</p>}
-                </div>
+    if (currentStep === 3) {
+      return (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-slate-800">Services & Portfolio</h3>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Specific Location*
-                  </label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-800">Select Categories (up to 5)*</label>
+              <span className="text-xs text-slate-500">{formData.selectedCategories.length}/5 selected</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {categories.map((category) => (
+                <label
+                  key={category}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm transition ${
+                    formData.selectedCategories.includes(category)
+                      ? 'border-[#c28a3a] bg-amber-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
                   <input
-                    type="text"
-                    name="specificLocation"
-                    value={formData.specificLocation}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Westlands, Downtown"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                      errors.specificLocation ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    type="checkbox"
+                    checked={formData.selectedCategories.includes(category)}
+                    onChange={() => toggleCategory(category)}
+                    className="h-4 w-4 rounded border-slate-300 text-[#c28a3a] focus:ring-[#c28a3a]"
                   />
-                  {errors.specificLocation && <p className="text-red-500 text-xs mt-1">{errors.specificLocation}</p>}
+                  <span className="text-slate-800">{category}</span>
+                </label>
+              ))}
+            </div>
+            {errors.selectedCategories && <p className="text-xs text-red-500">{errors.selectedCategories}</p>}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">Price Range (Min)</label>
+              <input
+                type="number"
+                name="priceRangeMin"
+                value={formData.priceRangeMin}
+                onChange={handleInputChange}
+                placeholder="e.g., 5,000"
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-800">Price Range (Max)</label>
+              <input
+                type="number"
+                name="priceRangeMax"
+                value={formData.priceRangeMax}
+                onChange={handleInputChange}
+                placeholder="e.g., 50,000"
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-slate-800">Portfolio Images (Upload 3-6 photos)</label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="flex h-32 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500"
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <ImageIcon className="h-5 w-5" />
+                    <span>Upload Image</span>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-800">Certifications (Optional)</label>
+            <div className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-5 text-center bg-slate-50">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
+                <Upload className="h-4 w-4 text-slate-500" />
               </div>
-            )}
+              <p className="mt-2 text-sm text-slate-700">Upload certifications or qualifications (PDF, JPG)</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-            {/* Step 3: Additional Details */}
-            {currentStep === 3 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold mb-4" style={{ color: '#5f6466' }}>Additional Details</h2>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    WhatsApp Number
-                  </label>
-                  <input
-                    type="tel"
-                    name="whatsappNumber"
-                    value={formData.whatsappNumber}
-                    onChange={handleInputChange}
-                    placeholder="+254..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
+    if (currentStep === 4) {
+      return (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-slate-800">Choose Your Subscription Plan</h3>
+          <p className="text-sm text-slate-600">
+            Select a plan to publish your vendor profile and start receiving client requests.
+          </p>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Instagram Handle
-                  </label>
-                  <input
-                    type="text"
-                    name="instagramHandle"
-                    value={formData.instagramHandle}
-                    onChange={handleInputChange}
-                    placeholder="@yourhandle"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Website URL
-                  </label>
-                  <input
-                    type="url"
-                    name="websiteUrl"
-                    value={formData.websiteUrl}
-                    onChange={handleInputChange}
-                    placeholder="https://yourwebsite.com"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Min Price (KSh)
-                  </label>
-                  <input
-                    type="number"
-                    name="priceRangeMin"
-                    value={formData.priceRangeMin}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 5000"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
-                    Max Price (KSh)
-                  </label>
-                  <input
-                    type="number"
-                    name="priceRangeMax"
-                    value={formData.priceRangeMax}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 50000"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Review */}
-            {currentStep === 4 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold mb-4" style={{ color: '#5f6466' }}>Review Your Profile</h2>
-                
-                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Business Name</p>
-                    <p className="font-medium">{formData.businessName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Description</p>
-                    <p className="font-medium">{formData.businessDescription}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Location</p>
-                    <p className="font-medium">{formData.specificLocation}, {formData.county}</p>
-                  </div>
-                  {formData.websiteUrl && (
-                    <div>
-                      <p className="text-sm text-gray-600">Website</p>
-                      <p className="font-medium">{formData.websiteUrl}</p>
-                    </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {plans.map((plan) => {
+              const isSelected = formData.selectedPlan === plan.id;
+              return (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, selectedPlan: plan.id })}
+                  className={`relative flex h-full flex-col rounded-xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                    isSelected ? 'border-[#c28a3a] ring-2 ring-[#c28a3a] ring-offset-0' : 'border-slate-200'
+                  }`}
+                >
+                  {plan.tag && (
+                    <span className="absolute right-4 top-4 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                      {plan.tag}
+                    </span>
                   )}
-                </div>
-              </div>
-            )}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{plan.name}</p>
+                      <p className="text-2xl font-bold text-slate-900 mt-1">
+                        {plan.price} <span className="text-base font-medium text-slate-500">{plan.period}</span>
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                        <Check className="h-4 w-4" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm text-slate-700">
+                    {plan.features.map((feature) => (
+                      <div key={feature} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
 
-            {/* Step 5: Complete */}
-            {currentStep === 5 && (
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                  <span className="text-3xl">✅</span>
+    return (
+      <div className="space-y-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <Check className="h-7 w-7" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">Payment Successful!</p>
+          <h3 className="mt-2 text-2xl font-bold text-slate-900">Vendor profile created</h3>
+          <p className="mt-2 text-slate-600">
+            Your vendor account has been created and your profile is now live.
+          </p>
+          {message && <p className="mt-2 text-emerald-600 font-semibold">{message}</p>}
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-left space-y-3">
+          <h4 className="font-semibold text-slate-800">Next Steps</h4>
+          <ul className="space-y-2 text-sm text-slate-700">
+            <li>1. Complete your profile</li>
+            <li>2. Respond to RFQs</li>
+            <li>3. Share your profile</li>
+          </ul>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard/vendor')}
+          className="inline-flex items-center justify-center rounded-lg bg-[#c28a3a] px-5 py-3 text-white font-semibold shadow-sm hover:bg-[#a9742f]"
+        >
+          Go to Vendor Dashboard
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: brand.bg }}>
+      <div className="mx-auto max-w-5xl py-12 px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl bg-white shadow-lg border border-slate-200 p-6 sm:p-10">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-slate-900">Vendor Registration</h1>
+            <p className="mt-2 text-slate-600">
+              Join Zintra and connect with customers looking for your services
+            </p>
+          </div>
+
+          <div className="mb-10 grid grid-cols-5 gap-3">
+            {steps.map((step) => {
+              const isDone = currentStep > step.id;
+              const isActive = currentStep === step.id;
+              return (
+                <div key={step.id} className="flex flex-col items-center gap-2">
+                  <div className="flex items-center w-full">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold ${
+                        isDone || isActive
+                          ? 'bg-[#c28a3a] border-[#c28a3a] text-white'
+                          : 'bg-white border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      {isDone ? <Check className="h-5 w-5" /> : step.id}
+                    </div>
+                    {step.id < steps.length && (
+                      <div
+                        className="ml-2 h-1 flex-1 rounded-full"
+                        style={{
+                          backgroundColor: currentStep > step.id ? '#c28a3a' : '#e2e8f0',
+                        }}
+                      ></div>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-slate-700 text-center">{step.label}</p>
                 </div>
-                <h2 className="text-xl font-bold" style={{ color: '#5f6466' }}>Almost Done!</h2>
-                <p className="text-gray-600">Click "Submit" to complete your vendor registration</p>
-              </div>
-            )}
+              );
+            })}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {renderStepContent()}
 
             {message && (
-              <div className={`p-3 rounded-lg text-sm ${
-                message.includes('✅') 
-                  ? 'bg-green-100 text-green-700' 
-                  : 'bg-red-100 text-red-700'
-              } mt-4`}>
+              <div
+                className={`rounded-lg p-3 text-sm ${
+                  message.includes('✅') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                }`}
+              >
                 {message}
               </div>
             )}
 
-            {/* Navigation Buttons */}
-            <div className="flex gap-4 mt-8">
-              {currentStep > 1 && (
-                <button
-                  type="button"
-                  onClick={handlePreviousStep}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 flex items-center justify-center gap-2"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                  Back
-                </button>
-              )}
-              
-              {currentStep < 5 && (
-                <button
-                  type="button"
-                  onClick={handleNextStep}
-                  className="flex-1 px-4 py-3 rounded-lg text-white font-medium flex items-center justify-center gap-2"
-                  style={{ backgroundColor: '#ea8f1e' }}
-                >
-                  Next
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              )}
-
-              {currentStep === 5 && (
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 px-4 py-3 rounded-lg text-white font-medium disabled:opacity-50"
-                  style={{ backgroundColor: '#ea8f1e' }}
-                >
-                  {isLoading ? 'Creating Vendor...' : 'Submit'}
-                </button>
-              )}
-            </div>
+            {currentStep < 5 && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+                <div className="flex gap-3">
+                  {currentStep > 1 && (
+                    <button
+                      type="button"
+                      onClick={handlePreviousStep}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-3 text-slate-700 hover:bg-slate-50"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                      Back
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3 sm:ml-auto">
+                  {currentStep < 4 && (
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#c28a3a] px-5 py-3 font-semibold text-white shadow-sm hover:bg-[#a9742f]"
+                    >
+                      Continue
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
+                  {currentStep === 4 && (
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#c28a3a] px-5 py-3 font-semibold text-white shadow-sm hover:bg-[#a9742f] disabled:opacity-60"
+                    >
+                      {isLoading ? 'Submitting...' : 'Continue to Complete'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </form>
         </div>
       </div>
