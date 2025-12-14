@@ -17,6 +17,11 @@ export async function POST(request) {
       );
     }
 
+    const userId =
+      typeof body.user_id === 'string' && body.user_id.trim().length > 0
+        ? body.user_id.trim()
+        : null;
+
     const vendorPayload = {
       company_name: body.company_name,
       description: body.description || null,
@@ -35,8 +40,8 @@ export async function POST(request) {
     };
 
     // Only set user_id if we actually have one; avoids FK violations on null/undefined
-    if (body.user_id) {
-      vendorPayload.user_id = body.user_id;
+    if (userId) {
+      vendorPayload.user_id = userId;
     }
 
     const { data, error } = await supabase.from('vendors').insert([vendorPayload]).select();
@@ -66,4 +71,3 @@ export async function POST(request) {
     );
   }
 }
-
