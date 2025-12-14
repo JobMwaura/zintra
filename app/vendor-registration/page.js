@@ -113,6 +113,9 @@ export default function VendorRegistration() {
   const [formData, setFormData] = useState({
     businessName: '',
     businessDescription: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
     phone: '',
     county: '',
     specificLocation: '',
@@ -182,6 +185,21 @@ export default function VendorRegistration() {
     const newErrors = {};
 
     if (currentStep === 1) {
+      if (!user?.email) {
+        if (!formData.email.trim()) {
+          newErrors.email = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          newErrors.email = 'Enter a valid email';
+        }
+        if (!formData.password) {
+          newErrors.password = 'Password is required';
+        } else if (formData.password.length < 8 || !/[0-9]/.test(formData.password) || !/[A-Za-z]/.test(formData.password)) {
+          newErrors.password = 'Use 8+ characters with letters and numbers';
+        }
+        if (formData.password !== formData.confirmPassword) {
+          newErrors.confirmPassword = 'Passwords must match';
+        }
+      }
       if (!formData.businessName.trim()) {
         newErrors.businessName = 'Business name is required';
       }
@@ -223,15 +241,35 @@ export default function VendorRegistration() {
     setMessage('');
 
     try {
+      let userId = user?.id || null;
+      let userEmail = user?.email || null;
+
+      // If not signed in, create an account first
+      if (!user?.id) {
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+
+        if (error) {
+          setMessage('Error creating account: ' + error.message);
+          setIsLoading(false);
+          return;
+        }
+
+        userId = data?.user?.id || null;
+        userEmail = data?.user?.email || formData.email.trim();
+      }
+
       const response = await fetch('/api/vendor/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user?.id || null,
+          user_id: userId,
           company_name: formData.businessName,
           description: formData.businessDescription || null,
           phone: formData.phone || null,
-          email: user?.email || null,
+          email: userEmail,
           county: formData.county || null,
           location: formData.specificLocation || null,
           plan: formData.selectedPlan || 'premium',
@@ -252,7 +290,11 @@ export default function VendorRegistration() {
         return;
       }
 
-      setMessage('✅ Vendor profile created successfully!');
+      setMessage(
+        user?.id
+          ? '✅ Vendor profile created successfully!'
+          : '✅ Account created. Check your email to verify and activate your profile.'
+      );
       setCurrentStep(5);
 
       setTimeout(() => {
@@ -280,17 +322,62 @@ export default function VendorRegistration() {
           <div>
             <label className="text-sm font-medium text-slate-700">Account</label>
             <p className="text-sm text-slate-500 mt-1">
-              {user?.email ? (
-                <>
-                  You are signing in as <span className="font-semibold text-slate-800">{user.email}</span>
-                </>
-              ) : (
-                'You can continue, but you will need to sign in before publishing.'
-              )}
+              {user?.email
+                ? <>You are signed in as <span className="font-semibold text-slate-800">{user.email}</span></>
+                : 'Create your account to publish your profile (email verification required).'}
             </p>
           </div>
 
           <div className="space-y-4">
+            {!user?.email && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-800 mb-1">Email*</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email"
+                    className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                      errors.email ? 'border-red-400' : 'border-slate-200'
+                    }`}
+                  />
+                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-800 mb-1">Password*</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Create a password"
+                    className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                      errors.password ? 'border-red-400' : 'border-slate-200'
+                    }`}
+                  />
+                  {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-slate-800 mb-1">Confirm Password*</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Re-enter password"
+                    className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
+                      errors.confirmPassword ? 'border-red-400' : 'border-slate-200'
+                    }`}
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-800 mb-1">Business Name*</label>
               <input
