@@ -10,6 +10,7 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [message, setMessage] = useState('');
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const handleRecovery = async () => {
@@ -55,7 +56,11 @@ export default function ResetPasswordPage() {
       setMessage('Error updating password: ' + error.message);
       return;
     }
-    setMessage('✅ Password updated. You can now log in with your new password.');
+    setSuccess(true);
+    setMessage('✅ Password updated. Redirecting you to login...');
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 1800);
   };
 
   return (
@@ -94,7 +99,7 @@ export default function ResetPasswordPage() {
                 placeholder="Re-enter new password"
               />
             </div>
-            {message && <p className="text-sm text-red-600">{message}</p>}
+            {message && !success && <p className="text-sm text-red-600">{message}</p>}
             <button
               type="submit"
               className="w-full bg-orange-500 text-white font-semibold py-2 rounded-lg hover:bg-orange-600 transition"
@@ -104,9 +109,15 @@ export default function ResetPasswordPage() {
           </form>
         )}
 
-        {!loading && sessionReady && message.startsWith('✅') && (
-          <div className="mt-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
-            {message}
+        {!loading && sessionReady && success && (
+          <div className="mt-4 space-y-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+            <p>{message}</p>
+            <a
+              href="/login"
+              className="text-amber-700 font-semibold hover:underline inline-flex items-center gap-1"
+            >
+              Go to login now
+            </a>
           </div>
         )}
       </div>
