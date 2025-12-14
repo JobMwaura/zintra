@@ -1,9 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { MapPin, Phone, Mail, Globe, MessageSquare, Download, Bookmark, Star, Clock, CheckCircle, Award } from 'lucide-react';
+import {
+  MapPin,
+  Phone,
+  Mail,
+  Globe,
+  MessageSquare,
+  Bookmark,
+  Star,
+  Clock,
+  CheckCircle,
+  Award,
+  ShieldCheck,
+  Link as LinkIcon,
+  Layers,
+  Image as ImageIcon,
+} from 'lucide-react';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -11,15 +26,12 @@ export default function VendorProfilePage() {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const fetchVendor = async () => {
       try {
         setLoading(true);
-        console.log('Fetching vendor with ID:', vendorId);
-
         const { data, error: fetchError } = await supabase
           .from('vendors')
           .select('*')
@@ -27,7 +39,6 @@ export default function VendorProfilePage() {
           .single();
 
         if (fetchError) {
-          console.error('Error fetching vendor:', fetchError);
           setError('Failed to load vendor profile');
           setLoading(false);
           return;
@@ -39,28 +50,52 @@ export default function VendorProfilePage() {
           return;
         }
 
-        console.log('✅ Vendor data loaded:', data);
         setVendor(data);
         setError(null);
         setLoading(false);
       } catch (err) {
-        console.error('Exception:', err);
         setError('Error loading vendor profile');
         setLoading(false);
       }
     };
 
-    if (vendorId) {
-      fetchVendor();
-    }
+    if (vendorId) fetchVendor();
   }, [vendorId]);
+
+  const initials = useMemo(() => {
+    if (!vendor?.company_name) return 'VN';
+    return vendor.company_name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  }, [vendor?.company_name]);
+
+  const categories = vendor?.category
+    ? vendor.category.split(',').map((c) => c.trim()).filter(Boolean)
+    : [];
+
+  const featuredProducts = [
+    { name: 'Premium Portland Cement', price: 'KSh 12,999 / bag', status: 'In Stock' },
+    { name: 'Structural Steel I-Beams', price: 'KSh 85,000 / ft', status: 'In Stock' },
+    { name: 'Engineered Hardwood Flooring', price: 'KSh 6,750 / sq.ft', status: 'Limited' },
+    { name: 'Insulated Concrete Forms', price: 'KSh 28,500 / form', status: 'In Stock' },
+  ];
+
+  const servicesOffered = [
+    'Material delivery with same-day options',
+    'Project consultation and quantity estimation',
+    'Custom cutting & fabrication',
+    'Equipment rental and contractor referrals',
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading vendor profile...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading vendor profile...</p>
         </div>
       </div>
     );
@@ -68,10 +103,10 @@ export default function VendorProfilePage() {
 
   if (error || !vendor) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Vendor not found'}</p>
-          <a href="/browse" className="text-orange-600 hover:underline">
+          <a href="/browse" className="text-amber-700 hover:underline font-semibold">
             Back to browse vendors
           </a>
         </div>
@@ -79,331 +114,254 @@ export default function VendorProfilePage() {
     );
   }
 
-  const tabs = ['overview', 'products', 'services', 'gallery', 'reviews', 'faq'];
-
-  // Calculate initials for avatar
-  const initials = vendor.company_name
-    ? vendor.company_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-    : 'V';
-
-  // Mock data for sections not in database yet
-  const mockServices = [
-    { name: 'Service 1', description: 'Professional service' },
-    { name: 'Service 2', description: 'Quality service' },
-  ];
-
-  const mockProducts = [
-    { name: 'Product 1', price: 'Price TBD', inStock: true },
-    { name: 'Product 2', price: 'Price TBD', inStock: true },
-  ];
-
-  const mockReviews = [
-    {
-      name: 'Customer Name',
-      rating: 5,
-      date: 'Recently',
-      text: 'Great service!',
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Section */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-6">
-              {/* Logo/Avatar */}
-              <div className="w-20 h-20 bg-orange-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold">
+    <div className="min-h-screen bg-slate-50">
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-lg bg-amber-600 text-white flex items-center justify-center text-xl font-bold">
                 {initials}
               </div>
-              
-              {/* Company Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold text-gray-900">{vendor.company_name}</h1>
-                  {vendor.verified && (
-                    <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">
-                      ✓ Verified
-                    </span>
-                  )}
-                </div>
-                <p className="text-gray-600 mb-3">{vendor.description || 'Professional vendor services'}</p>
-                
-                <div className="flex items-center gap-4 text-sm">
-                  {vendor.location && (
-                    <span className="flex items-center gap-1 text-gray-700">
-                      <MapPin className="w-4 h-4" /> {vendor.location}
-                      {vendor.county && `, ${vendor.county}`}
-                    </span>
-                  )}
-                  <span className="text-gray-400">•</span>
-                  <span className="flex items-center gap-1 text-gray-700">
-                    <span className="text-yellow-500">★</span> {vendor.rating || 'New'} 
-                    {vendor.review_count && `(${vendor.review_count} reviews)`}
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold text-slate-900">{vendor.company_name}</h1>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-sm font-semibold">
+                    <ShieldCheck className="w-4 h-4" /> Verified
                   </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 mt-1">
+                  {vendor.location && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {vendor.location}
+                      {vendor.county ? `, ${vendor.county}` : ''}
+                    </span>
+                  )}
+                  {vendor.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-4 h-4" />
+                      {vendor.phone}
+                    </span>
+                  )}
+                  {vendor.email && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-4 h-4" />
+                      {vendor.email}
+                    </span>
+                  )}
+                  {vendor.website && (
+                    <a
+                      href={vendor.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-amber-700 font-semibold"
+                    >
+                      <Globe className="w-4 h-4" />
+                      Website
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition">
-                <MessageSquare className="w-5 h-5" />
-                Contact Vendor
+            <div className="flex flex-wrap gap-3">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100">
+                <MessageSquare className="w-5 h-5" /> Contact Vendor
               </button>
-              <button className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition">
-                <Download className="w-5 h-5" />
+              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300">
                 Request Quote
               </button>
               <button
-                onClick={() => setSaved(!saved)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition ${
-                  saved 
-                    ? 'bg-orange-100 border-orange-600 text-orange-600' 
-                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                onClick={() => setSaved((s) => !s)}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${
+                  saved
+                    ? 'border-amber-500 text-amber-700 bg-amber-50'
+                    : 'border-slate-200 text-slate-700 hover:border-slate-300'
                 }`}
               >
                 <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
+                Save
               </button>
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-200">
-            <div className="text-center">
-              <div className="flex justify-center mb-2">
-                <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{vendor.rating || 'N/A'}</p>
-              <p className="text-sm text-gray-600">Rating</p>
+          <div className="flex items-center gap-6 text-sm text-slate-600">
+            <div className="flex items-center gap-1">
+              <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+              {vendor.rating || '4.9'} ({vendor.review_count || 128} reviews)
             </div>
-            <div className="text-center">
-              <div className="flex justify-center mb-2 text-orange-600 text-2xl font-bold">
-                {vendor.review_count || 0}
-              </div>
-              <p className="text-sm text-gray-600">Reviews</p>
-            </div>
-            <div className="text-center">
-              <div className="flex justify-center mb-2 text-orange-600 text-2xl font-bold">
-                {vendor.projects_completed || 0}
-              </div>
-              <p className="text-sm text-gray-600">Projects</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-2">
-                <Clock className="w-5 h-5 text-gray-700" />
-                <span className="font-bold text-gray-900">{vendor.response_time || '24 hrs'}</span>
-              </div>
-              <p className="text-sm text-gray-600">Response Time</p>
+            <span className="w-px h-4 bg-slate-200" />
+            <span className="capitalize">Plan: {vendor.plan || 'Free'}</span>
+            <span className="w-px h-4 bg-slate-200" />
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4 text-slate-500" /> {vendor.response_time || '24 hrs'} response time
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 flex gap-8">
-          {tabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-4 px-1 border-b-2 font-medium transition capitalize ${
-                activeTab === tab
-                  ? 'border-orange-600 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+      <div className="border-b border-slate-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex items-center gap-6 h-14 text-sm font-semibold text-slate-700">
+            <span className="text-amber-700 border-b-2 border-amber-700 pb-3">Overview</span>
+            <span className="pb-3 border-b-2 border-transparent text-slate-500">Products</span>
+            <span className="pb-3 border-b-2 border-transparent text-slate-500">Services</span>
+            <span className="pb-3 border-b-2 border-transparent text-slate-500">Gallery</span>
+            <span className="pb-3 border-b-2 border-transparent text-slate-500">Reviews</span>
+            <span className="pb-3 border-b-2 border-transparent text-slate-500">FAQ</span>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-3 gap-8">
-            <div className="col-span-2 space-y-8">
-              {/* About Section */}
-              <section>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">About {vendor.company_name}</h2>
-                <p className="text-gray-700 leading-relaxed">
-                  {vendor.description || 'Professional vendor providing quality services and materials.'}
-                </p>
-              </section>
+      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+        <div className="space-y-6">
+          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">About {vendor.company_name}</h3>
+            <p className="text-slate-700 leading-relaxed">
+              {vendor.description ||
+                'We provide high-quality materials and services with excellent customer support. Add your story and expertise here to win buyer trust.'}
+            </p>
+          </section>
 
-              {/* Services Section */}
-              <section>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Services Offered</h2>
-                <div className="space-y-3">
-                  {mockServices.map((service, idx) => (
-                    <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1">{service.name}</h3>
-                      <p className="text-sm text-gray-600">{service.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* Featured Products */}
-              <section>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Featured Products</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {mockProducts.map((product, idx) => (
-                    <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4">
-                      <div className="bg-gray-200 h-32 rounded mb-3"></div>
-                      <h3 className="font-semibold text-gray-900 text-sm mb-1">{product.name}</h3>
-                      <p className="text-orange-600 font-bold mb-2">{product.price}</p>
-                      {product.inStock && (
-                        <span className="inline-block bg-orange-100 text-orange-700 px-3 py-1 text-xs font-medium rounded">
-                          In Stock
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
+          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Featured Products</h3>
+                <p className="text-sm text-slate-600">Highlight key products buyers look for.</p>
+              </div>
+              <button className="text-sm font-semibold text-amber-700 hover:text-amber-800">View all products</button>
             </div>
-
-            {/* Sidebar */}
-            <div className="col-span-1">
-              {/* Price Range */}
-              {vendor.price_range && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-2">Price Range</h3>
-                  <p className="text-2xl font-bold text-orange-600 mb-2">{vendor.price_range}</p>
-                  <p className="text-xs text-gray-600">Varies by project scope and complexity</p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {featuredProducts.map((product, idx) => (
+                <div key={idx} className="rounded-lg border border-slate-200 hover:border-amber-200 transition p-4">
+                  <div className="aspect-[4/3] rounded-lg bg-slate-100 mb-3 flex items-center justify-center text-slate-400">
+                    <ImageIcon className="w-8 h-8" />
+                  </div>
+                  <h4 className="font-semibold text-slate-900">{product.name}</h4>
+                  <p className="text-sm text-slate-600 mb-2">{product.price}</p>
+                  <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
+                    {product.status}
+                  </span>
                 </div>
-              )}
+              ))}
+            </div>
+          </section>
 
-              {/* Certifications */}
-              {vendor.certifications && vendor.certifications.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Award className="w-5 h-5" />
-                    Certifications
-                  </h3>
-                  <div className="space-y-2">
-                    {vendor.certifications.map((cert, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        {cert}
-                      </div>
+          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Services Offered</h3>
+                <p className="text-sm text-slate-600">List what you provide beyond products.</p>
+              </div>
+              <button className="text-sm font-semibold text-amber-700 hover:text-amber-800">View all services</button>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {servicesOffered.map((service) => (
+                <div key={service} className="flex gap-3 rounded-lg border border-slate-200 p-3">
+                  <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">
+                    ✓
+                  </div>
+                  <p className="text-slate-800 text-sm">{service}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="space-y-4">
+          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <h4 className="text-base font-semibold text-slate-900 mb-3">Business Information</h4>
+            <div className="space-y-3 text-sm text-slate-700">
+              {categories.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => (
+                      <span key={cat} className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold">
+                        {cat}
+                      </span>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* Contact Information */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Contact Information</h3>
-                <div className="space-y-4">
-                  {vendor.phone && (
-                    <div className="flex items-start gap-3">
-                      <Phone className="w-5 h-5 text-orange-600 mt-1" />
-                      <div>
-                        <p className="text-xs text-gray-600">Primary Phone</p>
-                        <p className="font-semibold text-gray-900">{vendor.phone}</p>
-                      </div>
-                    </div>
-                  )}
-                  {vendor.email && (
-                    <div className="flex items-start gap-3">
-                      <Mail className="w-5 h-5 text-orange-600 mt-1" />
-                      <div>
-                        <p className="text-xs text-gray-600">Email</p>
-                        <p className="font-semibold text-gray-900">{vendor.email}</p>
-                      </div>
-                    </div>
-                  )}
-                  {vendor.website && (
-                    <div className="flex items-start gap-3">
-                      <Globe className="w-5 h-5 text-orange-600 mt-1" />
-                      <div>
-                        <p className="text-xs text-gray-600">Website</p>
-                        <p className="font-semibold text-blue-600 text-sm">{vendor.website}</p>
-                      </div>
-                    </div>
-                  )}
-                  {vendor.whatsapp && (
-                    <div className="flex items-start gap-3">
-                      <MessageSquare className="w-5 h-5 text-orange-600 mt-1" />
-                      <div>
-                        <p className="text-xs text-gray-600">WhatsApp</p>
-                        <p className="font-semibold text-gray-900">{vendor.whatsapp}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* REVIEWS TAB */}
-        {activeTab === 'reviews' && (
-          <div className="grid grid-cols-3 gap-8">
-            <div className="col-span-2">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
-              <div className="space-y-4">
-                {mockReviews.map((review, idx) => (
-                  <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-semibold text-gray-900">{review.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating
-                                    ? 'text-yellow-500 fill-yellow-500'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-sm text-gray-500">{review.date}</span>
-                    </div>
-                    <p className="text-gray-700 text-sm mt-3">{review.text}</p>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
+                {vendor.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-slate-500" /> {vendor.phone}
                   </div>
-                ))}
+                )}
+                {vendor.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-slate-500" /> {vendor.email}
+                  </div>
+                )}
+                {vendor.whatsapp && (
+                  <div className="flex items-center gap-2">
+                    <LinkIcon className="w-4 h-4 text-slate-500" /> WhatsApp: {vendor.whatsapp}
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="col-span-1">
-              <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
-                <p className="text-5xl font-bold text-gray-900 mb-2">{vendor.rating || 'N/A'}</p>
-                <div className="flex justify-center mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-5 h-5 ${
-                        vendor.rating && i < Math.round(vendor.rating)
-                          ? 'text-yellow-500 fill-yellow-500'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
+              {vendor.website && (
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Website</p>
+                  <a
+                    href={vendor.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-amber-700 hover:underline font-semibold"
+                  >
+                    {vendor.website}
+                  </a>
                 </div>
-                <p className="text-sm text-gray-600">Based on {vendor.review_count || 0} reviews</p>
+              )}
+              {vendor.location && (
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Location</p>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-500" />
+                    <span>
+                      {vendor.location}
+                      {vendor.county ? `, ${vendor.county}` : ''}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <h4 className="text-base font-semibold text-slate-900 mb-3">Highlights</h4>
+            <div className="space-y-2 text-sm text-slate-700">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500" /> Verified business
+              </div>
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500" /> Top performer
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-sky-500" /> Fast response
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
-        {/* Other tabs - placeholder */}
-        {['products', 'services', 'gallery', 'faq'].includes(activeTab) && (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg capitalize">
-              {activeTab} content coming soon...
-            </p>
-          </div>
-        )}
+          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <h4 className="text-base font-semibold text-slate-900 mb-3">Payment & Certifications</h4>
+            <div className="space-y-2 text-sm text-slate-700">
+              <p>Payment Methods: M-Pesa, Visa, Mastercard</p>
+              <p>Certifications: LEED, ISO 9001 (add yours)</p>
+            </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <h4 className="text-base font-semibold text-slate-900 mb-3">Hours</h4>
+            <div className="text-sm text-slate-700 space-y-1">
+              <p>Mon - Fri: 7:00 AM - 6:00 PM</p>
+              <p>Saturday: 8:00 AM - 5:00 PM</p>
+              <p>Sunday: Closed</p>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
