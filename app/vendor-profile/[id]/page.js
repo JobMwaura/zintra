@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -24,11 +25,30 @@ export default function VendorProfilePage() {
   const params = useParams();
   const vendorId = params.id;
   const [vendor, setVendor] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    company_name: '',
+    description: '',
+    location: '',
+    county: '',
+    phone: '',
+    email: '',
+    website: '',
+    whatsapp: '',
+    category: '',
+  });
 
   useEffect(() => {
+    const fetchUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUser(data?.user || null);
+    };
+
     const fetchVendor = async () => {
       try {
         setLoading(true);
@@ -51,6 +71,17 @@ export default function VendorProfilePage() {
         }
 
         setVendor(data);
+        setForm({
+          company_name: data.company_name || '',
+          description: data.description || '',
+          location: data.location || '',
+          county: data.county || '',
+          phone: data.phone || '',
+          email: data.email || '',
+          website: data.website || '',
+          whatsapp: data.whatsapp || '',
+          category: data.category || '',
+        });
         setError(null);
         setLoading(false);
       } catch (err) {
@@ -59,8 +90,44 @@ export default function VendorProfilePage() {
       }
     };
 
+    fetchUser();
     if (vendorId) fetchVendor();
   }, [vendorId]);
+
+  const handleFieldChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!vendor) return;
+    setSaving(true);
+    const { error: updateError } = await supabase
+      .from('vendors')
+      .update({
+        company_name: form.company_name,
+        description: form.description,
+        location: form.location,
+        county: form.county,
+        phone: form.phone,
+        email: form.email,
+        website: form.website,
+        whatsapp: form.whatsapp,
+        category: form.category,
+      })
+      .eq('id', vendor.id);
+
+    if (updateError) {
+      setError('Failed to save changes: ' + updateError.message);
+      setSaving(false);
+      return;
+    }
+
+    setVendor((prev) => ({ ...prev, ...form }));
+    setEditing(false);
+    setSaving(false);
+    setError(null);
+  };
 
   const initials = useMemo(() => {
     if (!vendor?.company_name) return 'VN';
@@ -75,6 +142,8 @@ export default function VendorProfilePage() {
   const categories = vendor?.category
     ? vendor.category.split(',').map((c) => c.trim()).filter(Boolean)
     : [];
+
+  const canEdit = currentUser && vendor?.user_id && vendor.user_id === currentUser.id;
 
   const featuredProducts = [
     { name: 'Premium Portland Cement', price: 'KSh 12,999 / bag', status: 'In Stock' },
@@ -116,6 +185,19 @@ export default function VendorProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <nav className="bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between text-sm font-semibold text-slate-700">
+          <div className="flex items-center gap-6">
+            <Link href="/">Home</Link>
+            <Link href="/browse">Browse</Link>
+            <Link href="/post-rfq">Post RFQ</Link>
+            <Link href="/about">About</Link>
+            <Link href="/contact">Contact</Link>
+          </div>
+          <Link href="/login" className="text-amber-700">Login</Link>
+        </div>
+      </nav>
+
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-4">
           <div className="flex items-start justify-between gap-6">
@@ -182,6 +264,15 @@ export default function VendorProfilePage() {
                 <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
                 Save
               </button>
+              {canEdit && (
+                <button
+                  onClick={() => (editing ? handleSave() : setEditing(true))}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 disabled:opacity-60"
+                >
+                  {editing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -216,11 +307,37 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div className="space-y-6">
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">About {vendor.company_name}</h3>
-            <p className="text-slate-700 leading-relaxed">
-              {vendor.description ||
-                'We provide high-quality materials and services with excellent customer support. Add your story and expertise here to win buyer trust.'}
-            </p>
+            {editing ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-1">Business Name</label>
+                  <input
+                    name="company_name"
+                    value={form.company_name}
+                    onChange={handleFieldChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-1">About</label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleFieldChange}
+                    rows={3}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">About {vendor.company_name}</h3>
+                <p className="text-slate-700 leading-relaxed">
+                  {vendor.description ||
+                    'We provide high-quality materials and services with excellent customer support. Add your story and expertise here to win buyer trust.'}
+                </p>
+              </>
+            )}
           </section>
 
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
@@ -272,60 +389,131 @@ export default function VendorProfilePage() {
           <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
             <h4 className="text-base font-semibold text-slate-900 mb-3">Business Information</h4>
             <div className="space-y-3 text-sm text-slate-700">
-              {categories.length > 0 && (
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Categories</p>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map((cat) => (
-                      <span key={cat} className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold">
-                        {cat}
-                      </span>
-                    ))}
+              {editing ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Categories (comma-separated)</p>
+                    <input
+                      name="category"
+                      value={form.category}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="e.g. Plumbing & Sanitation, Roofing & Waterproofing"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Phone</p>
+                    <input
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Email</p>
+                    <input
+                      name="email"
+                      value={form.email}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Website</p>
+                    <input
+                      name="website"
+                      value={form.website}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">WhatsApp</p>
+                    <input
+                      name="whatsapp"
+                      value={form.whatsapp}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Location</p>
+                    <input
+                      name="location"
+                      value={form.location}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">County</p>
+                    <input
+                      name="county"
+                      value={form.county}
+                      onChange={handleFieldChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
                   </div>
                 </div>
-              )}
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
-                {vendor.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-slate-500" /> {vendor.phone}
+              ) : (
+                <>
+                  {categories.length > 0 && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Categories</p>
+                      <div className="flex flex-wrap gap-2">
+                        {categories.map((cat) => (
+                          <span key={cat} className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
+                    {vendor.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-slate-500" /> {vendor.phone}
+                      </div>
+                    )}
+                    {vendor.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-slate-500" /> {vendor.email}
+                      </div>
+                    )}
+                    {vendor.whatsapp && (
+                      <div className="flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-slate-500" /> WhatsApp: {vendor.whatsapp}
+                      </div>
+                    )}
                   </div>
-                )}
-                {vendor.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-slate-500" /> {vendor.email}
-                  </div>
-                )}
-                {vendor.whatsapp && (
-                  <div className="flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4 text-slate-500" /> WhatsApp: {vendor.whatsapp}
-                  </div>
-                )}
-              </div>
-              {vendor.website && (
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Website</p>
-                  <a
-                    href={vendor.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-amber-700 hover:underline font-semibold"
-                  >
-                    {vendor.website}
-                  </a>
-                </div>
-              )}
-              {vendor.location && (
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Location</p>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-slate-500" />
-                    <span>
-                      {vendor.location}
-                      {vendor.county ? `, ${vendor.county}` : ''}
-                    </span>
-                  </div>
-                </div>
+                  {vendor.website && (
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Website</p>
+                      <a
+                        href={vendor.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-amber-700 hover:underline font-semibold"
+                      >
+                        {vendor.website}
+                      </a>
+                    </div>
+                  )}
+                  {vendor.location && (
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Location</p>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-slate-500" />
+                        <span>
+                          {vendor.location}
+                          {vendor.county ? `, ${vendor.county}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </section>
