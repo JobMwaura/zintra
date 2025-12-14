@@ -289,9 +289,13 @@ export default function VendorRegistration() {
       );
       setCurrentStep(5);
 
-      setTimeout(() => {
-        router.push('/dashboard/vendor');
-      }, 1600);
+      // Redirect to the newly created vendor profile page so they can view/edit
+      const createdId = responseData?.data?.[0]?.id;
+      if (createdId) {
+        setTimeout(() => {
+          router.push(`/vendor-profile/${createdId}`);
+        }, 1200);
+      }
     } catch (err) {
       console.error('Unexpected error:', err);
       setMessage('Error: ' + (err.message || 'Something went wrong'));
