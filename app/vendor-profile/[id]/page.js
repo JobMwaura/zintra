@@ -152,6 +152,8 @@ export default function VendorProfilePage() {
       .update({
         company_name: form.company_name,
         description: form.description,
+        user_id:
+          vendor.user_id || (currentUser?.email === vendor.email ? currentUser?.id : vendor.user_id),
       })
       .eq('id', vendor.id);
     if (updateError) {
@@ -176,6 +178,8 @@ export default function VendorProfilePage() {
         website: form.website,
         whatsapp: form.whatsapp,
         category: form.category,
+        user_id:
+          vendor.user_id || (currentUser?.email === vendor.email ? currentUser?.id : vendor.user_id),
       })
       .eq('id', vendor.id);
     if (updateError) {
@@ -225,7 +229,9 @@ export default function VendorProfilePage() {
     ? vendor.category.split(',').map((c) => c.trim()).filter(Boolean)
     : [];
 
-  const canEdit = currentUser && vendor?.user_id && vendor.user_id === currentUser.id;
+  const canEdit =
+    !!currentUser &&
+    (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
 
   if (loading) {
     return (
