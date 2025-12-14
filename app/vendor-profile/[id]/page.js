@@ -240,7 +240,7 @@ export default function VendorProfilePage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4 text-lg font-semibold">{error || 'Vendor not found'}</p>
-          <Link href="/browse" className="text-blue-600 hover:text-blue-700 font-semibold">
+          <Link href="/browse" className="text-amber-600 hover:text-amber-700 font-semibold">
             ← Back to browse
           </Link>
         </div>
@@ -266,7 +266,7 @@ export default function VendorProfilePage() {
               Logout
             </button>
           ) : (
-            <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/login" className="text-amber-600 hover:text-amber-700 font-medium">
               Login
             </Link>
           )}
@@ -286,7 +286,7 @@ export default function VendorProfilePage() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold text-slate-900">{vendor.company_name}</h1>
-                <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-sm font-semibold">
                   <ShieldCheck className="w-4 h-4" /> Verified
                 </span>
               </div>
@@ -315,7 +315,7 @@ export default function VendorProfilePage() {
               {categories.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
-                    <span key={cat} className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-semibold">
+                    <span key={cat} className="bg-amber-100 text-amber-700 px-3 py-1 rounded text-xs font-semibold">
                       {cat}
                     </span>
                   ))}
@@ -329,20 +329,20 @@ export default function VendorProfilePage() {
                 <>
                   <Link
                     href="/vendor-messages"
-                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                    className="inline-flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-700 transition"
                   >
                     <MessageSquare className="w-5 h-5" /> Inbox
                   </Link>
                   <Link
                     href="/vendor-quotes"
-                    className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 text-blue-700 px-6 py-3 rounded-lg font-semibold hover:bg-blue-100 transition"
+                    className="inline-flex items-center gap-2 border border-amber-200 bg-amber-50 text-amber-700 px-6 py-3 rounded-lg font-semibold hover:bg-amber-100 transition"
                   >
                     📋 Quotes
                   </Link>
                 </>
               ) : (
                 <>
-                  <button className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                  <button className="inline-flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-700 transition">
                     <MessageSquare className="w-5 h-5" /> Contact
                   </button>
                   <button className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 px-6 py-3 rounded-lg font-semibold hover:bg-slate-50 transition">
@@ -352,7 +352,7 @@ export default function VendorProfilePage() {
                     onClick={() => setSaved(!saved)}
                     className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
                       saved
-                        ? 'bg-blue-50 border border-blue-300 text-blue-700'
+                        ? 'bg-amber-50 border border-amber-300 text-amber-700'
                         : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -381,7 +381,7 @@ export default function VendorProfilePage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`font-medium pb-4 border-b-2 transition ${
                   activeTab === tab.id
-                    ? 'text-blue-600 border-blue-600'
+                    ? 'text-amber-600 border-blue-600'
                     : 'text-slate-600 border-transparent hover:text-slate-900'
                 }`}
               >
@@ -417,20 +417,20 @@ export default function VendorProfilePage() {
                       name="company_name"
                       value={form.company_name}
                       onChange={handleFieldChange}
-                      className="w-full border border-slate-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-slate-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <textarea
                       name="description"
                       value={form.description}
                       onChange={handleFieldChange}
                       rows={5}
-                      className="w-full border border-slate-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-slate-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={handleSaveAbout}
                         disabled={saving}
-                        className="px-4 py-2 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 disabled:opacity-60"
+                        className="px-4 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700 disabled:opacity-60"
                       >
                         {saving ? 'Saving...' : 'Save'}
                       </button>
@@ -457,7 +457,7 @@ export default function VendorProfilePage() {
                     {canEdit && (
                       <button
                         onClick={() => setShowProductModal(true)}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1"
+                        className="text-amber-600 hover:text-amber-700 text-sm font-semibold flex items-center gap-1"
                       >
                         <Plus className="w-4 h-4" /> Add
                       </button>
@@ -473,14 +473,14 @@ export default function VendorProfilePage() {
                         </div>
                         <h3 className="font-semibold text-slate-900 text-sm mb-1">{product.name}</h3>
                         <p className="text-xs text-slate-500 mb-2">{product.description}</p>
-                        <p className="text-blue-600 font-bold mb-2">{product.price} / {product.unit}</p>
+                        <p className="text-amber-600 font-bold mb-2">{product.price} / {product.unit}</p>
                         <span className="inline-block bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded">
                           {product.status}
                         </span>
                       </div>
                     ))}
                   </div>
-                  <button className="w-full mt-6 text-center text-blue-600 hover:text-blue-700 font-semibold py-2 flex items-center justify-center gap-1">
+                  <button className="w-full mt-6 text-center text-amber-600 hover:text-amber-700 font-semibold py-2 flex items-center justify-center gap-1">
                     View all products <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -494,7 +494,7 @@ export default function VendorProfilePage() {
                     {canEdit && (
                       <button
                         onClick={() => setShowServiceModal(true)}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1"
+                        className="text-amber-600 hover:text-amber-700 text-sm font-semibold flex items-center gap-1"
                       >
                         <Plus className="w-4 h-4" /> Add
                       </button>
@@ -554,7 +554,7 @@ export default function VendorProfilePage() {
                     <input name="whatsapp" value={form.whatsapp} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="WhatsApp" />
                     <input name="location" value={form.location} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="Location" />
                     <input name="county" value={form.county} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="County" />
-                    <button onClick={handleSaveContact} disabled={saving} className="w-full px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
+                    <button onClick={handleSaveContact} disabled={saving} className="w-full px-3 py-1.5 bg-amber-600 text-white rounded text-sm font-semibold hover:bg-amber-700 disabled:opacity-60">
                       Save
                     </button>
                   </div>
@@ -575,7 +575,7 @@ export default function VendorProfilePage() {
                     {vendor.website && (
                       <div>
                         <p className="text-slate-500 text-xs font-semibold mb-1">WEBSITE</p>
-                        <a href={vendor.website} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                        <a href={vendor.website} target="_blank" rel="noreferrer" className="text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1">
                           Visit <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
@@ -594,7 +594,7 @@ export default function VendorProfilePage() {
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h3 className="font-bold text-slate-900 mb-4">Payment Methods</h3>
                 <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">💳</div>
+                  <div className="w-10 h-10 rounded bg-amber-100 flex items-center justify-center text-sm font-bold text-amber-600">💳</div>
                   <div className="w-10 h-10 rounded bg-red-100 flex items-center justify-center text-sm font-bold text-red-600">💳</div>
                   <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center text-sm font-bold text-yellow-600">💳</div>
                 </div>
@@ -605,19 +605,19 @@ export default function VendorProfilePage() {
                 <h3 className="font-bold text-slate-900 mb-4">Certifications</h3>
                 <ul className="space-y-2 text-sm text-slate-700">
                   <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-blue-600" /> LEED Certified
+                    <Award className="w-4 h-4 text-amber-600" /> LEED Certified
                   </li>
                   <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-blue-600" /> ISO 9001:2015
+                    <Award className="w-4 h-4 text-amber-600" /> ISO 9001:2015
                   </li>
                   <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-blue-600" /> Green Supplier
+                    <Award className="w-4 h-4 text-amber-600" /> Green Supplier
                   </li>
                 </ul>
               </div>
 
               {/* Highlights */}
-              <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+              <div className="bg-amber-50 rounded-lg border border-amber-200 p-6">
                 <h3 className="font-bold text-slate-900 mb-4">Why Choose Us</h3>
                 <ul className="space-y-3 text-sm">
                   <li className="flex gap-2">
@@ -646,7 +646,7 @@ export default function VendorProfilePage() {
               {canEdit && (
                 <button
                   onClick={() => setShowProductModal(true)}
-                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-700"
                 >
                   <Plus className="w-5 h-5" /> Add Product
                 </button>
@@ -663,7 +663,7 @@ export default function VendorProfilePage() {
                   <div className="p-4">
                     <h4 className="font-semibold text-slate-900 mb-2">{product.name}</h4>
                     <p className="text-xs text-slate-500 mb-3">{product.description}</p>
-                    <p className="text-lg font-bold text-blue-600 mb-2">{product.price}</p>
+                    <p className="text-lg font-bold text-amber-600 mb-2">{product.price}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">{product.unit}</span>
                       <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded">{product.status}</span>
@@ -683,7 +683,7 @@ export default function VendorProfilePage() {
               {canEdit && (
                 <button
                   onClick={() => setShowServiceModal(true)}
-                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-700"
                 >
                   <Plus className="w-5 h-5" /> Add Service
                 </button>
@@ -693,8 +693,8 @@ export default function VendorProfilePage() {
               {services.map((service) => (
                 <div key={service.id} className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-6 h-6 text-amber-600" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-slate-900 mb-1">{service.name}</h4>
@@ -767,20 +767,20 @@ export default function VendorProfilePage() {
               <input
                 value={productForm.name}
                 onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Product name"
               />
-              <textarea rows={2} value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Description" />
+              <textarea rows={2} value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Description" />
               <input
                 value={productForm.price}
                 onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Price"
               />
               <input
                 value={productForm.category}
                 onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Category"
               />
             </div>
@@ -788,7 +788,7 @@ export default function VendorProfilePage() {
               <button onClick={() => setShowProductModal(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded font-semibold hover:bg-slate-50">
                 Cancel
               </button>
-              <button onClick={addProduct} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700">
+              <button onClick={addProduct} className="flex-1 px-4 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700">
                 Add
               </button>
             </div>
@@ -809,16 +809,16 @@ export default function VendorProfilePage() {
               <input
                 value={serviceForm.name}
                 onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
-                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Service name"
               />
-              <textarea rows={3} value={serviceForm.description} onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })} className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Service description" />
+              <textarea rows={3} value={serviceForm.description} onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })} className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Service description" />
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowServiceModal(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded font-semibold hover:bg-slate-50">
                 Cancel
               </button>
-              <button onClick={addService} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700">
+              <button onClick={addService} className="flex-1 px-4 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700">
                 Add
               </button>
             </div>
