@@ -17,19 +17,16 @@ export async function POST(request) {
       );
     }
 
-    const userId =
-      typeof body.user_id === 'string' && body.user_id.trim().length > 0
-        ? body.user_id.trim()
-        : null;
-
     const vendorPayload = {
+      user_id: body.user_id || null,  // ← ALWAYS include this, even if null
       company_name: body.company_name,
       description: body.description || null,
       phone: body.phone || null,
       email: body.email,
       county: body.county || null,
       location: body.location || null,
-      category: body.categories ? body.categories.join(', ') : null,
+      category: body.category || null,
+      services: body.services || null,
       price_range:
         body.price_min && body.price_max
           ? `KSh ${body.price_min} - KSh ${body.price_max}`
@@ -38,11 +35,6 @@ export async function POST(request) {
       whatsapp: body.whatsapp || null,
       website: body.website || null,
     };
-
-    // Only set user_id if we actually have one; avoids FK violations on null/undefined
-    if (userId) {
-      vendorPayload.user_id = userId;
-    }
 
     const { data, error } = await supabase.from('vendors').insert([vendorPayload]).select();
 
