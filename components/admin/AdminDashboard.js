@@ -281,7 +281,7 @@ export default function AdminDashboard() {
       // Step 2: Get all vendors with matching category
       const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
-        .select('id')
+        .select('id, user_id')
         .eq('category', rfq.category)
         .eq('status', 'active');
 
@@ -298,7 +298,7 @@ export default function AdminDashboard() {
       // Step 3: Create rfq_requests for each vendor
       const rfqRequests = vendors.map(vendor => ({
         rfq_id: rfq.id,
-        vendor_id: vendor.id,
+        vendor_id: vendor.user_id || vendor.id,
         user_id: user.id,
         status: 'pending',
         created_at: new Date().toISOString(),

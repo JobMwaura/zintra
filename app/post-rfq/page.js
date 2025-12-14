@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 import { Check, Upload, X, Plus, AlertCircle, Lock, Shield, UserCheck } from 'lucide-react';
 
 export default function PostRFQ() {
@@ -10,6 +11,8 @@ export default function PostRFQ() {
   const [userReputation, setUserReputation] = useState('new');
   const [rfqsThisMonth, setRfqsThisMonth] = useState(0);
   const [currentStep, setCurrentStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [formData, setFormData] = useState({
     projectTitle: '',
     category: '',
@@ -47,7 +50,15 @@ export default function PostRFQ() {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    // TODO: Replace with actual auth check
+    const hydrateUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoggedIn(false);
+        return;
+      }
+      setIsLoggedIn(true);
+    };
+    hydrateUser();
   }, []);
 
   const getRfqLimit = () => {
@@ -207,13 +218,82 @@ export default function PostRFQ() {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateStep5()) return;
-    console.log('RFQ Submitted:', formData);
-    if (userReputation === 'new' && rfqsThisMonth === 0) {
-      setCurrentStep(7);
-    } else {
-      setCurrentStep(6);
+
+    try {
+      setSubmitting(true);
+      setStatusMessage('');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoggedIn(false);
+        setSubmitting(false);
+        return;
+      }
+
+      const budget = formData.budgetRange === 'Custom Range'
+        ? `KSh ${formData.customBudgetMin} - ${formData.customBudgetMax}`
+        : formData.budgetRange;
+
+      const rfqPayload = {
+        title: formData.projectTitle,
+        description: formData.description,
+        category: formData.category,
+        budget_range: budget,
+        timeline: formData.timeline,
+        location: formData.specificLocation || formData.county,
+        county: formData.county,
+        buyer_id: user.id,
+        user_id: user.id,
+        status: 'open',
+      };
+
+      const { data: rfqInsert, error: insertError } = await supabase
+        .from('rfqs')
+        .insert([rfqPayload])
+        .select()
+        .maybeSingle();
+
+      if (insertError) {
+        setStatusMessage(`❌ Error submitting RFQ: ${insertError.message}`);
+        setSubmitting(false);
+        return;
+      }
+
+      // Match vendors by category and county
+      const { data: vendors } = await supabase
+        .from('vendors')
+        .select('id, user_id, county, category')
+        .eq('status', 'active')
+        .eq('category', formData.category);
+
+      const matchingVendors = (vendors || []).filter((v) => {
+        if (!formData.county) return true;
+        return (v.county || '').toLowerCase() === formData.county.toLowerCase();
+      });
+
+      if (matchingVendors.length > 0) {
+        const rfqRequests = matchingVendors.map((vendor) => ({
+          rfq_id: rfqInsert.id,
+          vendor_id: vendor.user_id || vendor.id,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        }));
+
+        await supabase.from('rfq_requests').insert(rfqRequests);
+      }
+
+      if (userReputation === 'new' && rfqsThisMonth === 0) {
+        setCurrentStep(7);
+      } else {
+        setCurrentStep(6);
+      }
+      setSubmitting(false);
+    } catch (err) {
+      console.error('RFQ submit error:', err);
+      setStatusMessage(`❌ Error: ${err.message}`);
+      setSubmitting(false);
     }
   };
 
@@ -1228,6 +1308,12 @@ export default function PostRFQ() {
                 {errors.agreedToTerms && <p className="text-red-500 text-xs">{errors.agreedToTerms}</p>}
               </div>
 
+              {statusMessage && (
+                <div className={`p-3 rounded-lg text-sm mb-4 ${statusMessage.startsWith('❌') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                  {statusMessage}
+                </div>
+              )}
+
               <div className="flex gap-4">
                 <button
                   onClick={handleBack}
@@ -1237,10 +1323,11 @@ export default function PostRFQ() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 text-white py-3 rounded-lg font-semibold hover:opacity-90"
+                  disabled={submitting}
+                  className="flex-1 text-white py-3 rounded-lg font-semibold hover:opacity-90 disabled:opacity-60"
                   style={{ backgroundColor: '#ea8f1e' }}
                 >
-                  Submit RFQ
+                  {submitting ? 'Submitting...' : 'Submit RFQ'}
                 </button>
               </div>
             </div>
