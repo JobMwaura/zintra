@@ -35,6 +35,20 @@ const categories = [
 
 const plans = [
   {
+    id: 'free',
+    name: 'Free (for now)',
+    tag: 'New',
+    price: 'KSh 0',
+    period: '/month',
+    features: [
+      'List in 1 category',
+      'Standard search visibility',
+      '3 RFQ responses per month',
+      'Basic profile badge',
+      'Great for trying Zintra risk-free',
+    ],
+  },
+  {
     id: 'basic',
     name: 'Basic',
     price: 'KSh 1,000',
@@ -44,6 +58,20 @@ const plans = [
       'Standard search visibility',
       '5 RFQ responses per month',
       'Basic profile badge',
+    ],
+  },
+  {
+    id: 'free',
+    name: 'Free (for now)',
+    tag: 'New',
+    price: 'KSh 0',
+    period: '/month',
+    features: [
+      'List in 1 category',
+      'Standard search visibility',
+      '3 RFQ responses per month',
+      'Basic profile badge',
+      'Great for trying Zintra risk-free',
     ],
   },
   {
@@ -95,7 +123,7 @@ export default function VendorRegistration() {
     instagramHandle: '',
     facebookPage: '',
     websiteUrl: '',
-    selectedPlan: 'premium',
+    selectedPlan: 'free',
   });
 
   const [errors, setErrors] = useState({});
@@ -195,21 +223,15 @@ export default function VendorRegistration() {
     setMessage('');
 
     try {
-      if (!user?.id) {
-        alert('You must be logged in to create a vendor profile.');
-        setIsLoading(false);
-        return;
-      }
-
       const response = await fetch('/api/vendor/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: user?.id || null,
           company_name: formData.businessName,
           description: formData.businessDescription || null,
           phone: formData.phone || null,
-          email: user.email,
+          email: user?.email || null,
           county: formData.county || null,
           location: formData.specificLocation || null,
           plan: formData.selectedPlan || 'premium',
@@ -225,7 +247,7 @@ export default function VendorRegistration() {
 
       if (!response.ok) {
         console.error('API error:', responseData.error);
-        alert('Error: ' + (responseData.error || 'Failed to create vendor profile'));
+        setMessage('Error: ' + (responseData.error || 'Failed to create vendor profile'));
         setIsLoading(false);
         return;
       }
@@ -238,7 +260,7 @@ export default function VendorRegistration() {
       }, 1600);
     } catch (err) {
       console.error('Unexpected error:', err);
-      alert('Error: ' + (err.message || 'Something went wrong'));
+      setMessage('Error: ' + (err.message || 'Something went wrong'));
       setIsLoading(false);
     }
   };
