@@ -12,16 +12,35 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Avoid crashing on browsers with no session; Supabase can throw AuthSessionMissingError
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          // Ignore the common missing-session error; log anything else
+          if (sessionError?.name !== 'AuthSessionMissingError') {
+            console.error('Auth session error:', sessionError);
+          }
+          setUser(null);
+          return;
+        }
+
+        if (!session?.user) {
+          setUser(null);
+          return;
+        }
+
         const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-        
         if (error) {
-          console.error('Auth error:', error);
+          if (error?.name !== 'AuthSessionMissingError') {
+            console.error('Auth error:', error);
+          }
           setUser(null);
         } else {
           setUser(currentUser);
         }
       } catch (err) {
-        console.error('Error checking user:', err);
+        if (err?.name !== 'AuthSessionMissingError') {
+          console.error('Error checking user:', err);
+        }
         setUser(null);
       } finally {
         setLoading(false);
