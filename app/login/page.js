@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -87,10 +88,27 @@ export default function Login() {
       console.log('🔹 Active tab:', activeTab);
       setMessage('✅ Login successful! Redirecting...');
 
-      // Vendors go to vendor dashboard/profile, users to browse
-      const redirectUrl = activeTab === 'vendor' ? '/dashboard/vendor' : '/browse';
-      console.log('🔹 Redirecting to:', redirectUrl);
+      // Vendors: try to find their vendor profile and redirect there; fallback to browse
+      let redirectUrl = '/browse';
+      if (activeTab === 'vendor') {
+        const { data: vendorData, error: vendorError } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
 
+        if (vendorError) {
+          console.warn('Vendor lookup failed, falling back to browse:', vendorError.message);
+        }
+
+        if (vendorData?.id) {
+          redirectUrl = `/vendor-profile/${vendorData.id}`;
+        } else {
+          redirectUrl = '/browse';
+        }
+      }
+
+      console.log('🔹 Redirecting to:', redirectUrl);
       setTimeout(() => {
         window.location.href = redirectUrl;
       }, 1200); // short delay to ensure Supabase session propagates
