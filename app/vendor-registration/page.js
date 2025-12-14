@@ -106,11 +106,6 @@ export default function VendorRegistration() {
       try {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-        if (!currentUser) {
-          router.push('/login');
-          return;
-        }
-
         setUser(currentUser);
         setLoading(false);
       } catch (err) {
@@ -263,7 +258,13 @@ export default function VendorRegistration() {
           <div>
             <label className="text-sm font-medium text-slate-700">Account</label>
             <p className="text-sm text-slate-500 mt-1">
-              You are signing in as <span className="font-semibold text-slate-800">{user?.email}</span>
+              {user?.email ? (
+                <>
+                  You are signing in as <span className="font-semibold text-slate-800">{user.email}</span>
+                </>
+              ) : (
+                'You can continue, but you will need to sign in before publishing.'
+              )}
             </p>
           </div>
 
