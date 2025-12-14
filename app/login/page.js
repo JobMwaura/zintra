@@ -91,10 +91,15 @@ export default function Login() {
       // Vendors: try to find their vendor profile and redirect there; fallback to browse
       let redirectUrl = '/browse';
       if (activeTab === 'vendor') {
+        const userId = data.user.id;
+        const userEmail = data.user.email;
+
+        // Find vendor either by user_id or (fallback) email, then attach user_id if missing
         const { data: vendorData, error: vendorError } = await supabase
           .from('vendors')
-          .select('id')
-          .eq('user_id', data.user.id)
+          .select('id,user_id')
+          .or(`user_id.eq.${userId},email.eq.${userEmail}`)
+          .limit(1)
           .maybeSingle();
 
         if (vendorError) {
@@ -102,6 +107,10 @@ export default function Login() {
         }
 
         if (vendorData?.id) {
+          // If vendor exists but not linked, link it to this user for future logins
+          if (!vendorData.user_id) {
+            await supabase.from('vendors').update({ user_id: userId }).eq('id', vendorData.id);
+          }
           redirectUrl = `/vendor-profile/${vendorData.id}`;
         } else {
           redirectUrl = '/browse';
