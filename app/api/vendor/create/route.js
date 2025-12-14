@@ -17,27 +17,29 @@ export async function POST(request) {
       );
     }
 
-    const { data, error } = await supabase
-      .from('vendors')
-      .insert([
-        {
-          user_id: body.user_id,
-          company_name: body.company_name,
-          description: body.description || null,
-          phone: body.phone || null,
-          email: body.email,
-          county: body.county || null,
-          location: body.location || null,
-          category: body.categories ? body.categories.join(', ') : null,
-          price_range: (body.price_min && body.price_max) 
-            ? `KSh ${body.price_min} - KSh ${body.price_max}`
-            : null,
-          plan: body.plan || 'premium',
-          whatsapp: body.whatsapp || null,
-          website: body.website || null,
-        },
-      ])
-      .select();
+    const vendorPayload = {
+      company_name: body.company_name,
+      description: body.description || null,
+      phone: body.phone || null,
+      email: body.email,
+      county: body.county || null,
+      location: body.location || null,
+      category: body.categories ? body.categories.join(', ') : null,
+      price_range:
+        body.price_min && body.price_max
+          ? `KSh ${body.price_min} - KSh ${body.price_max}`
+          : null,
+      plan: body.plan || 'free',
+      whatsapp: body.whatsapp || null,
+      website: body.website || null,
+    };
+
+    // Only set user_id if we actually have one; avoids FK violations on null/undefined
+    if (body.user_id) {
+      vendorPayload.user_id = body.user_id;
+    }
+
+    const { data, error } = await supabase.from('vendors').insert([vendorPayload]).select();
 
     if (error) {
       console.error('Database error:', error.message);
@@ -64,5 +66,4 @@ export async function POST(request) {
     );
   }
 }
-
 
