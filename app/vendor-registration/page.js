@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle } from 'lucide-react';
 
 const brand = {
   primary: '#c28a3a',
@@ -15,37 +15,28 @@ const brand = {
 
 const steps = [
   { id: 1, label: 'Account' },
-  { id: 2, label: 'Business Details' },
-  { id: 3, label: 'Services & Portfolio' },
-  { id: 4, label: 'Subscription' },
-  { id: 5, label: 'Complete' },
+  { id: 2, label: 'Business Info' },
+  { id: 3, label: 'Categories' },
+  { id: 4, label: 'Details' },
+  { id: 5, label: 'Plan' },
+  { id: 6, label: 'Complete' },
 ];
 
 const categories = [
-  'Building & Structural Materials',
-  'Doors, Windows & Hardware',
-  'Electrical & Lighting',
-  'Plumbing & Sanitation',
-  'Flooring & Wall Finishes',
-  'Wood & Timber Solutions',
-  'Roofing & Waterproofing',
-  'Kitchen & Interior Fittings',
-  'HVAC & Climate',
+  { name: 'Building & Structural Materials', requiresProducts: true, requiresPortfolio: false, requiresServices: false },
+  { name: 'Doors, Windows & Hardware', requiresProducts: true, requiresPortfolio: false, requiresServices: false },
+  { name: 'Electrical & Lighting', requiresProducts: true, requiresPortfolio: false, requiresServices: true },
+  { name: 'Plumbing & Sanitation', requiresProducts: true, requiresPortfolio: false, requiresServices: true },
+  { name: 'Flooring & Wall Finishes', requiresProducts: true, requiresPortfolio: true, requiresServices: false },
+  { name: 'Wood & Timber Solutions', requiresProducts: true, requiresPortfolio: true, requiresServices: false },
+  { name: 'Roofing & Waterproofing', requiresProducts: true, requiresPortfolio: true, requiresServices: true },
+  { name: 'Kitchen & Interior Fittings', requiresProducts: true, requiresPortfolio: true, requiresServices: false },
+  { name: 'HVAC & Climate', requiresProducts: true, requiresPortfolio: false, requiresServices: true },
+  { name: 'Construction Contractor', requiresProducts: false, requiresPortfolio: true, requiresServices: true },
+  { name: 'Consulting & Design', requiresProducts: false, requiresPortfolio: false, requiresServices: true },
 ];
 
 const plans = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 'KSh 1,000',
-    period: '/month',
-    features: [
-      'List in 2 categories',
-      'Standard search visibility',
-      '5 RFQ responses per month',
-      'Basic profile badge',
-    ],
-  },
   {
     id: 'free',
     name: 'Free (for now)',
@@ -58,6 +49,18 @@ const plans = [
       '3 RFQ responses per month',
       'Basic profile badge',
       'Great for trying Zintra risk-free',
+    ],
+  },
+  {
+    id: 'basic',
+    name: 'Basic',
+    price: 'KSh 1,000',
+    period: '/month',
+    features: [
+      'List in 2 categories',
+      'Standard search visibility',
+      '5 RFQ responses per month',
+      'Basic profile badge',
     ],
   },
   {
@@ -103,26 +106,35 @@ export default function VendorRegistration() {
     password: '',
     confirmPassword: '',
     phone: '',
+    whatsappNumber: '',
     county: '',
     specificLocation: '',
     selectedCategories: [],
+    websiteUrl: '',
+    facebookPage: '',
+    instagramHandle: '',
+    selectedPlan: 'free',
+    
+    // Conditional fields
+    services: [],
+    newService: '',
     priceRangeMin: '',
     priceRangeMax: '',
-    whatsappNumber: '',
-    instagramHandle: '',
-    facebookPage: '',
-    websiteUrl: '',
-    selectedPlan: 'free',
   });
 
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
 
+  // Determine which fields are required based on selected categories
+  const selectedCategoryObjects = categories.filter(c => formData.selectedCategories.includes(c.name));
+  const needsProducts = selectedCategoryObjects.some(c => c.requiresProducts);
+  const needsPortfolio = selectedCategoryObjects.some(c => c.requiresPortfolio);
+  const needsServices = selectedCategoryObjects.some(c => c.requiresServices);
+
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
-
         setUser(currentUser);
         setLoading(false);
       } catch (err) {
@@ -135,10 +147,10 @@ export default function VendorRegistration() {
   }, [router]);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     });
 
     if (errors[name]) {
@@ -167,6 +179,23 @@ export default function VendorRegistration() {
     }
   };
 
+  const addService = () => {
+    if (formData.newService.trim()) {
+      setFormData({
+        ...formData,
+        services: [...formData.services, formData.newService],
+        newService: '',
+      });
+    }
+  };
+
+  const removeService = (index) => {
+    setFormData({
+      ...formData,
+      services: formData.services.filter((_, i) => i !== index),
+    });
+  };
+
   const validateStep = () => {
     const newErrors = {};
 
@@ -186,22 +215,35 @@ export default function VendorRegistration() {
           newErrors.confirmPassword = 'Passwords must match';
         }
       }
+    }
+
+    if (currentStep === 2) {
       if (!formData.businessName.trim()) {
         newErrors.businessName = 'Business name is required';
       }
       if (!formData.businessDescription.trim()) {
         newErrors.businessDescription = 'Business description is required';
       }
-    } else if (currentStep === 2) {
-      if (!formData.county) {
+      if (!formData.county.trim()) {
         newErrors.county = 'County is required';
       }
       if (!formData.specificLocation.trim()) {
-        newErrors.specificLocation = 'Location is required';
+        newErrors.specificLocation = 'Specific location is required';
       }
-    } else if (currentStep === 3) {
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'Phone number is required';
+      }
+    }
+
+    if (currentStep === 3) {
       if (formData.selectedCategories.length === 0) {
         newErrors.selectedCategories = 'Select at least 1 category';
+      }
+    }
+
+    if (currentStep === 4) {
+      if (needsServices && formData.services.length === 0) {
+        newErrors.services = 'Add at least one service for your selected categories';
       }
     }
 
@@ -230,7 +272,6 @@ export default function VendorRegistration() {
       let userId = user?.id || null;
       let userEmail = user?.email || null;
 
-      // If not signed in, create an account first
       if (!user?.id) {
         const { data, error } = await supabase.auth.signUp({
           email: formData.email.trim(),
@@ -264,10 +305,11 @@ export default function VendorRegistration() {
           email: userEmail,
           county: formData.county || null,
           location: formData.specificLocation || null,
-          plan: formData.selectedPlan || 'premium',
+          plan: formData.selectedPlan || 'free',
           whatsapp: formData.whatsappNumber || null,
           website: formData.websiteUrl || null,
-          categories: formData.selectedCategories.length ? formData.selectedCategories : null,
+          category: formData.selectedCategories.length ? formData.selectedCategories.join(', ') : null,
+          services: formData.services.length ? formData.services.join(', ') : null,
           price_min: formData.priceRangeMin ? parseInt(formData.priceRangeMin, 10) : null,
           price_max: formData.priceRangeMax ? parseInt(formData.priceRangeMax, 10) : null,
         }),
@@ -287,9 +329,8 @@ export default function VendorRegistration() {
           ? '✅ Vendor profile created successfully!'
           : '✅ Account created. Check your email to verify and activate your profile.'
       );
-      setCurrentStep(5);
+      setCurrentStep(6);
 
-      // Redirect to the newly created vendor profile page so they can view/edit
       const createdId = responseData?.data?.[0]?.id;
       if (createdId) {
         setTimeout(() => {
@@ -316,96 +357,60 @@ export default function VendorRegistration() {
       return (
         <div className="space-y-6">
           <div>
-            <label className="text-sm font-medium text-slate-700">Account</label>
-            <p className="text-sm text-slate-500 mt-1">
+            <h3 className="text-lg font-semibold text-slate-900">Account Setup</h3>
+            <p className="text-sm text-slate-500 mt-2">
               {user?.email
                 ? <>You are signed in as <span className="font-semibold text-slate-800">{user.email}</span></>
-                : 'Create your account to publish your profile (email verification required).'}
+                : 'Create your account to get started on Zintra.'}
             </p>
           </div>
 
-          <div className="space-y-4">
-            {!user?.email && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-1">Email*</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="Enter your email"
-                    className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                      errors.email ? 'border-red-400' : 'border-slate-200'
-                    }`}
-                  />
-                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-1">Password*</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Create a password"
-                    className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                      errors.password ? 'border-red-400' : 'border-slate-200'
-                    }`}
-                  />
-                  {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-800 mb-1">Confirm Password*</label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    placeholder="Re-enter password"
-                    className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                      errors.confirmPassword ? 'border-red-400' : 'border-slate-200'
-                    }`}
-                  />
-                  {errors.confirmPassword && (
-                    <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
-                  )}
-                </div>
+          {!user?.email && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-1">Email*</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="your@email.com"
+                  className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                    errors.email ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-slate-800 mb-1">Business Name*</label>
-              <input
-                type="text"
-                name="businessName"
-                value={formData.businessName}
-                onChange={handleInputChange}
-                placeholder="Enter your business name"
-                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                  errors.businessName ? 'border-red-400' : 'border-slate-200'
-                }`}
-              />
-              {errors.businessName && <p className="text-xs text-red-500 mt-1">{errors.businessName}</p>}
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-1">Password*</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Create a strong password"
+                  className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                    errors.password ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+                {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-800 mb-1">Confirm Password*</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Re-enter password"
+                  className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                    errors.confirmPassword ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+                {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
+              </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-800 mb-1">Business Description*</label>
-              <textarea
-                name="businessDescription"
-                value={formData.businessDescription}
-                onChange={handleInputChange}
-                rows={3}
-                placeholder="Describe your business, services, and expertise..."
-                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                  errors.businessDescription ? 'border-red-400' : 'border-slate-200'
-                }`}
-              />
-              {errors.businessDescription && (
-                <p className="text-xs text-red-500 mt-1">{errors.businessDescription}</p>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       );
     }
@@ -413,110 +418,135 @@ export default function VendorRegistration() {
     if (currentStep === 2) {
       return (
         <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-slate-800">Business Details</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Business Information</h3>
+            <p className="text-sm text-slate-500 mt-2">Help buyers understand your business</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-800 mb-1">Business Name*</label>
+            <input
+              type="text"
+              name="businessName"
+              value={formData.businessName}
+              onChange={handleInputChange}
+              placeholder="Your business name"
+              className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                errors.businessName ? 'border-red-400' : 'border-slate-300'
+              }`}
+            />
+            {errors.businessName && <p className="text-xs text-red-500 mt-1">{errors.businessName}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-800 mb-1">Business Description*</label>
+            <textarea
+              name="businessDescription"
+              value={formData.businessDescription}
+              onChange={handleInputChange}
+              rows={4}
+              placeholder="Tell buyers about your business, expertise, and what makes you special..."
+              className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                errors.businessDescription ? 'border-red-400' : 'border-slate-300'
+              }`}
+            />
+            {errors.businessDescription && <p className="text-xs text-red-500 mt-1">{errors.businessDescription}</p>}
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">County*</label>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">County*</label>
               <input
                 type="text"
                 name="county"
                 value={formData.county}
                 onChange={handleInputChange}
-                placeholder="Select county"
-                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                  errors.county ? 'border-red-400' : 'border-slate-200'
+                placeholder="e.g., Nairobi"
+                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                  errors.county ? 'border-red-400' : 'border-slate-300'
                 }`}
               />
-              {errors.county && <p className="text-xs text-red-500">{errors.county}</p>}
+              {errors.county && <p className="text-xs text-red-500 mt-1">{errors.county}</p>}
             </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">Specific Location*</label>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">Specific Location*</label>
               <input
                 type="text"
                 name="specificLocation"
                 value={formData.specificLocation}
                 onChange={handleInputChange}
                 placeholder="e.g., Westlands, CBD"
-                className={`w-full rounded-lg border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] focus:border-[#c28a3a] ${
-                  errors.specificLocation ? 'border-red-400' : 'border-slate-200'
+                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                  errors.specificLocation ? 'border-red-400' : 'border-slate-300'
                 }`}
               />
-              {errors.specificLocation && <p className="text-xs text-red-500">{errors.specificLocation}</p>}
+              {errors.specificLocation && <p className="text-xs text-red-500 mt-1">{errors.specificLocation}</p>}
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">Phone Number</label>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">Phone Number*</label>
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                placeholder="+254..."
-                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                placeholder="+254 712 345 678"
+                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
+                  errors.phone ? 'border-red-400' : 'border-slate-300'
+                }`}
               />
+              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">WhatsApp Number</label>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">WhatsApp Number</label>
               <input
                 type="tel"
                 name="whatsappNumber"
                 value={formData.whatsappNumber}
                 onChange={handleInputChange}
-                placeholder="+254..."
-                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                placeholder="+254 712 345 678"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
               />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">Facebook Page</label>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">Website URL</label>
+              <input
+                type="url"
+                name="websiteUrl"
+                value={formData.websiteUrl}
+                onChange={handleInputChange}
+                placeholder="https://www.example.com"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-1">Facebook Page</label>
               <input
                 type="text"
                 name="facebookPage"
                 value={formData.facebookPage}
                 onChange={handleInputChange}
                 placeholder="facebook.com/yourpage"
-                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">Instagram Handle</label>
-              <input
-                type="text"
-                name="instagramHandle"
-                value={formData.instagramHandle}
-                onChange={handleInputChange}
-                placeholder="@yourhandle"
-                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-800">Website URL</label>
+          <div>
+            <label className="block text-sm font-medium text-slate-800 mb-1">Instagram Handle</label>
             <input
-              type="url"
-              name="websiteUrl"
-              value={formData.websiteUrl}
+              type="text"
+              name="instagramHandle"
+              value={formData.instagramHandle}
               onChange={handleInputChange}
-              placeholder="https://www.example.com"
-              className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+              placeholder="@yourhandle"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-800">Business Logo</label>
-            <div className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-6 text-center bg-slate-50">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-                <Upload className="h-5 w-5 text-slate-500" />
-              </div>
-              <p className="mt-3 text-sm text-slate-700">Click to upload or drag and drop</p>
-              <p className="text-xs text-slate-500">SVG, PNG, or JPG (max 800x400px)</p>
-            </div>
           </div>
         </div>
       );
@@ -525,87 +555,54 @@ export default function VendorRegistration() {
     if (currentStep === 3) {
       return (
         <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-slate-800">Services & Portfolio</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">What do you offer?</h3>
+            <p className="text-sm text-slate-500 mt-2">Select all categories that apply to your business</p>
+          </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-slate-800">Select Categories (up to 5)*</label>
-              <span className="text-xs text-slate-500">{formData.selectedCategories.length}/5 selected</span>
+              <label className="text-sm font-medium text-slate-800">Categories (up to 5)*</label>
+              <span className="text-xs text-slate-500">{formData.selectedCategories.length}/5</span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {categories.map((category) => (
-                <label
-                  key={category}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm transition ${
-                    formData.selectedCategories.includes(category)
+            <div className="grid gap-2 sm:grid-cols-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => toggleCategory(cat.name)}
+                  className={`flex items-start gap-3 rounded-lg border p-3 text-left transition ${
+                    formData.selectedCategories.includes(cat.name)
                       ? 'border-[#c28a3a] bg-amber-50'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-slate-300 hover:border-slate-400'
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={formData.selectedCategories.includes(category)}
-                    onChange={() => toggleCategory(category)}
-                    className="h-4 w-4 rounded border-slate-300 text-[#c28a3a] focus:ring-[#c28a3a]"
-                  />
-                  <span className="text-slate-800">{category}</span>
-                </label>
+                  <div className={`mt-1 h-5 w-5 rounded border flex items-center justify-center ${
+                    formData.selectedCategories.includes(cat.name)
+                      ? 'bg-[#c28a3a] border-[#c28a3a]'
+                      : 'border-slate-300'
+                  }`}>
+                    {formData.selectedCategories.includes(cat.name) && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-900">{cat.name}</p>
+                  </div>
+                </button>
               ))}
             </div>
             {errors.selectedCategories && <p className="text-xs text-red-500">{errors.selectedCategories}</p>}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">Price Range (Min)</label>
-              <input
-                type="number"
-                name="priceRangeMin"
-                value={formData.priceRangeMin}
-                onChange={handleInputChange}
-                placeholder="e.g., 5,000"
-                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-              />
+          {formData.selectedCategories.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900">
+                <AlertCircle className="w-4 h-4 inline mr-2" />
+                Based on your selection, we'll ask you to {needsServices && 'list your services'}{needsServices && needsPortfolio && ', '}{needsPortfolio && 'showcase your portfolio'}{needsProducts && needsServices && ', and'}{needsProducts && 'list your products'} in the next step.
+              </p>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-800">Price Range (Max)</label>
-              <input
-                type="number"
-                name="priceRangeMax"
-                value={formData.priceRangeMax}
-                onChange={handleInputChange}
-                placeholder="e.g., 50,000"
-                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-slate-800">Portfolio Images (Upload 3-6 photos)</label>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="flex h-32 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500"
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <ImageIcon className="h-5 w-5" />
-                    <span>Upload Image</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-800">Certifications (Optional)</label>
-            <div className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-5 text-center bg-slate-50">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
-                <Upload className="h-4 w-4 text-slate-500" />
-              </div>
-              <p className="mt-2 text-sm text-slate-700">Upload certifications or qualifications (PDF, JPG)</p>
-            </div>
-          </div>
+          )}
         </div>
       );
     }
@@ -613,12 +610,128 @@ export default function VendorRegistration() {
     if (currentStep === 4) {
       return (
         <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-slate-800">Choose Your Subscription Plan</h3>
-          <p className="text-sm text-slate-600">
-            Select a plan to publish your vendor profile and start receiving client requests.
-          </p>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Additional Details</h3>
+            <p className="text-sm text-slate-500 mt-2">Tell buyers what you specialize in</p>
+          </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          {needsServices && (
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-2">Services You Offer*</label>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.newService}
+                    onChange={(e) => setFormData({ ...formData, newService: e.target.value })}
+                    placeholder="e.g., Installation, Consultation, Delivery"
+                    className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addService();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addService}
+                    className="px-4 py-2 bg-[#c28a3a] text-white rounded-lg font-medium hover:bg-[#a9742f] text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.services.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    {formData.services.map((service, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+                        <span className="text-sm text-slate-800">{service}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeService(idx)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {errors.services && <p className="text-xs text-red-500 mt-1">{errors.services}</p>}
+            </div>
+          )}
+
+          {needsProducts && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-1">Min Price (Optional)</label>
+                <input
+                  type="number"
+                  name="priceRangeMin"
+                  value={formData.priceRangeMin}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 5,000"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-1">Max Price (Optional)</label>
+                <input
+                  type="number"
+                  name="priceRangeMax"
+                  value={formData.priceRangeMax}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 50,000"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                />
+              </div>
+            </div>
+          )}
+
+          {needsPortfolio && (
+            <div>
+              <label className="block text-sm font-medium text-slate-800 mb-3">Portfolio Images (Optional)</label>
+              <p className="text-sm text-slate-600 mb-3">Upload 3-6 photos of your work to build trust with buyers</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer transition"
+                  >
+                    <div className="flex flex-col items-center gap-1 text-slate-500">
+                      <ImageIcon className="h-6 w-6" />
+                      <span className="text-xs">Photo</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!needsServices && !needsPortfolio && !needsProducts && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-900">
+                <HelpCircle className="w-4 h-4 inline mr-2" />
+                You're all set! Move to the next step to choose your subscription plan.
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (currentStep === 5) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Choose Your Subscription Plan</h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Select a plan to publish your vendor profile and start receiving client requests.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
             {plans.map((plan) => {
               const isSelected = formData.selectedPlan === plan.id;
               return (
@@ -626,8 +739,8 @@ export default function VendorRegistration() {
                   key={plan.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, selectedPlan: plan.id })}
-                  className={`relative flex h-full flex-col rounded-xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                    isSelected ? 'border-[#c28a3a] ring-2 ring-[#c28a3a] ring-offset-0' : 'border-slate-200'
+                  className={`relative flex h-full flex-col rounded-xl border bg-white p-6 text-left shadow-sm transition hover:shadow-md ${
+                    isSelected ? 'border-[#c28a3a] ring-2 ring-[#c28a3a]' : 'border-slate-200'
                   }`}
                 >
                   {plan.tag && (
@@ -635,23 +748,23 @@ export default function VendorRegistration() {
                       {plan.tag}
                     </span>
                   )}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">{plan.name}</p>
-                      <p className="text-2xl font-bold text-slate-900 mt-1">
+                      <p className="font-semibold text-slate-900">{plan.name}</p>
+                      <p className="text-2xl font-bold text-slate-900 mt-2">
                         {plan.price} <span className="text-base font-medium text-slate-500">{plan.period}</span>
                       </p>
                     </div>
                     {isSelected && (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#c28a3a] text-white">
                         <Check className="h-4 w-4" />
                       </span>
                     )}
                   </div>
                   <div className="mt-4 space-y-2 text-sm text-slate-700">
                     {plan.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-emerald-500" />
+                      <div key={feature} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
                         <span>{feature}</span>
                       </div>
                     ))}
@@ -666,82 +779,76 @@ export default function VendorRegistration() {
 
     return (
       <div className="space-y-6 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-          <Check className="h-7 w-7" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <Check className="h-8 w-8" />
         </div>
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">Payment Successful!</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">Success!</p>
           <h3 className="mt-2 text-2xl font-bold text-slate-900">Vendor profile created</h3>
           <p className="mt-2 text-slate-600">
-            Your vendor account has been created and your profile is now live.
+            Your vendor account has been created and your profile is now live on Zintra.
           </p>
-          {message && <p className="mt-2 text-emerald-600 font-semibold">{message}</p>}
+          {message && <p className="mt-3 text-emerald-600 font-semibold text-sm">{message}</p>}
         </div>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-left space-y-3">
-          <h4 className="font-semibold text-slate-800">Next Steps</h4>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-left space-y-3 max-w-sm mx-auto">
+          <h4 className="font-semibold text-slate-900">Next Steps</h4>
           <ul className="space-y-2 text-sm text-slate-700">
-            <li>1. Complete your profile</li>
-            <li>2. Respond to RFQs</li>
-            <li>3. Share your profile</li>
+            <li>✓ Complete your profile with photos and details</li>
+            <li>✓ Respond to RFQs from interested buyers</li>
+            <li>✓ Build your reputation with positive reviews</li>
           </ul>
         </div>
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard/vendor')}
-          className="inline-flex items-center justify-center rounded-lg bg-[#c28a3a] px-5 py-3 text-white font-semibold shadow-sm hover:bg-[#a9742f]"
-        >
-          Go to Vendor Dashboard
-        </button>
       </div>
     );
   };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: brand.bg }}>
-      <div className="mx-auto max-w-5xl py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl py-12 px-4 sm:px-6 lg:px-8">
         <div className="rounded-2xl bg-white shadow-lg border border-slate-200 p-6 sm:p-10">
-          <div className="text-center mb-8">
+          <div className="text-center mb-10">
             <h1 className="text-3xl font-bold text-slate-900">Vendor Registration</h1>
             <p className="mt-2 text-slate-600">
               Join Zintra and connect with customers looking for your services
             </p>
           </div>
 
-          <div className="mb-10 grid grid-cols-5 gap-3">
-            {steps.map((step) => {
-              const isDone = currentStep > step.id;
-              const isActive = currentStep === step.id;
-              return (
-                <div key={step.id} className="flex flex-col items-center gap-2">
-                  <div className="flex items-center w-full">
+          {/* Progress Steps */}
+          <div className="mb-10">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {steps.map((step, idx) => {
+                const isDone = currentStep > step.id;
+                const isActive = currentStep === step.id;
+                return (
+                  <div key={step.id} className="flex items-center gap-2 flex-shrink-0">
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold ${
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold flex-shrink-0 ${
                         isDone || isActive
                           ? 'bg-[#c28a3a] border-[#c28a3a] text-white'
-                          : 'bg-white border-slate-200 text-slate-500'
+                          : 'bg-white border-slate-300 text-slate-500'
                       }`}
                     >
                       {isDone ? <Check className="h-5 w-5" /> : step.id}
                     </div>
-                    {step.id < steps.length && (
+                    {idx < steps.length - 1 && (
                       <div
-                        className="ml-2 h-1 flex-1 rounded-full"
+                        className="h-0.5 w-6 flex-shrink-0 rounded-full"
                         style={{
                           backgroundColor: currentStep > step.id ? '#c28a3a' : '#e2e8f0',
                         }}
                       ></div>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-slate-700 text-center">{step.label}</p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            <p className="text-sm text-slate-600 mt-3 text-center">Step {currentStep} of {steps.length}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {renderStepContent()}
 
-            {message && (
+            {message && currentStep !== 6 && (
               <div
                 className={`rounded-lg p-3 text-sm ${
                   message.includes('✅') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
@@ -751,14 +858,14 @@ export default function VendorRegistration() {
               </div>
             )}
 
-            {currentStep < 5 && (
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                <div className="flex gap-3">
+            {currentStep < 6 && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between pt-4 border-t border-slate-200">
+                <div>
                   {currentStep > 1 && (
                     <button
                       type="button"
                       onClick={handlePreviousStep}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-3 text-slate-700 hover:bg-slate-50"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-5 py-2.5 text-slate-700 font-medium hover:bg-slate-50"
                     >
                       <ChevronLeft className="h-5 w-5" />
                       Back
@@ -766,23 +873,23 @@ export default function VendorRegistration() {
                   )}
                 </div>
                 <div className="flex gap-3 sm:ml-auto">
-                  {currentStep < 4 && (
+                  {currentStep < 5 && (
                     <button
                       type="button"
                       onClick={handleNextStep}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#c28a3a] px-5 py-3 font-semibold text-white shadow-sm hover:bg-[#a9742f]"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#c28a3a] px-6 py-2.5 font-semibold text-white shadow-sm hover:bg-[#a9742f]"
                     >
                       Continue
                       <ChevronRight className="h-5 w-5" />
                     </button>
                   )}
-                  {currentStep === 4 && (
+                  {currentStep === 5 && (
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#c28a3a] px-5 py-3 font-semibold text-white shadow-sm hover:bg-[#a9742f] disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#c28a3a] px-6 py-2.5 font-semibold text-white shadow-sm hover:bg-[#a9742f] disabled:opacity-60"
                     >
-                      {isLoading ? 'Submitting...' : 'Continue to Complete'}
+                      {isLoading ? 'Creating Profile...' : 'Complete Registration'}
                     </button>
                   )}
                 </div>
