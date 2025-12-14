@@ -2,19 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, FileUp, Send } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-/** 🔌 Supabase client */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Supabase env vars are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-  );
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/lib/supabaseClient';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -40,6 +28,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [rfqCount, setRfqCount] = useState(0);
+  const [status, setStatus] = useState('');
 
   /** 🧩 Determine user badge */
   const userBadge =
@@ -67,6 +56,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     setSubmitting(true);
 
     try {
+      setStatus('');
       /** Upload file if exists */
       let attachmentUrl = null;
       if (form.attachment) {
@@ -84,32 +74,50 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         attachmentUrl = publicUrl?.publicUrl || null;
       }
 
-      /** Save RFQ */
-      const { error } = await supabase.from('rfq_requests').insert([
-        {
-          user_id: user?.id || null,
-          vendor_id: vendor?.id || null,
-          project_title: form.title,
-          project_description: form.description,
+      /** Save RFQ in main table */
+      const { data: rfqData, error: rfqError } = await supabase
+        .from('rfqs')
+        .insert([{
+          title: form.title,
+          description: form.description,
           category: form.category,
           budget_range: form.budget,
           location: form.location,
-          attachment_url: attachmentUrl,
-          is_verified: userBadge === 'Verified Buyer',
-        },
-      ]);
+          buyer_id: user?.id || null,
+          user_id: user?.id || null,
+          status: 'open',
+        }])
+        .select()
+        .maybeSingle();
 
-      if (error) throw error;
+      if (rfqError) throw rfqError;
+
+      /** Send direct request to vendor */
+      const vendorRecipientId = vendor?.user_id || vendor?.id || null;
+      if (vendorRecipientId) {
+        const { error: requestError } = await supabase.from('rfq_requests').insert([{
+          rfq_id: rfqData.id,
+          vendor_id: vendorRecipientId,
+          user_id: user?.id || null,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        }]);
+
+        if (requestError) throw requestError;
+      }
 
       /** Update daily count and notify */
       const todayCount = parseInt(localStorage.getItem('rfq_count_today') || '0', 10);
       localStorage.setItem('rfq_count_today', todayCount + 1);
-      alert('✅ Request sent successfully!');
+      setStatus('✅ Request sent successfully! Redirecting...');
       setSubmitting(false);
-      onClose();
+      setTimeout(() => {
+        onClose();
+        window.location.href = '/my-rfqs';
+      }, 800);
     } catch (err) {
       console.error('RFQ submission error:', err);
-      alert('⚠️ Failed to send request. Check console for details.');
+      setStatus(`⚠️ Failed to send request: ${err.message}`);
       setSubmitting(false);
     }
   };
@@ -131,6 +139,11 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="max-h-[80vh] overflow-y-auto px-6 py-5 space-y-5">
+          {status && (
+            <div className={`p-3 rounded-lg text-sm ${status.startsWith('⚠️') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+              {status}
+            </div>
+          )}
           {/* User Info */}
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <span

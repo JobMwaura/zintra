@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Edit2,
 } from 'lucide-react';
+import DirectRFQPopup from '@/components/DirectRFQPopup';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -44,6 +45,7 @@ export default function VendorProfilePage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDirectRFQ, setShowDirectRFQ] = useState(false);
 
   const [products, setProducts] = useState([]);
   const [services, setServices] = useState([]);
@@ -351,7 +353,10 @@ export default function VendorProfilePage() {
                   <button className="inline-flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-700 transition">
                     <MessageSquare className="w-5 h-5" /> Contact
                   </button>
-                  <button className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 px-6 py-3 rounded-lg font-semibold hover:bg-slate-50 transition">
+                  <button
+                    onClick={() => setShowDirectRFQ(true)}
+                    className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 px-6 py-3 rounded-lg font-semibold hover:bg-slate-50 transition"
+                  >
                     Request Quote
                   </button>
                   <button
@@ -831,6 +836,14 @@ export default function VendorProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Direct RFQ Modal */}
+      <DirectRFQPopup
+        isOpen={showDirectRFQ}
+        onClose={() => setShowDirectRFQ(false)}
+        vendor={vendor}
+        user={currentUser}
+      />
     </div>
   );
 }
