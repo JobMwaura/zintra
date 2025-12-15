@@ -200,10 +200,18 @@ export default function VendorsAdminPage() {
       <header className="border-b border-gray-200 bg-gradient-to-r from-orange-50 via-white to-emerald-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Control Center</p>
-              <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
-              <p className="text-sm text-gray-600">Search, filter, moderate, and manage vendors</p>
+            <div className="flex items-start gap-3">
+              <Link href="/admin/dashboard" className="hidden md:inline-flex items-center text-sm text-orange-700 hover:text-orange-800 mt-1">
+                ← Dashboard
+              </Link>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Control Center</p>
+                <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
+                <p className="text-sm text-gray-600">Search, filter, moderate, and manage vendors</p>
+                <Link href="/admin/dashboard" className="md:hidden inline-flex items-center text-sm text-orange-700 hover:text-orange-800 mt-2">
+                  ← Back to dashboard
+                </Link>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 text-sm">
               <button
