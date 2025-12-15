@@ -12,6 +12,8 @@ export default function AdminDashboardPage() {
     pendingRFQs: 0,
     activeUsers: 0,
     totalCategories: 0,
+    activeSubscriptions: 0,
+    totalPlans: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +40,24 @@ export default function AdminDashboardPage() {
           .from('categories')
           .select('*', { count: 'exact', head: true });
 
+        // Get active subscriptions count
+        const { count: activeSubCount } = await supabase
+          .from('vendor_subscriptions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active');
+
+        // Get plans count
+        const { count: plansCount } = await supabase
+          .from('subscription_plans')
+          .select('*', { count: 'exact', head: true });
+
         setStats({
           totalVendors: vendorCount || 0,
           pendingRFQs: rfqCount || 0,
           activeUsers: userCount || 0,
           totalCategories: categoryCount || 0,
+          activeSubscriptions: activeSubCount || 0,
+          totalPlans: plansCount || 0,
         });
       } catch (error) {
         console.error('Error loading stats:', error);
@@ -63,7 +78,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Vendors Card */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -133,6 +148,26 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
+        </div>
+
+        {/* Subscriptions Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Active Subscriptions</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                {loading ? '...' : stats.activeSubscriptions}
+              </p>
+            </div>
+            <div className="bg-indigo-100 p-3 rounded-lg">
+              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <a href="/admin/subscriptions" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700">
+            Manage Subscriptions →
+          </a>
         </div>
       </div>
 
