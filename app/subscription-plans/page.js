@@ -146,9 +146,27 @@ export default function SubscriptionPlans() {
     );
   }
 
+  const headerCtaHref = user ? `/vendor-profile/${currentSubscription?.vendor_id || ''}` : '/';
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top nav */}
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-8 text-sm font-medium">
+            <a href="/" className="text-gray-700 hover:text-gray-900">Home</a>
+            <a href="/browse" className="text-gray-700 hover:text-gray-900">Browse</a>
+            <a href="/post-rfq" className="text-gray-700 hover:text-gray-900">Post RFQ</a>
+          </div>
+          <div className="flex items-center gap-3">
+            <a href={headerCtaHref || '/'} className="text-sm font-semibold text-amber-700 hover:underline">
+              {user ? 'Back to Profile' : 'Back to Home'}
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h1>
