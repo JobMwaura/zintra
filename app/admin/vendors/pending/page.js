@@ -139,105 +139,105 @@ export default function PendingVendors() {
           ) : filteredVendors.length === 0 ? (
             <div className="p-6 text-center text-gray-600">No pending vendors found.</div>
           ) : (
-          filteredVendors.map((vendor) => (
-            <div key={vendor.id} className="p-6 hover:bg-gray-50">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold" style={{ color: '#535554' }}>
-                      {vendor.company_name || vendor.businessName}
-                    </h3>
-                    <span className={`px-3 py-1 border rounded-full text-xs font-medium ${getPlanColor(vendor.subscriptionPlan || vendor.plan || 'Standard')}`}>
-                      {vendor.subscriptionPlan || vendor.plan || 'Standard'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{vendor.category}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs flex items-center">
-                      <MapPin className="w-3 h-3 mr-1" />
-                      {vendor.location}{vendor.county ? `, ${vendor.county}` : ''}
-                    </span>
-                    <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs flex items-center border border-purple-200">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      Submitted {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A'}
-                    </span>
+            filteredVendors.map((vendor) => (
+              <div key={vendor.id} className="p-6 hover:bg-gray-50">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold" style={{ color: '#535554' }}>
+                        {vendor.company_name || vendor.businessName}
+                      </h3>
+                      <span className={`px-3 py-1 border rounded-full text-xs font-medium ${getPlanColor(vendor.subscriptionPlan || vendor.plan || 'Standard')}`}>
+                        {vendor.subscriptionPlan || vendor.plan || 'Standard'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{vendor.category}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs flex items-center">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {vendor.location}{vendor.county ? `, ${vendor.county}` : ''}
+                      </span>
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs flex items-center border border-purple-200">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        Submitted {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-700">{vendor.bio || vendor.description}</p>
-              </div>
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-700">{vendor.bio || vendor.description}</p>
+                </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                <div className="flex items-start">
-                  <User className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Contact Person</p>
-                    <p className="font-medium text-gray-900">{vendor.contactPerson || vendor.contact_person}</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                  <div className="flex items-start">
+                    <User className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
+                    <div>
+                      <p className="text-gray-500 text-xs">Contact Person</p>
+                      <p className="font-medium text-gray-900">{vendor.contactPerson || vendor.contact_person}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <Mail className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
+                    <div>
+                      <p className="text-gray-500 text-xs">Email</p>
+                      <p className="font-medium text-gray-900 truncate">{vendor.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <Phone className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
+                    <div>
+                      <p className="text-gray-500 text-xs">Phone</p>
+                      <p className="font-medium text-gray-900">{vendor.phone}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <FileText className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
+                    <div>
+                      <p className="text-gray-500 text-xs">Registration</p>
+                      <p className="font-medium text-gray-900">{vendor.businessRegistration || vendor.registration || 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-start">
-                  <Mail className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Email</p>
-                    <p className="font-medium text-gray-900 truncate">{vendor.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <Phone className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Phone</p>
-                    <p className="font-medium text-gray-900">{vendor.phone}</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <FileText className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Registration</p>
-                    <p className="font-medium text-gray-900">{vendor.businessRegistration || vendor.registration || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
-                <Building2 className="w-4 h-4" />
-                <span>Portfolio: {vendor.portfolioImages || vendor.portfolio_images || 0} images</span>
-                <span className="text-gray-400">•</span>
-                <span>Documents: {vendor.documents || 0} files</span>
-              </div>
+                <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
+                  <Building2 className="w-4 h-4" />
+                  <span>Portfolio: {vendor.portfolioImages || vendor.portfolio_images || 0} images</span>
+                  <span className="text-gray-400">•</span>
+                  <span>Documents: {vendor.documents || 0} files</span>
+                </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleApprove(vendor.id)}
-                  className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
-                  style={{ backgroundColor: '#10b981' }}
-                >
-                  <Check className="w-5 h-5 mr-2" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => openRejectModal(vendor)}
-                  className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
-                  style={{ backgroundColor: '#ef4444' }}
-                >
-                  <X className="w-5 h-5 mr-2" />
-                  Reject
-                </button>
-                <button 
-                  onClick={() => openDetailModal(vendor)}
-                  className="flex items-center px-4 py-2 border-2 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-                  style={{ borderColor: '#ca8637', color: '#ca8637' }}
-                >
-                  <Eye className="w-5 h-5 mr-2" />
-                  View Full Profile
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleApprove(vendor.id)}
+                    className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
+                    style={{ backgroundColor: '#10b981' }}
+                  >
+                    <Check className="w-5 h-5 mr-2" />
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => openRejectModal(vendor)}
+                    className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
+                    style={{ backgroundColor: '#ef4444' }}
+                  >
+                    <X className="w-5 h-5 mr-2" />
+                    Reject
+                  </button>
+                  <button 
+                    onClick={() => openDetailModal(vendor)}
+                    className="flex items-center px-4 py-2 border-2 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                    style={{ borderColor: '#ca8637', color: '#ca8637' }}
+                  >
+                    <Eye className="w-5 h-5 mr-2" />
+                    View Full Profile
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        )}
+            ))
+          )}
+        </div>
       </div>
-    </div>
 
       {/* Detail Modal */}
       {showDetailModal && selectedVendor && (
