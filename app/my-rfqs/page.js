@@ -66,10 +66,13 @@ export default function MyRFQsPage() {
     }
   };
 
-  const updateResponseStatus = async (responseId, newStatus, rfqId) => {
+  const updateResponseStatus = async (responseId, newStatus, rfqId, note) => {
     try {
       setActing(responseId);
-      await supabase.from('rfq_responses').update({ status: newStatus }).eq('id', responseId);
+      await supabase
+        .from('rfq_responses')
+        .update({ status: newStatus, revision_note: note || null })
+        .eq('id', responseId);
       if (newStatus === 'accepted' && rfqId) {
         await supabase.from('rfqs').update({ status: 'accepted' }).eq('id', rfqId);
       }
@@ -191,6 +194,25 @@ export default function MyRFQsPage() {
                                         className="inline-flex items-center gap-1 px-3 py-1 rounded border border-slate-300 text-slate-700 text-xs font-semibold disabled:opacity-60"
                                       >
                                         <X className="w-4 h-4" /> Decline
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const note = prompt('What would you like revised? (price, timeline, scope)');
+                                          if (note !== null) {
+                                            updateResponseStatus(resp.id, 'revision_requested', rfq.id, note);
+                                          }
+                                        }}
+                                        disabled={acting === resp.id}
+                                        className="inline-flex items-center gap-1 px-3 py-1 rounded border border-amber-300 text-amber-700 text-xs font-semibold disabled:opacity-60"
+                                      >
+                                        Request revision
+                                      </button>
+                                      <button
+                                        onClick={() => updateResponseStatus(resp.id, resp.saved ? 'submitted' : 'saved', rfq.id)}
+                                        disabled={acting === resp.id}
+                                        className="inline-flex items-center gap-1 px-3 py-1 rounded border border-slate-300 text-slate-700 text-xs font-semibold disabled:opacity-60"
+                                      >
+                                        {resp.saved ? 'Unsave' : 'Save'}
                                       </button>
                                     </div>
                                   </td>

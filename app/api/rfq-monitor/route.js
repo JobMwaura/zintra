@@ -23,7 +23,7 @@ export async function GET() {
   // Fetch open RFQs
   const { data: rfqs, error } = await supabaseAdmin
     .from('rfqs')
-    .select('id, user_id, created_at, status, title, budget_range')
+    .select('id, user_id, created_at, status, title, budget_range, category, county, location')
     .in('status', ['open', 'active']);
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
@@ -38,8 +38,16 @@ export async function GET() {
     return acc;
   }, {});
 
+  const { data: reqs } = await supabaseAdmin.from('rfq_requests').select('rfq_id, vendor_id');
+  const existingByRfq = (reqs || []).reduce((acc, r) => {
+    if (!acc[r.rfq_id]) acc[r.rfq_id] = new Set();
+    acc[r.rfq_id].add(r.vendor_id);
+    return acc;
+  }, {});
+
   const updates = [];
   const notifications = [];
+  const widenList = [];
 
   rfqs.forEach((rfq) => {
     const created = new Date(rfq.created_at);
@@ -88,11 +96,45 @@ export async function GET() {
         body: `No quotes yet for "${rfq.title}". We will widen the vendor radius.`,
         metadata: { rfq_id: rfq.id },
       });
+      widenList.push(rfq);
     }
   });
 
+  const newRequests = [];
+  for (const rfq of widenList) {
+    const existingVendors = existingByRfq[rfq.id] || new Set();
+    const { data: vendors } = await supabaseAdmin
+      .from('vendors')
+      .select('id, user_id, rating, verified, status, rfqs_completed, response_time')
+      .eq('status', 'active')
+      .eq('category', rfq.category);
+    const picks = (vendors || [])
+      .filter((v) => !existingVendors.has(v.user_id || v.id))
+      .filter((v) => (v.rating || 0) >= 4.0 && (v.verified || false))
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 5);
+
+    picks.forEach((v) => {
+      newRequests.push({
+        rfq_id: rfq.id,
+        vendor_id: v.user_id || v.id,
+        status: 'pending',
+      });
+      notifications.push({
+        user_id: v.user_id || v.id,
+        type: 'rfq_match',
+        title: `New RFQ: ${rfq.title}`,
+        body: `${rfq.category} • ${rfq.county || rfq.location || 'Location provided'}`,
+        metadata: { rfq_id: rfq.id, budget: rfq.budget_range },
+      });
+    });
+  }
+
   for (const u of updates) {
     await supabaseAdmin.from('rfqs').update(u.payload).eq('id', u.id);
+  }
+  if (newRequests.length) {
+    await supabaseAdmin.from('rfq_requests').insert(newRequests);
   }
   if (notifications.length) {
     await supabaseAdmin.from('notifications').insert(notifications);

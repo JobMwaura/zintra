@@ -21,6 +21,7 @@ export default function PostRFQ() {
     budgetFlag: null,
     autoCategory: null,
   });
+  const [geoStatus, setGeoStatus] = useState('');
   const [formData, setFormData] = useState({
     projectTitle: '',
     category: '',
@@ -77,6 +78,25 @@ export default function PostRFQ() {
       case 'gold': return 999;
       default: return 3;
     }
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus('Geolocation not supported.');
+      return;
+    }
+    setGeoStatus('Detecting location...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        setFormData((prev) => ({ ...prev, specificLocation: coords, locationDetails: 'Pinned via browser location' }));
+        setGeoStatus('Location captured. Please add county manually.');
+      },
+      (err) => {
+        setGeoStatus(`Unable to get location: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   };
 
   const keywordCategoryMap = [
@@ -153,6 +173,9 @@ export default function PostRFQ() {
     }
 
     // Simple spam/duplicate risk (client-side heuristic)
+    const spamKeywords = ['cheap', 'scam', 'earn money', 'urgent loan', 'crypto', 'forex'];
+    const hasSpamKeyword = spamKeywords.some((k) => formData.description.toLowerCase().includes(k));
+    const capsRatio = formData.description.replace(/[^A-Z]/g, '').length / Math.max(formData.description.length, 1);
     const { data: dup } = await supabase
       .from('rfqs')
       .select('id')
@@ -162,7 +185,9 @@ export default function PostRFQ() {
     const spamScore =
       (dup?.length ? 25 : 0) +
       (formData.description.trim().length < 80 ? 20 : 0) +
-      (warnings.length > 1 ? 10 : 0);
+      (warnings.length > 1 ? 10 : 0) +
+      (hasSpamKeyword ? 20 : 0) +
+      (capsRatio > 0.3 ? 10 : 0);
 
     const status = warnings.length === 0 ? 'validated' : 'needs_fix';
 
@@ -386,14 +411,16 @@ export default function PostRFQ() {
       // Match vendors by category and county with quality filters
       const { data: vendors } = await supabase
         .from('vendors')
-        .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time')
+        .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time, last_active, complaints_count')
         .eq('status', 'active')
         .eq('category', formData.category || summary.autoCategory?.replace('Suggested category: ', ''));
 
       const matchingVendors = (vendors || [])
         .filter((v) => {
           const countyOk = !formData.county || (v.county || '').toLowerCase() === formData.county.toLowerCase();
-          const qualityOk = (v.rating || 0) >= 3.5 && (v.verified || false);
+          const qualityOk = (v.rating || 0) >= 4.0 && (v.verified || false);
+          const inactive = v.last_active ? new Date(v.last_active) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) : false;
+          const complaints = (v.complaints_count || 0) > 2;
           return countyOk && qualityOk;
         })
         .sort((a, b) => {
@@ -1080,6 +1107,14 @@ export default function PostRFQ() {
                     }`}
                   />
                   {errors.specificLocation && <p className="text-red-500 text-xs mt-1">{errors.specificLocation}</p>}
+                  <button
+                    type="button"
+                    onClick={useCurrentLocation}
+                    className="mt-2 text-xs text-orange-700 hover:underline"
+                  >
+                    Use my current location (browser)
+                  </button>
+                  {geoStatus && <p className="text-xs text-gray-600 mt-1">{geoStatus}</p>}
                 </div>
               </div>
 
