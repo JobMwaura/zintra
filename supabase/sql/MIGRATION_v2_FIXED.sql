@@ -164,6 +164,39 @@ CREATE TABLE IF NOT EXISTS public.categories (
 );
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON public.categories(slug);
 
+-- Create conversations table (for admin-vendor messaging)
+CREATE TABLE IF NOT EXISTS public.conversations (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid not null,
+  vendor_id uuid not null,
+  subject text,
+  last_message_at timestamptz default now(),
+  is_active boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+CREATE INDEX IF NOT EXISTS idx_conversations_admin_id ON public.conversations(admin_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_vendor_id ON public.conversations(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_is_active ON public.conversations(is_active);
+
+-- Create messages table (for admin-vendor communications)
+CREATE TABLE IF NOT EXISTS public.messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null,
+  recipient_id uuid not null,
+  conversation_id uuid not null references public.conversations(id) on delete cascade,
+  body text not null,
+  message_type text default 'admin_to_vendor',
+  is_read boolean default false,
+  read_at timestamptz,
+  created_at timestamptz default now()
+);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON public.messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient_id ON public.messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_messages_is_read ON public.messages(is_read);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at);
+
 -- ==========================================
 -- SUCCESS! All tables and columns are ready
 -- ==========================================

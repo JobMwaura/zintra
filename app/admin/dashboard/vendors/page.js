@@ -28,6 +28,10 @@ export default function ConsolidatedVendors() {
   const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [vendorReviews, setVendorReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   // Bulk selection
   const [selectedVendorIds, setSelectedVendorIds] = useState([]);
@@ -180,6 +184,70 @@ export default function ConsolidatedVendors() {
       setMessage(`Error loading reviews: ${error.message}`);
     } finally {
       setLoadingReviews(false);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!messageBody.trim()) {
+      setMessage('Please enter a message');
+      return;
+    }
+
+    if (!selectedVendor) {
+      setMessage('No vendor selected');
+      return;
+    }
+
+    try {
+      setSendingMessage(true);
+
+      // First, create or get conversation
+      const { data: existingConv, error: convError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('vendor_id', selectedVendor.id)
+        .single();
+
+      let conversationId;
+
+      if (existingConv) {
+        conversationId = existingConv.id;
+      } else {
+        const { data: newConv, error: createConvError } = await supabase
+          .from('conversations')
+          .insert([{
+            admin_id: (await supabase.auth.getUser()).data.user.id,
+            vendor_id: selectedVendor.id,
+            subject: messageSubject || `Message to ${selectedVendor.company_name}`
+          }])
+          .select('id')
+          .single();
+
+        if (createConvError) throw createConvError;
+        conversationId = newConv.id;
+      }
+
+      // Insert message
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([{
+          sender_id: (await supabase.auth.getUser()).data.user.id,
+          recipient_id: selectedVendor.id,
+          conversation_id: conversationId,
+          body: messageBody,
+          message_type: 'admin_to_vendor'
+        }]);
+
+      if (messageError) throw messageError;
+
+      setMessage('✓ Message sent successfully');
+      setMessageSubject('');
+      setMessageBody('');
+      setShowMessageModal(false);
+    } catch (error) {
+      setMessage(`Error sending message: ${error.message}`);
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -510,7 +578,10 @@ export default function ConsolidatedVendors() {
               Flag
             </button>
             <button
-              onClick={() => alert('Messaging coming soon')}
+              onClick={() => {
+                setSelectedVendor(vendor);
+                setShowMessageModal(true);
+              }}
               className="px-4 py-2 border border-purple-300 rounded-lg text-purple-600 hover:bg-purple-50 transition flex items-center gap-2 text-sm"
             >
               <MessageSquare className="w-4 h-4" />

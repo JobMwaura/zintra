@@ -38,6 +38,11 @@ export default function VendorsAdminPage() {
   const [detailVendor, setDetailVendor] = useState(null);
   const [sortKey, setSortKey] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageVendor, setMessageVendor] = useState(null);
+  const [messageBody, setMessageBody] = useState('');
+  const [messageStatus, setMessageStatus] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -194,6 +199,73 @@ export default function VendorsAdminPage() {
     }, {});
     return byStatus;
   }, [vendors]);
+
+  const openMessageModal = (vendor) => {
+    setMessageVendor(vendor);
+    setMessageBody('');
+    setMessageStatus('');
+    setShowMessageModal(true);
+  };
+
+  const sendMessage = async () => {
+    if (!messageVendor) return;
+    if (!messageBody.trim()) {
+      setMessageStatus('Please enter a message.');
+      return;
+    }
+    try {
+      setSending(true);
+      setMessageStatus('');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setMessageStatus('You must be signed in as admin to send messages.');
+        setSending(false);
+        return;
+      }
+
+      // Create/find conversation
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('admin_id', user.id)
+        .eq('vendor_id', messageVendor.user_id || messageVendor.id)
+        .maybeSingle();
+
+      let conversationId = conv?.id;
+      if (!conversationId) {
+        const { data: newConv, error: convErr } = await supabase
+          .from('conversations')
+          .insert([{
+            admin_id: user.id,
+            vendor_id: messageVendor.user_id || messageVendor.id,
+            subject: `Message to ${messageVendor.company_name || 'Vendor'}`,
+          }])
+          .select()
+          .maybeSingle();
+        if (convErr) throw convErr;
+        conversationId = newConv?.id;
+      }
+
+      const { error: msgErr } = await supabase
+        .from('messages')
+        .insert([{
+          sender_id: user.id,
+          recipient_id: messageVendor.user_id || messageVendor.id,
+          conversation_id: conversationId,
+          body: messageBody.trim(),
+          message_type: 'admin_to_vendor',
+        }]);
+      if (msgErr) throw msgErr;
+
+      setMessageStatus('Message sent.');
+      setMessageBody('');
+      setTimeout(() => setShowMessageModal(false), 800);
+    } catch (err) {
+      setMessageStatus(`Error sending message: ${err.message}`);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -451,8 +523,55 @@ export default function VendorsAdminPage() {
                           {vendor.company_name || 'Vendor'}
                           {(vendor.verified || vendor.verification_status === 'verified') && (
                             <Shield className="w-4 h-4 text-blue-500" />
-                          )}
-                        </div>
+        )}
+      </div>
+
+      {/* Message Modal */}
+      {showMessageModal && messageVendor && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Message vendor</p>
+                <h3 className="text-lg font-semibold text-gray-900">{messageVendor.company_name || 'Vendor'}</h3>
+              </div>
+              <button onClick={() => setShowMessageModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <textarea
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                rows="4"
+                placeholder="Type your message to the vendor..."
+                value={messageBody}
+                onChange={(e) => setMessageBody(e.target.value)}
+              />
+              {messageStatus && (
+                <div className={`text-sm ${messageStatus.startsWith('Error') ? 'text-red-600' : 'text-gray-700'}`}>
+                  {messageStatus}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
+              <button
+                onClick={() => setShowMessageModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendMessage}
+                disabled={sending}
+                className="px-4 py-2 rounded-lg text-white font-semibold"
+                style={{ backgroundColor: '#7c3aed', opacity: sending ? 0.6 : 1 }}
+              >
+                {sending ? 'Sending...' : 'Send message'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
                         <div className="text-xs text-gray-500 flex items-center gap-1">
                           <Mail className="w-3 h-3" /> {vendor.email || 'No email'}
                         </div>
@@ -506,7 +625,7 @@ export default function VendorsAdminPage() {
                         <button onClick={() => setDetailVendor(vendor)} className="text-gray-700 inline-flex items-center gap-1">
                           <Filter className="w-4 h-4" /> Details
                         </button>
-                        <button onClick={() => alert('Messaging coming soon')} className="text-purple-700 inline-flex items-center gap-1">
+                        <button onClick={() => openMessageModal(vendor)} className="text-purple-700 inline-flex items-center gap-1">
                           <MessageSquare className="w-4 h-4" /> Message
                         </button>
                         <button onClick={() => updateVendor([vendor.id], { status: 'deleted' })} className="text-red-700 inline-flex items-center gap-1">
