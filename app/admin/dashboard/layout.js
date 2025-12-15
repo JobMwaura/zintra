@@ -53,7 +53,7 @@ const navSections = [
     title: 'PROJECT MANAGEMENT',
     items: [
       { name: 'Projects', icon: FileText, href: '/admin/projects' },
-      { name: 'RFQs', icon: ClipboardList, href: '/admin/rfqs' },
+      { name: 'RFQs', icon: ClipboardList, href: '/admin/dashboard/rfqs' },
       { name: 'Messages', icon: MessageSquare, href: '/admin/messages' },
     ],
   },
