@@ -150,6 +150,42 @@ export default function VendorsAdminPage() {
     [vendors]
   );
 
+  const summaryStats = useMemo(() => {
+    const total = vendors.length;
+    const active = vendors.filter((v) => (v.status || 'pending') === 'active').length;
+    const pending = vendors.filter((v) => (v.status || 'pending') === 'pending').length;
+    const flagged = vendors.filter((v) => (v.status || 'pending') === 'flagged').length;
+    const avgRating =
+      vendors.length > 0
+        ? (vendors.reduce((sum, v) => sum + (Number(v.rating) || 0), 0) / vendors.length).toFixed(1)
+        : '—';
+    return { total, active, pending, flagged, avgRating };
+  }, [vendors]);
+
+  const resetFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setCountyFilter('all');
+    setPlanFilter('all');
+    setRatingFilter('all');
+  };
+
+  const statusColor = (status = 'pending') => {
+    switch (status) {
+      case 'active':
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+      case 'suspended':
+        return 'bg-amber-50 text-amber-700 border border-amber-100';
+      case 'flagged':
+        return 'bg-orange-50 text-orange-700 border border-orange-100';
+      case 'rejected':
+        return 'bg-rose-50 text-rose-700 border border-rose-100';
+      default:
+        return 'bg-slate-50 text-slate-700 border border-slate-100';
+    }
+  };
+
   const summaryCounts = useMemo(() => {
     const byStatus = vendors.reduce((acc, v) => {
       const key = v.status || 'pending';
@@ -161,41 +197,71 @@ export default function VendorsAdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Vendor Management</h1>
-            <p className="text-sm text-gray-600">Search, filter, moderate, and manage vendors</p>
+      <header className="border-b border-gray-200 bg-gradient-to-r from-orange-50 via-white to-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Control Center</p>
+              <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
+              <p className="text-sm text-gray-600">Search, filter, moderate, and manage vendors</p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <button
+                onClick={() => updateVendor(selected, { status: 'active', verified: true })}
+                disabled={!selected.length}
+                className="px-3 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50 shadow-sm"
+              >
+                Bulk Approve
+              </button>
+              <button
+                onClick={() => updateVendor(selected, { status: 'suspended' })}
+                disabled={!selected.length}
+                className="px-3 py-2 rounded-lg bg-amber-500 text-white disabled:opacity-50 shadow-sm"
+              >
+                Bulk Suspend
+              </button>
+              <button
+                onClick={() => updateVendor(selected, { status: 'flagged' })}
+                disabled={!selected.length}
+                className="px-3 py-2 rounded-lg bg-orange-500 text-white disabled:opacity-50 shadow-sm"
+              >
+                Bulk Flag
+              </button>
+              <button
+                onClick={exportCSV}
+                disabled={!filtered.length}
+                className="px-3 py-2 rounded-lg bg-white text-gray-800 border border-gray-200 disabled:opacity-50 flex items-center gap-2 shadow-sm"
+              >
+                <Download className="w-4 h-4" /> Export CSV
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 text-sm">
-            <button
-              onClick={() => updateVendor(selected, { status: 'active', verified: true })}
-              disabled={!selected.length}
-              className="px-3 py-2 rounded bg-green-600 text-white disabled:opacity-50"
-            >
-              Bulk Approve
-            </button>
-            <button
-              onClick={() => updateVendor(selected, { status: 'suspended' })}
-              disabled={!selected.length}
-              className="px-3 py-2 rounded bg-yellow-600 text-white disabled:opacity-50"
-            >
-              Bulk Suspend
-            </button>
-            <button
-              onClick={() => updateVendor(selected, { status: 'flagged' })}
-              disabled={!selected.length}
-              className="px-3 py-2 rounded bg-orange-600 text-white disabled:opacity-50"
-            >
-              Bulk Flag
-            </button>
-            <button
-              onClick={exportCSV}
-              disabled={!filtered.length}
-              className="px-3 py-2 rounded bg-slate-200 text-slate-800 disabled:opacity-50 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" /> Export CSV
-            </button>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-4 bg-white shadow-sm rounded-lg border border-gray-100">
+              <p className="text-xs text-gray-500">Total Vendors</p>
+              <p className="text-2xl font-semibold text-gray-900">{summaryStats.total}</p>
+              <p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Active {summaryStats.active}</p>
+            </div>
+            <div className="p-4 bg-white shadow-sm rounded-lg border border-gray-100">
+              <p className="text-xs text-gray-500">Pending Review</p>
+              <p className="text-2xl font-semibold text-gray-900">{summaryStats.pending}</p>
+              <p className="text-xs text-orange-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Flagged {summaryStats.flagged}</p>
+            </div>
+            <div className="p-4 bg-white shadow-sm rounded-lg border border-gray-100">
+              <p className="text-xs text-gray-500">Average Rating</p>
+              <p className="text-2xl font-semibold text-gray-900 flex items-center gap-1">
+                <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" /> {summaryStats.avgRating}
+              </p>
+              <p className="text-xs text-gray-500">Based on current listings</p>
+            </div>
+            <div className="p-4 bg-white shadow-sm rounded-lg border border-gray-100">
+              <p className="text-xs text-gray-500">Filters Applied</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {[statusFilter, planFilter, ratingFilter, categoryFilter, countyFilter].filter((v) => v !== 'all').length}
+              </p>
+              <button onClick={resetFilters} className="text-xs text-blue-600 hover:underline">Reset filters</button>
+            </div>
           </div>
         </div>
       </header>
@@ -208,50 +274,87 @@ export default function VendorsAdminPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white rounded-lg shadow p-4 border border-gray-200 space-y-3 lg:col-span-2">
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="flex-1 relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                <input
-                  value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, email, phone, ID..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 text-sm">
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>{s === 'all' ? 'All statuses' : s}</option>
-                ))}
-              </select>
-              <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
-                {planOptions.map((p) => (
-                  <option key={p} value={p}>{p === 'all' ? 'All plans' : p}</option>
-                ))}
-              </select>
-              <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
-                {ratingOptions.map((r) => (
-                  <option key={r} value={r}>{r === 'all' ? 'All ratings' : r}</option>
-                ))}
-              </select>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c === 'all' ? 'All categories' : c}</option>
-                ))}
-              </select>
-              <select value={countyFilter} onChange={(e) => setCountyFilter(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
-                {counties.map((c) => (
-                  <option key={c} value={c}>{c === 'all' ? 'All counties' : c}</option>
-                ))}
-              </select>
-              <button
-                onClick={fetchVendors}
-                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                <Filter className="w-4 h-4" /> Refresh
-              </button>
-            </div>
+          <div className="bg-white rounded-xl shadow p-4 border border-gray-100 space-y-4 lg:col-span-2">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:gap-3">
+                <div className="flex-1 relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name, email, phone, ID..."
+                    className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2 lg:mt-0">
+                  {[statusFilter, planFilter, ratingFilter, categoryFilter, countyFilter]
+                    .filter((f) => f !== 'all')
+                    .map((chip) => (
+                      <span key={chip} className="px-3 py-1 rounded-full text-xs bg-orange-50 text-orange-700 border border-orange-100">
+                        {chip}
+                      </span>
+                    ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2 text-sm">
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">Status</label>
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-2 bg-white">
+                    {statusOptions.map((s) => (
+                      <option key={s} value={s}>{s === 'all' ? 'All statuses' : s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">Plan</label>
+                  <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-2 bg-white">
+                    {planOptions.map((p) => (
+                      <option key={p} value={p}>{p === 'all' ? 'All plans' : p}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">Rating</label>
+                  <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-2 bg-white">
+                    {ratingOptions.map((r) => (
+                      <option key={r} value={r}>{r === 'all' ? 'All ratings' : r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">Category</label>
+                  <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-2 bg-white">
+                    {categories.map((c) => (
+                      <option key={c} value={c}>{c === 'all' ? 'All categories' : c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">County</label>
+                  <select value={countyFilter} onChange={(e) => setCountyFilter(e.target.value)} className="border border-gray-200 rounded-lg px-2 py-2 bg-white">
+                    {counties.map((c) => (
+                      <option key={c} value={c}>{c === 'all' ? 'All counties' : c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={fetchVendors}
+                  className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <Filter className="w-4 h-4" /> Refresh data
+                </button>
+                <button
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"
+                >
+                  Clear filters
+                </button>
+                <span className="text-xs text-gray-500">Showing {filtered.length} of {vendors.length} vendors</span>
+              </div>
             </div>
           </div>
 
@@ -360,7 +463,7 @@ export default function VendorsAdminPage() {
                         {vendor.subscription_plan || vendor.plan || 'Free'}
                       </td>
                       <td className="px-4 py-2">
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColor(vendor.status)}`}>
                           {vendor.status || 'pending'}
                         </span>
                       </td>
