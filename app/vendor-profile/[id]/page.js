@@ -777,7 +777,7 @@ export default function VendorProfilePage() {
                       className={`flex items-center gap-3 ${canEdit ? 'bg-slate-50 border border-slate-200 rounded-lg p-2' : ''}`}
                     >
                       {canEdit ? (
-                        <>
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 w-full items-center">
                           <input
                             value={row.day}
                             onChange={(e) => {
@@ -785,7 +785,7 @@ export default function VendorProfilePage() {
                               next[idx] = { ...next[idx], day: e.target.value };
                               setBusinessHours(next);
                             }}
-                            className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+                            className="md:col-span-5 border border-slate-300 rounded px-3 py-2 text-sm w-full"
                             placeholder="Day"
                           />
                           <input
@@ -795,16 +795,16 @@ export default function VendorProfilePage() {
                               next[idx] = { ...next[idx], hours: e.target.value };
                               setBusinessHours(next);
                             }}
-                            className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+                            className="md:col-span-5 border border-slate-300 rounded px-3 py-2 text-sm w-full"
                             placeholder="Hours"
                           />
                           <button
                             onClick={() => setBusinessHours((prev) => prev.filter((_, i) => i !== idx))}
-                            className="text-xs text-red-600 hover:underline"
+                            className="md:col-span-2 text-xs text-red-600 hover:underline text-left"
                           >
                             Remove
                           </button>
-                        </>
+                        </div>
                       ) : (
                         <>
                           <span className="text-slate-700 text-sm">{row.day}</span>
