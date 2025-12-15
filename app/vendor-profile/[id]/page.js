@@ -58,6 +58,7 @@ export default function VendorProfilePage() {
   const [reviews, setReviews] = useState([]);
   const [replyDrafts, setReplyDrafts] = useState({});
   const [replySaving, setReplySaving] = useState(false);
+  const [savingHours, setSavingHours] = useState(false);
   const [businessHours, setBusinessHours] = useState([
     { day: 'Monday - Friday', hours: '7:00 AM - 6:00 PM' },
     { day: 'Saturday', hours: '8:00 AM - 5:00 PM' },
@@ -338,6 +339,21 @@ export default function VendorProfilePage() {
 
   const removeHighlight = (idx) => {
     setHighlights((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const saveBusinessHours = async () => {
+    if (!vendor || !vendor.hasOwnProperty('business_hours')) return;
+    setSavingHours(true);
+    const { error } = await supabase
+      .from('vendors')
+      .update({ business_hours: businessHours })
+      .eq('id', vendor.id);
+    if (error) {
+      setError('Failed to save hours: ' + error.message);
+    } else {
+      setVendor((prev) => ({ ...prev, business_hours: businessHours }));
+    }
+    setSavingHours(false);
   };
 
   const initials = useMemo(() => {
@@ -780,6 +796,13 @@ export default function VendorProfilePage() {
                       className="text-xs text-amber-700 font-semibold"
                     >
                       + Add row
+                    </button>
+                    <button
+                      onClick={saveBusinessHours}
+                      disabled={savingHours}
+                      className="text-xs px-3 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700 disabled:opacity-60"
+                    >
+                      {savingHours ? 'Saving...' : 'Save hours'}
                     </button>
                   </div>
                 )}
