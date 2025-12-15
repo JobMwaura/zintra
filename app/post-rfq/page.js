@@ -22,6 +22,17 @@ export default function PostRFQ() {
     autoCategory: null,
   });
   const [geoStatus, setGeoStatus] = useState('');
+
+  const ensureUserProfile = async (user) => {
+    if (!user?.id) return;
+    try {
+      await supabase
+        .from('users')
+        .upsert({ id: user.id }, { onConflict: 'id' });
+    } catch (err) {
+      console.warn('ensureUserProfile skipped:', err.message);
+    }
+  };
   const [formData, setFormData] = useState({
     projectTitle: '',
     category: '',
@@ -363,6 +374,8 @@ export default function PostRFQ() {
         setSubmitting(false);
         return;
       }
+      // Make sure a profile row exists to satisfy FK constraints
+      await ensureUserProfile(user);
 
       // Run auto-validation
       const summary = await evaluateRFQ();
