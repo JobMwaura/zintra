@@ -16,6 +16,8 @@ const BRAND = {
   white: '#ffffff',
 };
 
+const RFQ_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_RFQ_BUCKET || 'rfq_attachments';
+
 export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [form, setForm] = useState({
     title: '',
@@ -62,16 +64,21 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
       if (form.attachment) {
         const fileName = `${Date.now()}_${form.attachment.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('rfq_attachments')
+          .from(RFQ_BUCKET)
           .upload(fileName, form.attachment);
 
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrl } = supabase.storage
-          .from('rfq_attachments')
-          .getPublicUrl(fileName);
-
-        attachmentUrl = publicUrl?.publicUrl || null;
+        if (uploadError) {
+          if (uploadError.message?.toLowerCase().includes('bucket')) {
+            setStatus('⚠️ Attachment bucket missing; request sent without file.');
+          } else {
+            throw uploadError;
+          }
+        } else {
+          const { data: publicUrl } = supabase.storage
+            .from(RFQ_BUCKET)
+            .getPublicUrl(uploadData.path);
+          attachmentUrl = publicUrl?.publicUrl || null;
+        }
       }
 
       /** Save RFQ in main table */
