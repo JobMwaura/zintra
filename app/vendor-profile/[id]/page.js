@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -46,6 +46,8 @@ export default function VendorProfilePage() {
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDirectRFQ, setShowDirectRFQ] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [products, setProducts] = useState([]);
   const [services, setServices] = useState([]);
@@ -231,6 +233,39 @@ export default function VendorProfilePage() {
     ? vendor.category.split(',').map((c) => c.trim()).filter(Boolean)
     : [];
 
+  const handleLogoUpload = async (event) => {
+    if (!vendor?.id) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingLogo(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `vendor-${vendor.id}-${Date.now()}.${fileExt}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from('vendor-logos')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) {
+        console.error('Logo upload error:', uploadError);
+        setUploadingLogo(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from('vendor-logos').getPublicUrl(data.path);
+      const publicUrl = urlData?.publicUrl;
+
+      if (publicUrl) {
+        await supabase.from('vendors').update({ logo_url: publicUrl }).eq('id', vendor.id);
+        setVendor((prev) => ({ ...prev, logo_url: publicUrl }));
+      }
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const canEdit =
     !!currentUser &&
     (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
@@ -286,8 +321,28 @@ export default function VendorProfilePage() {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex gap-6 items-start">
             {/* Logo */}
-            <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-3xl font-bold flex-shrink-0">
-              {initials}
+            <div className="w-24 h-24 rounded-lg overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-3xl font-bold flex-shrink-0 relative">
+              {vendor?.logo_url ? (
+                <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+              {canEdit && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-1 right-1 bg-white/90 text-slate-700 text-xs px-2 py-1 rounded shadow"
+                  disabled={uploadingLogo}
+                >
+                  {uploadingLogo ? 'Uploading...' : 'Change'}
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
             </div>
 
             {/* Main Info */}
