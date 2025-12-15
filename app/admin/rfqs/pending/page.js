@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { Eye, Check, X, Search, Filter, MapPin, Calendar, DollarSign, Clock, User, FileText, AlertTriangle, Shield } from 'lucide-react';
+import { Eye, Check, X, Search, Filter, MapPin, Calendar, DollarSign, Clock, User, FileText, AlertTriangle, Shield, ArrowLeft, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
 
 const pendingStatuses = ['pending', 'needs_verification', 'needs_review', 'needs_fix'];
 
@@ -145,153 +146,214 @@ export default function PendingRFQs() {
   }, [rfqs, searchTerm]);
 
   return (
-    <div className="space-y-4">
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#535554' }}>Pending RFQs</h1>
-          <p className="text-gray-600">{filteredRFQs.length} RFQs awaiting review</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Breadcrumb & Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link href="/admin/rfqs" className="p-2 hover:bg-gray-100 rounded-lg transition">
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </Link>
+              <div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                  <Link href="/admin/dashboard" className="hover:text-gray-900">Admin</Link>
+                  <span>/</span>
+                  <Link href="/admin/rfqs" className="hover:text-gray-900">RFQ Management</Link>
+                  <span>/</span>
+                  <span className="text-gray-900 font-medium">Pending Review</span>
+                </div>
+                <h1 className="text-2xl font-bold" style={{ color: '#535554' }}>Pending RFQs</h1>
+              </div>
+            </div>
+            <div className="text-right text-sm">
+              <p className="text-gray-600">Awaiting Review</p>
+              <p className="text-2xl font-bold text-orange-600">{filteredRFQs.length}</p>
+            </div>
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex gap-1 border-t border-gray-200">
+            <Link 
+              href="/admin/rfqs/pending"
+              className="px-4 py-3 font-medium text-orange-600 border-b-2 border-orange-600 hover:bg-orange-50 transition"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Pending
+              </div>
+            </Link>
+            <Link 
+              href="/admin/rfqs/active"
+              className="px-4 py-3 font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Active
+              </div>
+            </Link>
+            <Link 
+              href="/admin/rfqs/analytics"
+              className="px-4 py-3 font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Analytics
+              </div>
+            </Link>
+          </div>
         </div>
-        <Link href="/admin/dashboard" className="text-sm text-orange-700 hover:text-orange-800">← Dashboard</Link>
       </div>
 
-      {message && (
-        <div className="mb-4 p-3 rounded border text-sm" style={{ borderColor: '#f97316', color: '#c2410c', background: '#fff7ed' }}>
-          {message}
-        </div>
-      )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="space-y-6">
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-sm text-blue-800">
-          <strong>Review First-Time RFQs:</strong> Auto-validated RFQs are listed here if they need human eyes (new users, risky budgets, or spam risk). Approve to publish and auto-notify vendors.
-        </p>
-      </div>
+          {message && (
+            <div className="mb-4 p-4 rounded-lg border border-orange-200 text-sm bg-orange-50 text-orange-800 font-medium">
+              {message}
+            </div>
+          )}
 
-      <div className="bg-white rounded-xl shadow border border-gray-100 mb-6">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>ℹ️ Review Notice:</strong> Auto-validated RFQs are listed if they need human eyes (new users, risky budgets, or spam flags). Approve to publish and auto-notify vendors.
+            </p>
+          </div>
+
+          {/* Search Bar */}
+          <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search RFQs..."
+                placeholder="Search by title, category, or location..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
               />
             </div>
-            <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-              <Filter className="w-5 h-5 mr-2" />
-              Filter
+            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium transition">
+              <Filter className="w-4 h-4" />
+              <span className="hidden sm:inline">Filter</span>
             </button>
           </div>
-        </div>
 
-        <div className="divide-y divide-gray-200">
+          {/* RFQ List */}
           {loading ? (
-            <div className="p-6 text-center text-gray-600">Loading RFQs...</div>
-          ) : filteredRFQs.length === 0 ? (
-            <div className="p-6 text-center text-gray-600">No RFQs awaiting approval.</div>
-          ) : filteredRFQs.map((rfq) => (
-            <div key={rfq.id} className="p-6 hover:bg-gray-50">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2" style={{ color: '#535554' }}>
-                    {rfq.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3">{rfq.category || rfq.auto_category}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {rfq.urgency === 'asap' && (
-                      <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                        URGENT
-                      </span>
-                    )}
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs flex items-center">
-                      <MapPin className="w-3 h-3 mr-1" />
-                      {rfq.location || rfq.county}
-                    </span>
-                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {rfq.created_at ? new Date(rfq.created_at).toLocaleString() : 'N/A'}
-                    </span>
-                    {rfq.spam_score > 30 && (
-                      <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs flex items-center">
-                        <AlertTriangle className="w-3 h-3 mr-1" />
-                        Spam risk {rfq.spam_score}
-                      </span>
-                    )}
-                    {rfq.validation_status === 'validated' && (
-                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs flex items-center">
-                        <Shield className="w-3 h-3 mr-1" />
-                        Auto-validated
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-700 line-clamp-2">{rfq.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                <div className="flex items-start">
-                  <User className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Submitted By</p>
-                    <p className="font-medium text-gray-900">{rfq.buyer_name || rfq.buyer_id || 'User'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <DollarSign className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Budget</p>
-                    <p className="font-medium text-gray-900">{rfq.budget_range}</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <Clock className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Timeline</p>
-                    <p className="font-medium text-gray-900">{rfq.timeline}</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <FileText className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
-                  <div>
-                    <p className="text-gray-500 text-xs">Type</p>
-                    <p className="font-medium text-gray-900">{rfq.project_type || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleApprove(rfq)}
-                  className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
-                  style={{ backgroundColor: '#10b981' }}
-                >
-                  <Check className="w-5 h-5 mr-2" />
-                  Approve & Send
-                </button>
-                <button
-                  onClick={() => openRejectModal(rfq)}
-                  className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
-                  style={{ backgroundColor: '#ef4444' }}
-                >
-                  <X className="w-5 h-5 mr-2" />
-                  Reject
-                </button>
-                <button 
-                  onClick={() => openDetailModal(rfq)}
-                  className="flex items-center px-4 py-2 border-2 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-                  style={{ borderColor: '#ca8637', color: '#ca8637' }}
-                >
-                  <Eye className="w-5 h-5 mr-2" />
-                  View Full Details
-                </button>
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-2"></div>
+                <p className="text-gray-600">Loading RFQs...</p>
               </div>
             </div>
-          ))}
+          ) : filteredRFQs.length === 0 ? (
+            <div className="text-center py-12">
+              <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium">No RFQs awaiting approval</p>
+              <p className="text-sm text-gray-500">All pending RFQs have been reviewed</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredRFQs.map((rfq) => (
+                <div key={rfq.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:border-orange-300 hover:shadow-md transition">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold mb-2" style={{ color: '#535554' }}>
+                        {rfq.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-3">{rfq.category || rfq.auto_category}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {rfq.urgency === 'asap' && (
+                          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                            ⚡ URGENT
+                          </span>
+                        )}
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs flex items-center">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          {rfq.location || rfq.county}
+                        </span>
+                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs flex items-center">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {rfq.created_at ? new Date(rfq.created_at).toLocaleDateString() : 'N/A'}
+                        </span>
+                        {rfq.spam_score > 30 && (
+                          <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs flex items-center">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Spam risk {rfq.spam_score}
+                          </span>
+                        )}
+                        {rfq.validation_status === 'validated' && (
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs flex items-center">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Auto-validated
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {rfq.description && (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-gray-700 line-clamp-2">{rfq.description}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                    <div className="flex items-start">
+                      <User className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-gray-500 text-xs">Submitted By</p>
+                        <p className="font-medium text-gray-900">{rfq.buyer_name || rfq.buyer_id || 'User'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <DollarSign className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-gray-500 text-xs">Budget</p>
+                        <p className="font-medium text-gray-900">{rfq.budget_range || 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Clock className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-gray-500 text-xs">Timeline</p>
+                        <p className="font-medium text-gray-900">{rfq.timeline || rfq.delivery_preference || 'Flexible'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <FileText className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-gray-500 text-xs">Type</p>
+                        <p className="font-medium text-gray-900">{rfq.project_type || 'Standard'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => handleApprove(rfq)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors bg-emerald-600"
+                    >
+                      <Check className="w-4 h-4" />
+                      Approve & Notify
+                    </button>
+                    <button
+                      onClick={() => openDetailModal(rfq)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openRejectModal(rfq)}
+                      className="px-4 py-2 border border-red-300 rounded-lg hover:bg-red-50 text-red-600 font-medium transition"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
