@@ -102,6 +102,31 @@ Successfully restored all missing vendor management features to the consolidated
 - **Verified Indicator**: Blue verified badge with shield icon for verified vendors
 - **Visual Distinction**: Quick visual identification of verified vendors
 
+### 11. Vendor Actions ✅
+- **Flag Vendor** (All tabs):
+  - Flag vendors for review or compliance issues
+  - Changes vendor status to "flagged"
+  - Available with confirmation dialog
+  
+- **Delete Vendor** (Active & Rejected tabs):
+  - Soft delete vendors (status = 'deleted')
+  - Requires confirmation to prevent accidental deletion
+  - Not a hard delete - records preserved in database
+  
+- **Message Vendor** (Active tab):
+  - Placeholder for future vendor messaging system
+  - Ready for messaging functionality integration
+  - Currently shows "coming soon" alert
+  
+- **View Reviews** (Active & Rejected tabs):
+  - Display all reviews for a vendor with ratings
+  - Show star ratings (1-5 stars visualization)
+  - Display reviewer name and date
+  - Show vendor responses if available
+  - Loading state during fetch
+  - Empty state when no reviews exist
+  - Full review modal with scrollable content
+
 ## Technical Implementation
 
 ### State Management
