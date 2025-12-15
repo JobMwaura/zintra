@@ -239,6 +239,12 @@ export default function VendorProfilePage() {
     ? vendor.category.split(',').map((c) => c.trim()).filter(Boolean)
     : [];
 
+  const averageRating = useMemo(() => {
+    if (!reviews.length) return null;
+    const total = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+    return (total / reviews.length).toFixed(1);
+  }, [reviews]);
+
   const handleLogoUpload = async (event) => {
     if (!vendor?.id) return;
     const file = event.target.files?.[0];
@@ -387,8 +393,14 @@ export default function VendorProfilePage() {
               <div className="flex flex-wrap items-center gap-4 mb-4 text-sm text-slate-600">
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span className="font-semibold text-slate-900">{vendor.rating || '4.9'}</span>
-                  <span>({vendor.review_count || 128} reviews)</span>
+                  {averageRating ? (
+                    <>
+                      <span className="font-semibold text-slate-900">{averageRating}</span>
+                      <span>({reviews.length} reviews)</span>
+                    </>
+                  ) : (
+                    <span className="text-slate-500">No ratings yet</span>
+                  )}
                 </div>
                 {vendor.location && (
                   <div className="flex items-center gap-1">
