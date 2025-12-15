@@ -758,49 +758,69 @@ export default function VendorProfilePage() {
             <div className="space-y-6">
               {/* Business Hours */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="font-bold text-slate-900 mb-4">Business Hours</h3>
-                <div className="space-y-2 text-sm">
-                  {businessHours.map((row, idx) => (
-                    <div key={idx} className="flex justify-between">
-                      <span className="text-slate-600">{row.day}</span>
-                      <span className="font-semibold text-slate-900">{row.hours}</span>
-                    </div>
-                  ))}
-                </div>
-                {canEdit && (
-                  <div className="mt-3 space-y-2">
-                    {businessHours.map((row, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <input
-                          value={row.day}
-                          onChange={(e) => {
-                            const next = [...businessHours];
-                            next[idx] = { ...next[idx], day: e.target.value };
-                            setBusinessHours(next);
-                          }}
-                          className="flex-1 border border-slate-300 rounded px-2 py-1 text-xs"
-                        />
-                        <input
-                          value={row.hours}
-                          onChange={(e) => {
-                            const next = [...businessHours];
-                            next[idx] = { ...next[idx], hours: e.target.value };
-                            setBusinessHours(next);
-                          }}
-                          className="flex-1 border border-slate-300 rounded px-2 py-1 text-xs"
-                        />
-                      </div>
-                    ))}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-900 text-lg">Business Hours</h3>
+                  {canEdit && (
                     <button
-                      onClick={() => setBusinessHours((prev) => [...prev, { day: 'New', hours: 'Hours' }])}
-                      className="text-xs text-amber-700 font-semibold"
+                      onClick={() => setBusinessHours((prev) => [...prev, { day: 'New day', hours: '8:00 AM - 5:00 PM' }])}
+                      className="text-xs font-semibold text-amber-700 hover:text-amber-800"
                     >
                       + Add row
                     </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {businessHours.map((row, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-3 ${canEdit ? 'bg-slate-50 border border-slate-200 rounded-lg p-2' : ''}`}
+                    >
+                      {canEdit ? (
+                        <>
+                          <input
+                            value={row.day}
+                            onChange={(e) => {
+                              const next = [...businessHours];
+                              next[idx] = { ...next[idx], day: e.target.value };
+                              setBusinessHours(next);
+                            }}
+                            className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+                            placeholder="Day"
+                          />
+                          <input
+                            value={row.hours}
+                            onChange={(e) => {
+                              const next = [...businessHours];
+                              next[idx] = { ...next[idx], hours: e.target.value };
+                              setBusinessHours(next);
+                            }}
+                            className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+                            placeholder="Hours"
+                          />
+                          <button
+                            onClick={() => setBusinessHours((prev) => prev.filter((_, i) => i !== idx))}
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-slate-700 text-sm">{row.day}</span>
+                          <span className="ml-auto font-semibold text-slate-900 text-sm">{row.hours}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {canEdit && (
+                  <div className="mt-3 flex justify-end">
                     <button
                       onClick={saveBusinessHours}
                       disabled={savingHours}
-                      className="text-xs px-3 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700 disabled:opacity-60"
+                      className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 disabled:opacity-60"
                     >
                       {savingHours ? 'Saving...' : 'Save hours'}
                     </button>
