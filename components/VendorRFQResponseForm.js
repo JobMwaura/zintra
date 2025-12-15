@@ -23,6 +23,27 @@ export default function VendorRFQResponseForm({ rfqId }) {
       setSubmitting(true);
       setStatus('');
 
+      if (!form.amount || Number(form.amount) <= 0) {
+        setStatus('❌ Please enter a valid amount');
+        setSubmitting(false);
+        return;
+      }
+      if (!form.timeline.trim()) {
+        setStatus('❌ Please provide a timeline');
+        setSubmitting(false);
+        return;
+      }
+      if (!form.message.trim() || form.message.trim().length < 30) {
+        setStatus('❌ Please add at least 30 characters of breakdown/notes');
+        setSubmitting(false);
+        return;
+      }
+      if (!form.terms.trim()) {
+        setStatus('❌ Please specify payment terms');
+        setSubmitting(false);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setStatus('❌ Please log in to send a quote');
@@ -34,13 +55,38 @@ export default function VendorRFQResponseForm({ rfqId }) {
         .filter(Boolean)
         .join('\n');
 
+      // basic trust flagging based on vendor verification and rating if present
+      let trust_level = 'neutral';
+      try {
+        const { data: vendorProfile } = await supabase
+          .from('vendors')
+          .select('verified, rating')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (vendorProfile?.verified && (vendorProfile.rating || 0) >= 4.0) {
+          trust_level = 'trusted';
+        } else if (!vendorProfile?.verified) {
+          trust_level = 'unverified';
+        }
+      } catch (e) {
+        // ignore trust calculation errors
+      }
+
+      const risk_flag =
+        Number(form.amount) <= 0 ||
+        form.timeline.length < 3;
+
       const { error } = await supabase.from('rfq_responses').insert([{
         rfq_id: rfqId,
         vendor_id: user.id,
         amount: parseFloat(form.amount),
         message: combinedMessage,
+        timeline: form.timeline,
+        terms: form.terms,
         status: 'submitted',
         attachment_url: null,
+        trust_level,
+        risk_flag,
       }]);
 
       if (error) {

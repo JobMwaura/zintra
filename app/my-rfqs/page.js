@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
-import { Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { Check, X, Loader2, AlertCircle, Shield, Star } from 'lucide-react';
 
 export default function MyRFQsPage() {
   const [rfqs, setRfqs] = useState([]);
+  const [vendorMap, setVendorMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [acting, setActing] = useState(null);
@@ -37,7 +38,27 @@ export default function MyRFQsPage() {
         return;
       }
 
-      setRfqs(data || []);
+      const rfqsData = data || [];
+      setRfqs(rfqsData);
+
+      // fetch vendor profiles for responses
+      const vendorIds = Array.from(
+        new Set(
+          rfqsData.flatMap((r) => (r.rfq_responses || []).map((resp) => resp.vendor_id)).filter(Boolean)
+        )
+      );
+      if (vendorIds.length) {
+        const { data: vendors } = await supabase
+          .from('vendors')
+          .select('id, user_id, company_name, rating, verified, phone, email');
+        const map = {};
+        (vendors || []).forEach((v) => {
+          map[v.user_id || v.id] = v;
+        });
+        setVendorMap(map);
+      } else {
+        setVendorMap({});
+      }
       setLoading(false);
     } catch (err) {
       setMessage(`Error: ${err.message}`);
@@ -114,36 +135,72 @@ export default function MyRFQsPage() {
                 {(rfq.rfq_responses || []).length === 0 ? (
                   <p className="text-sm text-slate-500">No quotes yet.</p>
                 ) : (
-                  rfq.rfq_responses.map((resp) => (
-                    <div key={resp.id} className="border border-slate-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">Quote: KSh {resp.amount?.toLocaleString?.() || resp.amount}</p>
-                          <p className="text-xs text-slate-500">Timeline: {resp.timeline || 'N/A'} • Terms: {resp.terms || 'N/A'}</p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">
-                          {resp.status || 'submitted'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-700 mt-2">{resp.message}</p>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => updateResponseStatus(resp.id, 'accepted', rfq.id)}
-                          disabled={acting === resp.id}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60"
-                        >
-                          <Check className="w-4 h-4" /> Accept
-                        </button>
-                        <button
-                          onClick={() => updateResponseStatus(resp.id, 'declined', rfq.id)}
-                          disabled={acting === resp.id}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded border border-slate-300 text-slate-700 text-xs font-semibold disabled:opacity-60"
-                        >
-                          <X className="w-4 h-4" /> Decline
-                        </button>
-                      </div>
+                  <>
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-slate-600">Vendor</th>
+                            <th className="px-3 py-2 text-left text-slate-600">Price</th>
+                            <th className="px-3 py-2 text-left text-slate-600">Timeline</th>
+                            <th className="px-3 py-2 text-left text-slate-600">Terms</th>
+                            <th className="px-3 py-2 text-left text-slate-600">Trust</th>
+                            <th className="px-3 py-2 text-left text-slate-600">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {rfq.rfq_responses
+                            .slice()
+                            .sort((a, b) => (a.amount || 0) - (b.amount || 0))
+                            .map((resp) => {
+                              const vendor = vendorMap[resp.vendor_id];
+                              return (
+                                <tr key={resp.id} className="hover:bg-slate-50">
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-slate-900">{vendor?.company_name || 'Vendor'}</span>
+                                      {vendor?.verified && <Shield className="w-4 h-4 text-emerald-600" />}
+                                      {vendor?.rating ? (
+                                        <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+                                          <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> {vendor.rating}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-900">KSh {resp.amount?.toLocaleString?.() || resp.amount}</td>
+                                  <td className="px-3 py-2 text-slate-700">{resp.timeline || 'N/A'}</td>
+                                  <td className="px-3 py-2 text-slate-700">{resp.terms || 'N/A'}</td>
+                                  <td className="px-3 py-2 text-slate-700">
+                                    <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">
+                                      {resp.trust_level || 'neutral'}
+                                    </span>
+                                    {resp.risk_flag && <span className="ml-2 text-xs text-red-600">⚠️ check details</span>}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => updateResponseStatus(resp.id, 'accepted', rfq.id)}
+                                        disabled={acting === resp.id}
+                                        className="inline-flex items-center gap-1 px-3 py-1 rounded bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60"
+                                      >
+                                        <Check className="w-4 h-4" /> Accept
+                                      </button>
+                                      <button
+                                        onClick={() => updateResponseStatus(resp.id, 'declined', rfq.id)}
+                                        disabled={acting === resp.id}
+                                        className="inline-flex items-center gap-1 px-3 py-1 rounded border border-slate-300 text-slate-700 text-xs font-semibold disabled:opacity-60"
+                                      >
+                                        <X className="w-4 h-4" /> Decline
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
                     </div>
-                  ))
+                  </>
                 )}
               </div>
             </div>
