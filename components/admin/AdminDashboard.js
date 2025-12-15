@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { 
   Mail, FileText, Settings, LogOut, Home, CreditCard, BarChart3, User, 
@@ -24,6 +25,9 @@ export default function AdminDashboard() {
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [vendorStats, setVendorStats] = useState({});
   const [rfqsLoading, setRFQsLoading] = useState(false);
+  const [pendingVendors, setPendingVendors] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
 
   // Create RFQ State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -50,6 +54,8 @@ export default function AdminDashboard() {
     fetchAdminData();
     fetchAllRFQs();
     fetchAnalytics();
+    fetchPendingVendors();
+    fetchAdminUsers();
   }, []);
 
   // Fetch admin profile - FIXED VERSION
@@ -210,6 +216,82 @@ export default function AdminDashboard() {
       console.error('Error fetching analytics:', err);
     }
   };
+
+  const fetchPendingVendors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) {
+        console.error('Error fetching pending vendors:', error);
+        return;
+      }
+      setPendingVendors(data || []);
+    } catch (err) {
+      console.error('Error fetching pending vendors:', err);
+    }
+  };
+
+  const fetchAdminUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching admin users:', error);
+        return;
+      }
+      setAdminUsers(data || []);
+    } catch (err) {
+      console.error('Error fetching admin users:', err);
+    }
+  };
+
+  const updateVendorStatus = async (vendorId, status) => {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update({ status })
+        .eq('id', vendorId);
+      if (error) {
+        setMessage(`Error updating vendor: ${error.message}`);
+        return;
+      }
+      setMessage(`Vendor updated to ${status}`);
+      fetchPendingVendors();
+      fetchAnalytics();
+    } catch (err) {
+      setMessage(`Error: ${err.message}`);
+    }
+  };
+
+  const approveVendor = (vendorId) => updateVendorStatus(vendorId, 'active');
+  const rejectVendor = (vendorId) => updateVendorStatus(vendorId, 'rejected');
+  const suspendVendor = (vendorId) => updateVendorStatus(vendorId, 'suspended');
+  const flagVendor = (vendorId) => updateVendorStatus(vendorId, 'flagged');
+
+  useEffect(() => {
+    const activity = [];
+    pendingRFQs.slice(0, 5).forEach((rfq) => {
+      activity.push({ type: 'rfq_pending', title: rfq.title || rfq.projectTitle || 'RFQ', date: rfq.created_at });
+    });
+    activeRFQs.slice(0, 5).forEach((rfq) => {
+      activity.push({ type: 'rfq_active', title: rfq.title || rfq.projectTitle || 'RFQ', date: rfq.created_at });
+    });
+    pendingVendors.slice(0, 5).forEach((vendor) => {
+      activity.push({ type: 'vendor_pending', title: vendor.company_name || vendor.businessName || 'Vendor', date: vendor.created_at });
+    });
+    const sorted = activity
+      .filter((a) => a.date)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 8);
+    setRecentActivity(sorted);
+  }, [pendingRFQs, activeRFQs, pendingVendors]);
 
   // Create new RFQ
   const handleCreateRFQ = async (e) => {
@@ -535,27 +617,68 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Recent Activity */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent RFQs</h3>
-                  {rfqsLoading ? (
-                    <p className="text-gray-600">Loading...</p>
-                  ) : pendingRFQs.length > 0 ? (
-                    <div className="space-y-3">
-                      {pendingRFQs.slice(0, 5).map(rfq => (
-                        <div key={rfq.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">{rfq.title}</p>
-                            <p className="text-sm text-gray-600">{rfq.category}</p>
+                {/* Moderation + Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vendors Pending Review</h3>
+                    {pendingVendors.length === 0 ? (
+                      <p className="text-sm text-gray-600">No pending vendors.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {pendingVendors.map((vendor) => (
+                          <div key={vendor.id} className="border border-gray-200 rounded-lg p-3 flex items-start justify-between">
+                            <div>
+                              <p className="font-semibold text-gray-900">{vendor.company_name || vendor.businessName}</p>
+                              <p className="text-xs text-gray-500">{vendor.category} • {vendor.location}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => approveVendor(vendor.id)} className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">Approve</button>
+                              <button onClick={() => rejectVendor(vendor.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">Reject</button>
+                              <button onClick={() => suspendVendor(vendor.id)} className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-semibold">Suspend</button>
+                              <button onClick={() => flagVendor(vendor.id)} className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs font-semibold">Flag</button>
+                            </div>
                           </div>
-                          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
-                            Pending
-                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                    {recentActivity.length === 0 ? (
+                      <p className="text-sm text-gray-600">No recent activity.</p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {recentActivity.map((item, idx) => (
+                          <li key={idx} className="flex items-start justify-between">
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
+                              <p className="text-xs text-gray-500">{item.type.replace('_', ' ')} • {item.date ? new Date(item.date).toLocaleDateString() : ''}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                {/* Admin Users */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Admin Users</h3>
+                    <Link href="/admin/users" className="text-amber-700 text-sm font-semibold hover:underline">Manage</Link>
+                  </div>
+                  {adminUsers.length === 0 ? (
+                    <p className="text-sm text-gray-600">No admin users found.</p>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {adminUsers.map((admin) => (
+                        <div key={admin.id} className="border border-gray-200 rounded-lg p-3">
+                          <p className="font-semibold text-gray-900 text-sm">{admin.email || 'Admin'}</p>
+                          <p className="text-xs text-gray-500">Role: {admin.role || 'admin'} • Status: {admin.status || 'active'}</p>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-gray-600 text-center py-8">No pending RFQs</p>
                   )}
                 </div>
               </div>
