@@ -44,18 +44,52 @@ create table if not exists public.rfqs (
   title text not null,
   description text,
   category text,
+  auto_category text,
   budget_range text,
   timeline text,
   location text,
   county text,
-  status text default 'pending', -- pending|open|closed|rejected
+  project_type text,
+  urgency text default 'flexible', -- asap|normal|flexible
+  
+  -- Buyer info
   user_id uuid, -- buyer user id
   buyer_id uuid, -- alias
+  buyer_name text,
+  buyer_email text,
+  buyer_phone text,
+  buyer_reputation text default 'new', -- new|bronze|silver|gold
+  
+  -- Services & specifications
+  services_required jsonb default '[]'::jsonb,
+  material_requirements text,
+  dimensions jsonb default '{"length":"","width":"","height":""}'::jsonb,
+  quality_preference text,
+  site_accessibility text,
+  delivery_preference text,
+  
+  -- Media & attachments
+  reference_images jsonb default '[]'::jsonb,
+  documents jsonb default '[]'::jsonb,
+  
+  -- Admin validation & flags
+  status text default 'pending', -- pending|open|closed|rejected|needs_verification|needs_review|needs_fix
+  validation_status text default 'pending', -- pending|validated|needs_review|rejected
+  spam_score int default 0,
+  budget_flag boolean default false,
+  rejection_reason text,
+  
+  published_at timestamptz,
+  closed_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 create index if not exists idx_rfqs_status on public.rfqs(status);
+create index if not exists idx_rfqs_validation_status on public.rfqs(validation_status);
 create index if not exists idx_rfqs_category on public.rfqs(category);
+create index if not exists idx_rfqs_user_id on public.rfqs(user_id);
+create index if not exists idx_rfqs_county on public.rfqs(county);
+create index if not exists idx_rfqs_created_at on public.rfqs(created_at);
 
 -- RFQ requests (invites to vendors)
 create table if not exists public.rfq_requests (

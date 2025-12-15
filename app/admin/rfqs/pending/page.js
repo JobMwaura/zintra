@@ -405,6 +405,77 @@ export default function PendingRFQs() {
                 </div>
               </div>
 
+              {/* Material Requirements */}
+              {selectedRFQ.material_requirements && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-3" style={{ color: '#535554' }}>Material Requirements</h3>
+                  <p className="text-gray-900 whitespace-pre-wrap">{selectedRFQ.material_requirements}</p>
+                </div>
+              )}
+
+              {/* Dimensions */}
+              {selectedRFQ.dimensions && (Object.values(selectedRFQ.dimensions).some(v => v)) && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-3" style={{ color: '#535554' }}>Dimensions</h3>
+                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                    {selectedRFQ.dimensions.length && (
+                      <div>
+                        <p className="text-gray-500">Length</p>
+                        <p className="font-medium text-gray-900">{selectedRFQ.dimensions.length} m</p>
+                      </div>
+                    )}
+                    {selectedRFQ.dimensions.width && (
+                      <div>
+                        <p className="text-gray-500">Width</p>
+                        <p className="font-medium text-gray-900">{selectedRFQ.dimensions.width} m</p>
+                      </div>
+                    )}
+                    {selectedRFQ.dimensions.height && (
+                      <div>
+                        <p className="text-gray-500">Height</p>
+                        <p className="font-medium text-gray-900">{selectedRFQ.dimensions.height} m</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Quality Preferences */}
+              {selectedRFQ.quality_preference && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-3" style={{ color: '#535554' }}>Quality Preference</h3>
+                  <p className="text-gray-900">{selectedRFQ.quality_preference}</p>
+                </div>
+              )}
+
+              {/* Buyer Reputation */}
+              {selectedRFQ.buyer_reputation && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">Buyer Reputation</p>
+                  <p className="font-semibold text-gray-900 capitalize">{selectedRFQ.buyer_reputation}</p>
+                </div>
+              )}
+
+              {/* Validation & Spam Info */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="grid md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Validation Status</p>
+                    <p className="font-medium text-gray-900 capitalize">{selectedRFQ.validation_status || 'pending'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Spam Score</p>
+                    <p className={`font-medium ${(selectedRFQ.spam_score || 0) > 50 ? 'text-red-600' : 'text-green-600'}`}>
+                      {selectedRFQ.spam_score || 0}/100
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Urgency</p>
+                    <p className="font-medium text-gray-900 capitalize">{selectedRFQ.urgency || 'flexible'}</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Additional Notes */}
               {selectedRFQ.additionalNotes && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

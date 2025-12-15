@@ -96,6 +96,9 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
+          <a href="/admin/rfqs" className="mt-4 inline-block text-sm font-medium text-orange-600 hover:text-orange-700">
+            View RFQ Management →
+          </a>
         </div>
 
         {/* Users Card */}
