@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import {
   Search, Filter, MapPin, Star, CheckCircle, AlertTriangle, Eye, X, 
   Mail, Shield, User, Download, MessageSquare, ArrowLeft, TrendingUp,
-  AlertCircle, Phone, Building2, ArrowUpDown
+  AlertCircle, Phone, Building2, ArrowUpDown, Trash2, PauseCircle
 } from 'lucide-react';
 
 export default function ConsolidatedVendors() {
@@ -25,6 +25,9 @@ export default function ConsolidatedVendors() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [vendorReviews, setVendorReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   // Bulk selection
   const [selectedVendorIds, setSelectedVendorIds] = useState([]);
@@ -137,6 +140,47 @@ export default function ConsolidatedVendors() {
   const handleReactivate = async (vendorId) => {
     if (!confirm('Reactivate this vendor?')) return;
     await updateVendorStatus(vendorId, 'active');
+  };
+
+  const handleFlag = async (vendorId) => {
+    if (!confirm('Flag this vendor for review?')) return;
+    await updateVendorStatus(vendorId, 'flagged');
+  };
+
+  const handleDelete = async (vendorId) => {
+    if (!confirm('Are you sure you want to delete this vendor? This action cannot be undone.')) return;
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update({ status: 'deleted' })
+        .eq('id', vendorId);
+
+      if (error) throw error;
+      setMessage('✓ Vendor deleted successfully');
+      setShowDetailModal(false);
+      fetchAllVendors();
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const fetchVendorReviews = async (vendorId) => {
+    try {
+      setLoadingReviews(true);
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setVendorReviews(data || []);
+      setShowReviewsModal(true);
+    } catch (error) {
+      setMessage(`Error loading reviews: ${error.message}`);
+    } finally {
+      setLoadingReviews(false);
+    }
   };
 
   const resetFilters = () => {
@@ -394,80 +438,129 @@ export default function ConsolidatedVendors() {
 
         {/* Actions */}
         <div className="flex gap-2 flex-wrap">
-          {activeTab === 'pending' && (
-            <>
-              <button
-                onClick={() => handleApprove(vendor.id)}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Approve
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedVendor(vendor);
-                  setShowDetailModal(true);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition flex items-center gap-2 text-sm"
-              >
-                <Eye className="w-4 h-4" />
-                View
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedVendor(vendor);
-                  setShowRejectModal(true);
-                }}
-                className="px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition text-sm"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          )}
+        {activeTab === 'pending' && (
+          <>
+            <button
+              onClick={() => handleApprove(vendor.id)}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Approve
+            </button>
+            <button
+              onClick={() => {
+                setSelectedVendor(vendor);
+                setShowDetailModal(true);
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition flex items-center gap-2 text-sm"
+            >
+              <Eye className="w-4 h-4" />
+              View
+            </button>
+            <button
+              onClick={() => {
+                setSelectedVendor(vendor);
+                setShowRejectModal(true);
+              }}
+              className="px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition text-sm"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleFlag(vendor.id)}
+              className="px-4 py-2 border border-orange-300 rounded-lg text-orange-600 hover:bg-orange-50 transition flex items-center gap-2 text-sm"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Flag
+            </button>
+          </>
+        )}
 
-          {activeTab === 'active' && (
-            <>
-              <button
-                onClick={() => {
-                  setSelectedVendor(vendor);
-                  setShowDetailModal(true);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm"
-              >
-                <Eye className="w-4 h-4" />
-                View
-              </button>
-              <button
-                onClick={() => handleSuspend(vendor.id)}
-                className="px-4 py-2 border border-yellow-300 rounded-lg text-yellow-600 hover:bg-yellow-50 transition flex items-center gap-2 text-sm"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Suspend
-              </button>
-            </>
-          )}
+        {activeTab === 'active' && (
+          <>
+            <button
+              onClick={() => {
+                setSelectedVendor(vendor);
+                setShowDetailModal(true);
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm"
+            >
+              <Eye className="w-4 h-4" />
+              View
+            </button>
+            <button
+              onClick={() => fetchVendorReviews(vendor.id)}
+              className="px-4 py-2 border border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition flex items-center gap-2 text-sm"
+            >
+              <Star className="w-4 h-4" />
+              Reviews
+            </button>
+            <button
+              onClick={() => handleSuspend(vendor.id)}
+              className="px-4 py-2 border border-yellow-300 rounded-lg text-yellow-600 hover:bg-yellow-50 transition flex items-center gap-2 text-sm"
+            >
+              <PauseCircle className="w-4 h-4" />
+              Suspend
+            </button>
+            <button
+              onClick={() => handleFlag(vendor.id)}
+              className="px-4 py-2 border border-orange-300 rounded-lg text-orange-600 hover:bg-orange-50 transition flex items-center gap-2 text-sm"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Flag
+            </button>
+            <button
+              onClick={() => alert('Messaging coming soon')}
+              className="px-4 py-2 border border-purple-300 rounded-lg text-purple-600 hover:bg-purple-50 transition flex items-center gap-2 text-sm"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Message
+            </button>
+            <button
+              onClick={() => handleDelete(vendor.id)}
+              className="px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition flex items-center gap-2 text-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </>
+        )}
 
-          {activeTab === 'rejected' && (
-            <>
-              <button
-                onClick={() => {
-                  setSelectedVendor(vendor);
-                  setShowDetailModal(true);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm"
-              >
-                <Eye className="w-4 h-4" />
-                View
-              </button>
-              <button
-                onClick={() => handleReactivate(vendor.id)}
-                className="px-4 py-2 border border-green-300 rounded-lg text-green-600 hover:bg-green-50 transition flex items-center gap-2 text-sm"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Reactivate
-              </button>
-            </>
-          )}
+        {activeTab === 'rejected' && (
+          <>
+            <button
+              onClick={() => {
+                setSelectedVendor(vendor);
+                setShowDetailModal(true);
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm"
+            >
+              <Eye className="w-4 h-4" />
+              View
+            </button>
+            <button
+              onClick={() => fetchVendorReviews(vendor.id)}
+              className="px-4 py-2 border border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition flex items-center gap-2 text-sm"
+            >
+              <Star className="w-4 h-4" />
+              Reviews
+            </button>
+            <button
+              onClick={() => handleReactivate(vendor.id)}
+              className="px-4 py-2 border border-green-300 rounded-lg text-green-600 hover:bg-green-50 transition flex items-center gap-2 text-sm"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Reactivate
+            </button>
+            <button
+              onClick={() => handleDelete(vendor.id)}
+              className="px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition flex items-center gap-2 text-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </>
+        )}
         </div>
       </div>
     </div>
@@ -993,6 +1086,80 @@ export default function ConsolidatedVendors() {
                   Reject
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Modal */}
+      {showReviewsModal && selectedVendor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Vendor Reviews</h2>
+                <p className="text-sm text-gray-600">{selectedVendor.company_name}</p>
+              </div>
+              <button
+                onClick={() => setShowReviewsModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {loadingReviews ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#ea8f1e' }}></div>
+                  <p className="mt-2 text-gray-600">Loading reviews...</p>
+                </div>
+              ) : vendorReviews.length === 0 ? (
+                <div className="text-center py-8">
+                  <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600">No reviews yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {vendorReviews.map((review) => (
+                    <div key={review.id} className="border border-gray-200 rounded-lg p-4 hover:border-orange-200 transition">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < (review.rating || 0)
+                                    ? 'text-yellow-400 fill-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{review.rating}/5</span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString() : ''}
+                        </p>
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium mb-2">{review.author || 'Anonymous'}</p>
+                      <p className="text-sm text-gray-700 mb-3">{review.comment}</p>
+                      
+                      {review.vendor_response && (
+                        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                          <p className="text-xs font-medium text-blue-900 mb-1">Vendor Response</p>
+                          <p className="text-sm text-blue-800">{review.vendor_response}</p>
+                          {review.responded_at && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              {new Date(review.responded_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
