@@ -52,6 +52,8 @@ export default function VendorProfilePage() {
   const [products, setProducts] = useState([]);
   const [services, setServices] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [replySaving, setReplySaving] = useState(false);
 
   const [form, setForm] = useState({
     company_name: '',
@@ -127,10 +129,14 @@ export default function VendorProfilePage() {
           { id: 5, name: 'Contractor Referrals', description: 'Connect with our network of trusted contractors for your project' },
         ]);
 
-        setReviews([
-          { id: 1, author: 'Sarah Johnson', rating: 5, text: 'Excellent service and quality materials. Delivered faster than expected!', date: 'Dec 10, 2024', replied: false },
-          { id: 2, author: 'Michael Chen', rating: 4, text: 'Good prices and knowledgeable staff. Highly recommended.', date: 'Dec 8, 2024', replied: true },
-        ]);
+        // Load reviews from Supabase
+        const { data: reviewData } = await supabase
+          .from('reviews')
+          .select('*')
+          .eq('vendor_id', vendorId)
+          .order('created_at', { ascending: false });
+
+        setReviews(reviewData || []);
 
         setLoading(false);
       } catch (err) {
@@ -269,6 +275,30 @@ export default function VendorProfilePage() {
   const canEdit =
     !!currentUser &&
     (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
+
+  const handleReplyChange = (id, value) => {
+    setReplyDrafts((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const saveReply = async (reviewId) => {
+    if (!canEdit) return;
+    const reply = replyDrafts[reviewId]?.trim();
+    setReplySaving(true);
+    const { error } = await supabase
+      .from('reviews')
+      .update({ vendor_response: reply || null, responded_at: new Date().toISOString() })
+      .eq('id', reviewId);
+    if (!error) {
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === reviewId ? { ...r, vendor_response: reply || null, responded_at: new Date().toISOString() } : r
+        )
+      );
+    } else {
+      console.error('Error saving reply:', error);
+    }
+    setReplySaving(false);
+  };
 
   if (loading) {
     return (
@@ -782,19 +812,47 @@ export default function VendorProfilePage() {
                 <div key={review.id} className="bg-white rounded-lg border border-slate-200 p-6">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h4 className="font-semibold text-slate-900">{review.author}</h4>
-                      <p className="text-xs text-slate-500 mt-1">{review.date}</p>
+                      <h4 className="font-semibold text-slate-900">{review.author || 'Customer'}</h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {review.created_at ? new Date(review.created_at).toLocaleDateString() : ''}
+                      </p>
                     </div>
                     <div className="flex gap-0.5">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} />
+                        <Star key={i} className={`w-4 h-4 ${i < (review.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} />
                       ))}
                     </div>
                   </div>
-                  <p className="text-slate-700 mb-3">{review.text}</p>
-                  {review.replied && <p className="text-sm text-emerald-600 font-semibold">✓ Vendor replied</p>}
+                  <p className="text-slate-700 mb-4">{review.comment || review.text}</p>
+
+                  {review.vendor_response ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
+                      <p className="font-semibold mb-1">Vendor response</p>
+                      <p>{review.vendor_response}</p>
+                    </div>
+                  ) : canEdit ? (
+                    <div className="space-y-2">
+                      <textarea
+                        rows={3}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        placeholder="Write a response to this review..."
+                        value={replyDrafts[review.id] ?? ''}
+                        onChange={(e) => handleReplyChange(review.id, e.target.value)}
+                      />
+                      <button
+                        onClick={() => saveReply(review.id)}
+                        disabled={replySaving}
+                        className="inline-flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 disabled:opacity-60"
+                      >
+                        {replySaving ? 'Saving...' : 'Post Response'}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ))}
+              {reviews.length === 0 && (
+                <p className="text-sm text-slate-500">No reviews yet.</p>
+              )}
             </div>
           </div>
         )}
