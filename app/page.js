@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -71,6 +72,23 @@ export default function ZintraHomepage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
+  const [vendorProfileLink, setVendorProfileLink] = useState('');
+
+  useEffect(() => {
+    const fetchVendorProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: vendor } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (vendor?.id) {
+        setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+      }
+    };
+    fetchVendorProfile();
+  }, []);
 
   const categories = [
     { name: 'Building & Structural Materials', icon: Building2, description: 'Cement, concrete, bricks, blocks, and structural steel', type: 'materials' },
@@ -137,14 +155,24 @@ export default function ZintraHomepage() {
               <Link href="/contact" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Contact</Link>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Login</button>
-              </Link>
-              <Link href="/vendor-registration">
-                <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
-                  Sign Up
-                </button>
-              </Link>
+              {vendorProfileLink ? (
+                <Link href={vendorProfileLink}>
+                  <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                    My Profile
+                  </button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Login</button>
+                  </Link>
+                  <Link href="/vendor-registration">
+                    <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                      Sign Up
+                    </button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

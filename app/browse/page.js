@@ -15,9 +15,22 @@ export default function BrowseVendors() {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
   const [showFilters, setShowFilters] = useState(false);
+  const [vendorProfileLink, setVendorProfileLink] = useState('');
 
   // ✅ Fetch vendors and extract filters
   useEffect(() => {
+    const fetchVendorProfileLink = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: vendor } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (vendor?.id) setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+    };
+    fetchVendorProfileLink();
+
     const fetchVendors = async () => {
       setLoading(true);
       const { data, error } = await supabase.from('vendors').select('*');
@@ -67,6 +80,22 @@ export default function BrowseVendors() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Top nav */}
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-8 text-sm font-medium">
+            <Link href="/" className="text-gray-700 hover:text-gray-900">Home</Link>
+            <Link href="/browse" className="text-gray-700 hover:text-gray-900">Browse</Link>
+            <Link href="/post-rfq" className="text-gray-700 hover:text-gray-900">Post RFQ</Link>
+          </div>
+          {vendorProfileLink && (
+            <Link href={vendorProfileLink} className="text-sm font-semibold text-amber-700 hover:underline">
+              Back to Profile
+            </Link>
+          )}
+        </div>
+      </nav>
+
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
