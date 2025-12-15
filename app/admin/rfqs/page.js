@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { AlertCircle, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 
-export default function RFQsRoot() {
+function RFQsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
@@ -256,5 +256,20 @@ export default function RFQsRoot() {
         ← Back to Dashboard
       </Link>
     </div>
+  );
+}
+
+export default function RFQsRoot() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#ea8f1e' }}></div>
+          <p className="mt-4 text-gray-600">Loading RFQs...</p>
+        </div>
+      </div>
+    }>
+      <RFQsContent />
+    </Suspense>
   );
 }
