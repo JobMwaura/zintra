@@ -235,8 +235,9 @@ export default function PendingVendors() {
               </div>
             </div>
           ))}
-        </div>
+        )}
       </div>
+    </div>
 
       {/* Detail Modal */}
       {showDetailModal && selectedVendor && (
