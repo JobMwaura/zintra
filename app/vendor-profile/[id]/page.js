@@ -58,6 +58,21 @@ export default function VendorProfilePage() {
   const [reviews, setReviews] = useState([]);
   const [replyDrafts, setReplyDrafts] = useState({});
   const [replySaving, setReplySaving] = useState(false);
+  const [businessHours, setBusinessHours] = useState([
+    { day: 'Monday - Friday', hours: '7:00 AM - 6:00 PM' },
+    { day: 'Saturday', hours: '8:00 AM - 5:00 PM' },
+    { day: 'Sunday', hours: 'Closed' },
+  ]);
+  const [locations, setLocations] = useState([]);
+  const [newLocation, setNewLocation] = useState('');
+  const [certificationsList, setCertificationsList] = useState([]);
+  const [newCertification, setNewCertification] = useState('');
+  const [highlights, setHighlights] = useState([
+    'Verified & trusted supplier',
+    'Top-rated quality',
+    'Fast response time',
+  ]);
+  const [newHighlight, setNewHighlight] = useState('');
 
   const [form, setForm] = useState({
     company_name: '',
@@ -116,6 +131,27 @@ export default function VendorProfilePage() {
           whatsapp: data.whatsapp || '',
           category: data.category || '',
         });
+        setLocations(
+          (data.locations && Array.isArray(data.locations) ? data.locations : (data.location ? data.location.split(',').map((l) => l.trim()).filter(Boolean) : [])) || []
+        );
+        setCertificationsList(
+          Array.isArray(data.certifications)
+            ? data.certifications
+            : data.certifications
+            ? String(data.certifications)
+                .split(',')
+                .map((c) => c.trim())
+                .filter(Boolean)
+            : []
+        );
+        setHighlights(
+          Array.isArray(data.highlights)
+            ? data.highlights
+            : ['Verified & trusted supplier', 'Top-rated quality', 'Fast response time']
+        );
+        if (data.business_hours && Array.isArray(data.business_hours)) {
+          setBusinessHours(data.business_hours);
+        }
 
         // Mock data
         setProducts([
@@ -214,7 +250,11 @@ export default function VendorProfilePage() {
     const { error: updateError } = await supabase
       .from('vendors')
       .update({
-        location: form.location,
+        location: locations[0] || form.location,
+        locations: locations,
+        business_hours: businessHours,
+        highlights,
+        certifications: certificationsList,
         county: form.county,
         phone: form.phone,
         email: form.email,
@@ -228,7 +268,15 @@ export default function VendorProfilePage() {
     if (updateError) {
       setError('Failed to save: ' + updateError.message);
     } else {
-      setVendor((prev) => ({ ...prev, ...form }));
+      setVendor((prev) => ({
+        ...prev,
+        ...form,
+        location: locations[0] || form.location,
+        locations,
+        business_hours: businessHours,
+        highlights,
+        certifications: certificationsList,
+      }));
       setEditingContact(false);
     }
     setSaving(false);
@@ -256,6 +304,36 @@ export default function VendorProfilePage() {
 
   const deleteService = (id) => {
     setServices(services.filter((s) => s.id !== id));
+  };
+
+  const addLocationItem = () => {
+    if (!newLocation.trim()) return;
+    setLocations((prev) => [...prev, newLocation.trim()]);
+    setNewLocation('');
+  };
+
+  const removeLocation = (idx) => {
+    setLocations((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addCertificationItem = () => {
+    if (!newCertification.trim()) return;
+    setCertificationsList((prev) => [...prev, newCertification.trim()]);
+    setNewCertification('');
+  };
+
+  const removeCertification = (idx) => {
+    setCertificationsList((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addHighlightItem = () => {
+    if (!newHighlight.trim()) return;
+    setHighlights((prev) => [...prev, newHighlight.trim()]);
+    setNewHighlight('');
+  };
+
+  const removeHighlight = (idx) => {
+    setHighlights((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const initials = useMemo(() => {
@@ -662,19 +740,45 @@ export default function VendorProfilePage() {
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h3 className="font-bold text-slate-900 mb-4">Business Hours</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Monday - Friday</span>
-                    <span className="font-semibold text-slate-900">7:00 AM - 6:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Saturday</span>
-                    <span className="font-semibold text-slate-900">8:00 AM - 5:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Sunday</span>
-                    <span className="font-semibold text-slate-900">Closed</span>
-                  </div>
+                  {businessHours.map((row, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span className="text-slate-600">{row.day}</span>
+                      <span className="font-semibold text-slate-900">{row.hours}</span>
+                    </div>
+                  ))}
                 </div>
+                {canEdit && (
+                  <div className="mt-3 space-y-2">
+                    {businessHours.map((row, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          value={row.day}
+                          onChange={(e) => {
+                            const next = [...businessHours];
+                            next[idx] = { ...next[idx], day: e.target.value };
+                            setBusinessHours(next);
+                          }}
+                          className="flex-1 border border-slate-300 rounded px-2 py-1 text-xs"
+                        />
+                        <input
+                          value={row.hours}
+                          onChange={(e) => {
+                            const next = [...businessHours];
+                            next[idx] = { ...next[idx], hours: e.target.value };
+                            setBusinessHours(next);
+                          }}
+                          className="flex-1 border border-slate-300 rounded px-2 py-1 text-xs"
+                        />
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setBusinessHours((prev) => [...prev, { day: 'New', hours: 'Hours' }])}
+                      className="text-xs text-amber-700 font-semibold"
+                    >
+                      + Add row
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Contact Information */}
@@ -693,7 +797,43 @@ export default function VendorProfilePage() {
                     <input name="email" value={form.email} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="Email" />
                     <input name="website" value={form.website} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="Website" />
                     <input name="whatsapp" value={form.whatsapp} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="WhatsApp" />
-                    <input name="location" value={form.location} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="Location" />
+                    <div className="space-y-2">
+                      <input
+                        name="location"
+                        value={locations[0] || form.location}
+                        onChange={(e) => {
+                          const updated = [...locations];
+                          updated[0] = e.target.value;
+                          setLocations(updated);
+                          handleFieldChange(e);
+                        }}
+                        className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm"
+                        placeholder="Primary Location"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          value={newLocation}
+                          onChange={(e) => setNewLocation(e.target.value)}
+                          className="flex-1 border border-slate-300 rounded px-3 py-1.5 text-sm"
+                          placeholder="Add another location"
+                        />
+                        <button
+                          type="button"
+                          onClick={addLocationItem}
+                          className="px-3 py-1.5 bg-amber-600 text-white rounded text-sm font-semibold hover:bg-amber-700"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {locations.slice(1).map((loc, idx) => (
+                        <div key={idx} className="flex items-center justify-between border border-slate-200 rounded px-3 py-1">
+                          <span className="text-sm text-slate-700">{loc}</span>
+                          <button onClick={() => removeLocation(idx + 1)} className="text-xs text-red-600 hover:underline">
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                     <input name="county" value={form.county} onChange={handleFieldChange} className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm" placeholder="County" />
                     <button onClick={handleSaveContact} disabled={saving} className="w-full px-3 py-1.5 bg-amber-600 text-white rounded text-sm font-semibold hover:bg-amber-700 disabled:opacity-60">
                       Save
@@ -721,12 +861,16 @@ export default function VendorProfilePage() {
                         </a>
                       </div>
                     )}
-                    {vendor.location && (
+                    {(vendor.locations && vendor.locations.length > 0) || vendor.location ? (
                       <div>
-                        <p className="text-slate-500 text-xs font-semibold mb-1">LOCATION</p>
-                        <p className="text-slate-900 font-medium">{vendor.location}{vendor.county ? `, ${vendor.county}` : ''}</p>
+                        <p className="text-slate-500 text-xs font-semibold mb-1">LOCATIONS</p>
+                        <div className="space-y-1">
+                          {(vendor.locations || [vendor.location]).filter(Boolean).map((loc, idx) => (
+                            <p key={idx} className="text-slate-900 font-medium">{loc}{vendor.county && idx === 0 ? `, ${vendor.county}` : ''}</p>
+                          ))}
+                        </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -805,35 +949,71 @@ export default function VendorProfilePage() {
               {/* Certifications */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <h3 className="font-bold text-slate-900 mb-4">Certifications</h3>
+                {canEdit && (
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      value={newCertification}
+                      onChange={(e) => setNewCertification(e.target.value)}
+                      className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+                      placeholder="Add certification"
+                    />
+                    <button
+                      onClick={addCertificationItem}
+                      className="px-3 py-2 bg-amber-600 text-white rounded text-sm font-semibold hover:bg-amber-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
                 <ul className="space-y-2 text-sm text-slate-700">
-                  <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-600" /> LEED Certified
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-600" /> ISO 9001:2015
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-600" /> Green Supplier
-                  </li>
+                  {certificationsList.length === 0 && <li className="text-slate-500">No certifications listed.</li>}
+                  {certificationsList.map((cert, idx) => (
+                    <li key={idx} className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-amber-600" /> {cert}
+                      </span>
+                      {canEdit && (
+                        <button onClick={() => removeCertification(idx)} className="text-xs text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      )}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
               {/* Highlights */}
               <div className="bg-amber-50 rounded-lg border border-amber-200 p-6">
                 <h3 className="font-bold text-slate-900 mb-4">Why Choose Us</h3>
+                {canEdit && (
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      value={newHighlight}
+                      onChange={(e) => setNewHighlight(e.target.value)}
+                      className="flex-1 border border-amber-300 rounded px-3 py-2 text-sm"
+                      placeholder="Add highlight"
+                    />
+                    <button
+                      onClick={addHighlightItem}
+                      className="px-3 py-2 bg-amber-600 text-white rounded text-sm font-semibold hover:bg-amber-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
                 <ul className="space-y-3 text-sm">
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                    <span className="text-slate-700">Verified & trusted supplier</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                    <span className="text-slate-700">Top-rated quality</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                    <span className="text-slate-700">Fast response time</span>
-                  </li>
+                  {highlights.length === 0 && <li className="text-slate-600">Add reasons to choose you.</li>}
+                  {highlights.map((item, idx) => (
+                    <li key={idx} className="flex gap-2 items-start">
+                      <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-slate-700 flex-1">{item}</span>
+                      {canEdit && (
+                        <button onClick={() => removeHighlight(idx)} className="text-xs text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      )}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
