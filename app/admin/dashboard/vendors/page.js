@@ -228,11 +228,12 @@ export default function ConsolidatedVendors() {
       }
 
       // Insert message
+      const recipientId = selectedVendor.user_id || selectedVendor.id;
       const { error: messageError } = await supabase
         .from('messages')
         .insert([{
           sender_id: (await supabase.auth.getUser()).data.user.id,
-          recipient_id: selectedVendor.id,
+          recipient_id: recipientId,
           conversation_id: conversationId,
           body: messageBody,
           message_type: 'admin_to_vendor'
