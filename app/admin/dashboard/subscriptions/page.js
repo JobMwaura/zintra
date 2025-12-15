@@ -51,29 +51,35 @@ export default function SubscriptionsAdmin() {
       if (plansError) throw plansError;
       setPlans(plansData || []);
 
-      // Fetch subscriptions with vendor info
+      // Fetch subscriptions (without complex joins to avoid ambiguity)
       const { data: subsData, error: subsError } = await supabase
         .from('vendor_subscriptions')
-        .select(`
-          id,
-          vendor_id,
-          user_id,
-          plan_id,
-          start_date,
-          end_date,
-          status,
-          auto_renew,
-          subscription_plans(id, name, price),
-          vendors(id, company_name, user_id)
-        `)
+        .select('id, vendor_id, user_id, plan_id, start_date, end_date, status, auto_renew, created_at')
         .order('created_at', { ascending: false });
 
       if (subsError) throw subsError;
-      setSubscriptions(subsData || []);
+
+      // Fetch vendors separately
+      const { data: vendorsData } = await supabase
+        .from('vendors')
+        .select('id, company_name, user_id');
+
+      // Enrich subscriptions with plan and vendor info
+      const enrichedSubs = (subsData || []).map(sub => {
+        const plan = plansData?.find(p => p.id === sub.plan_id);
+        const vendor = vendorsData?.find(v => v.id === sub.vendor_id);
+        return {
+          ...sub,
+          subscription_plans: plan,
+          vendors: vendor
+        };
+      });
+
+      setSubscriptions(enrichedSubs);
 
       // Calculate stats
-      const activeCount = (subsData || []).filter(s => s.status === 'active').length;
-      const uniqueVendors = new Set((subsData || []).map(s => s.vendor_id)).size;
+      const activeCount = (enrichedSubs || []).filter(s => s.status === 'active').length;
+      const uniqueVendors = new Set((enrichedSubs || []).map(s => s.vendor_id)).size;
       const totalRevenue = plansData ? plansData.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0) : 0;
 
       setStats({
