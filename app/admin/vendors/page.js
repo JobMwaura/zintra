@@ -36,6 +36,8 @@ export default function VendorsAdminPage() {
   const [ratingFilter, setRatingFilter] = useState('all');
   const [selected, setSelected] = useState([]);
   const [detailVendor, setDetailVendor] = useState(null);
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
 
   useEffect(() => {
     fetchVendors();
@@ -110,7 +112,7 @@ export default function VendorsAdminPage() {
   };
 
   const filtered = useMemo(() => {
-    return vendors.filter((v) => {
+    const base = vendors.filter((v) => {
       const matchesSearch =
         (v.company_name || '').toLowerCase().includes(search.toLowerCase()) ||
         (v.email || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -123,7 +125,21 @@ export default function VendorsAdminPage() {
       const matchesRating = ratingPass(v.rating);
       return matchesSearch && matchesStatus && matchesCategory && matchesCounty && matchesPlan && matchesRating;
     });
-  }, [vendors, search, statusFilter, categoryFilter, countyFilter, planFilter, ratingFilter]);
+    return base.sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      switch (sortKey) {
+        case 'rating':
+          return ((a.rating || 0) - (b.rating || 0)) * dir;
+        case 'rfqs':
+          return ((a.rfqs_completed || a.rfqs_received || 0) - (b.rfqs_completed || b.rfqs_received || 0)) * dir;
+        case 'revenue':
+          return ((a.revenue || 0) - (b.revenue || 0)) * dir;
+        case 'created_at':
+        default:
+          return ((new Date(a.created_at || 0)) - (new Date(b.created_at || 0))) * dir;
+      }
+    });
+  }, [vendors, search, statusFilter, categoryFilter, countyFilter, planFilter, ratingFilter, sortDir, sortKey]);
 
   const categories = useMemo(
     () => ['all', ...Array.from(new Set(vendors.map((v) => v.category).filter(Boolean)))],
@@ -133,6 +149,15 @@ export default function VendorsAdminPage() {
     () => ['all', ...Array.from(new Set(vendors.map((v) => v.county).filter(Boolean)))],
     [vendors]
   );
+
+  const summaryCounts = useMemo(() => {
+    const byStatus = vendors.reduce((acc, v) => {
+      const key = v.status || 'pending';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return byStatus;
+  }, [vendors]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -144,7 +169,7 @@ export default function VendorsAdminPage() {
           </div>
           <div className="flex gap-2 text-sm">
             <button
-              onClick={() => updateVendor(selected, { status: 'active' })}
+              onClick={() => updateVendor(selected, { status: 'active', verified: true })}
               disabled={!selected.length}
               className="px-3 py-2 rounded bg-green-600 text-white disabled:opacity-50"
             >
@@ -182,12 +207,13 @@ export default function VendorsAdminPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200 space-y-3">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-              <input
-                value={search}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg shadow p-4 border border-gray-200 space-y-3 lg:col-span-2">
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <input
+                  value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name, email, phone, ID..."
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
@@ -226,6 +252,31 @@ export default function VendorsAdminPage() {
                 <Filter className="w-4 h-4" /> Refresh
               </button>
             </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4 border border-gray-200 space-y-3">
+            <p className="text-sm font-semibold text-gray-900">Quick Actions</p>
+            <div className="flex flex-col gap-2 text-sm">
+              <button onClick={() => updateVendor(selected, { verified: true })} disabled={!selected.length} className="px-3 py-2 border rounded hover:bg-gray-50 disabled:opacity-50">
+                Verify selected
+              </button>
+              <button onClick={exportCSV} disabled={!filtered.length} className="px-3 py-2 border rounded hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2">
+                <Download className="w-4 h-4" /> Export CSV
+              </button>
+              <button onClick={() => alert('Announcements coming soon')} className="px-3 py-2 border rounded hover:bg-gray-50">
+                Send announcement
+              </button>
+              <button onClick={() => alert('Reports coming soon')} className="px-3 py-2 border rounded hover:bg-gray-50">
+                Performance report
+              </button>
+            </div>
+            <div className="border-t pt-3 text-xs text-gray-600 space-y-1">
+              <p>Status: active {summaryCounts.active || 0}</p>
+              <p>Status: pending {summaryCounts.pending || 0}</p>
+              <p>Status: suspended {summaryCounts.suspended || 0}</p>
+              <p>Status: flagged {summaryCounts.flagged || 0}</p>
+            </div>
           </div>
         </div>
 
@@ -243,15 +294,25 @@ export default function VendorsAdminPage() {
                       }
                     />
                   </th>
-                  <th className="px-4 py-2 text-left">Vendor</th>
+                  <th className="px-4 py-2 text-left cursor-pointer" onClick={() => { setSortKey('company_name'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                    Vendor
+                  </th>
                   <th className="px-4 py-2 text-left">Category</th>
                   <th className="px-4 py-2 text-left">Location</th>
                   <th className="px-4 py-2 text-left">Plan</th>
                   <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Rating</th>
-                  <th className="px-4 py-2 text-left">RFQs</th>
-                  <th className="px-4 py-2 text-left">Revenue</th>
-                  <th className="px-4 py-2 text-left">Joined</th>
+                  <th className="px-4 py-2 text-left cursor-pointer" onClick={() => { setSortKey('rating'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                    Rating
+                  </th>
+                  <th className="px-4 py-2 text-left cursor-pointer" onClick={() => { setSortKey('rfqs'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                    RFQs
+                  </th>
+                  <th className="px-4 py-2 text-left cursor-pointer" onClick={() => { setSortKey('revenue'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                    Revenue
+                  </th>
+                  <th className="px-4 py-2 text-left cursor-pointer" onClick={() => { setSortKey('created_at'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                    Joined
+                  </th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
