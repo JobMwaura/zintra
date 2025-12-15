@@ -165,7 +165,7 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-          <a href="/admin/subscriptions" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700">
+          <a href="/admin/dashboard/subscriptions" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700">
             Manage Subscriptions →
           </a>
         </div>
