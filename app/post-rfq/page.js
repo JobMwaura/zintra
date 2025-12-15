@@ -13,6 +13,14 @@ export default function PostRFQ() {
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [validationSummary, setValidationSummary] = useState({
+    status: 'pending',
+    warnings: [],
+    suggestions: [],
+    spamScore: 0,
+    budgetFlag: null,
+    autoCategory: null,
+  });
   const [formData, setFormData] = useState({
     projectTitle: '',
     category: '',
@@ -69,6 +77,105 @@ export default function PostRFQ() {
       case 'gold': return 999;
       default: return 3;
     }
+  };
+
+  const keywordCategoryMap = [
+    { category: 'Electrical & Lighting', keywords: ['electrical', 'wiring', 'solar', 'lighting', 'panel'] },
+    { category: 'Plumbing & Sanitation', keywords: ['plumb', 'pipe', 'drain', 'bathroom', 'toilet'] },
+    { category: 'Roofing & Waterproofing', keywords: ['roof', 'tile', 'shingle', 'waterproof'] },
+    { category: 'Doors, Windows & Hardware', keywords: ['door', 'window', 'frame', 'handle'] },
+    { category: 'Kitchen & Interior Fittings', keywords: ['kitchen', 'cabinet', 'countertop', 'wardrobe'] },
+    { category: 'HVAC & Climate Solutions', keywords: ['hvac', 'aircon', 'ac', 'vent', 'duct'] },
+    { category: 'Building & Structural Materials', keywords: ['foundation', 'beam', 'column', 'block', 'cement', 'concrete'] },
+  ];
+
+  const inferCategory = (text) => {
+    const lower = text.toLowerCase();
+    const hit = keywordCategoryMap.find((entry) => entry.keywords.some((k) => lower.includes(k)));
+    return hit ? hit.category : null;
+  };
+
+  const parseBudget = (budgetRange) => {
+    if (!budgetRange) return { min: 0, max: 0 };
+    const nums = budgetRange.replace(/[^0-9\-]/g, '').split('-').map((n) => Number(n.trim()) || 0);
+    if (nums.length === 2) return { min: Math.min(nums[0], nums[1]), max: Math.max(nums[0], nums[1]) };
+    const single = nums[0] || 0;
+    return { min: single, max: single };
+  };
+
+  const budgetGuides = {
+    'Electrical & Lighting': { min: 20000, max: 1000000 },
+    'Plumbing & Sanitation': { min: 15000, max: 800000 },
+    'Roofing & Waterproofing': { min: 50000, max: 1500000 },
+    'Kitchen & Interior Fittings': { min: 30000, max: 1200000 },
+    'Building & Structural Materials': { min: 100000, max: 5000000 },
+  };
+
+  const evaluateRFQ = async () => {
+    const warnings = [];
+    const suggestions = [];
+
+    // Required checks
+    if (formData.projectTitle.trim().length < 10 || formData.projectTitle.trim().length > 200) {
+      warnings.push('Title should be between 10 and 200 characters.');
+    }
+    if (formData.description.trim().length < 50) {
+      warnings.push('Description is too short; add more detail to get better quotes.');
+    }
+
+    // Category suggestion
+    if (!formData.category) {
+      const inferred = inferCategory(`${formData.projectTitle} ${formData.description}`);
+      if (inferred) {
+        suggestions.push(`Suggested category: ${inferred}`);
+      } else {
+        warnings.push('Please select a category so we can match the right vendors.');
+      }
+    }
+
+    // Budget realism
+    let budgetFlag = null;
+    const guide = budgetGuides[formData.category];
+    const { min, max } = parseBudget(
+      formData.budgetRange === 'Custom Range'
+        ? `KSh ${formData.customBudgetMin}-${formData.customBudgetMax}`
+        : formData.budgetRange
+    );
+    if (guide) {
+      if (max && max < guide.min * 0.5) {
+        budgetFlag = 'too_low';
+        warnings.push('Budget looks low for this category. Vendors may decline.');
+      }
+      if (min && min > guide.max * 2) {
+        budgetFlag = 'too_high';
+        warnings.push('Budget looks unusually high. Consider entering a realistic range.');
+      }
+    }
+
+    // Simple spam/duplicate risk (client-side heuristic)
+    const { data: dup } = await supabase
+      .from('rfqs')
+      .select('id')
+      .eq('buyer_id', (await supabase.auth.getUser()).data.user?.id || '')
+      .ilike('title', formData.projectTitle.trim())
+      .limit(3);
+    const spamScore =
+      (dup?.length ? 25 : 0) +
+      (formData.description.trim().length < 80 ? 20 : 0) +
+      (warnings.length > 1 ? 10 : 0);
+
+    const status = warnings.length === 0 ? 'validated' : 'needs_fix';
+
+    const summary = {
+      status,
+      warnings,
+      suggestions,
+      spamScore,
+      budgetFlag,
+      autoCategory: suggestions.find((s) => s.startsWith('Suggested category')) || null,
+    };
+    setValidationSummary(summary);
+    return summary;
   };
 
   const rfqLimit = getRfqLimit();
@@ -232,21 +339,36 @@ export default function PostRFQ() {
         return;
       }
 
+      // Run auto-validation
+      const summary = await evaluateRFQ();
+      if (summary.status === 'needs_fix') {
+        setStatusMessage('Please address the highlighted warnings before submitting.');
+        setSubmitting(false);
+        return;
+      }
+
       const budget = formData.budgetRange === 'Custom Range'
         ? `KSh ${formData.customBudgetMin} - ${formData.customBudgetMax}`
         : formData.budgetRange;
 
+      const publishStatus = isVerified ? 'open' : 'needs_verification';
+
       const rfqPayload = {
         title: formData.projectTitle,
         description: formData.description,
-        category: formData.category,
+        category: formData.category || summary.autoCategory?.replace('Suggested category: ', ''),
+        auto_category: summary.autoCategory?.replace('Suggested category: ', '') || null,
         budget_range: budget,
         timeline: formData.timeline,
         location: formData.specificLocation || formData.county,
         county: formData.county,
         buyer_id: user.id,
         user_id: user.id,
-        status: 'open',
+        status: publishStatus,
+        validation_status: summary.status,
+        spam_score: summary.spamScore,
+        budget_flag: summary.budgetFlag,
+        published_at: publishStatus === 'open' ? new Date().toISOString() : null,
       };
 
       const { data: rfqInsert, error: insertError } = await supabase
@@ -261,17 +383,27 @@ export default function PostRFQ() {
         return;
       }
 
-      // Match vendors by category and county
+      // Match vendors by category and county with quality filters
       const { data: vendors } = await supabase
         .from('vendors')
-        .select('id, user_id, county, category')
+        .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time')
         .eq('status', 'active')
-        .eq('category', formData.category);
+        .eq('category', formData.category || summary.autoCategory?.replace('Suggested category: ', ''));
 
-      const matchingVendors = (vendors || []).filter((v) => {
-        if (!formData.county) return true;
-        return (v.county || '').toLowerCase() === formData.county.toLowerCase();
-      });
+      const matchingVendors = (vendors || [])
+        .filter((v) => {
+          const countyOk = !formData.county || (v.county || '').toLowerCase() === formData.county.toLowerCase();
+          const qualityOk = (v.rating || 0) >= 3.5 && (v.verified || false);
+          return countyOk && qualityOk;
+        })
+        .sort((a, b) => {
+          const ratingDiff = (b.rating || 0) - (a.rating || 0);
+          if (ratingDiff !== 0) return ratingDiff;
+          const responseDiff = (a.response_time || 9999) - (b.response_time || 9999);
+          if (responseDiff !== 0) return responseDiff;
+          return (b.rfqs_completed || 0) - (a.rfqs_completed || 0);
+        })
+        .slice(0, 8);
 
       if (matchingVendors.length > 0) {
         const rfqRequests = matchingVendors.map((vendor) => ({
@@ -282,6 +414,22 @@ export default function PostRFQ() {
         }));
 
         await supabase.from('rfq_requests').insert(rfqRequests);
+
+        // Optional notifications table (ignore errors if table absent)
+        try {
+          await supabase.from('notifications').insert(
+            matchingVendors.map((vendor) => ({
+              user_id: vendor.user_id || vendor.id,
+              type: 'rfq_match',
+              title: `New RFQ: ${formData.projectTitle}`,
+              body: `${formData.category || summary.autoCategory?.replace('Suggested category: ', '')} • ${formData.county || formData.specificLocation || 'Location provided'}`,
+              metadata: { rfq_id: rfqInsert.id, budget: budget },
+              read_at: null,
+            }))
+          );
+        } catch (e) {
+          console.warn('Notifications table missing, skipping insert');
+        }
       }
 
       if (userReputation === 'new' && rfqsThisMonth === 0) {
@@ -1194,6 +1342,20 @@ export default function PostRFQ() {
           {currentStep === 5 && (
             <div>
               <h2 className="text-2xl font-bold mb-6" style={{ color: '#5f6466' }}>Review Your RFQ</h2>
+
+              {validationSummary.warnings.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <p className="font-semibold text-orange-800 mb-2">We found a few things to improve before publishing:</p>
+                  <ul className="text-sm text-orange-700 space-y-1 list-disc list-inside">
+                    {validationSummary.warnings.map((w, idx) => <li key={idx}>{w}</li>)}
+                  </ul>
+                  {validationSummary.suggestions.length > 0 && (
+                    <div className="mt-2 text-sm text-gray-700">
+                      {validationSummary.suggestions.map((s, idx) => <p key={idx}>Suggestion: {s}</p>)}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="bg-gray-50 rounded-lg p-6 mb-6">
                 <h3 className="font-semibold mb-4" style={{ color: '#5f6466' }}>Project Summary</h3>
