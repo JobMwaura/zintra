@@ -247,23 +247,27 @@ export default function VendorProfilePage() {
   const handleSaveContact = async () => {
     if (!vendor) return;
     setSaving(true);
+    const updatePayload = {
+      location: locations[0] || form.location,
+      county: form.county,
+      phone: form.phone,
+      email: form.email,
+      website: form.website,
+      whatsapp: form.whatsapp,
+      category: form.category,
+      user_id:
+        vendor.user_id || (currentUser?.email === vendor.email ? currentUser?.id : vendor.user_id),
+    };
+
+    // Only include optional fields if they exist on this table to avoid schema errors
+    if (vendor.hasOwnProperty('locations')) updatePayload.locations = locations;
+    if (vendor.hasOwnProperty('business_hours')) updatePayload.business_hours = businessHours;
+    if (vendor.hasOwnProperty('highlights')) updatePayload.highlights = highlights;
+    if (vendor.hasOwnProperty('certifications')) updatePayload.certifications = certificationsList;
+
     const { error: updateError } = await supabase
       .from('vendors')
-      .update({
-        location: locations[0] || form.location,
-        locations: locations,
-        business_hours: businessHours,
-        highlights,
-        certifications: certificationsList,
-        county: form.county,
-        phone: form.phone,
-        email: form.email,
-        website: form.website,
-        whatsapp: form.whatsapp,
-        category: form.category,
-        user_id:
-          vendor.user_id || (currentUser?.email === vendor.email ? currentUser?.id : vendor.user_id),
-      })
+      .update(updatePayload)
       .eq('id', vendor.id);
     if (updateError) {
       setError('Failed to save: ' + updateError.message);
@@ -272,10 +276,10 @@ export default function VendorProfilePage() {
         ...prev,
         ...form,
         location: locations[0] || form.location,
-        locations,
-        business_hours: businessHours,
-        highlights,
-        certifications: certificationsList,
+        locations: updatePayload.locations ?? prev?.locations,
+        business_hours: updatePayload.business_hours ?? prev?.business_hours,
+        highlights: updatePayload.highlights ?? prev?.highlights,
+        certifications: updatePayload.certifications ?? prev?.certifications,
       }));
       setEditingContact(false);
     }
