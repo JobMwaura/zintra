@@ -55,8 +55,11 @@ export default function PendingVendors() {
   };
 
   const handleApprove = async (vendorId) => {
-    await updateVendorStatus(vendorId, 'active');
-    setShowDetailModal(false);
+    const ok = await updateVendorStatus(vendorId, 'active');
+    if (ok) {
+      setPendingVendors((prev) => prev.filter((v) => v.id !== vendorId));
+      setShowDetailModal(false);
+    }
   };
 
   const handleReject = async (vendorId) => {
@@ -64,10 +67,13 @@ export default function PendingVendors() {
       alert('Please provide a reason for rejection');
       return;
     }
-    await updateVendorStatus(vendorId, 'rejected');
-    setShowRejectModal(false);
-    setShowDetailModal(false);
-    setRejectReason('');
+    const ok = await updateVendorStatus(vendorId, 'rejected');
+    if (ok) {
+      setPendingVendors((prev) => prev.filter((v) => v.id !== vendorId));
+      setShowRejectModal(false);
+      setShowDetailModal(false);
+      setRejectReason('');
+    }
   };
 
   const openDetailModal = (vendor) => {
