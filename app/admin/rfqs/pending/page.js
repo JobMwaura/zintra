@@ -145,7 +145,7 @@ export default function PendingRFQs() {
   }, [rfqs, searchTerm]);
 
   return (
-    <div>
+    <div className="space-y-4">
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold mb-2" style={{ color: '#535554' }}>Pending RFQs</h1>
@@ -166,7 +166,7 @@ export default function PendingRFQs() {
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow mb-6">
+      <div className="bg-white rounded-xl shadow border border-gray-100 mb-6">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-4">
             <div className="flex-1 relative">
