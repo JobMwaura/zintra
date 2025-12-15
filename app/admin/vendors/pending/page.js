@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, Check, X, Search, Filter, MapPin, Calendar, Building2, User, Mail, Phone, FileText } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function PendingVendors() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,77 +10,61 @@ export default function PendingVendors() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [pendingVendors, setPendingVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
 
-  const pendingVendors = [
-    {
-      id: 1,
-      businessName: 'Karibu Supplies Ltd',
-      contactPerson: 'John Kamau',
-      email: 'john@karibusupplies.co.ke',
-      phone: '+254 700 123 456',
-      category: 'Building & Structural Materials',
-      county: 'Nairobi',
-      location: 'Industrial Area',
-      subscriptionPlan: 'Premium',
-      submittedDate: '2024-10-05',
-      portfolioImages: 5,
-      documents: 2,
-      businessRegistration: 'CR/2023/45678',
-      bio: 'Leading supplier of construction materials in Nairobi with over 10 years of experience. We specialize in cement, steel, and aggregates.',
-      yearsInBusiness: '10+',
-      services: ['Material Supply', 'Delivery', 'Consultation']
-    },
-    {
-      id: 2,
-      businessName: 'TopNotch Electricals',
-      contactPerson: 'Mary Wanjiru',
-      email: 'info@topnotch.co.ke',
-      phone: '+254 722 456 789',
-      category: 'Electrical & Lighting',
-      county: 'Kiambu',
-      location: 'Ruaka',
-      subscriptionPlan: 'Standard',
-      submittedDate: '2024-10-04',
-      portfolioImages: 3,
-      documents: 1,
-      businessRegistration: 'CR/2022/12345',
-      bio: 'Professional electrical installation and maintenance services for residential and commercial properties.',
-      yearsInBusiness: '5+',
-      services: ['Installation', 'Maintenance', 'Emergency Repairs']
-    },
-    {
-      id: 3,
-      businessName: 'Jembe Plumbing Services',
-      contactPerson: 'Peter Omondi',
-      email: 'peter@jembeplumbing.com',
-      phone: '+254 733 789 012',
-      category: 'Plumbing & Sanitation',
-      county: 'Mombasa',
-      location: 'Nyali',
-      subscriptionPlan: 'Basic',
-      submittedDate: '2024-10-03',
-      portfolioImages: 4,
-      documents: 1,
-      businessRegistration: 'CR/2021/98765',
-      bio: 'Expert plumbing solutions for residential and commercial properties. Quality installations, repair and maintenance services.',
-      yearsInBusiness: '7+',
-      services: ['Plumbing Installation', 'Repairs', 'Water Heater Services']
+  useEffect(() => {
+    fetchPendingVendors();
+  }, []);
+
+  const fetchPendingVendors = async () => {
+    try {
+      setLoading(true);
+      setMessage('');
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) {
+        setMessage(`Error: ${error.message}`);
+        setLoading(false);
+        return;
+      }
+      setPendingVendors(data || []);
+      setLoading(false);
+    } catch (err) {
+      setMessage(`Error: ${err.message}`);
+      setLoading(false);
     }
-  ];
+  };
 
-  const handleApprove = (vendorId) => {
-    console.log('Approving vendor:', vendorId);
-    alert('Vendor approved successfully!');
+  const updateVendorStatus = async (vendorId, status) => {
+    const payload = { status };
+    if (status === 'rejected' && rejectReason.trim()) {
+      payload.rejection_reason = rejectReason.trim();
+    }
+    const { error } = await supabase.from('vendors').update(payload).eq('id', vendorId);
+    if (error) {
+      setMessage(`Error updating vendor: ${error.message}`);
+      return false;
+    }
+    fetchPendingVendors();
+    return true;
+  };
+
+  const handleApprove = async (vendorId) => {
+    await updateVendorStatus(vendorId, 'active');
     setShowDetailModal(false);
   };
 
-  const handleReject = (vendorId) => {
+  const handleReject = async (vendorId) => {
     if (!rejectReason.trim()) {
       alert('Please provide a reason for rejection');
       return;
     }
-    console.log('Rejecting vendor:', vendorId, 'Reason:', rejectReason);
-    alert('Vendor rejected');
+    await updateVendorStatus(vendorId, 'rejected');
     setShowRejectModal(false);
     setShowDetailModal(false);
     setRejectReason('');
@@ -96,8 +81,8 @@ export default function PendingVendors() {
   };
 
   const filteredVendors = pendingVendors.filter(vendor =>
-    vendor.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vendor.category.toLowerCase().includes(searchTerm.toLowerCase())
+    (vendor.company_name || vendor.businessName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (vendor.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getPlanColor = (plan) => {
@@ -115,6 +100,12 @@ export default function PendingVendors() {
         <h1 className="text-3xl font-bold mb-2" style={{ color: '#535554' }}>Pending Vendors</h1>
         <p className="text-gray-600">{pendingVendors.length} vendors awaiting approval</p>
       </div>
+
+      {message && (
+        <div className="mb-4 p-3 rounded border text-sm" style={{ borderColor: '#f97316', color: '#c2410c', background: '#fff7ed' }}>
+          {message}
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="p-4 border-b border-gray-200">
@@ -137,34 +128,39 @@ export default function PendingVendors() {
         </div>
 
         <div className="divide-y divide-gray-200">
-          {filteredVendors.map((vendor) => (
+          {loading ? (
+            <div className="p-6 text-center text-gray-600">Loading pending vendors...</div>
+          ) : filteredVendors.length === 0 ? (
+            <div className="p-6 text-center text-gray-600">No pending vendors found.</div>
+          ) : (
+          filteredVendors.map((vendor) => (
             <div key={vendor.id} className="p-6 hover:bg-gray-50">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-bold" style={{ color: '#535554' }}>
-                      {vendor.businessName}
+                      {vendor.company_name || vendor.businessName}
                     </h3>
-                    <span className={`px-3 py-1 border rounded-full text-xs font-medium ${getPlanColor(vendor.subscriptionPlan)}`}>
-                      {vendor.subscriptionPlan}
+                    <span className={`px-3 py-1 border rounded-full text-xs font-medium ${getPlanColor(vendor.subscriptionPlan || vendor.plan || 'Standard')}`}>
+                      {vendor.subscriptionPlan || vendor.plan || 'Standard'}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">{vendor.category}</p>
                   <div className="flex flex-wrap gap-2">
                     <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs flex items-center">
                       <MapPin className="w-3 h-3 mr-1" />
-                      {vendor.location}, {vendor.county}
+                      {vendor.location}{vendor.county ? `, ${vendor.county}` : ''}
                     </span>
                     <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs flex items-center border border-purple-200">
                       <Calendar className="w-3 h-3 mr-1" />
-                      Submitted {vendor.submittedDate}
+                      Submitted {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-700">{vendor.bio}</p>
+                <p className="text-sm text-gray-700">{vendor.bio || vendor.description}</p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
@@ -172,7 +168,7 @@ export default function PendingVendors() {
                   <User className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-gray-500 text-xs">Contact Person</p>
-                    <p className="font-medium text-gray-900">{vendor.contactPerson}</p>
+                    <p className="font-medium text-gray-900">{vendor.contactPerson || vendor.contact_person}</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -193,16 +189,16 @@ export default function PendingVendors() {
                   <FileText className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-gray-500 text-xs">Registration</p>
-                    <p className="font-medium text-gray-900">{vendor.businessRegistration}</p>
+                    <p className="font-medium text-gray-900">{vendor.businessRegistration || vendor.registration || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
                 <Building2 className="w-4 h-4" />
-                <span>Portfolio: {vendor.portfolioImages} images</span>
+                <span>Portfolio: {vendor.portfolioImages || vendor.portfolio_images || 0} images</span>
                 <span className="text-gray-400">•</span>
-                <span>Documents: {vendor.documents} files</span>
+                <span>Documents: {vendor.documents || 0} files</span>
               </div>
 
               <div className="flex gap-3">
