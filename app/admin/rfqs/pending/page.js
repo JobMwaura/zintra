@@ -1,7 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Eye, Check, X, Search, Filter, MapPin, Calendar, DollarSign, Clock, User, FileText } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
+import { Eye, Check, X, Search, Filter, MapPin, Calendar, DollarSign, Clock, User, FileText, AlertTriangle, Shield } from 'lucide-react';
+
+const pendingStatuses = ['pending', 'needs_verification', 'needs_review', 'needs_fix'];
 
 export default function PendingRFQs() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,68 +13,118 @@ export default function PendingRFQs() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rfqs, setRfqs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
 
-  const pendingRFQs = [
-    {
-      id: 1,
-      projectTitle: 'Kitchen Renovation',
-      category: 'Kitchen & Interior Fittings',
-      userName: 'Mary Wanjiku',
-      userEmail: 'mary@email.com',
-      userPhone: '+254 700 123 456',
-      description: 'Complete kitchen renovation including cabinets, countertops, and plumbing fixtures. Need modern design with quality materials. Looking for durable countertops (preferably granite or quartz), custom cabinets with soft-close hinges, and modern fixtures. Kitchen is approximately 12 sqm.',
-      budgetRange: 'KSh 500,000 - 1,000,000',
-      timeline: 'Medium-term (1-3 months)',
-      location: 'Westlands, Nairobi',
-      county: 'Nairobi',
-      submittedDate: '2024-10-06',
-      submittedTime: '09:30 AM',
-      urgency: 'flexible',
-      projectType: 'Residential',
-      servicesRequired: ['Material Supply Only', 'Installation/Labor', 'Design Services'],
-      siteAccessibility: 'Easy vehicle access',
-      deliveryPreference: 'Vendor must arrange delivery',
-      additionalNotes: 'Would prefer vendors with portfolio of previous kitchen projects. Timeline is flexible but hoping to start within 4-6 weeks.'
-    },
-    {
-      id: 2,
-      projectTitle: 'Office Partitioning',
-      category: 'Building & Structural Materials',
-      userName: 'John Kamau',
-      userEmail: 'john@company.com',
-      userPhone: '+254 722 456 789',
-      description: 'Need office partitioning for 200 sqm office space. Glass and gypsum partitions required. Creating 8 private offices and 2 meeting rooms. Soundproofing is important.',
-      budgetRange: 'KSh 100,000 - 500,000',
-      timeline: 'Short-term (1-4 weeks)',
-      location: 'CBD, Nairobi',
-      county: 'Nairobi',
-      submittedDate: '2024-10-06',
-      submittedTime: '11:15 AM',
-      urgency: 'asap',
-      projectType: 'Commercial',
-      servicesRequired: ['Material Supply Only', 'Installation/Labor'],
-      siteAccessibility: 'Limited access',
-      deliveryPreference: 'Flexible - will discuss',
-      additionalNotes: 'Project needs to be completed before end of month. Building is on 5th floor.'
+  useEffect(() => {
+    fetchRFQs();
+  }, []);
+
+  const fetchRFQs = async () => {
+    try {
+      setLoading(true);
+      setMessage('');
+      const { data, error } = await supabase
+        .from('rfqs')
+        .select('*')
+        .in('status', pendingStatuses)
+        .order('created_at', { ascending: false });
+      if (error) {
+        setMessage(`Error loading RFQs: ${error.message}`);
+      } else {
+        setRfqs(data || []);
+      }
+    } catch (err) {
+      setMessage(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const handleApprove = (rfqId) => {
-    console.log('Approving RFQ:', rfqId);
-    alert('RFQ approved and sent to vendors!');
-    setShowDetailModal(false);
   };
 
-  const handleReject = (rfqId) => {
+  const notifyVendors = async (rfq) => {
+    const category = rfq.category || rfq.auto_category;
+    const { data: vendors } = await supabase
+      .from('vendors')
+      .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time')
+      .eq('status', 'active')
+      .eq('category', category);
+
+    const matching = (vendors || [])
+      .filter((v) => {
+        const countyOk = !rfq.county || (v.county || '').toLowerCase() === rfq.county.toLowerCase();
+        const qualityOk = (v.rating || 0) >= 3.5 && (v.verified || false);
+        return countyOk && qualityOk;
+      })
+      .sort((a, b) => {
+        const ratingDiff = (b.rating || 0) - (a.rating || 0);
+        if (ratingDiff !== 0) return ratingDiff;
+        const responseDiff = (a.response_time || 9999) - (b.response_time || 9999);
+        if (responseDiff !== 0) return responseDiff;
+        return (b.rfqs_completed || 0) - (a.rfqs_completed || 0);
+      })
+      .slice(0, 8);
+
+    if (matching.length === 0) return;
+
+    await supabase.from('rfq_requests').insert(
+      matching.map((v) => ({
+        rfq_id: rfq.id,
+        vendor_id: v.user_id || v.id,
+        status: 'pending',
+      }))
+    );
+
+    try {
+      await supabase.from('notifications').insert(
+        matching.map((v) => ({
+          user_id: v.user_id || v.id,
+          type: 'rfq_match',
+          title: `New RFQ: ${rfq.title}`,
+          body: `${category} • ${rfq.county || rfq.location || 'Location provided'}`,
+          metadata: { rfq_id: rfq.id, budget: rfq.budget_range },
+        }))
+      );
+    } catch (e) {
+      console.warn('Notifications insert skipped', e.message);
+    }
+  };
+
+  const handleApprove = async (rfq) => {
+    try {
+      const { error } = await supabase
+        .from('rfqs')
+        .update({ status: 'open', published_at: new Date().toISOString(), validation_status: 'validated' })
+        .eq('id', rfq.id);
+      if (error) throw error;
+      await notifyVendors(rfq);
+      setMessage('RFQ approved and vendors notified.');
+      fetchRFQs();
+      setShowDetailModal(false);
+    } catch (err) {
+      setMessage(`Error approving RFQ: ${err.message}`);
+    }
+  };
+
+  const handleReject = async (rfq) => {
     if (!rejectReason.trim()) {
-      alert('Please provide a reason for rejection');
+      setMessage('Please provide a reason for rejection');
       return;
     }
-    console.log('Rejecting RFQ:', rfqId, 'Reason:', rejectReason);
-    alert('RFQ rejected');
-    setShowRejectModal(false);
-    setShowDetailModal(false);
-    setRejectReason('');
+    try {
+      const { error } = await supabase
+        .from('rfqs')
+        .update({ status: 'rejected', rejection_reason: rejectReason, validation_status: 'rejected' })
+        .eq('id', rfq.id);
+      if (error) throw error;
+      setMessage('RFQ rejected.');
+      fetchRFQs();
+      setShowRejectModal(false);
+      setShowDetailModal(false);
+      setRejectReason('');
+    } catch (err) {
+      setMessage(`Error rejecting RFQ: ${err.message}`);
+    }
   };
 
   const openDetailModal = (rfq) => {
@@ -83,21 +137,32 @@ export default function PendingRFQs() {
     setShowRejectModal(true);
   };
 
-  const filteredRFQs = pendingRFQs.filter(rfq =>
-    rfq.projectTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rfq.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRFQs = useMemo(() => {
+    return rfqs.filter((rfq) =>
+      (rfq.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rfq.category || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [rfqs, searchTerm]);
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2" style={{ color: '#535554' }}>Pending RFQs</h1>
-        <p className="text-gray-600">{pendingRFQs.length} first-time user RFQs awaiting review</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: '#535554' }}>Pending RFQs</h1>
+          <p className="text-gray-600">{filteredRFQs.length} RFQs awaiting review</p>
+        </div>
+        <Link href="/admin/dashboard" className="text-sm text-orange-700 hover:text-orange-800">← Dashboard</Link>
       </div>
+
+      {message && (
+        <div className="mb-4 p-3 rounded border text-sm" style={{ borderColor: '#f97316', color: '#c2410c', background: '#fff7ed' }}>
+          {message}
+        </div>
+      )}
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <p className="text-sm text-blue-800">
-          <strong>Review First-Time RFQs:</strong> These are RFQs from new users submitting for the first time. Review to ensure they are genuine requests before sending to vendors.
+          <strong>Review First-Time RFQs:</strong> Auto-validated RFQs are listed here if they need human eyes (new users, risky budgets, or spam risk). Approve to publish and auto-notify vendors.
         </p>
       </div>
 
@@ -122,14 +187,18 @@ export default function PendingRFQs() {
         </div>
 
         <div className="divide-y divide-gray-200">
-          {filteredRFQs.map((rfq) => (
+          {loading ? (
+            <div className="p-6 text-center text-gray-600">Loading RFQs...</div>
+          ) : filteredRFQs.length === 0 ? (
+            <div className="p-6 text-center text-gray-600">No RFQs awaiting approval.</div>
+          ) : filteredRFQs.map((rfq) => (
             <div key={rfq.id} className="p-6 hover:bg-gray-50">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-bold mb-2" style={{ color: '#535554' }}>
-                    {rfq.projectTitle}
+                    {rfq.title}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-3">{rfq.category}</p>
+                  <p className="text-sm text-gray-600 mb-3">{rfq.category || rfq.auto_category}</p>
                   <div className="flex flex-wrap gap-2">
                     {rfq.urgency === 'asap' && (
                       <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
@@ -138,12 +207,24 @@ export default function PendingRFQs() {
                     )}
                     <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs flex items-center">
                       <MapPin className="w-3 h-3 mr-1" />
-                      {rfq.location}
+                      {rfq.location || rfq.county}
                     </span>
                     <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex items-center">
                       <Calendar className="w-3 h-3 mr-1" />
-                      {rfq.submittedDate} at {rfq.submittedTime}
+                      {rfq.created_at ? new Date(rfq.created_at).toLocaleString() : 'N/A'}
                     </span>
+                    {rfq.spam_score > 30 && (
+                      <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs flex items-center">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Spam risk {rfq.spam_score}
+                      </span>
+                    )}
+                    {rfq.validation_status === 'validated' && (
+                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs flex items-center">
+                        <Shield className="w-3 h-3 mr-1" />
+                        Auto-validated
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -157,14 +238,14 @@ export default function PendingRFQs() {
                   <User className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-gray-500 text-xs">Submitted By</p>
-                    <p className="font-medium text-gray-900">{rfq.userName}</p>
+                    <p className="font-medium text-gray-900">{rfq.buyer_name || rfq.buyer_id || 'User'}</p>
                   </div>
                 </div>
                 <div className="flex items-start">
                   <DollarSign className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-gray-500 text-xs">Budget</p>
-                    <p className="font-medium text-gray-900">{rfq.budgetRange}</p>
+                    <p className="font-medium text-gray-900">{rfq.budget_range}</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -178,14 +259,14 @@ export default function PendingRFQs() {
                   <FileText className="w-4 h-4 mr-2 mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-gray-500 text-xs">Type</p>
-                    <p className="font-medium text-gray-900">{rfq.projectType}</p>
+                    <p className="font-medium text-gray-900">{rfq.project_type || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => handleApprove(rfq.id)}
+                  onClick={() => handleApprove(rfq)}
                   className="flex items-center px-4 py-2 text-white rounded-lg hover:opacity-90 font-medium transition-colors"
                   style={{ backgroundColor: '#10b981' }}
                 >
@@ -222,9 +303,9 @@ export default function PendingRFQs() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-2xl font-bold mb-2" style={{ color: '#535554' }}>
-                    {selectedRFQ.projectTitle}
+                    {selectedRFQ.title}
                   </h2>
-                  <p className="text-gray-600">{selectedRFQ.category}</p>
+                  <p className="text-gray-600">{selectedRFQ.category || selectedRFQ.auto_category}</p>
                 </div>
                 <button
                   onClick={() => setShowDetailModal(false)}
@@ -241,16 +322,16 @@ export default function PendingRFQs() {
                 <h3 className="font-semibold mb-3" style={{ color: '#535554' }}>Submitted By</h3>
                 <div className="grid md:grid-cols-3 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Name</p>
-                    <p className="font-medium text-gray-900">{selectedRFQ.userName}</p>
+                    <p className="text-gray-500">Buyer</p>
+                    <p className="font-medium text-gray-900">{selectedRFQ.buyer_name || selectedRFQ.buyer_id || 'User'}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Email</p>
-                    <p className="font-medium text-gray-900">{selectedRFQ.userEmail}</p>
+                    <p className="font-medium text-gray-900">{selectedRFQ.user_email || 'Not provided'}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Phone</p>
-                    <p className="font-medium text-gray-900">{selectedRFQ.userPhone}</p>
+                    <p className="font-medium text-gray-900">{selectedRFQ.user_phone || 'Not provided'}</p>
                   </div>
                 </div>
               </div>
@@ -263,7 +344,7 @@ export default function PendingRFQs() {
                     <DollarSign className="w-5 h-5 mr-2" style={{ color: '#ca8637' }} />
                     <div>
                       <p className="text-gray-500">Budget Range</p>
-                      <p className="font-medium text-gray-900">{selectedRFQ.budgetRange}</p>
+                      <p className="font-medium text-gray-900">{selectedRFQ.budget_range}</p>
                     </div>
                   </div>
                   <div className="flex items-center">
@@ -277,14 +358,14 @@ export default function PendingRFQs() {
                     <MapPin className="w-5 h-5 mr-2" style={{ color: '#ca8637' }} />
                     <div>
                       <p className="text-gray-500">Location</p>
-                      <p className="font-medium text-gray-900">{selectedRFQ.location}, {selectedRFQ.county}</p>
+                      <p className="font-medium text-gray-900">{selectedRFQ.location || selectedRFQ.county}</p>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <FileText className="w-5 h-5 mr-2" style={{ color: '#ca8637' }} />
                     <div>
                       <p className="text-gray-500">Project Type</p>
-                      <p className="font-medium text-gray-900">{selectedRFQ.projectType}</p>
+                      <p className="font-medium text-gray-900">{selectedRFQ.project_type || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -296,11 +377,11 @@ export default function PendingRFQs() {
               </div>
 
               {/* Services Required */}
-              {selectedRFQ.servicesRequired.length > 0 && (
+              {(selectedRFQ.servicesRequired || selectedRFQ.services_required || []).length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold mb-3" style={{ color: '#535554' }}>Services Required</h3>
                   <div className="flex flex-wrap gap-2">
-                    {selectedRFQ.servicesRequired.map((service, index) => (
+                    {(selectedRFQ.servicesRequired || selectedRFQ.services_required || []).map((service, index) => (
                       <span key={index} className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#ca863720', color: '#ca8637' }}>
                         {service}
                       </span>
@@ -335,7 +416,7 @@ export default function PendingRFQs() {
 
             <div className="p-6 border-t border-gray-200 flex gap-3">
               <button
-                onClick={() => handleApprove(selectedRFQ.id)}
+                onClick={() => handleApprove(selectedRFQ)}
                 className="flex-1 flex items-center justify-center px-4 py-3 text-white rounded-lg hover:opacity-90 font-medium"
                 style={{ backgroundColor: '#10b981' }}
               >
@@ -366,7 +447,7 @@ export default function PendingRFQs() {
               Reject RFQ
             </h3>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to reject <strong>{selectedRFQ.projectTitle}</strong>?
+              Are you sure you want to reject <strong>{selectedRFQ.title}</strong>?
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Reason for Rejection*</label>
@@ -389,7 +470,7 @@ export default function PendingRFQs() {
                 Cancel
               </button>
               <button
-                onClick={() => handleReject(selectedRFQ.id)}
+                onClick={() => handleReject(selectedRFQ)}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
               >
                 Reject RFQ

@@ -1,75 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
 import { Search, Filter, Eye } from 'lucide-react';
 
 export default function ActiveRFQs() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [rfqs, setRfqs] = useState([]);
+  const [responses, setResponses] = useState({});
+  const [matches, setMatches] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
 
-  // TODO: Replace with real data from API
-  const activeRFQs = [
-    {
-      id: 1,
-      projectTitle: 'Bathroom Renovation',
-      category: 'Plumbing & Sanitation',
-      userName: 'Sarah Otieno',
-      location: 'Kilimani, Nairobi',
-      budgetRange: 'KSh 100,000 - 500,000',
-      postedDate: '2024-10-03',
-      status: 'active',
-      quotesReceived: 3,
-      vendorsMatched: 5
-    },
-    {
-      id: 2,
-      projectTitle: 'Office Electrical Wiring',
-      category: 'Electrical & Lighting',
-      userName: 'David Kimani',
-      location: 'Westlands, Nairobi',
-      budgetRange: 'KSh 50,000 - 100,000',
-      postedDate: '2024-10-04',
-      status: 'active',
-      quotesReceived: 5,
-      vendorsMatched: 7
-    },
-    {
-      id: 3,
-      projectTitle: 'Roofing Installation',
-      category: 'Roofing & Waterproofing',
-      userName: 'Jane Muthoni',
-      location: 'Karen, Nairobi',
-      budgetRange: 'Over KSh 1,000,000',
-      postedDate: '2024-10-02',
-      status: 'active',
-      quotesReceived: 4,
-      vendorsMatched: 6
+  useEffect(() => {
+    fetchActive();
+  }, []);
+
+  const fetchActive = async () => {
+    try {
+      setLoading(true);
+      setMessage('');
+      const { data, error } = await supabase
+        .from('rfqs')
+        .select('*')
+        .in('status', ['open', 'active'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setRfqs(data || []);
+
+      const ids = (data || []).map((r) => r.id);
+      if (ids.length) {
+        const { data: resp } = await supabase.from('rfq_responses').select('rfq_id');
+        const respCount = (resp || []).reduce((acc, r) => {
+          acc[r.rfq_id] = (acc[r.rfq_id] || 0) + 1;
+          return acc;
+        }, {});
+        setResponses(respCount);
+
+        const { data: reqs } = await supabase.from('rfq_requests').select('rfq_id');
+        const matchCount = (reqs || []).reduce((acc, r) => {
+          acc[r.rfq_id] = (acc[r.rfq_id] || 0) + 1;
+          return acc;
+        }, {});
+        setMatches(matchCount);
+      }
+    } catch (err) {
+      setMessage(`Error loading RFQs: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const filteredRFQs = activeRFQs.filter(rfq =>
-    rfq.projectTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rfq.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRFQs = useMemo(() => {
+    return rfqs.filter(rfq =>
+      (rfq.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rfq.category || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [rfqs, searchTerm]);
+
+  const totalQuotes = Object.values(responses).reduce((sum, v) => sum + v, 0);
+  const avgResponseRate = rfqs.length ? Math.round((Object.keys(responses).length / rfqs.length) * 100) : 0;
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2" style={{ color: '#5f6466' }}>Active RFQs</h1>
-        <p className="text-gray-600">{activeRFQs.length} approved RFQs currently active</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: '#5f6466' }}>Active RFQs</h1>
+          <p className="text-gray-600">{filteredRFQs.length} approved RFQs currently active</p>
+        </div>
+        <Link href="/admin/dashboard" className="text-sm text-orange-700 hover:text-orange-800">← Dashboard</Link>
       </div>
+
+      {message && (
+        <div className="mb-4 p-3 rounded border text-sm" style={{ borderColor: '#f97316', color: '#c2410c', background: '#fff7ed' }}>
+          {message}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600 mb-1">Total Active</p>
-          <p className="text-2xl font-bold" style={{ color: '#5f6466' }}>{activeRFQs.length}</p>
+          <p className="text-2xl font-bold" style={{ color: '#5f6466' }}>{filteredRFQs.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600 mb-1">Total Quotes</p>
-          <p className="text-2xl font-bold text-green-600">12</p>
+          <p className="text-2xl font-bold text-green-600">{totalQuotes}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600 mb-1">Avg Response Rate</p>
-          <p className="text-2xl font-bold" style={{ color: '#ea8f1e' }}>68%</p>
+          <p className="text-2xl font-bold" style={{ color: '#ea8f1e' }}>{avgResponseRate}%</p>
         </div>
       </div>
 
@@ -115,35 +135,41 @@ export default function ActiveRFQs() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRFQs.map((rfq) => (
-                <tr key={rfq.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{rfq.projectTitle}</p>
-                      <p className="text-sm text-gray-600">{rfq.category}</p>
-                      <p className="text-xs text-gray-500">{rfq.location}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-gray-900">{rfq.budgetRange}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-gray-900">{rfq.postedDate}</p>
-                    <p className="text-xs text-gray-500">By {rfq.userName}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm">
-                      <p className="font-medium text-gray-900">{rfq.quotesReceived} quotes</p>
-                      <p className="text-gray-600">{rfq.vendorsMatched} vendors matched</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="p-2 hover:bg-gray-100 rounded" title="View Details">
-                      <Eye className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={5} className="px-6 py-6 text-center text-gray-600">Loading RFQs...</td></tr>
+              ) : filteredRFQs.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-6 text-center text-gray-600">No active RFQs.</td></tr>
+              ) : (
+                filteredRFQs.map((rfq) => (
+                  <tr key={rfq.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{rfq.title}</p>
+                        <p className="text-sm text-gray-600">{rfq.category || rfq.auto_category}</p>
+                        <p className="text-xs text-gray-500">{rfq.location || rfq.county}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-900">{rfq.budget_range}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-900">{rfq.created_at ? new Date(rfq.created_at).toLocaleDateString() : '—'}</p>
+                      <p className="text-xs text-gray-500">Status: {rfq.status}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-900">{responses[rfq.id] || 0} quotes</p>
+                        <p className="text-gray-600">{matches[rfq.id] || 0} vendors matched</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button className="p-2 hover:bg-gray-100 rounded" title="View Details">
+                        <Eye className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
