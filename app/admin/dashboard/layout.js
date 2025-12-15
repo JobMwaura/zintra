@@ -38,7 +38,7 @@ const navSections = [
     items: [
       { name: 'Vendors', icon: Building2, href: '/admin/vendors' },
       { name: 'Verification Requests', icon: ShieldCheck, href: '/admin/verifications' },
-      { name: 'Subscription Plans', icon: ClipboardList, href: '/admin/plans' },
+      { name: 'Subscription Plans', icon: ClipboardList, href: '/admin/subscriptions' },
     ],
   },
   {
