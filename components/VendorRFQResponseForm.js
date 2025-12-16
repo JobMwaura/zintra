@@ -55,21 +55,32 @@ export default function VendorRFQResponseForm({ rfqId }) {
         .filter(Boolean)
         .join('\n');
 
-      // basic trust flagging based on vendor verification and rating if present
+      // Get the vendor profile and ID
       let trust_level = 'neutral';
+      let vendorId = null;
       try {
         const { data: vendorProfile } = await supabase
           .from('vendors')
-          .select('verified, rating')
+          .select('id, verified, rating')
           .eq('user_id', user.id)
           .maybeSingle();
-        if (vendorProfile?.verified && (vendorProfile.rating || 0) >= 4.0) {
+        
+        if (!vendorProfile) {
+          setStatus('❌ Vendor profile not found. Please complete your vendor registration first.');
+          setSubmitting(false);
+          return;
+        }
+        
+        vendorId = vendorProfile.id;
+        if (vendorProfile.verified && (vendorProfile.rating || 0) >= 4.0) {
           trust_level = 'trusted';
-        } else if (!vendorProfile?.verified) {
+        } else if (!vendorProfile.verified) {
           trust_level = 'unverified';
         }
       } catch (e) {
-        // ignore trust calculation errors
+        setStatus(`❌ Error retrieving vendor profile: ${e.message}`);
+        setSubmitting(false);
+        return;
       }
 
       const risk_flag =
@@ -78,7 +89,7 @@ export default function VendorRFQResponseForm({ rfqId }) {
 
       const { error } = await supabase.from('rfq_responses').insert([{
         rfq_id: rfqId,
-        vendor_id: user.id,
+        vendor_id: vendorId,
         amount: parseFloat(form.amount),
         message: combinedMessage,
         timeline: form.timeline,
