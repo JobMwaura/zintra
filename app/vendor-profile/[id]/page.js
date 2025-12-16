@@ -93,6 +93,7 @@ export default function VendorProfilePage() {
     price: '',
     category: '',
   });
+  const [productImageFile, setProductImageFile] = useState(null);
 
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -154,13 +155,13 @@ export default function VendorProfilePage() {
           setBusinessHours(data.business_hours);
         }
 
-        // Mock data
-        setProducts([
-          { id: 1, name: 'Premium Portland Cement', description: 'High-strength, versatile cement for all construction needs', price: 'KSh 12,999', unit: 'bag', status: 'In Stock' },
-          { id: 2, name: 'Structural Steel I-Beams', description: 'ASTM A36 certified, multiple sizes available', price: 'KSh 85,000', unit: 'ft', status: 'In Stock' },
-          { id: 3, name: 'Engineered Hardwood Flooring', description: 'Premium oak, pre-finished, 5" wide planks', price: 'KSh 6,750', unit: 'sq.ft', status: 'In Stock' },
-          { id: 4, name: 'Insulated Concrete Forms', description: 'Energy-efficient building system, R-value: 22+', price: 'KSh 28,500', unit: 'form', status: 'In Stock' },
-        ]);
+        // Load products from Supabase
+        const { data: productData } = await supabase
+          .from('vendor_products')
+          .select('*')
+          .eq('vendor_id', vendorId)
+          .order('created_at', { ascending: false });
+        if (productData) setProducts(productData);
 
         setServices([
           { id: 1, name: 'Material Delivery', description: 'Same-day and scheduled delivery options available for all products' },
@@ -287,16 +288,51 @@ export default function VendorProfilePage() {
     setSaving(false);
   };
 
-  const addProduct = () => {
-    if (productForm.name && productForm.price) {
-      setProducts([...products, { id: Date.now(), ...productForm, status: 'In Stock' }]);
-      setProductForm({ name: '', description: '', price: '', category: '' });
+  const addProduct = async () => {
+    if (!vendor?.id) return;
+    if (!productForm.name || !productForm.price) return;
+
+    try {
+      let imageUrl = null;
+      if (productImageFile) {
+        const ext = productImageFile.name.split('.').pop();
+        const fileName = `products/${vendor.id}/product-${Date.now()}.${ext}`;
+        const { data, error: uploadError } = await supabase.storage
+          .from('vendor-assets')
+          .upload(fileName, productImageFile, { upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('vendor-assets').getPublicUrl(data.path);
+        imageUrl = urlData?.publicUrl || null;
+      }
+
+      const { data: inserted, error } = await supabase
+        .from('vendor_products')
+        .insert([{
+          vendor_id: vendor.id,
+          name: productForm.name,
+          description: productForm.description,
+          price: productForm.price,
+          category: productForm.category,
+          image_url: imageUrl,
+          status: 'In Stock',
+          unit: productForm.unit || '',
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+
+      setProducts((prev) => [inserted, ...prev]);
+      setProductForm({ name: '', description: '', price: '', category: '', unit: '' });
+      setProductImageFile(null);
       setShowProductModal(false);
+    } catch (err) {
+      console.error('Add product failed:', err);
     }
   };
 
-  const deleteProduct = (id) => {
+  const deleteProduct = async (id) => {
     setProducts(products.filter((p) => p.id !== id));
+    await supabase.from('vendor_products').delete().eq('id', id);
   };
 
   const addService = () => {
@@ -705,14 +741,18 @@ export default function VendorProfilePage() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     {products.slice(0, 4).map((product) => (
                       <div key={product.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
-                        <div className="w-full h-40 bg-slate-100 rounded-lg mb-3 flex items-center justify-center text-slate-400">
-                          <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" />
-                          </svg>
+                        <div className="w-full h-40 bg-slate-100 rounded-lg mb-3 flex items-center justify-center text-slate-400 overflow-hidden">
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" />
+                            </svg>
+                          )}
                         </div>
                         <h3 className="font-semibold text-slate-900 text-sm mb-1">{product.name}</h3>
                         <p className="text-xs text-slate-500 mb-2">{product.description}</p>
-                        <p className="text-amber-600 font-bold mb-2">{product.price} / {product.unit}</p>
+                        <p className="text-amber-600 font-bold mb-2">{product.price}{product.unit ? ` / ${product.unit}` : ''}</p>
                         <span className="inline-block bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded">
                           {product.status}
                         </span>
@@ -1240,6 +1280,16 @@ export default function VendorProfilePage() {
                 className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Category"
               />
+              <div>
+                <label className="text-sm text-slate-700 mb-1 block">Product Image (optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setProductImageFile(e.target.files?.[0] || null)}
+                  className="text-sm text-slate-600"
+                />
+                {productImageFile && <p className="text-xs text-slate-500 mt-1">{productImageFile.name}</p>}
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowProductModal(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded font-semibold hover:bg-slate-50">

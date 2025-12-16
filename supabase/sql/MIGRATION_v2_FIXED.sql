@@ -197,6 +197,21 @@ CREATE INDEX IF NOT EXISTS idx_messages_recipient_id ON public.messages(recipien
 CREATE INDEX IF NOT EXISTS idx_messages_is_read ON public.messages(is_read);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at);
 
+-- Vendor products table for product listings with images
+CREATE TABLE IF NOT EXISTS public.vendor_products (
+  id uuid primary key default gen_random_uuid(),
+  vendor_id uuid not null references public.vendors(id) on delete cascade,
+  name text not null,
+  description text,
+  price text,
+  category text,
+  unit text,
+  image_url text,
+  status text default 'In Stock',
+  created_at timestamptz default now()
+);
+CREATE INDEX IF NOT EXISTS idx_vendor_products_vendor_id ON public.vendor_products(vendor_id);
+
 -- ==========================================
 -- SUCCESS! All tables and columns are ready
 -- ==========================================
