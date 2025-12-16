@@ -85,12 +85,45 @@ export default function ZintraHomepage() {
     { icon: Clock, value: '—', label: 'Avg Response Time' }
   ]);
   const [counties, setCounties] = useState(['All Locations']);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
     if (selectedCategory && selectedCategory !== 'All Categories') params.set('category', selectedCategory);
     if (selectedLocation && selectedLocation !== 'All Locations') params.set('county', selectedLocation);
     router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+  };
+
+  const performLiveSearch = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      setShowSearchResults(true);
+
+      // Search vendors by company name or category
+      const { data: vendors } = await supabase
+        .from('vendors')
+        .select('id, company_name, category, county, rating, verified, logo_url')
+        .or(
+          `company_name.ilike.%${query}%,category.ilike.%${query}%`
+        )
+        .eq('status', 'active')
+        .limit(5);
+
+      setSearchResults(vendors || []);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -195,66 +228,48 @@ export default function ZintraHomepage() {
           <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:48px_48px]" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-            {/* Image left */}
-            <div className="lg:col-span-5">
-              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl h-full min-h-[320px]">
-                <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 via-transparent to-transparent opacity-80" />
-                <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#ca8637]/40 via-transparent to-transparent opacity-90" />
-                <img
-                  src="https://zeomgqlnztcdqtespsjx.supabase.co/storage/v1/object/public/vendor-assets/Website%20Images/zintra%20banner.png"
-                  alt="Zintra RFQ and quote comparison"
-                  className="w-full h-full object-cover"
-                />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
+          <div className="space-y-6 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2 text-sm text-gray-100">
+              <Shield className="w-4 h-4 text-amber-300" />
+              Post RFQ • Auto-match vendors • Compare quotes
+            </div>
+
+            <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/10 p-6 sm:p-10 shadow-lg max-w-4xl mx-auto">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-4">
+                Request Quotes from Verified Vendors and Compare Side-by-Side
+              </h1>
+              <p className="text-lg text-gray-100 leading-relaxed mb-6 max-w-3xl">
+                Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+                <Link href="/post-rfq">
+                  <button
+                    className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all"
+                    style={{ backgroundColor: '#ca8637' }}
+                  >
+                    Post an RFQ
+                  </button>
+                </Link>
+                <Link href="/browse">
+                  <button className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold border border-white/20 bg-white/5 hover:bg-white/10 transition-all">
+                    Browse Vendors
+                  </button>
+                </Link>
               </div>
             </div>
 
-            {/* Text right */}
-            <div className="lg:col-span-7">
-              <div className="space-y-5 max-w-2xl ml-auto">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2 text-sm text-gray-100">
-                  <Shield className="w-4 h-4 text-amber-300" />
-                  Post RFQ • Auto-match vendors • Compare quotes
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+              {stats.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2"
+                >
+                  <item.icon className="w-4 h-4 text-amber-300" />
+                  <span className="font-semibold">{item.value}</span>
+                  <span className="text-gray-200 text-sm">{item.label}</span>
                 </div>
-
-                <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/10 p-6 sm:p-8 shadow-lg">
-                  <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-4">
-                    Request Quotes from Verified Vendors and Compare Side-by-Side
-                  </h1>
-                  <p className="text-lg text-gray-100 leading-relaxed mb-6">
-                    Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Link href="/post-rfq">
-                      <button
-                        className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all"
-                        style={{ backgroundColor: '#ca8637' }}
-                      >
-                        Post an RFQ
-                      </button>
-                    </Link>
-                    <Link href="/browse">
-                      <button className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold border border-white/20 bg-white/5 hover:bg-white/10 transition-all">
-                        Browse Vendors
-                      </button>
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  {stats.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2"
-                    >
-                      <item.icon className="w-4 h-4 text-amber-300" />
-                      <span className="font-semibold">{item.value}</span>
-                      <span className="text-gray-200 text-sm">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -262,16 +277,81 @@ export default function ZintraHomepage() {
 
       <section className="bg-white py-8 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex flex-col md:flex-row gap-4 items-center relative">
             <div className="flex-1 relative w-full">
               <Search className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search vendors, materials, or services..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  performLiveSearch(e.target.value);
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
               />
+              
+              {/* Live Search Results Dropdown */}
+              {showSearchResults && searchQuery && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                  {searchLoading ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2" style={{ borderColor: '#ca8637' }}></div>
+                      <p className="mt-2 text-sm">Searching...</p>
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="divide-y divide-gray-200">
+                      {searchResults.map((vendor) => (
+                        <Link
+                          key={vendor.id}
+                          href={`/vendor-profile/${vendor.id}`}
+                          onClick={() => setShowSearchResults(false)}
+                        >
+                          <div className="p-4 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                {vendor.logo_url ? (
+                                  <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain rounded" />
+                                ) : (
+                                  <Building2 className="w-5 h-5 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-gray-900 truncate">{vendor.company_name}</p>
+                                  {vendor.verified && (
+                                    <Shield className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <span>{vendor.category}</span>
+                                  {vendor.rating && (
+                                    <>
+                                      <span>•</span>
+                                      <div className="flex items-center gap-1">
+                                        <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                        <span>{vendor.rating.toFixed(1)}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p>No vendors found matching "{searchQuery}"</p>
+                      <p className="text-sm mt-1">Try a different search term</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <select
               value={selectedCategory}
