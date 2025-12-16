@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock } from 'lucide-react';
+import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock, MessageSquare, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 function PostRFQIndex() {
@@ -11,6 +11,7 @@ function PostRFQIndex() {
   const searchParams = useSearchParams();
   const type = searchParams.get('type');
   const [publicRFQs, setPublicRFQs] = useState([]);
+  const [quoteStats, setQuoteStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -33,6 +34,22 @@ function PostRFQIndex() {
         }
 
         setPublicRFQs(data || []);
+
+        // Fetch quote stats for all RFQs
+        if (data && data.length > 0) {
+          const { data: stats, error: statsError } = await supabase
+            .from('rfq_quote_stats')
+            .select('rfq_id, total_quotes')
+            .in('rfq_id', data.map(r => r.id));
+
+          if (!statsError && stats) {
+            const statsMap = {};
+            stats.forEach(stat => {
+              statsMap[stat.rfq_id] = stat.total_quotes || 0;
+            });
+            setQuoteStats(statsMap);
+          }
+        }
       } catch (err) {
         console.error('Unexpected error:', err);
         setError(err.message);
@@ -263,10 +280,27 @@ function PostRFQIndex() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {publicRFQs.map((rfq) => {
                   const daysLeft = calculateDaysLeft(rfq.deadline);
+                  const quoteCount = quoteStats[rfq.id] || 0;
+
+                  const handleViewRFQ = async () => {
+                    // Track the view
+                    try {
+                      await fetch('/api/track-rfq-view', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rfqId: rfq.id }),
+                      });
+                    } catch (err) {
+                      console.error('Error tracking view:', err);
+                    }
+                    // Navigate to RFQ details
+                    router.push(`/rfq/${rfq.id}`);
+                  };
+
                   return (
                     <div
                       key={rfq.id}
-                      className="bg-white rounded-xl border border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all p-6"
+                      className="bg-white rounded-xl border border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all p-6 flex flex-col"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
@@ -301,10 +335,19 @@ function PostRFQIndex() {
                           </div>
                         )}
                       </div>
+
+                      {/* Engagement Metrics - Like LinkedIn */}
+                      <div className="flex gap-4 text-xs text-gray-600 mb-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-1">
+                          <MessageSquare className="w-4 h-4 text-orange-500" />
+                          <span className="font-semibold text-gray-900">{quoteCount}</span>
+                          <span>quote{quoteCount !== 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
                       
                       <button
-                        onClick={() => router.push(`/rfq/${rfq.id}`)}
-                        className="w-full text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-all"
+                        onClick={handleViewRFQ}
+                        className="w-full text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-all mt-auto"
                         style={{ backgroundColor: '#ca8637' }}
                       >
                         View & Quote
