@@ -189,61 +189,71 @@ export default function ZintraHomepage() {
         </div>
       </nav>
 
-      <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-24 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute transform rotate-45 -right-20 top-20 w-96 h-96 bg-white rounded-full"></div>
-          <div className="absolute transform -rotate-45 -left-20 bottom-20 w-96 h-96 bg-white rounded-full"></div>
+      <section className="relative overflow-hidden bg-slate-950 text-white">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(202,134,55,0.14),transparent_50%)]" />
+          <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:48px_48px]" />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div className="space-y-6 text-center lg:text-left">
-              <p className="text-sm font-semibold uppercase tracking-widest text-amber-300">Post RFQ • Auto-match vendors • Compare quotes</p>
-              <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
-                Request Quotes from Verified Vendors<br />and Compare Side-by-Side
-              </h1>
-              <p className="text-xl text-gray-200 leading-relaxed">
-                Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link href="/post-rfq">
-                  <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" style={{ backgroundColor: '#ca8637' }}>
-                    Post an RFQ
-                  </button>
-                </Link>
-                <Link href="/browse">
-                  <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
-                    Browse Vendors
-                  </button>
-                </Link>
-                {vendorProfileLink && (
-                  <Link href={vendorProfileLink}>
-                    <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
-                      My Vendor Profile
-                    </button>
-                  </Link>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-                {stats.map((item, idx) => (
-                  <div key={idx} className="bg-white/10 border border-white/10 rounded-xl p-4 flex items-center gap-3 justify-center">
-                    <item.icon className="w-6 h-6 text-amber-300" />
-                    <div>
-                      <p className="text-lg font-bold">{item.value}</p>
-                      <p className="text-sm text-gray-200">{item.label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="relative hidden lg:block">
-              <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full bg-amber-200/60 blur-3xl"></div>
-              <div className="absolute -bottom-10 -right-8 w-32 h-32 rounded-full bg-blue-200/40 blur-3xl"></div>
-              <div className="relative bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
+          <div className="grid lg:grid-cols-12 gap-10 items-center">
+            {/* Image left */}
+            <div className="lg:col-span-5">
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl h-full min-h-[320px]">
+                <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 via-transparent to-transparent opacity-80" />
+                <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#ca8637]/40 via-transparent to-transparent opacity-90" />
                 <img
-                  src="https://zeomgqlnztcdqtespsjx.supabase.co/storage/v1/object/public/vendor-assets/Website%20Images/zintra%20image.png"
-                  alt="Zintra RFQ flow"
+                  src="https://zeomgqlnztcdqtespsjx.supabase.co/storage/v1/object/public/vendor-assets/Website%20Images/zintra%20banner.png"
+                  alt="Zintra RFQ and quote comparison"
                   className="w-full h-full object-cover"
                 />
+              </div>
+            </div>
+
+            {/* Text right */}
+            <div className="lg:col-span-7">
+              <div className="space-y-5 max-w-2xl ml-auto">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2 text-sm text-gray-100">
+                  <Shield className="w-4 h-4 text-amber-300" />
+                  Post RFQ • Auto-match vendors • Compare quotes
+                </div>
+
+                <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/10 p-6 sm:p-8 shadow-lg">
+                  <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-4">
+                    Request Quotes from Verified Vendors and Compare Side-by-Side
+                  </h1>
+                  <p className="text-lg text-gray-100 leading-relaxed mb-6">
+                    Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link href="/post-rfq">
+                      <button
+                        className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all"
+                        style={{ backgroundColor: '#ca8637' }}
+                      >
+                        Post an RFQ
+                      </button>
+                    </Link>
+                    <Link href="/browse">
+                      <button className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold border border-white/20 bg-white/5 hover:bg-white/10 transition-all">
+                        Browse Vendors
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  {stats.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2"
+                    >
+                      <item.icon className="w-4 h-4 text-amber-300" />
+                      <span className="font-semibold">{item.value}</span>
+                      <span className="text-gray-200 text-sm">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
