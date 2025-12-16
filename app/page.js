@@ -235,38 +235,38 @@ export default function ZintraHomepage() {
         {/* Overlay for better contrast */}
         <div className="absolute inset-0 bg-black/40" />
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 w-full">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* Glass Box 1 */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-8 hover:bg-white/15 transition-all">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-4">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-6 hover:bg-white/15 transition-all">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-3">
                 <Search className="w-6 h-6 text-amber-300" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Find Vendors</h3>
-              <p className="text-gray-100 leading-relaxed">Browse thousands of verified vendors in your area. Filter by category, location, and rating.</p>
+              <h3 className="text-xl font-bold mb-2">Find Vendors</h3>
+              <p className="text-gray-100 text-sm leading-relaxed">Browse thousands of verified vendors in your area. Filter by category, location, and rating.</p>
             </div>
 
             {/* Glass Box 2 */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-8 hover:bg-white/15 transition-all">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-4">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-6 hover:bg-white/15 transition-all">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-3">
                 <MessageSquare className="w-6 h-6 text-amber-300" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Get Quotes</h3>
-              <p className="text-gray-100 leading-relaxed">Post your project requirements and receive competitive quotes from multiple vendors instantly.</p>
+              <h3 className="text-xl font-bold mb-2">Get Quotes</h3>
+              <p className="text-gray-100 text-sm leading-relaxed">Post your project requirements and receive competitive quotes from multiple vendors instantly.</p>
             </div>
 
             {/* Glass Box 3 */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-8 hover:bg-white/15 transition-all">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-4">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-6 hover:bg-white/15 transition-all">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-3">
                 <CheckCircle className="w-6 h-6 text-amber-300" />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Compare & Hire</h3>
-              <p className="text-gray-100 leading-relaxed">Compare quotes side-by-side, read reviews, and hire the perfect vendor for your project.</p>
+              <h3 className="text-xl font-bold mb-2">Compare & Hire</h3>
+              <p className="text-gray-100 text-sm leading-relaxed">Compare quotes side-by-side, read reviews, and hire the perfect vendor for your project.</p>
             </div>
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mt-12">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             <Link href="/post-rfq">
               <button
                 className="px-8 py-4 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all"
@@ -284,7 +284,7 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      <section className="bg-white py-8 shadow-sm">
+      <section className="bg-white py-4 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row gap-4 items-center relative">
             <div className="flex-1 relative w-full">
@@ -392,9 +392,9 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {categories.map((category, index) => {
               const IconComponent = category.icon;
               return (
@@ -423,9 +423,9 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-br from-gray-50 to-gray-100 py-20">
+      <section className="bg-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-12">
+          <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-4xl font-bold mb-2" style={{ color: '#535554' }}>Featured Vendors</h2>
               <p className="text-gray-600 text-lg">Top-rated construction professionals in Kenya</p>
@@ -436,7 +436,7 @@ export default function ZintraHomepage() {
               </button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {featuredVendors.map((vendor) => (
               <div key={vendor.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all">
                 <div className="relative h-40 bg-gray-50 flex items-center justify-center overflow-hidden">
