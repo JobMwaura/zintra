@@ -524,61 +524,118 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-br from-gray-50 to-gray-100 py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-4" style={{ color: '#535554' }}>Request for Quotation</h2>
-          <p className="text-gray-600 text-lg mb-10">Submit one RFQ and receive responses from multiple verified vendors</p>
-          <div className="bg-white p-10 rounded-2xl shadow-lg border border-gray-100">
-            <h3 className="text-2xl font-bold text-gray-900 mb-8">Post Your Project</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Project Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Kitchen Renovation"
-                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
-                />
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4" style={{ color: '#535554' }}>Three Ways to Request Quotes</h2>
+            <p className="text-gray-600 text-lg">Choose the RFQ method that works best for your project</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Type 1: Direct RFQ */}
+            <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 hover:border-orange-200 hover:shadow-xl transition-all overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 border-b-2 border-orange-200">
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-orange-200 mb-3 mx-auto">
+                  <Users className="w-6 h-6 text-orange-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 text-center">Direct RFQ</h3>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                <select className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all">
-                  <option>Select Category</option>
-                  <option>Kitchen & Interior Fittings</option>
-                  <option>Plumbing & Sanitation</option>
-                  <option>Electrical & Lighting</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Budget (KSh)</label>
-                <select className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all">
-                  <option>Select budget range</option>
-                  <option>50,000 - 100,000</option>
-                  <option>100,000 - 500,000</option>
-                  <option>500,000+</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Nairobi, Westlands"
-                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
-                />
+              <div className="p-6">
+                <p className="text-gray-600 text-sm font-semibold mb-4 text-center" style={{ color: '#ca8637' }}>I know who I want to contact</p>
+                <p className="text-gray-700 text-sm mb-6 leading-relaxed">
+                  Already have specific vendors in mind? Send your RFQ directly to the vendors you trust and want to work with.
+                </p>
+                <ul className="space-y-2 mb-6 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>Personal, targeted approach</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>Work with trusted partners</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>2-5 quotes typically</span>
+                  </li>
+                </ul>
+                <Link href="/post-rfq?type=direct">
+                  <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
+                    Send Direct RFQ
+                  </button>
+                </Link>
               </div>
             </div>
-            <div className="mt-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Project Description</label>
-              <textarea
-                rows="4"
-                placeholder="Describe your project requirements in detail..."
-                className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
-              ></textarea>
+
+            {/* Type 2: Wizard Auto-Match RFQ */}
+            <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all overflow-hidden md:scale-105">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 border-b-2 border-blue-200">
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-200 mb-3 mx-auto">
+                  <TrendingUp className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 text-center">Wizard RFQ</h3>
+              </div>
+              <div className="p-6">
+                <p className="text-sm font-semibold mb-4 text-center text-blue-600">Help me find the right vendors</p>
+                <p className="text-gray-700 text-sm mb-6 leading-relaxed">
+                  Not sure who to contact? Let our smart system find the best-matched vendors for your project based on expertise, location, and ratings.
+                </p>
+                <ul className="space-y-2 mb-6 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>Guided 5-step wizard</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>Smart vendor matching</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>3-8 quality quotes</span>
+                  </li>
+                </ul>
+                <Link href="/post-rfq?type=matched">
+                  <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all" style={{ backgroundColor: '#2563eb' }}>
+                    Use Wizard
+                  </button>
+                </Link>
+              </div>
             </div>
-            <Link href="/post-rfq">
-              <button className="mt-8 text-white px-10 py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl" style={{ backgroundColor: '#ca8637' }}>
-                Submit RFQ
-              </button>
-            </Link>
+
+            {/* Type 3: Public RFQ */}
+            <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 hover:border-purple-200 hover:shadow-xl transition-all overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 border-b-2 border-purple-200">
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-purple-200 mb-3 mx-auto">
+                  <Building2 className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 text-center">Public RFQ</h3>
+              </div>
+              <div className="p-6">
+                <p className="text-sm font-semibold mb-4 text-center text-purple-600">Let all vendors compete</p>
+                <p className="text-gray-700 text-sm mb-6 leading-relaxed">
+                  Post publicly and get competitive bids from all qualified vendors. Great for comparing options and getting the best market prices.
+                </p>
+                <ul className="space-y-2 mb-6 text-sm text-gray-600">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>Transparent marketplace</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>Competitive bidding</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+                    <span>5-20+ quotes available</span>
+                  </li>
+                </ul>
+                <Link href="/post-rfq?type=public">
+                  <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all" style={{ backgroundColor: '#9333ea' }}>
+                    Post Publicly
+                  </button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
