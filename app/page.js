@@ -128,15 +128,29 @@ export default function ZintraHomepage() {
 
   useEffect(() => {
     const fetchVendorProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: vendor } = await supabase
-        .from('vendors')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (vendor?.id) {
-        setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('No user logged in');
+          return;
+        }
+        const { data: vendor, error } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) {
+          console.error('Error fetching vendor:', error);
+          return;
+        }
+        if (vendor?.id) {
+          console.log('Vendor found, setting profile link:', vendor.id);
+          setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+        } else {
+          console.log('No vendor found for user:', user.id);
+        }
+      } catch (err) {
+        console.error('Error in fetchVendorProfile:', err);
       }
     };
     const fetchData = async () => {
