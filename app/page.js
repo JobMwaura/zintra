@@ -195,43 +195,56 @@ export default function ZintraHomepage() {
           <div className="absolute transform -rotate-45 -left-20 bottom-20 w-96 h-96 bg-white rounded-full"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center space-y-6">
-            <p className="text-sm font-semibold uppercase tracking-widest text-amber-300">Post RFQ • Auto-match vendors • Compare quotes</p>
-            <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
-              Request Quotes from Verified Vendors<br />and Compare Side-by-Side
-            </h1>
-            <p className="text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
-              Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/post-rfq">
-                <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" style={{ backgroundColor: '#ca8637' }}>
-                  Post an RFQ
-                </button>
-              </Link>
-              <Link href="/browse">
-                <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
-                  Browse Vendors
-                </button>
-              </Link>
-              {vendorProfileLink && (
-                <Link href={vendorProfileLink}>
-                  <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
-                    My Vendor Profile
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div className="space-y-6 text-center lg:text-left">
+              <p className="text-sm font-semibold uppercase tracking-widest text-amber-300">Post RFQ • Auto-match vendors • Compare quotes</p>
+              <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+                Request Quotes from Verified Vendors<br />and Compare Side-by-Side
+              </h1>
+              <p className="text-xl text-gray-200 leading-relaxed">
+                Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link href="/post-rfq">
+                  <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" style={{ backgroundColor: '#ca8637' }}>
+                    Post an RFQ
                   </button>
                 </Link>
-              )}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10">
-              {stats.map((item, idx) => (
-                <div key={idx} className="bg-white/10 border border-white/10 rounded-xl p-4 flex items-center gap-3 justify-center">
-                  <item.icon className="w-6 h-6 text-amber-300" />
-                  <div>
-                    <p className="text-lg font-bold">{item.value}</p>
-                    <p className="text-sm text-gray-200">{item.label}</p>
+                <Link href="/browse">
+                  <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
+                    Browse Vendors
+                  </button>
+                </Link>
+                {vendorProfileLink && (
+                  <Link href={vendorProfileLink}>
+                    <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
+                      My Vendor Profile
+                    </button>
+                  </Link>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+                {stats.map((item, idx) => (
+                  <div key={idx} className="bg-white/10 border border-white/10 rounded-xl p-4 flex items-center gap-3 justify-center">
+                    <item.icon className="w-6 h-6 text-amber-300" />
+                    <div>
+                      <p className="text-lg font-bold">{item.value}</p>
+                      <p className="text-sm text-gray-200">{item.label}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+            <div className="relative hidden lg:block">
+              <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full bg-amber-200/60 blur-3xl"></div>
+              <div className="absolute -bottom-10 -right-8 w-32 h-32 rounded-full bg-blue-200/40 blur-3xl"></div>
+              <div className="relative bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                <img
+                  src="https://zeomgqlnztcdqtespsjx.supabase.co/storage/v1/object/public/vendor-assets/Website%20Images/zintra%20image.png"
+                  alt="Zintra RFQ flow"
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
           </div>
         </div>
