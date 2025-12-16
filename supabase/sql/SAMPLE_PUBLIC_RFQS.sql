@@ -2,8 +2,14 @@
 -- Run this SQL in Supabase SQL Editor to add sample data to test the Public RFQ Marketplace
 -- This will create 8 sample public RFQs with various projects, budgets, and locations
 
--- IMPORTANT: Replace the user_id UUIDs below with actual user IDs from your users/auth table
--- You can find your own user ID by running: SELECT id FROM auth.users LIMIT 1;
+-- IMPORTANT: You MUST do the following before running this script:
+-- 1. Run this query to get your user ID: SELECT id FROM auth.users LIMIT 1;
+-- 2. Copy the returned UUID
+-- 3. Replace all instances of 'YOUR_USER_ID_HERE' with your actual UUID
+-- 4. Then execute the full script
+
+-- If you have multiple users and want to use different users for each RFQ, 
+-- replace each individual UUID with different user IDs from your auth.users table
 
 -- Sample Public RFQs
 INSERT INTO rfqs (
@@ -24,8 +30,8 @@ INSERT INTO rfqs (
   published_at
 ) VALUES
   (
-    '550e8400-e29b-41d4-a716-446655440000'::uuid,
-    '550e8400-e29b-41d4-a716-446655440000'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Modern Kitchen Renovation with New Cabinets',
     'Looking for a professional kitchen renovation including installation of new cabinets, countertops, backsplash, and modern lighting. Property is a 3-bedroom apartment in Westlands. Need completion within 6 weeks.',
     'Kitchen & Interior Fittings',
@@ -41,8 +47,8 @@ INSERT INTO rfqs (
     NOW() - INTERVAL '2 days'
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440001'::uuid,
-    '550e8400-e29b-41d4-a716-446655440001'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Complete House Electrical Rewiring',
     'Need complete electrical rewiring for a 4-bedroom house built in 1995. Existing wiring is outdated and unsafe. Property in Kilimani, Nairobi. Must include new circuit breaker panel, outlets, and switches throughout house.',
     'Electrical & Lighting',
@@ -58,8 +64,8 @@ INSERT INTO rfqs (
     NOW() - INTERVAL '5 days'
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440002'::uuid,
-    '550e8400-e29b-41d4-a716-446655440002'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Bathroom Plumbing Renovation and Tiling',
     'Complete bathroom renovation including new plumbing fixtures, water pipes, drainage system, and ceramic tiling. Master bedroom bathroom in a townhouse. Must be completed before end of month.',
     'Plumbing & Sanitation',
@@ -75,8 +81,8 @@ INSERT INTO rfqs (
     NOW() - INTERVAL '1 day'
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440003'::uuid,
-    '550e8400-e29b-41d4-a716-446655440003'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Office Partition Installation and Painting',
     'Need to partition a large open office space (800 sq ft) into 4 separate rooms. Requires installation of glass partition walls, repainting, and finishing. Location: CBD, Nairobi. Project must be completed within 2 weeks.',
     'Building & Structural Materials',
@@ -87,13 +93,13 @@ INSERT INTO rfqs (
     'CBD, Nairobi',
     'Nairobi',
     'open',
-    NOW() + '10 days'::INTERVAL,
+    NOW() + INTERVAL '10 days',
     NOW() - INTERVAL '3 days',
     NOW() - INTERVAL '3 days'
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440004'::uuid,
-    '550e8400-e29b-41d4-a716-446655440004'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Roof Replacement - Residential House',
     'Complete roof replacement for 5-bedroom house. Current roof is over 20 years old and leaking. Need new roofing material (tiles), supporting structure inspection, and waterproofing. Located in Runda estate.',
     'Roofing & Waterproofing',
@@ -109,8 +115,8 @@ INSERT INTO rfqs (
     NOW() - INTERVAL '4 days'
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440005'::uuid,
-    '550e8400-e29b-41d4-a716-446655440005'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Commercial Kitchen Equipment Installation',
     'Need professional installation of commercial kitchen equipment for a new restaurant in Mombasa. Includes installation of stove, oven, ventilation system, and plumbing. Equipment already procured, only installation and connection needed.',
     'Kitchen & Interior Fittings',
@@ -126,8 +132,8 @@ INSERT INTO rfqs (
     NOW()
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440006'::uuid,
-    '550e8400-e29b-41d4-a716-446655440006'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Solar Panel Installation - Residential',
     'Install 10kW solar panel system on the roof of a residential property in Kisumu. System will include panels, inverter, battery storage, and wiring. Need experienced technician with solar installation background.',
     'Electrical & Lighting',
@@ -143,8 +149,8 @@ INSERT INTO rfqs (
     NOW() - INTERVAL '1 day'
   ),
   (
-    '550e8400-e29b-41d4-a716-446655440007'::uuid,
-    '550e8400-e29b-41d4-a716-446655440007'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
+    'YOUR_USER_ID_HERE'::uuid,
     'Interior Wall Painting and Finishing',
     'Paint all interior walls of a 3-bedroom house using high-quality paint. Includes wall preparation, primer, two coats of paint, and finishing touches. Preferably eco-friendly paint. Location in Nakuru.',
     'Flooring & Wall Finishes',
@@ -160,5 +166,6 @@ INSERT INTO rfqs (
     NOW() - INTERVAL '2 days'
   );
 
--- Note: After inserting, verify the data appears in the /post-rfq marketplace
--- You can check with: SELECT id, title, category, budget_range, location FROM rfqs WHERE rfq_type = 'public' AND visibility = 'public';
+-- Verification Query:
+-- After inserting, verify the data appears in the /post-rfq marketplace
+-- SELECT id, title, category, budget_range, location FROM rfqs WHERE rfq_type = 'public' AND visibility = 'public';
