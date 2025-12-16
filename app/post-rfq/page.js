@@ -1,14 +1,56 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users, TrendingUp, Building2, CheckCircle, ArrowRight } from 'lucide-react';
+import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 function PostRFQIndex() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const type = searchParams.get('type');
+  const [publicRFQs, setPublicRFQs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPublicRFQs = async () => {
+      try {
+        setLoading(true);
+        const { data, error: fetchError } = await supabase
+          .from('rfqs')
+          .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
+          .eq('rfq_type', 'public')
+          .eq('visibility', 'public')
+          .eq('status', 'open')
+          .order('created_at', { ascending: false });
+
+        if (fetchError) {
+          console.error('Error fetching RFQs:', fetchError);
+          setError(fetchError.message);
+          return;
+        }
+
+        setPublicRFQs(data || []);
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPublicRFQs();
+  }, []);
+
+  const calculateDaysLeft = (deadline) => {
+    if (!deadline) return null;
+    const today = new Date();
+    const deadlineDate = new Date(deadline);
+    const daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+    return daysLeft;
+  };
 
   // If type is specified, redirect to appropriate wizard
   if (type === 'direct') {
@@ -199,47 +241,79 @@ function PostRFQIndex() {
 
           {/* RFQs List */}
           <div className="space-y-4">
-            {/* This will be populated with data from Supabase */}
-            {/* For now, showing placeholder state */}
-            <div className="text-center py-12">
-              <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No active public RFQs at the moment</p>
-              <p className="text-gray-400 text-sm mt-2">Be the first to post a public RFQ above!</p>
-            </div>
-
-            {/* Sample RFQ Card Structure (commented for reference) */}
-            {/* 
-            <div className="bg-white rounded-xl border border-gray-200 hover:border-orange-200 hover:shadow-lg transition-all p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h4 className="text-xl font-bold text-gray-900 mb-2">Kitchen Renovation</h4>
-                  <p className="text-gray-600 text-sm line-clamp-2">Modern kitchen renovation with new cabinets, countertops, and appliances</p>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block">
+                  <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
                 </div>
-                <span className="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full ml-4">Open</span>
+                <p className="text-gray-500 text-lg mt-4">Loading marketplace...</p>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold">Budget</p>
-                  <p className="text-lg font-bold text-gray-900">KSh 500K - 1M</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold">Location</p>
-                  <p className="text-lg font-bold text-gray-900">Nairobi</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold">Deadline</p>
-                  <p className="text-lg font-bold text-gray-900">Dec 24</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-semibold">Quotes</p>
-                  <p className="text-lg font-bold text-gray-900">3</p>
-                </div>
+            ) : error ? (
+              <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-red-600 font-semibold">Error loading RFQs</p>
+                <p className="text-red-500 text-sm mt-2">{error}</p>
               </div>
-              <button className="w-full md:w-auto text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
-                View & Quote
-              </button>
-            </div>
-            */}
+            ) : publicRFQs.length === 0 ? (
+              <div className="text-center py-12">
+                <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No active public RFQs at the moment</p>
+                <p className="text-gray-400 text-sm mt-2">Be the first to post a public RFQ above!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {publicRFQs.map((rfq) => {
+                  const daysLeft = calculateDaysLeft(rfq.deadline);
+                  return (
+                    <div
+                      key={rfq.id}
+                      className="bg-white rounded-xl border border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all p-6"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{rfq.title}</h4>
+                          <p className="text-gray-600 text-sm line-clamp-2">{rfq.description}</p>
+                        </div>
+                        <span className="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full ml-2 flex-shrink-0 whitespace-nowrap">
+                          Open
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                        <div>
+                          <p className="text-gray-500 font-semibold text-xs">Budget</p>
+                          <p className="font-bold text-gray-900">{rfq.budget_range}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 font-semibold text-xs">Location</p>
+                          <p className="font-bold text-gray-900">{rfq.county}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 font-semibold text-xs">Category</p>
+                          <p className="font-bold text-gray-900 text-xs line-clamp-1">{rfq.category}</p>
+                        </div>
+                        {daysLeft !== null && (
+                          <div>
+                            <p className="text-gray-500 font-semibold text-xs">Deadline</p>
+                            <p className={`font-bold flex items-center gap-1 ${daysLeft <= 3 ? 'text-red-600' : 'text-gray-900'}`}>
+                              <Clock className="w-3 h-3" />
+                              {daysLeft} days
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <button
+                        onClick={() => router.push(`/rfq/${rfq.id}`)}
+                        className="w-full text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-all"
+                        style={{ backgroundColor: '#ca8637' }}
+                      >
+                        View & Quote
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
