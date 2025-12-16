@@ -384,9 +384,9 @@ export default function VendorProfilePage() {
     try {
       setUploadingLogo(true);
       const fileExt = file.name.split('.').pop();
-      const fileName = `vendor-${vendor.id}-${Date.now()}.${fileExt}`;
+      const fileName = `logos/${vendor.id}/vendor-${vendor.id}-${Date.now()}.${fileExt}`;
       const { data, error: uploadError } = await supabase.storage
-        .from('vendor-logos')
+        .from('vendor-assets')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) {
@@ -395,7 +395,7 @@ export default function VendorProfilePage() {
         return;
       }
 
-      const { data: urlData } = supabase.storage.from('vendor-logos').getPublicUrl(data.path);
+      const { data: urlData } = supabase.storage.from('vendor-assets').getPublicUrl(data.path);
       const publicUrl = urlData?.publicUrl;
 
       if (publicUrl) {
