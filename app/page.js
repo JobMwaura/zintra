@@ -73,6 +73,16 @@ export default function ZintraHomepage() {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
   const [vendorProfileLink, setVendorProfileLink] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [featuredVendors, setFeaturedVendors] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [stats, setStats] = useState([
+    { icon: Users, value: '—', label: 'Verified Vendors' },
+    { icon: TrendingUp, value: '—', label: 'Active RFQs' },
+    { icon: Star, value: '—', label: 'Avg Vendor Rating' },
+    { icon: Clock, value: '—', label: 'Avg Response Time' }
+  ]);
+  const [counties, setCounties] = useState(['All Locations']);
 
   useEffect(() => {
     const fetchVendorProfile = async () => {
@@ -87,57 +97,49 @@ export default function ZintraHomepage() {
         setVendorProfileLink(`/vendor-profile/${vendor.id}`);
       }
     };
+    const fetchData = async () => {
+      // Categories
+      const { data: cats } = await supabase.from('categories').select('name, slug').limit(9);
+      if (cats) setCategories(cats);
+
+      // Featured vendors (top rated, verified)
+      const { data: vendors } = await supabase
+        .from('vendors')
+        .select('id, company_name, category, county, rating, logo_url, verified')
+        .order('rating', { ascending: false })
+        .limit(6);
+      if (vendors) setFeaturedVendors(vendors);
+
+      // Products teaser
+      const { data: products } = await supabase
+        .from('vendor_products')
+        .select('id, name, price, image_url, vendor_id')
+        .order('created_at', { ascending: false })
+        .limit(4);
+      if (products) setTopProducts(products);
+
+      // Stats
+      const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true });
+      const { count: rfqCount } = await supabase.from('rfqs').select('*', { count: 'exact', head: true }).in('status', ['open', 'active']);
+      const { data: ratingsData } = await supabase.from('vendors').select('rating');
+      const avgRating = ratingsData?.length
+        ? (ratingsData.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / ratingsData.length).toFixed(1)
+        : '—';
+      setStats([
+        { icon: Users, value: vendorCount ?? '—', label: 'Verified Vendors' },
+        { icon: TrendingUp, value: rfqCount ?? '—', label: 'Active RFQs' },
+        { icon: Star, value: avgRating, label: 'Avg Vendor Rating' },
+        { icon: Clock, value: 'Fast', label: 'Response Time' }
+      ]);
+
+      // Counties list
+      const { data: countiesData } = await supabase.from('vendors').select('county');
+      const uniqueCounties = Array.from(new Set((countiesData || []).map((c) => c.county).filter(Boolean)));
+      setCounties(['All Locations', ...uniqueCounties]);
+    };
     fetchVendorProfile();
+    fetchData();
   }, []);
-
-  const categories = [
-    { name: 'Building & Structural Materials', icon: Building2, description: 'Cement, concrete, bricks, blocks, and structural steel', type: 'materials' },
-    { name: 'Electrical Services & Supplies', icon: Zap, description: 'Licensed electricians, wiring, and installations', type: 'services' },
-    { name: 'Plumbing Services & Supplies', icon: Droplet, description: 'Professional plumbers and sanitary installations', type: 'services' },
-    { name: 'Wood & Timber Solutions', icon: Trees, description: 'Lumber, plywood, and carpentry services', type: 'materials' },
-    { name: 'Roofing & Waterproofing', icon: Home, description: 'Roofing contractors and waterproofing services', type: 'services' },
-    { name: 'Doors, Windows & Hardware', icon: DoorOpen, description: 'Doors, windows, frames, and fittings', type: 'materials' },
-    { name: 'Flooring & Wall Finishes', icon: Layers, description: 'Tiles, laminates, paints, and finishing services', type: 'materials' },
-    { name: 'Kitchen & Interior Fittings', icon: ChefHat, description: 'Cabinets, countertops, and interior design', type: 'services' },
-    { name: 'HVAC & Climate Solutions', icon: Wind, description: 'Heating, ventilation, and air conditioning', type: 'services' }
-  ];
-
-  const featuredVendors = [
-    {
-      name: 'Karibu Supplies Ltd',
-      category: 'Building Materials',
-      location: 'Nairobi',
-      rating: 4.8,
-      reviews: 124,
-      badge: 'Featured',
-      description: 'Quality building materials for all your construction needs. Specialists in cement, steel and aggregates.'
-    },
-    {
-      name: 'Mwanainchi Electricians',
-      category: 'Electrical Services',
-      location: 'Mombasa',
-      rating: 4.9,
-      reviews: 89,
-      badge: 'Verified',
-      description: 'Professional electrical services. Maintenance, repairs, and quality installations for all properties.'
-    },
-    {
-      name: 'Jembe Plumbing',
-      category: 'Plumbing Services',
-      location: 'Kisumu',
-      rating: 4.7,
-      reviews: 156,
-      badge: 'Gold',
-      description: 'Expert plumbing solutions. Quality installations, repairs and maintenance for residential and commercial.'
-    }
-  ];
-
-  const stats = [
-    { icon: Users, value: '500+', label: 'Verified Vendors' },
-    { icon: TrendingUp, value: '2,000+', label: 'Projects Completed' },
-    { icon: Star, value: '4.8/5', label: 'Average Rating' },
-    { icon: Clock, value: '24hrs', label: 'Response Time' }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -178,30 +180,49 @@ export default function ZintraHomepage() {
         </div>
       </nav>
 
-      <section className="relative bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 text-white py-24 overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
+      <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-24 overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute transform rotate-45 -right-20 top-20 w-96 h-96 bg-white rounded-full"></div>
           <div className="absolute transform -rotate-45 -left-20 bottom-20 w-96 h-96 bg-white rounded-full"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center">
-            <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-              Find the Best Construction<br />Materials & Services in Kenya
+          <div className="text-center space-y-6">
+            <p className="text-sm font-semibold uppercase tracking-widest text-amber-300">Post RFQ • Auto-match vendors • Compare quotes</p>
+            <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+              Request Quotes from Verified Vendors<br />and Compare Side-by-Side
             </h1>
-            <p className="text-xl mb-8 text-gray-100 max-w-3xl mx-auto leading-relaxed">
-              Connect with trusted vendors and service providers, request quotes, and get your construction project moving - all in one place.
+            <p className="text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
+              Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/browse">
+              <Link href="/post-rfq">
                 <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" style={{ backgroundColor: '#ca8637' }}>
-                  Find Vendors
+                  Post an RFQ
                 </button>
               </Link>
-              <Link href="/vendor-registration">
-                <button className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-slate-700 transition-all shadow-lg">
-                  Become a Vendor
+              <Link href="/browse">
+                <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
+                  Browse Vendors
                 </button>
               </Link>
+              {vendorProfileLink && (
+                <Link href={vendorProfileLink}>
+                  <button className="text-white px-8 py-4 rounded-lg font-semibold hover:opacity-90 transition-all border border-white/60">
+                    My Vendor Profile
+                  </button>
+                </Link>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10">
+              {stats.map((item, idx) => (
+                <div key={idx} className="bg-white/10 border border-white/10 rounded-xl p-4 flex items-center gap-3 justify-center">
+                  <item.icon className="w-6 h-6 text-amber-300" />
+                  <div>
+                    <p className="text-lg font-bold">{item.value}</p>
+                    <p className="text-sm text-gray-200">{item.label}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
