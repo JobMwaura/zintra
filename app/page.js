@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -69,6 +70,7 @@ function HowItWorksCarousel() {
 }
 
 export default function ZintraHomepage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
@@ -83,6 +85,13 @@ export default function ZintraHomepage() {
     { icon: Clock, value: '—', label: 'Avg Response Time' }
   ]);
   const [counties, setCounties] = useState(['All Locations']);
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('query', searchQuery);
+    if (selectedCategory && selectedCategory !== 'All Categories') params.set('category', selectedCategory);
+    if (selectedLocation && selectedLocation !== 'All Locations') params.set('county', selectedLocation);
+    router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+  };
 
   useEffect(() => {
     const fetchVendorProfile = async () => {
@@ -256,32 +265,17 @@ export default function ZintraHomepage() {
               onChange={(e) => setSelectedLocation(e.target.value)}
               className="px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white w-full md:w-auto transition-all"
             >
-              <option>All Locations</option>
-              <option>Nairobi</option>
-              <option>Mombasa</option>
-              <option>Kisumu</option>
-              <option>Nakuru</option>
+              {counties.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
             </select>
-            <button className="text-white px-8 py-3.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg w-full md:w-auto" style={{ backgroundColor: '#ca8637' }}>
+            <button
+              onClick={handleSearch}
+              className="text-white px-8 py-3.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg w-full md:w-auto"
+              style={{ backgroundColor: '#ca8637' }}
+            >
               Search
             </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, index) => {
-              const IconComponent = stat.icon;
-              return (
-                <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center hover:shadow-md transition-shadow">
-                  <IconComponent className="w-8 h-8 mx-auto mb-3" style={{ color: '#ca8637' }} />
-                  <div className="text-3xl font-bold mb-1" style={{ color: '#535554' }}>{stat.value}</div>
-                  <div className="text-sm text-gray-600">{stat.label}</div>
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>
@@ -335,39 +329,38 @@ export default function ZintraHomepage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredVendors.map((vendor, index) => (
-              <div key={index} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all">
-                <div className="relative">
-                  <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <Building2 className="w-20 h-20 text-gray-300" />
-                  </div>
-                  <div className="absolute top-4 left-4">
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm ${
-                      vendor.badge === 'Featured' ? 'text-white' :
-                      vendor.badge === 'Verified' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                      'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                    }`} style={vendor.badge === 'Featured' ? { backgroundColor: '#ca8637' } : {}}>
-                      {vendor.badge}
+            {featuredVendors.map((vendor) => (
+              <div key={vendor.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all">
+                <div className="relative h-40 bg-gray-50 flex items-center justify-center overflow-hidden">
+                  {vendor.logo_url ? (
+                    <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain p-6" />
+                  ) : (
+                    <Building2 className="w-16 h-16 text-gray-300" />
+                  )}
+                  {vendor.verified && (
+                    <span className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                      <Shield className="w-3 h-3" /> Verified
                     </span>
-                  </div>
+                  )}
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{vendor.name}</h3>
-                  <p className="text-sm text-gray-600 mb-4 leading-relaxed">{vendor.description}</p>
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+                <div className="p-5">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">{vendor.company_name || 'Vendor'}</h3>
+                  <p className="text-xs text-gray-500 mb-3">{vendor.category || '—'}</p>
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center">
-                      <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                      <span className="text-sm font-bold text-gray-900 ml-1.5">{vendor.rating}</span>
-                      <span className="text-sm text-gray-500 ml-1">({vendor.reviews})</span>
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-sm font-bold text-gray-900 ml-1.5">{vendor.rating || '—'}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {vendor.location}
+                      {vendor.county || 'Location'}
                     </div>
                   </div>
-                  <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all shadow-sm" style={{ backgroundColor: '#ca8637' }}>
-                    View Profile
-                  </button>
+                  <Link href={`/vendor-profile/${vendor.id}`}>
+                    <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                      View Profile
+                    </button>
+                  </Link>
                 </div>
               </div>
             ))}
