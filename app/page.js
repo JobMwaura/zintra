@@ -235,8 +235,8 @@ export default function ZintraHomepage() {
         {/* Overlay for better contrast */}
         <div className="absolute inset-0 bg-black/40" />
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 w-full">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 w-full flex flex-col items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 w-full max-w-5xl">
             {/* Glass Box 1 */}
             <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-6 hover:bg-white/15 transition-all">
               <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-3">
