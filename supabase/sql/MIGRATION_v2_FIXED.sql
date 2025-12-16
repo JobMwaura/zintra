@@ -212,6 +212,11 @@ CREATE TABLE IF NOT EXISTS public.vendor_products (
 );
 CREATE INDEX IF NOT EXISTS idx_vendor_products_vendor_id ON public.vendor_products(vendor_id);
 
+-- Add offer fields to products
+ALTER TABLE public.vendor_products
+  ADD COLUMN IF NOT EXISTS sale_price text,
+  ADD COLUMN IF NOT EXISTS offer_label text;
+
 -- ==========================================
 -- SUCCESS! All tables and columns are ready
 -- ==========================================

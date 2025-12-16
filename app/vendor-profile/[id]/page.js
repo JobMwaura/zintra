@@ -92,8 +92,12 @@ export default function VendorProfilePage() {
     description: '',
     price: '',
     category: '',
+    unit: '',
+    sale_price: '',
+    offer_label: '',
   });
   const [productImageFile, setProductImageFile] = useState(null);
+  const [editingProductId, setEditingProductId] = useState(null);
 
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -288,7 +292,7 @@ export default function VendorProfilePage() {
     setSaving(false);
   };
 
-  const addProduct = async () => {
+  const saveProduct = async () => {
     if (!vendor?.id) return;
     if (!productForm.name || !productForm.price) return;
 
@@ -305,34 +309,72 @@ export default function VendorProfilePage() {
         imageUrl = urlData?.publicUrl || null;
       }
 
-      const { data: inserted, error } = await supabase
-        .from('vendor_products')
-        .insert([{
-          vendor_id: vendor.id,
-          name: productForm.name,
-          description: productForm.description,
-          price: productForm.price,
-          category: productForm.category,
-          image_url: imageUrl,
-          status: 'In Stock',
-          unit: productForm.unit || '',
-        }])
-        .select()
-        .single();
-      if (error) throw error;
+      if (editingProductId) {
+        const { data: updated, error } = await supabase
+          .from('vendor_products')
+          .update({
+            name: productForm.name,
+            description: productForm.description,
+            price: productForm.price,
+            category: productForm.category,
+            unit: productForm.unit || '',
+            sale_price: productForm.sale_price || null,
+            offer_label: productForm.offer_label || null,
+            ...(imageUrl ? { image_url: imageUrl } : {}),
+          })
+          .eq('id', editingProductId)
+          .select()
+          .single();
+        if (error) throw error;
+        setProducts((prev) => prev.map((p) => (p.id === editingProductId ? updated : p)));
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('vendor_products')
+          .insert([{
+            vendor_id: vendor.id,
+            name: productForm.name,
+            description: productForm.description,
+            price: productForm.price,
+            category: productForm.category,
+            image_url: imageUrl,
+            status: 'In Stock',
+            unit: productForm.unit || '',
+            sale_price: productForm.sale_price || null,
+            offer_label: productForm.offer_label || null,
+          }])
+          .select()
+          .single();
+        if (error) throw error;
+        setProducts((prev) => [inserted, ...prev]);
+      }
 
-      setProducts((prev) => [inserted, ...prev]);
-      setProductForm({ name: '', description: '', price: '', category: '', unit: '' });
+      setProductForm({ name: '', description: '', price: '', category: '', unit: '', sale_price: '', offer_label: '' });
       setProductImageFile(null);
+      setEditingProductId(null);
       setShowProductModal(false);
     } catch (err) {
-      console.error('Add product failed:', err);
+      console.error('Save product failed:', err);
     }
   };
 
   const deleteProduct = async (id) => {
     setProducts(products.filter((p) => p.id !== id));
     await supabase.from('vendor_products').delete().eq('id', id);
+  };
+
+  const startEditProduct = (product) => {
+    setProductForm({
+      name: product.name || '',
+      description: product.description || '',
+      price: product.price || '',
+      category: product.category || '',
+      unit: product.unit || '',
+      sale_price: product.sale_price || '',
+      offer_label: product.offer_label || '',
+    });
+    setProductImageFile(null);
+    setEditingProductId(product.id);
+    setShowProductModal(true);
   };
 
   const addService = () => {
@@ -752,7 +794,21 @@ export default function VendorProfilePage() {
                         </div>
                         <h3 className="font-semibold text-slate-900 text-sm mb-1">{product.name}</h3>
                         <p className="text-xs text-slate-500 mb-2">{product.description}</p>
-                        <p className="text-amber-600 font-bold mb-2">{product.price}{product.unit ? ` / ${product.unit}` : ''}</p>
+                        <div className="mb-2 space-y-1">
+                          <p className="text-amber-600 font-bold">
+                            {product.sale_price ? `${product.sale_price}` : product.price}{product.unit ? ` / ${product.unit}` : ''}
+                          </p>
+                          {product.sale_price && (
+                            <p className="text-xs text-slate-500 line-through">
+                              {product.price}{product.unit ? ` / ${product.unit}` : ''}
+                            </p>
+                          )}
+                          {product.offer_label && (
+                            <span className="inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
+                              {product.offer_label}
+                            </span>
+                          )}
+                        </div>
                         <span className="inline-block bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded">
                           {product.status}
                         </span>
@@ -1124,19 +1180,51 @@ export default function VendorProfilePage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {products.map((product) => (
                 <div key={product.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-lg transition">
-                  <div className="w-full h-48 bg-slate-100 flex items-center justify-center text-slate-400">
-                    <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" />
-                    </svg>
+                  <div className="w-full h-48 bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" />
+                      </svg>
+                    )}
                   </div>
                   <div className="p-4">
                     <h4 className="font-semibold text-slate-900 mb-2">{product.name}</h4>
                     <p className="text-xs text-slate-500 mb-3">{product.description}</p>
-                    <p className="text-lg font-bold text-amber-600 mb-2">{product.price}</p>
+                    <div className="mb-2 space-y-1">
+                      <p className="text-lg font-bold text-amber-600">
+                        {product.sale_price ? `${product.sale_price}` : product.price}
+                      </p>
+                      {product.sale_price && (
+                        <p className="text-xs text-slate-500 line-through">{product.price}</p>
+                      )}
+                      {product.offer_label && (
+                        <span className="inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
+                          {product.offer_label}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">{product.unit}</span>
                       <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded">{product.status}</span>
                     </div>
+                    {canEdit && (
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => startEditProduct(product)}
+                          className="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteProduct(product.id)}
+                          className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1275,10 +1363,28 @@ export default function VendorProfilePage() {
                 placeholder="Price"
               />
               <input
+                value={productForm.sale_price}
+                onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })}
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Sale price (optional)"
+              />
+              <input
                 value={productForm.category}
                 onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                 className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Category"
+              />
+              <input
+                value={productForm.unit}
+                onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Unit (e.g., bag, sq.ft)"
+              />
+              <input
+                value={productForm.offer_label}
+                onChange={(e) => setProductForm({ ...productForm, offer_label: e.target.value })}
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Offer label (e.g., 20% off)"
               />
               <div>
                 <label className="text-sm text-slate-700 mb-1 block">Product Image (optional)</label>
@@ -1295,8 +1401,8 @@ export default function VendorProfilePage() {
               <button onClick={() => setShowProductModal(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded font-semibold hover:bg-slate-50">
                 Cancel
               </button>
-              <button onClick={addProduct} className="flex-1 px-4 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700">
-                Add
+              <button onClick={saveProduct} className="flex-1 px-4 py-2 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700">
+                {editingProductId ? 'Save' : 'Add'}
               </button>
             </div>
           </div>
