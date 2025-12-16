@@ -222,55 +222,64 @@ export default function ZintraHomepage() {
         </div>
       </nav>
 
-      <section className="relative overflow-hidden bg-slate-950 text-white">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(202,134,55,0.14),transparent_50%)]" />
-          <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:48px_48px]" />
-        </div>
+      <section className="relative overflow-hidden text-white min-h-screen lg:min-h-[600px] flex items-center">
+        {/* Banner Background */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-fixed"
+          style={{
+            backgroundImage: 'url(https://zeomgqlnztcdqtespsjx.supabase.co/storage/v1/object/public/vendor-assets/Website%20Images/zintra%20banner.png)',
+            filter: 'brightness(0.5)'
+          }}
+        />
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
-          <div className="space-y-6 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2 text-sm text-gray-100">
-              <Shield className="w-4 h-4 text-amber-300" />
-              Post RFQ • Auto-match vendors • Compare quotes
-            </div>
+        {/* Overlay for better contrast */}
+        <div className="absolute inset-0 bg-black/40" />
 
-            <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/10 p-6 sm:p-10 shadow-lg max-w-4xl mx-auto">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-4">
-                Request Quotes from Verified Vendors and Compare Side-by-Side
-              </h1>
-              <p className="text-lg text-gray-100 leading-relaxed mb-6 max-w-3xl">
-                Auto-validation, smart vendor matching, and a clean comparison view help you pick the best offer with confidence.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-                <Link href="/post-rfq">
-                  <button
-                    className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all"
-                    style={{ backgroundColor: '#ca8637' }}
-                  >
-                    Post an RFQ
-                  </button>
-                </Link>
-                <Link href="/browse">
-                  <button className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold border border-white/20 bg-white/5 hover:bg-white/10 transition-all">
-                    Browse Vendors
-                  </button>
-                </Link>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* Glass Box 1 */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-8 hover:bg-white/15 transition-all">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-4">
+                <Search className="w-6 h-6 text-amber-300" />
               </div>
+              <h3 className="text-2xl font-bold mb-3">Find Vendors</h3>
+              <p className="text-gray-100 leading-relaxed">Browse thousands of verified vendors in your area. Filter by category, location, and rating.</p>
             </div>
 
-            <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
-              {stats.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 backdrop-blur px-4 py-2"
-                >
-                  <item.icon className="w-4 h-4 text-amber-300" />
-                  <span className="font-semibold">{item.value}</span>
-                  <span className="text-gray-200 text-sm">{item.label}</span>
-                </div>
-              ))}
+            {/* Glass Box 2 */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-8 hover:bg-white/15 transition-all">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-4">
+                <MessageSquare className="w-6 h-6 text-amber-300" />
+              </div>
+              <h3 className="text-2xl font-bold mb-3">Get Quotes</h3>
+              <p className="text-gray-100 leading-relaxed">Post your project requirements and receive competitive quotes from multiple vendors instantly.</p>
             </div>
+
+            {/* Glass Box 3 */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/30 p-8 hover:bg-white/15 transition-all">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-400/20 mb-4">
+                <CheckCircle className="w-6 h-6 text-amber-300" />
+              </div>
+              <h3 className="text-2xl font-bold mb-3">Compare & Hire</h3>
+              <p className="text-gray-100 leading-relaxed">Compare quotes side-by-side, read reviews, and hire the perfect vendor for your project.</p>
+            </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mt-12">
+            <Link href="/post-rfq">
+              <button
+                className="px-8 py-4 rounded-xl font-semibold shadow-lg hover:opacity-90 transition-all"
+                style={{ backgroundColor: '#ca8637' }}
+              >
+                Post an RFQ
+              </button>
+            </Link>
+            <Link href="/browse">
+              <button className="px-8 py-4 rounded-xl font-semibold border border-white/30 bg-white/10 hover:bg-white/20 transition-all backdrop-blur">
+                Browse Vendors
+              </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -385,10 +394,6 @@ export default function ZintraHomepage() {
 
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4" style={{ color: '#535554' }}>Browse by Category</h2>
-            <p className="text-gray-600 text-lg">Find the right vendors for your construction needs</p>
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {categories.map((category, index) => {
               const IconComponent = category.icon;
