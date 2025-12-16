@@ -637,6 +637,59 @@ export default function ZintraHomepage() {
               </div>
             </div>
           </div>
+
+          {/* Public RFQs Marketplace Section */}
+          <div className="mt-16 pt-12 border-t border-gray-200">
+            <div className="text-center mb-8">
+              <h3 className="text-3xl font-bold mb-2" style={{ color: '#535554' }}>Public RFQ Marketplace</h3>
+              <p className="text-gray-600">Active projects open for bidding - Browse available opportunities</p>
+            </div>
+
+            {/* RFQs List */}
+            <div className="space-y-4">
+              {/* This will be populated with data from Supabase */}
+              {/* For now, showing placeholder state */}
+              <div className="text-center py-12">
+                <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No active public RFQs at the moment</p>
+                <p className="text-gray-400 text-sm mt-2">Post your project above to get started!</p>
+              </div>
+
+              {/* Sample RFQ Card Structure (commented for reference) */}
+              {/* 
+              <div className="bg-white rounded-xl border border-gray-200 hover:border-orange-200 hover:shadow-lg transition-all p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">Kitchen Renovation</h4>
+                    <p className="text-gray-600 text-sm line-clamp-2">Modern kitchen renovation with new cabinets, countertops, and appliances</p>
+                  </div>
+                  <span className="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full ml-4">Open</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-500 font-semibold">Budget</p>
+                    <p className="text-lg font-bold text-gray-900">KSh 500K - 1M</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-semibold">Location</p>
+                    <p className="text-lg font-bold text-gray-900">Nairobi</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-semibold">Deadline</p>
+                    <p className="text-lg font-bold text-gray-900">Dec 24</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-semibold">Quotes</p>
+                    <p className="text-lg font-bold text-gray-900">3</p>
+                  </div>
+                </div>
+                <button className="w-full md:w-auto text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
+                  View & Quote
+                </button>
+              </div>
+              */}
+            </div>
+          </div>
         </div>
       </section>
 
