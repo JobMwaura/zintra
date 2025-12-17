@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 
 export default function BrowseVendors() {
   const [vendors, setVendors] = useState([]);
@@ -43,25 +44,36 @@ export default function BrowseVendors() {
           console.error('❌ Error fetching vendors:', fetchError.message);
           setError(`Failed to load vendors: ${fetchError.message}`);
           setVendors([]);
+          // Set comprehensive categories even on error
+          setCategories([
+            'All Categories',
+            ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+          ]);
         } else if (!data || data.length === 0) {
           console.warn('No vendors found in database');
           setVendors([]);
-          setCategories(['All Categories']);
-          setLocations(['All Locations']);
+          // Set comprehensive categories for filtering even with no vendors
+          setCategories([
+            'All Categories',
+            ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+          ]);
         } else {
           setVendors(data);
-
-          const uniqueCategories = [
+          // Use comprehensive construction categories
+          setCategories([
             'All Categories',
-            ...new Set(data.map((v) => v.category).filter(Boolean)),
-          ];
-
-          setCategories(uniqueCategories);
+            ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+          ]);
         }
       } catch (err) {
         console.error('Unexpected error fetching vendors:', err);
         setError(`Error: ${err.message || 'Unknown error occurred'}`);
         setVendors([]);
+        // Set comprehensive categories on error
+        setCategories([
+          'All Categories',
+          ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+        ]);
       } finally {
         setLoading(false);
       }

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { CountyTownFilter } from '@/components/LocationSelector';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -157,9 +158,14 @@ export default function ZintraHomepage() {
       }
     };
     const fetchData = async () => {
-      // Categories
-      const { data: cats } = await supabase.from('categories').select('name, slug').limit(9);
-      if (cats) setCategories(cats);
+      // Use comprehensive construction categories
+      setCategories([
+        { name: 'All Categories' },
+        ...ALL_CATEGORIES_FLAT.map((cat) => ({
+          name: cat.label,
+          slug: cat.value,
+        })),
+      ]);
 
       // Featured vendors (top rated, verified)
       const { data: vendors } = await supabase
