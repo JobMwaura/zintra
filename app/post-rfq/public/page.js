@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import LocationSelector from '@/components/LocationSelector';
 import {
   Check,
   Upload,
@@ -46,7 +47,7 @@ export default function PostPublicRFQ() {
 
     // Step 3: Location & Site Details
     county: '',
-    specificLocation: '',
+    location: '',
     siteAccessibility: 'easy',
     multiStory: false,
     weatherExposed: false,
@@ -137,16 +138,6 @@ export default function PostPublicRFQ() {
     { value: 'industrial', label: 'Industrial', desc: 'Factory, warehouse, production' },
     { value: 'institutional', label: 'Institutional', desc: 'School, hospital, government' },
     { value: 'mixed_use', label: 'Mixed-Use', desc: 'Combination of residential/commercial' }
-  ];
-
-  const counties = [
-    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Naivasha',
-    'Thika', 'Ongata Rongai', 'Meru', 'Kericho', 'Kiambu', 'Muranga',
-    'Nyeri', 'Embu', 'Machakos', 'Makueni', 'Voi', 'Lamu', 'Malindi',
-    'Kakamega', 'Kisii', 'Nyamira', 'Bomet', 'Narok', 'Kajiado', 'Laikipia',
-    'Samburu', 'Marsabit', 'Turkana', 'West Pokot', 'Uasin Gishu',
-    'Trans Nzoia', 'Bungoma', 'Busia', 'Siaya', 'Homabay', 'Migori',
-    'Kisii', 'Garissa', 'Wajir', 'Mandera', 'Isiolo', 'Tana River'
   ];
 
   const qualityGrades = [
@@ -245,7 +236,7 @@ export default function PostPublicRFQ() {
 
     if (currentStep === 3) {
       if (!formData.county) newErrors.county = 'Required';
-      if (!formData.specificLocation.trim()) newErrors.specificLocation = 'Required';
+      if (!formData.location.trim()) newErrors.location = 'Required';
     }
 
     if (currentStep === 4) {
@@ -652,40 +643,20 @@ export default function PostPublicRFQ() {
                 </div>
 
                 {/* Location */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-                      County *
-                    </label>
-                    <select
-                      name="county"
-                      value={formData.county}
-                      onChange={handleInputChange}
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-                    >
-                      <option value="">Select county</option>
-                      {counties.map(county => (
-                        <option key={county} value={county}>{county}</option>
-                      ))}
-                    </select>
-                    {errors.county && <p className="text-red-500 text-sm mt-1">{errors.county}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
-                      Specific Location/Address *
-                    </label>
-                    <input
-                      type="text"
-                      name="specificLocation"
-                      placeholder="e.g., Karen, Westlands, or specific street address"
-                      value={formData.specificLocation}
-                      onChange={handleInputChange}
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-                    />
-                    {errors.specificLocation && <p className="text-red-500 text-sm mt-1">{errors.specificLocation}</p>}
-                  </div>
-                </div>
+                <LocationSelector
+                  county={formData.county}
+                  town={formData.location}
+                  onCountyChange={(e) => {
+                    handleInputChange({ target: { name: 'county', value: e.target.value } });
+                    setErrors({ ...errors, county: '' });
+                  }}
+                  onTownChange={(e) => {
+                    handleInputChange({ target: { name: 'location', value: e.target.value } });
+                    setErrors({ ...errors, location: '' });
+                  }}
+                  required={true}
+                  errorMessage={errors.county || errors.location}
+                />
 
                 {/* Site Accessibility */}
                 <div>
@@ -1437,7 +1408,7 @@ export default function PostPublicRFQ() {
                       </div>
                       <div>
                         <dt className="font-medium text-gray-700">Location</dt>
-                        <dd className="text-gray-600">{formData.specificLocation}</dd>
+                        <dd className="text-gray-600">{formData.location}</dd>
                       </div>
                       <div>
                         <dt className="font-medium text-gray-700">Accessibility</dt>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Eye, Edit, Save, AlertCircle, Check, ArrowLeft } from 'lucide-react';
+import LocationSelector from '@/components/LocationSelector';
 
 export default function MyProfileTab() {
   const [user, setUser] = useState(null);
@@ -419,30 +420,13 @@ export default function MyProfileTab() {
         {/* Location */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Location</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City/Town</label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                placeholder="e.g., Nairobi"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">County</label>
-              <input
-                type="text"
-                name="county"
-                value={formData.county}
-                onChange={handleInputChange}
-                placeholder="e.g., Nairobi County"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-          </div>
+          <LocationSelector
+            county={formData.county}
+            town={formData.location}
+            onCountyChange={(e) => setFormData({ ...formData, county: e.target.value })}
+            onTownChange={(e) => setFormData({ ...formData, location: e.target.value })}
+            required={false}
+          />
         </div>
 
         {/* Contact Information */}

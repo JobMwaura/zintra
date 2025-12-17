@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Check, ArrowRight, ArrowLeft, Shield } from 'lucide-react';
+import LocationSelector from '@/components/LocationSelector';
 
 export default function DirectRFQ() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function DirectRFQ() {
     additionalSpecs: '',
     servicesRequired: [],
     county: '',
-    specificLocation: '',
+    location: '',
     locationDetails: '',
     siteAccessibility: 'easy',
     multiStory: false,
@@ -80,10 +81,6 @@ export default function DirectRFQ() {
     'Design Services',
     'Maintenance/Warranty',
     'Consultation'
-  ];
-
-  const counties = [
-    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Naivasha', 'Thika', 'Ongata Rongai', 'Meru', 'Kericho', 'Kiambu', 'Other'
   ];
 
   const paymentTermsOptions = [
@@ -145,7 +142,7 @@ export default function DirectRFQ() {
     }
     if (currentStep === 3) {
       if (!formData.county) newErrors.county = 'Required';
-      if (!formData.specificLocation.trim()) newErrors.specificLocation = 'Required';
+      if (!formData.location.trim()) newErrors.location = 'Required';
     }
     if (currentStep === 4) {
       if (selectedVendors.length === 0) newErrors.selectedVendors = 'Select at least one vendor';
@@ -189,7 +186,7 @@ export default function DirectRFQ() {
           title: formData.projectTitle,
           description: formData.description,
           category: formData.category,
-          location: formData.specificLocation,
+          location: formData.location,
           county: formData.county,
           budget_min: parseInt(formData.budget_min) || null,
           budget_max: parseInt(formData.budget_max) || null,
@@ -424,20 +421,20 @@ export default function DirectRFQ() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Step 3: Location & Site Details</h2>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">County *</label>
-                  <select name="county" value={formData.county} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900">
-                    <option value="">Select county</option>
-                    {counties.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {errors.county && <p className="text-red-500 text-sm mt-1">{errors.county}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Specific Location *</label>
-                  <input type="text" name="specificLocation" placeholder="e.g., Westlands" value={formData.specificLocation} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900" />
-                  {errors.specificLocation && <p className="text-red-500 text-sm mt-1">{errors.specificLocation}</p>}
-                </div>
+                <LocationSelector
+                  county={formData.county}
+                  town={formData.location}
+                  onCountyChange={(e) => {
+                    setFormData({ ...formData, county: e.target.value });
+                    setErrors({ ...errors, county: '' });
+                  }}
+                  onTownChange={(e) => {
+                    setFormData({ ...formData, location: e.target.value });
+                    setErrors({ ...errors, location: '' });
+                  }}
+                  required={true}
+                  errorMessage={errors.county || errors.location}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location Details</label>
@@ -534,7 +531,7 @@ export default function DirectRFQ() {
                       </div>
                       <div>
                         <dt className="font-medium text-gray-700">Location</dt>
-                        <dd className="text-gray-600">{formData.specificLocation}, {formData.county}</dd>
+                        <dd className="text-gray-600">{formData.location}, {formData.county}</dd>
                       </div>
                     </dl>
                   </div>

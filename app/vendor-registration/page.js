@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle } from 'lucide-react';
+import LocationSelector from '@/components/LocationSelector';
 
 const brand = {
   primary: '#c28a3a',
@@ -108,7 +109,7 @@ export default function VendorRegistration() {
     phone: '',
     whatsappNumber: '',
     county: '',
-    specificLocation: '',
+    location: '',
     selectedCategories: [],
     websiteUrl: '',
     facebookPage: '',
@@ -227,8 +228,8 @@ export default function VendorRegistration() {
       if (!formData.county.trim()) {
         newErrors.county = 'County is required';
       }
-      if (!formData.specificLocation.trim()) {
-        newErrors.specificLocation = 'Specific location is required';
+      if (!formData.location.trim()) {
+        newErrors.location = 'Location is required';
       }
       if (!formData.phone.trim()) {
         newErrors.phone = 'Phone number is required';
@@ -304,7 +305,7 @@ export default function VendorRegistration() {
           phone: formData.phone || null,
           email: userEmail,
           county: formData.county || null,
-          location: formData.specificLocation || null,
+          location: formData.location || null,
           plan: formData.selectedPlan || 'free',
           whatsapp: formData.whatsappNumber || null,
           website: formData.websiteUrl || null,
@@ -453,35 +454,21 @@ export default function VendorRegistration() {
             {errors.businessDescription && <p className="text-xs text-red-500 mt-1">{errors.businessDescription}</p>}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-slate-800 mb-1">County*</label>
-              <input
-                type="text"
-                name="county"
-                value={formData.county}
-                onChange={handleInputChange}
-                placeholder="e.g., Nairobi"
-                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
-                  errors.county ? 'border-red-400' : 'border-slate-300'
-                }`}
-              />
-              {errors.county && <p className="text-xs text-red-500 mt-1">{errors.county}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-800 mb-1">Specific Location*</label>
-              <input
-                type="text"
-                name="specificLocation"
-                value={formData.specificLocation}
-                onChange={handleInputChange}
-                placeholder="e.g., Westlands, CBD"
-                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
-                  errors.specificLocation ? 'border-red-400' : 'border-slate-300'
-                }`}
-              />
-              {errors.specificLocation && <p className="text-xs text-red-500 mt-1">{errors.specificLocation}</p>}
-            </div>
+          <div>
+            <LocationSelector
+              county={formData.county}
+              town={formData.location}
+              onCountyChange={(e) => {
+                setFormData({ ...formData, county: e.target.value });
+                setErrors({ ...errors, county: '' });
+              }}
+              onTownChange={(e) => {
+                setFormData({ ...formData, location: e.target.value });
+                setErrors({ ...errors, location: '' });
+              }}
+              required={true}
+              errorMessage={errors.county || errors.location}
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

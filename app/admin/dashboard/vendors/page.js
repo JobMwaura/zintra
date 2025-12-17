@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { CountyTownFilter } from '@/components/LocationSelector';
 import {
   Search, Filter, MapPin, Star, CheckCircle, AlertTriangle, Eye, X, 
   Mail, Shield, User, Download, MessageSquare, ArrowLeft, TrendingUp,
@@ -39,6 +40,7 @@ export default function ConsolidatedVendors() {
   // Filter states
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [countyFilter, setCountyFilter] = useState('all');
+  const [townFilter, setTownFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [ratingFilter, setRatingFilter] = useState('all');
 
@@ -255,6 +257,7 @@ export default function ConsolidatedVendors() {
   const resetFilters = () => {
     setCategoryFilter('all');
     setCountyFilter('all');
+    setTownFilter('all');
     setPlanFilter('all');
     setRatingFilter('all');
     setSearchTerm('');
@@ -265,6 +268,7 @@ export default function ConsolidatedVendors() {
       .filter(v => !searchTerm || v.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) || v.category?.toLowerCase().includes(searchTerm.toLowerCase()))
       .filter(v => categoryFilter === 'all' || v.category === categoryFilter)
       .filter(v => countyFilter === 'all' || v.county === countyFilter)
+      .filter(v => townFilter === 'all' || v.location === townFilter)
       .filter(v => planFilter === 'all' || (v.subscription_plan || v.plan || 'Free') === planFilter)
       .filter(v => {
         if (ratingFilter === 'all') return true;
@@ -318,17 +322,17 @@ export default function ConsolidatedVendors() {
   const pendingVendors = useMemo(() => {
     const pending = (vendors || []).filter(v => v.status === 'pending');
     return applySorting(applyFilters(pending));
-  }, [vendors, searchTerm, categoryFilter, countyFilter, planFilter, ratingFilter, sortKey, sortDir]);
+  }, [vendors, searchTerm, categoryFilter, countyFilter, townFilter, planFilter, ratingFilter, sortKey, sortDir]);
 
   const activeVendors = useMemo(() => {
     const active = (vendors || []).filter(v => v.status === 'active');
     return applySorting(applyFilters(active));
-  }, [vendors, searchTerm, categoryFilter, countyFilter, planFilter, ratingFilter, sortKey, sortDir]);
+  }, [vendors, searchTerm, categoryFilter, countyFilter, townFilter, planFilter, ratingFilter, sortKey, sortDir]);
 
   const rejectedVendors = useMemo(() => {
     const rejected = (vendors || []).filter(v => v.status === 'rejected');
     return applySorting(applyFilters(rejected));
-  }, [vendors, searchTerm, categoryFilter, countyFilter, planFilter, ratingFilter, sortKey, sortDir]);
+  }, [vendors, searchTerm, categoryFilter, countyFilter, townFilter, planFilter, ratingFilter, sortKey, sortDir]);
 
   // Get unique categories and counties
   const categories = useMemo(() => {
@@ -344,7 +348,7 @@ export default function ConsolidatedVendors() {
   const planOptions = ['Free', 'Basic', 'Premium', 'Diamond'];
   const ratingOptions = ['all', '4.5+', '4.0+', '3.5+', '3.0+'];
 
-  const activeFiltersCount = [planFilter, ratingFilter, categoryFilter, countyFilter, searchTerm].filter(f => f !== 'all' && f !== '').length;
+  const activeFiltersCount = [planFilter, ratingFilter, categoryFilter, countyFilter, townFilter, searchTerm].filter(f => f !== 'all' && f !== '').length;
 
   const exportCSV = () => {
     const dataToExport = activeTab === 'pending' ? pendingVendors : activeTab === 'active' ? activeVendors : rejectedVendors;
@@ -845,6 +849,11 @@ export default function ConsolidatedVendors() {
                     County: {countyFilter}
                   </span>
                 )}
+                {townFilter !== 'all' && (
+                  <span className="px-3 py-1 rounded-full text-xs bg-purple-50 text-purple-700 border border-purple-100">
+                    Location: {townFilter}
+                  </span>
+                )}
               </div>
             )}
 
@@ -888,18 +897,15 @@ export default function ConsolidatedVendors() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">County</label>
-                <select
-                  value={countyFilter}
-                  onChange={(e) => setCountyFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                >
-                  <option value="all">All Counties</option>
-                  {counties.map(county => (
-                    <option key={county} value={county}>{county}</option>
-                  ))}
-                </select>
+              <div className="md:col-span-2">
+                <CountyTownFilter
+                  county={countyFilter === 'all' ? '' : countyFilter}
+                  town={townFilter === 'all' ? '' : townFilter}
+                  onCountyChange={(e) => setCountyFilter(e.target.value || 'all')}
+                  onTownChange={(e) => setTownFilter(e.target.value || 'all')}
+                  countyPlaceholder="All Counties"
+                  townPlaceholder="All Locations"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Sort</label>

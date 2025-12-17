@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Check, ArrowRight, ArrowLeft, Zap, X } from 'lucide-react';
+import LocationSelector from '@/components/LocationSelector';
 
 export default function WizardRFQ() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function WizardRFQ() {
     budget_min: '',
     budget_max: '',
     county: '',
-    specificLocation: '',
+    location: '',
     materialRequirements: '',
     paymentTerms: 'upon_completion',
     deadline: '',
@@ -58,10 +59,6 @@ export default function WizardRFQ() {
     { value: 'flexible', label: 'Flexible/Negotiable' }
   ];
 
-  const counties = [
-    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Naivasha', 'Thika', 'Ongata Rongai', 'Meru', 'Kericho', 'Kiambu', 'Other'
-  ];
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -87,7 +84,7 @@ export default function WizardRFQ() {
       }
       if (!formData.timeline) newErrors.timeline = 'Required';
       if (!formData.county) newErrors.county = 'Required';
-      if (!formData.specificLocation.trim()) newErrors.specificLocation = 'Required';
+      if (!formData.location.trim()) newErrors.location = 'Required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -128,7 +125,7 @@ export default function WizardRFQ() {
           title: formData.projectTitle,
           description: formData.description,
           category: formData.category,
-          location: formData.specificLocation,
+          location: formData.location,
           county: formData.county,
           budget_min: parseInt(formData.budget_min) || null,
           budget_max: parseInt(formData.budget_max) || null,
@@ -295,20 +292,20 @@ export default function WizardRFQ() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">County *</label>
-                  <select name="county" value={formData.county} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900">
-                    <option value="">Select county</option>
-                    {counties.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {errors.county && <p className="text-red-500 text-sm mt-1">{errors.county}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Specific Location *</label>
-                  <input type="text" name="specificLocation" placeholder="e.g., Westlands" value={formData.specificLocation} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900" />
-                  {errors.specificLocation && <p className="text-red-500 text-sm mt-1">{errors.specificLocation}</p>}
-                </div>
+                <LocationSelector
+                  county={formData.county}
+                  town={formData.location}
+                  onCountyChange={(e) => {
+                    setFormData({ ...formData, county: e.target.value });
+                    setErrors({ ...errors, county: '' });
+                  }}
+                  onTownChange={(e) => {
+                    setFormData({ ...formData, location: e.target.value });
+                    setErrors({ ...errors, location: '' });
+                  }}
+                  required={true}
+                  errorMessage={errors.county || errors.location}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Timeline *</label>
@@ -374,7 +371,7 @@ export default function WizardRFQ() {
                       </div>
                       <div>
                         <dt className="font-medium text-gray-700">Location</dt>
-                        <dd className="text-gray-600">{formData.specificLocation}, {formData.county}</dd>
+                        <dd className="text-gray-600">{formData.location}, {formData.county}</dd>
                       </div>
                       <div>
                         <dt className="font-medium text-gray-700">Timeline</dt>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, FileUp, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { CountySelect } from '@/components/LocationSelector';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -232,13 +233,10 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-slate-800 mb-1">County / Location</label>
-            <input
-              type="text"
-              placeholder="e.g. Nairobi, Kiambu"
-              value={form.location}
+            <CountySelect
+              county={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+              required={true}
             />
           </div>
 

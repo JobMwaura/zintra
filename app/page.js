@@ -5,6 +5,7 @@ import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { CountyTownFilter } from '@/components/LocationSelector';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -73,7 +74,8 @@ export default function ZintraHomepage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [selectedLocation, setSelectedLocation] = useState('All Locations');
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedTown, setSelectedTown] = useState('');
   const [vendorProfileLink, setVendorProfileLink] = useState('');
   const [categories, setCategories] = useState([]);
   const [featuredVendors, setFeaturedVendors] = useState([]);
@@ -84,7 +86,6 @@ export default function ZintraHomepage() {
     { icon: Star, value: '—', label: 'Avg Vendor Rating' },
     { icon: Clock, value: '—', label: 'Avg Response Time' }
   ]);
-  const [counties, setCounties] = useState(['All Locations']);
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -92,7 +93,8 @@ export default function ZintraHomepage() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
     if (selectedCategory && selectedCategory !== 'All Categories') params.set('category', selectedCategory);
-    if (selectedLocation && selectedLocation !== 'All Locations') params.set('county', selectedLocation);
+    if (selectedCounty) params.set('county', selectedCounty);
+    if (selectedTown) params.set('location', selectedTown);
     router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
@@ -187,11 +189,6 @@ export default function ZintraHomepage() {
         { icon: Star, value: avgRating, label: 'Avg Vendor Rating' },
         { icon: Clock, value: 'Fast', label: 'Response Time' }
       ]);
-
-      // Counties list
-      const { data: countiesData } = await supabase.from('vendors').select('county');
-      const uniqueCounties = Array.from(new Set((countiesData || []).map((c) => c.county).filter(Boolean)));
-      setCounties(['All Locations', ...uniqueCounties]);
     };
     fetchVendorProfile();
     fetchData();
@@ -386,15 +383,15 @@ export default function ZintraHomepage() {
                 <option key={category.name}>{category.name}</option>
               ))}
             </select>
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              className="px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white w-full md:w-auto transition-all"
-            >
-              {counties.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
+            <CountyTownFilter
+              county={selectedCounty}
+              town={selectedTown}
+              onCountyChange={(e) => setSelectedCounty(e.target.value)}
+              onTownChange={(e) => setSelectedTown(e.target.value)}
+              countyPlaceholder="All Counties"
+              townPlaceholder="All Locations"
+              className="w-full md:w-auto"
+            />
             <button
               onClick={handleSearch}
               className="text-white px-8 py-3.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg w-full md:w-auto"

@@ -4,17 +4,18 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
+import { CountyTownFilter } from '@/components/LocationSelector';
 
 export default function BrowseVendors() {
   const [vendors, setVendors] = useState([]);
   const [categories, setCategories] = useState(['All Categories']);
-  const [locations, setLocations] = useState(['All Locations']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [selectedLocation, setSelectedLocation] = useState('All Locations');
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedTown, setSelectedTown] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [vendorProfileLink, setVendorProfileLink] = useState('');
 
@@ -55,13 +56,7 @@ export default function BrowseVendors() {
             ...new Set(data.map((v) => v.category).filter(Boolean)),
           ];
 
-          const uniqueLocations = [
-            'All Locations',
-            ...new Set(data.map((v) => v.location).filter(Boolean)),
-          ];
-
           setCategories(uniqueCategories);
-          setLocations(uniqueLocations);
         }
       } catch (err) {
         console.error('Unexpected error fetching vendors:', err);
@@ -82,15 +77,18 @@ export default function BrowseVendors() {
       vendor.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
       selectedCategory === 'All Categories' || vendor.category === selectedCategory;
-    const matchesLocation =
-      selectedLocation === 'All Locations' || vendor.location === selectedLocation;
+    const matchesCounty =
+      !selectedCounty || vendor.county === selectedCounty;
+    const matchesTown =
+      !selectedTown || vendor.location === selectedTown;
 
-    return matchesSearch && matchesCategory && matchesLocation;
+    return matchesSearch && matchesCategory && matchesCounty && matchesTown;
   });
 
   const clearFilters = () => {
     setSelectedCategory('All Categories');
-    setSelectedLocation('All Locations');
+    setSelectedCounty('');
+    setSelectedTown('');
     setSearchQuery('');
   };
 
@@ -145,32 +143,37 @@ export default function BrowseVendors() {
         </div>
 
         {/* Desktop Filters */}
-        <div className="hidden md:flex gap-4 px-4 pb-4 max-w-7xl mx-auto">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
-          >
-            {categories.map((cat) => (
-              <option key={cat}>{cat}</option>
-            ))}
-          </select>
+        <div className="hidden md:flex gap-4 items-end px-4 pb-4 max-w-7xl mx-auto">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+            >
+              {categories.map((cat) => (
+                <option key={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
-          >
-            {locations.map((loc) => (
-              <option key={loc}>{loc}</option>
-            ))}
-          </select>
+          <div className="flex-1">
+            <CountyTownFilter
+              county={selectedCounty}
+              town={selectedTown}
+              onCountyChange={(e) => setSelectedCounty(e.target.value)}
+              onTownChange={(e) => setSelectedTown(e.target.value)}
+              countyPlaceholder="All Counties"
+              townPlaceholder="All Locations"
+            />
+          </div>
 
           {(selectedCategory !== 'All Categories' ||
-            selectedLocation !== 'All Locations') && (
+            selectedCounty ||
+            selectedTown) && (
             <button
               onClick={clearFilters}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center"
+              className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center whitespace-nowrap"
             >
               <X className="w-4 h-4 mr-1" /> Clear
             </button>
