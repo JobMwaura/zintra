@@ -36,6 +36,12 @@ export default function ConsolidatedRFQs() {
     totalResponses: 0,
     avgResponseRate: 0,
     pendingApproval: 0,
+    directCount: 0,
+    matchedCount: 0,
+    publicCount: 0,
+    totalRFQs: 0,
+    averageMatchQuality: 0,
+    publicEngagementScore: 0,
   });
 
   useEffect(() => {
@@ -79,6 +85,25 @@ export default function ConsolidatedRFQs() {
         ? (totalResponses / allRfqs.length * 100).toFixed(1)
         : 0;
 
+      // Count by RFQ type
+      const directCount = (allRfqs || []).filter(r => r.rfq_type === 'direct').length;
+      const matchedCount = (allRfqs || []).filter(r => r.rfq_type === 'matched').length;
+      const publicCount = (allRfqs || []).filter(r => r.rfq_type === 'public').length;
+
+      // Calculate average match quality for matched RFQs
+      const matchedRFQs = (allRfqs || []).filter(r => r.rfq_type === 'matched');
+      const averageMatchQuality = matchedRFQs.length > 0
+        ? (matchedRFQs.reduce((sum, r) => sum + (parseInt(r.match_quality_score || '75') || 75), 0) / matchedRFQs.length).toFixed(0)
+        : 0;
+
+      // Calculate public engagement score (views/quotes ratio)
+      const publicRFQs = (allRfqs || []).filter(r => r.rfq_type === 'public');
+      const totalPublicViews = publicRFQs.reduce((sum, r) => sum + (parseInt(r.view_count || '0') || 0), 0);
+      const totalPublicQuotes = publicRFQs.reduce((sum, r) => sum + (parseInt(r.quote_count || '0') || 0), 0);
+      const publicEngagementScore = publicRFQs.length > 0
+        ? ((totalPublicViews > 0 ? (totalPublicQuotes / totalPublicViews * 100) : 0)).toFixed(1)
+        : 0;
+
       setStats({
         pendingCount: pendingApproval,
         activeCount: activeRFQs,
@@ -86,6 +111,12 @@ export default function ConsolidatedRFQs() {
         totalResponses,
         avgResponseRate,
         pendingApproval,
+        directCount,
+        matchedCount,
+        publicCount,
+        totalRFQs: allRfqs?.length || 0,
+        averageMatchQuality,
+        publicEngagementScore,
       });
     } catch (error) {
       setMessage(`Error loading data: ${error.message}`);
@@ -298,6 +329,90 @@ export default function ConsolidatedRFQs() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Dashboard Overview Section */}
+        <div className="mb-8 space-y-6">
+          {/* Main Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <p className="text-sm text-gray-600 font-medium">Total RFQs</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{loading ? '...' : stats.totalRFQs}</p>
+              <p className="text-xs text-gray-500 mt-1">{loading ? '' : `${stats.pendingApproval} pending`}</p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <p className="text-sm text-gray-600 font-medium">Active RFQs</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">{loading ? '...' : stats.activeCount}</p>
+              <p className="text-xs text-gray-500 mt-1">Currently open</p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <p className="text-sm text-gray-600 font-medium">Response Rate</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">{loading ? '...' : stats.avgResponseRate}%</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalResponses} quotes</p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <p className="text-sm text-gray-600 font-medium">Match Quality</p>
+              <p className="text-3xl font-bold text-indigo-600 mt-2">{loading ? '...' : stats.averageMatchQuality}%</p>
+              <p className="text-xs text-gray-500 mt-1">Matched RFQs avg</p>
+            </div>
+          </div>
+
+          {/* RFQ Types Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#06b6d4' }}></div>
+                <p className="text-sm text-gray-600 font-medium">Direct RFQs</p>
+              </div>
+              <p className="text-3xl font-bold text-cyan-600 mt-2">{loading ? '...' : stats.directCount}</p>
+              <p className="text-xs text-gray-500 mt-2">Customers select vendors</p>
+              <button
+                onClick={() => {
+                  const link = document.querySelector(`[href="?tab=direct"]`);
+                  if (link) link.click();
+                }}
+                className="mt-3 text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+              >
+                View Details →
+              </button>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
+                <p className="text-sm text-gray-600 font-medium">Matched RFQs</p>
+              </div>
+              <p className="text-3xl font-bold text-indigo-600 mt-2">{loading ? '...' : stats.matchedCount}</p>
+              <p className="text-xs text-gray-500 mt-2">System auto-matched</p>
+              <button
+                onClick={() => {
+                  const link = document.querySelector(`[href="?tab=matched"]`);
+                  if (link) link.click();
+                }}
+                className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                View Details →
+              </button>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f43f5e' }}></div>
+                <p className="text-sm text-gray-600 font-medium">Public RFQs</p>
+              </div>
+              <p className="text-3xl font-bold text-rose-600 mt-2">{loading ? '...' : stats.publicCount}</p>
+              <p className="text-xs text-gray-500 mt-2">Marketplace bidding</p>
+              <button
+                onClick={() => {
+                  const link = document.querySelector(`[href="?tab=public"]`);
+                  if (link) link.click();
+                }}
+                className="mt-3 text-xs text-rose-600 hover:text-rose-700 font-medium"
+              >
+                View Details →
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Message Alert */}
         {message && (
           <div className={`mb-6 p-4 rounded-lg border ${
