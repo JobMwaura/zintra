@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, FileUp, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { CountySelect } from '@/components/LocationSelector';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -207,11 +208,9 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
               >
                 <option value="">Select category</option>
-                <option>Building Materials</option>
-                <option>Electrical & Lighting</option>
-                <option>Plumbing</option>
-                <option>Finishing & Interior</option>
-                <option>Equipment Hire</option>
+                {ALL_CATEGORIES_FLAT.map((cat) => (
+                  <option key={cat.value}>{cat.label}</option>
+                ))}
               </select>
             </div>
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Check, ArrowRight, ArrowLeft, Zap, X } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 
 export default function WizardRFQ() {
   const router = useRouter();
@@ -36,20 +37,8 @@ export default function WizardRFQ() {
     { number: 5, name: 'Review' }
   ];
 
-  const categories = [
-    'Building & Structural Materials',
-    'Wood & Timber Solutions',
-    'Roofing & Waterproofing',
-    'Doors, Windows & Hardware',
-    'Flooring & Wall Finishes',
-    'Plumbing & Sanitation',
-    'Electrical & Lighting',
-    'Kitchen & Interior Fittings',
-    'HVAC & Climate Solutions',
-    'Painting & Surface Finishing',
-    'Concrete & Aggregates',
-    'Construction Services & Labor'
-  ];
+  // Use comprehensive categories from construction categories library
+  const categories = ALL_CATEGORIES_FLAT.map(cat => cat.label);
 
   const paymentTermsOptions = [
     { value: 'upfront', label: 'Upfront Payment' },

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
-import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
+import { ALL_CATEGORIES_FLAT, filterVendorsByCategory } from '@/lib/constructionCategories';
 
 export default function BrowseVendors() {
   const [vendors, setVendors] = useState([]);
@@ -82,13 +82,15 @@ export default function BrowseVendors() {
     fetchVendors();
   }, []);
 
-  // ✅ Filtering logic
+  // ✅ Filtering logic with improved category matching
   const filteredVendors = vendors.filter((vendor) => {
     const matchesSearch =
       vendor.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vendor.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
-      selectedCategory === 'All Categories' || vendor.category === selectedCategory;
+      selectedCategory === 'All Categories' || 
+      vendor.category === selectedCategory ||
+      (selectedCategory && vendor.category?.toLowerCase().includes(selectedCategory.toLowerCase()));
     const matchesCounty =
       !selectedCounty || vendor.county === selectedCounty;
     const matchesTown =

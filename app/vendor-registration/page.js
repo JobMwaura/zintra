@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 
 const brand = {
   primary: '#c28a3a',
@@ -23,19 +24,15 @@ const steps = [
   { id: 6, label: 'Complete' },
 ];
 
-const categories = [
-  { name: 'Building & Structural Materials', requiresProducts: true, requiresPortfolio: false, requiresServices: false },
-  { name: 'Doors, Windows & Hardware', requiresProducts: true, requiresPortfolio: false, requiresServices: false },
-  { name: 'Electrical & Lighting', requiresProducts: true, requiresPortfolio: false, requiresServices: true },
-  { name: 'Plumbing & Sanitation', requiresProducts: true, requiresPortfolio: false, requiresServices: true },
-  { name: 'Flooring & Wall Finishes', requiresProducts: true, requiresPortfolio: true, requiresServices: false },
-  { name: 'Wood & Timber Solutions', requiresProducts: true, requiresPortfolio: true, requiresServices: false },
-  { name: 'Roofing & Waterproofing', requiresProducts: true, requiresPortfolio: true, requiresServices: true },
-  { name: 'Kitchen & Interior Fittings', requiresProducts: true, requiresPortfolio: true, requiresServices: false },
-  { name: 'HVAC & Climate', requiresProducts: true, requiresPortfolio: false, requiresServices: true },
-  { name: 'Construction Contractor', requiresProducts: false, requiresPortfolio: true, requiresServices: true },
-  { name: 'Consulting & Design', requiresProducts: false, requiresPortfolio: false, requiresServices: true },
-];
+// Create categories from comprehensive construction categories
+const createCategoryOptions = () => {
+  return ALL_CATEGORIES_FLAT.map((cat) => ({
+    name: cat.label,
+    requiresProducts: true, // All categories require at least profile info
+    requiresPortfolio: false,
+    requiresServices: false,
+  }));
+};
 
 const plans = [
   {
@@ -125,6 +122,12 @@ export default function VendorRegistration() {
 
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
+  const [categories, setCategories] = useState([]);
+
+  // Initialize categories from comprehensive construction categories
+  useEffect(() => {
+    setCategories(createCategoryOptions());
+  }, []);
 
   // Determine which fields are required based on selected categories
   const selectedCategoryObjects = categories.filter(c => formData.selectedCategories.includes(c.name));

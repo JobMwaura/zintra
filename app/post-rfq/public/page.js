@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import LocationSelector from '@/components/LocationSelector';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import {
   Check,
   Upload,
@@ -114,23 +115,8 @@ export default function PostPublicRFQ() {
     { number: 8, name: 'Review' }
   ];
 
-  const categories = [
-    'Building & Structural Materials',
-    'Wood & Timber Solutions',
-    'Roofing & Waterproofing',
-    'Doors, Windows & Hardware',
-    'Flooring & Wall Finishes',
-    'Plumbing & Sanitation',
-    'Electrical & Lighting',
-    'Kitchen & Interior Fittings',
-    'HVAC & Climate Solutions',
-    'Painting & Surface Finishing',
-    'Concrete & Aggregates',
-    'Construction Services & Labor',
-    'Heavy Equipment & Machinery',
-    'Security & Surveillance',
-    'Landscaping & Outdoor'
-  ];
+  // Use comprehensive categories from construction categories library
+  const categories = ALL_CATEGORIES_FLAT.map(cat => cat.label);
 
   const projectTypes = [
     { value: 'residential', label: 'Residential', desc: 'Home, apartment, personal property' },
