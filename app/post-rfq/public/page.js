@@ -332,7 +332,8 @@ export default function PostPublicRFQ() {
           </div>
 
           {/* Step Indicator */}
-          <div className="bg-white border-b border-gray-200 p-6">
+          {/* Desktop Progress Indicator */}
+          <div className="bg-white border-b border-gray-200 p-4 sm:p-6 hidden sm:block">
             <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.number} className="flex items-center flex-1">
@@ -349,13 +350,13 @@ export default function PostPublicRFQ() {
                     >
                       {currentStep > step.number ? <Check className="w-5 h-5" /> : step.number}
                     </button>
-                    <span className="text-xs mt-2 font-medium text-gray-700 text-center max-w-16 hidden sm:block">
+                    <span className="text-xs mt-2 font-medium text-gray-700 text-center max-w-16">
                       {step.name}
                     </span>
                   </div>
                   {index < steps.length - 1 && (
                     <div
-                      className="hidden sm:block flex-1 h-1 mx-2 transition-colors"
+                      className="flex-1 h-1 mx-2 transition-colors"
                       style={currentStep > step.number ? { backgroundColor: '#ea8f1e' } : { backgroundColor: '#f0f0f0' }}
                     />
                   )}
@@ -364,8 +365,26 @@ export default function PostPublicRFQ() {
             </div>
           </div>
 
+          {/* Mobile Progress Indicator */}
+          <div className="bg-orange-50 border-b border-orange-200 p-4 sm:hidden">
+            <div className="text-center mb-2">
+              <div className="text-base font-bold text-gray-900">
+                Step {currentStep} of {steps.length}
+              </div>
+              <div className="text-xs text-gray-600 mt-0.5">
+                {steps.find(s => s.number === currentStep)?.name}
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(currentStep / steps.length) * 100}%` }}
+              />
+            </div>
+          </div>
+
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 sm:space-y-8">
             {/* STEP 1: PROJECT OVERVIEW */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -378,7 +397,7 @@ export default function PostPublicRFQ() {
 
                 {/* Project Title */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Project Title *
                   </label>
                   <input
@@ -387,22 +406,22 @@ export default function PostPublicRFQ() {
                     placeholder="e.g., Office Extension - 2 Story, Industrial Warehouse Flooring"
                     value={formData.projectTitle}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
                   />
                   {errors.projectTitle && <p className="text-red-500 text-sm mt-1">{errors.projectTitle}</p>}
                 </div>
 
                 {/* Category & Project Type */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Category *
                     </label>
                     <select
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="">Select category</option>
                       {categories.map(cat => (
@@ -413,14 +432,14 @@ export default function PostPublicRFQ() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Project Type *
                     </label>
                     <select
                       name="projectType"
                       value={formData.projectType}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="">Select type</option>
                       {projectTypes.map(type => (
@@ -433,7 +452,7 @@ export default function PostPublicRFQ() {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Detailed Project Description *
                   </label>
                   <textarea
@@ -442,16 +461,16 @@ export default function PostPublicRFQ() {
                     value={formData.description}
                     onChange={handleInputChange}
                     rows="5"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
                   />
                   <p className="text-sm text-gray-600 mt-1">💡 Be specific about what you need and why</p>
                   {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
                 </div>
 
                 {/* Quantity */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Quantity *
                     </label>
                     <input
@@ -460,19 +479,19 @@ export default function PostPublicRFQ() {
                       placeholder="e.g., 1000, 500 sqm, 50 units"
                       value={formData.quantity}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     />
                     {errors.quantity && <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Unit *
                     </label>
                     <select
                       name="unit"
                       value={formData.unit}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="units">Units</option>
                       <option value="sqm">Square Meters</option>
@@ -489,16 +508,16 @@ export default function PostPublicRFQ() {
                 </div>
 
                 {/* Timeline */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Timeline *
                     </label>
                     <select
                       name="timeline"
                       value={formData.timeline}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="">Select timeline</option>
                       <option value="urgent">Urgent (Within 1 week)</option>
@@ -511,7 +530,7 @@ export default function PostPublicRFQ() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Target Completion Date
                     </label>
                     <input
@@ -519,7 +538,7 @@ export default function PostPublicRFQ() {
                       name="completionDate"
                       value={formData.completionDate}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     />
                   </div>
                 </div>
@@ -541,7 +560,7 @@ export default function PostPublicRFQ() {
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
                     Budget Range (KSh) *
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
                     <div>
                       <label className="text-xs text-gray-600 mb-1">Minimum Budget</label>
                       <input
@@ -550,7 +569,7 @@ export default function PostPublicRFQ() {
                         placeholder="e.g., 100000"
                         value={formData.budgetMin}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                       />
                       {errors.budgetMin && <p className="text-red-500 text-xs mt-1">{errors.budgetMin}</p>}
                     </div>
@@ -562,7 +581,7 @@ export default function PostPublicRFQ() {
                         placeholder="e.g., 500000"
                         value={formData.budgetMax}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                        className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                       />
                       {errors.budgetMax && <p className="text-red-500 text-xs mt-1">{errors.budgetMax}</p>}
                     </div>
@@ -610,7 +629,7 @@ export default function PostPublicRFQ() {
                     name="fundsAvailable"
                     value={formData.fundsAvailable}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   >
                     <option value="immediately">Immediately</option>
                     <option value="1week">Within 1 week</option>
@@ -633,16 +652,16 @@ export default function PostPublicRFQ() {
                 </div>
 
                 {/* Location */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       County *
                     </label>
                     <select
                       name="county"
                       value={formData.county}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="">Select county</option>
                       {counties.map(county => (
@@ -653,7 +672,7 @@ export default function PostPublicRFQ() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Specific Location/Address *
                     </label>
                     <input
@@ -662,7 +681,7 @@ export default function PostPublicRFQ() {
                       placeholder="e.g., Karen, Westlands, or specific street address"
                       value={formData.specificLocation}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     />
                     {errors.specificLocation && <p className="text-red-500 text-sm mt-1">{errors.specificLocation}</p>}
                   </div>
@@ -677,7 +696,7 @@ export default function PostPublicRFQ() {
                     name="siteAccessibility"
                     value={formData.siteAccessibility}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   >
                     <option value="easy">Easy Access - Ground level, good roads</option>
                     <option value="moderate">Moderate Access - Some restrictions</option>
@@ -727,7 +746,7 @@ export default function PostPublicRFQ() {
 
                 {/* Access Details */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Access Details & Parking
                   </label>
                   <textarea
@@ -736,20 +755,20 @@ export default function PostPublicRFQ() {
                     value={formData.accessDetails}
                     onChange={handleInputChange}
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
                 {/* Working Hours */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Working Hours
                   </label>
                   <select
                     name="workingHours"
                     value={formData.workingHours}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   >
                     <option value="standard">Standard (8am - 5pm, Mon-Fri)</option>
                     <option value="extended">Extended (7am - 6pm, Mon-Fri)</option>
@@ -761,7 +780,7 @@ export default function PostPublicRFQ() {
 
                 {/* Site Conditions Description */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Current Site Conditions
                   </label>
                   <textarea
@@ -770,7 +789,7 @@ export default function PostPublicRFQ() {
                     value={formData.siteConditions}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
               </div>
@@ -788,7 +807,7 @@ export default function PostPublicRFQ() {
 
                 {/* Detailed Specifications */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Detailed Specifications & Requirements *
                   </label>
                   <textarea
@@ -803,14 +822,14 @@ export default function PostPublicRFQ() {
                     value={formData.specifications_detailed}
                     onChange={handleInputChange}
                     rows="6"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
                   />
                   {errors.specifications_detailed && <p className="text-red-500 text-sm mt-1">{errors.specifications_detailed}</p>}
                 </div>
 
                 {/* Material Preferences */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Material/Brand Preferences
                   </label>
                   <textarea
@@ -819,7 +838,7 @@ export default function PostPublicRFQ() {
                     value={formData.materialPreferences}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
@@ -850,7 +869,7 @@ export default function PostPublicRFQ() {
 
                 {/* Warranty & Guarantees */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Warranty & Guarantees Required
                   </label>
                   <input
@@ -859,7 +878,7 @@ export default function PostPublicRFQ() {
                     placeholder="e.g., 1 year parts warranty, 5 year structural guarantee, on-site support"
                     value={formData.warranty}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
@@ -905,7 +924,7 @@ export default function PostPublicRFQ() {
 
                 {/* Excluded Items */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     What's NOT Included (What vendor should NOT include in quote)
                   </label>
                   <textarea
@@ -914,13 +933,13 @@ export default function PostPublicRFQ() {
                     value={formData.excludedItems}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
                 {/* Previous Work */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Related Previous Work Done
                   </label>
                   <textarea
@@ -929,7 +948,7 @@ export default function PostPublicRFQ() {
                     value={formData.previousWork}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
               </div>
@@ -947,7 +966,7 @@ export default function PostPublicRFQ() {
 
                 {/* Scope of Work */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Detailed Scope of Work *
                   </label>
                   <textarea
@@ -960,7 +979,7 @@ export default function PostPublicRFQ() {
                     value={formData.scopeOfWork}
                     onChange={handleInputChange}
                     rows="5"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 placeholder-gray-400"
                   />
                   {errors.scopeOfWork && <p className="text-red-500 text-sm mt-1">{errors.scopeOfWork}</p>}
                 </div>
@@ -987,7 +1006,7 @@ export default function PostPublicRFQ() {
 
                 {/* Constraints */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Project Constraints & Risks
                   </label>
                   <textarea
@@ -996,13 +1015,13 @@ export default function PostPublicRFQ() {
                     value={formData.constraints}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
                 {/* Dependencies */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Project Dependencies
                   </label>
                   <textarea
@@ -1011,20 +1030,20 @@ export default function PostPublicRFQ() {
                     value={formData.dependencies}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
                 {/* Team Size */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Team Size Required
                   </label>
                   <select
                     name="teamSize"
                     value={formData.teamSize}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   >
                     <option value="">Select team size</option>
                     <option value="1">1 person (solo work)</option>
@@ -1037,9 +1056,9 @@ export default function PostPublicRFQ() {
                 </div>
 
                 {/* Contact Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Primary Contact Person *
                     </label>
                     <input
@@ -1048,20 +1067,20 @@ export default function PostPublicRFQ() {
                       placeholder="Full name"
                       value={formData.contactPerson}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     />
                     {errors.contactPerson && <p className="text-red-500 text-sm mt-1">{errors.contactPerson}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                       Communication Preference
                     </label>
                     <select
                       name="communicationPreference"
                       value={formData.communicationPreference}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="email">Email</option>
                       <option value="phone">Phone</option>
@@ -1073,14 +1092,14 @@ export default function PostPublicRFQ() {
 
                 {/* Response Time */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Response Time Expectation for Vendors
                   </label>
                   <select
                     name="responseTimeExpectation"
                     value={formData.responseTimeExpectation}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   >
                     <option value="2hours">ASAP (within 2 hours)</option>
                     <option value="6hours">Quick (within 6 hours)</option>
@@ -1149,7 +1168,7 @@ export default function PostPublicRFQ() {
 
                 {/* Safety Requirements */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Safety Requirements
                   </label>
                   <textarea
@@ -1158,13 +1177,13 @@ export default function PostPublicRFQ() {
                     value={formData.safetyRequirements}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
                 {/* Special Certifications */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Special Certifications or Qualifications
                   </label>
                   <textarea
@@ -1173,7 +1192,7 @@ export default function PostPublicRFQ() {
                     value={formData.specialCertifications}
                     onChange={handleInputChange}
                     rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
@@ -1209,7 +1228,7 @@ export default function PostPublicRFQ() {
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
                     Reference Images
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-500 transition-colors cursor-pointer">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center hover:border-orange-500 transition-colors cursor-pointer">
                     <input
                       type="file"
                       multiple
@@ -1248,7 +1267,7 @@ export default function PostPublicRFQ() {
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
                     Technical Drawings/Plans
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-500 transition-colors cursor-pointer">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center hover:border-orange-500 transition-colors cursor-pointer">
                     <input
                       type="file"
                       multiple
@@ -1287,7 +1306,7 @@ export default function PostPublicRFQ() {
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
                     Specifications & Documents
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-500 transition-colors cursor-pointer">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center hover:border-orange-500 transition-colors cursor-pointer">
                     <input
                       type="file"
                       multiple
@@ -1323,7 +1342,7 @@ export default function PostPublicRFQ() {
 
                 {/* Reference Links */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Reference Links
                   </label>
                   <input
@@ -1332,13 +1351,13 @@ export default function PostPublicRFQ() {
                     placeholder="Comma-separated URLs to products, inspiration, or relevant information"
                     value={formData.referenceLinks}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
 
                 {/* Additional Notes */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-2">
                     Additional Notes for Vendors
                   </label>
                   <textarea
@@ -1347,7 +1366,7 @@ export default function PostPublicRFQ() {
                     value={formData.additionalNotes}
                     onChange={handleInputChange}
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
                   />
                 </div>
               </div>
@@ -1364,7 +1383,7 @@ export default function PostPublicRFQ() {
                 </div>
 
                 {/* Summary Sections */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
                   <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <h3 className="font-semibold text-gray-900 mb-3">Project</h3>
                     <dl className="space-y-2 text-sm">
@@ -1482,12 +1501,12 @@ export default function PostPublicRFQ() {
             )}
 
             {/* Navigation Buttons */}
-            <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 mt-8 pt-6 border-t border-gray-200">
               {currentStep > 1 && (
                 <button
                   type="button"
                   onClick={prevStep}
-                  className="flex items-center gap-2 px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                  className="flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors w-full sm:w-auto"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Previous
@@ -1497,7 +1516,7 @@ export default function PostPublicRFQ() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="ml-auto flex items-center gap-2 px-6 py-3 text-white rounded-lg hover:opacity-90 font-medium"
+                  className="flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 text-white rounded-lg hover:opacity-90 font-medium transition-opacity w-full sm:w-auto sm:ml-auto"
                   style={{ backgroundColor: '#ea8f1e' }}
                 >
                   Next
@@ -1506,7 +1525,7 @@ export default function PostPublicRFQ() {
               ) : (
                 <button
                   type="submit"
-                  className="ml-auto px-8 py-3 text-white rounded-lg hover:opacity-90 font-semibold text-lg"
+                  className="flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 text-white rounded-lg hover:opacity-90 font-semibold text-base sm:text-lg transition-opacity w-full sm:w-auto sm:ml-auto"
                   style={{ backgroundColor: '#ea8f1e' }}
                 >
                   Publish to Marketplace
