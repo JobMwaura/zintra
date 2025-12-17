@@ -7,16 +7,15 @@ export default function ActiveRFQsRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the new unified RFQ dashboard
-    router.replace('/admin/rfqs?tab=direct');
+    // Silently redirect using router push (client-side) instead of navigation
+    // This prevents a full page reload and keeps the same component context
+    const timer = setTimeout(() => {
+      router.push('/admin/rfqs?tab=direct');
+    }, 0);
+    
+    return () => clearTimeout(timer);
   }, [router]);
 
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#ea8f1e' }}></div>
-        <p className="mt-4 text-gray-600">Redirecting to RFQ Management...</p>
-      </div>
-    </div>
-  );
+  // Return nothing - this page should never be visible as it redirects immediately
+  return null;
 }
