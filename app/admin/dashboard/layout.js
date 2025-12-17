@@ -42,6 +42,12 @@ const navSections = [
     ],
   },
   {
+    title: 'RFQ MANAGEMENT',
+    items: [
+      { name: 'RFQs', icon: ClipboardList, href: '/admin/dashboard/rfqs' },
+    ],
+  },
+  {
     title: 'CONTENT MANAGEMENT',
     items: [
       { name: 'Categories', icon: FolderOpen, href: '/admin/categories' },
