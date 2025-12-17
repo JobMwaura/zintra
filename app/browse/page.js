@@ -10,6 +10,7 @@ export default function BrowseVendors() {
   const [categories, setCategories] = useState(['All Categories']);
   const [locations, setLocations] = useState(['All Locations']);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -32,28 +33,43 @@ export default function BrowseVendors() {
     fetchVendorProfileLink();
 
     const fetchVendors = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.from('vendors').select('*');
+      try {
+        setLoading(true);
+        setError(null);
+        const { data, error: fetchError } = await supabase.from('vendors').select('*');
 
-      if (error) {
-        console.error('❌ Error fetching vendors:', error.message);
-      } else {
-        setVendors(data);
+        if (fetchError) {
+          console.error('❌ Error fetching vendors:', fetchError.message);
+          setError(`Failed to load vendors: ${fetchError.message}`);
+          setVendors([]);
+        } else if (!data || data.length === 0) {
+          console.warn('No vendors found in database');
+          setVendors([]);
+          setCategories(['All Categories']);
+          setLocations(['All Locations']);
+        } else {
+          setVendors(data);
 
-        const uniqueCategories = [
-          'All Categories',
-          ...new Set(data.map((v) => v.category).filter(Boolean)),
-        ];
+          const uniqueCategories = [
+            'All Categories',
+            ...new Set(data.map((v) => v.category).filter(Boolean)),
+          ];
 
-        const uniqueLocations = [
-          'All Locations',
-          ...new Set(data.map((v) => v.location).filter(Boolean)),
-        ];
+          const uniqueLocations = [
+            'All Locations',
+            ...new Set(data.map((v) => v.location).filter(Boolean)),
+          ];
 
-        setCategories(uniqueCategories);
-        setLocations(uniqueLocations);
+          setCategories(uniqueCategories);
+          setLocations(uniqueLocations);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching vendors:', err);
+        setError(`Error: ${err.message || 'Unknown error occurred'}`);
+        setVendors([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchVendors();
@@ -164,8 +180,29 @@ export default function BrowseVendors() {
 
       {/* Vendor Cards */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-700 font-semibold">Error loading vendors</p>
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
         {loading ? (
-          <p className="text-center text-gray-600">Loading vendors...</p>
+          <div className="text-center py-12">
+            <div className="inline-block">
+              <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+            </div>
+            <p className="text-gray-600 text-lg mt-4">Loading vendors...</p>
+          </div>
+        ) : vendors.length === 0 && !error ? (
+          <div className="text-center py-12 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-blue-700 font-semibold mb-2">No vendors registered yet</p>
+            <p className="text-blue-600 text-sm">Check back soon or become the first vendor!</p>
+            <Link href="/vendor-registration">
+              <button className="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
+                Become a Vendor
+              </button>
+            </Link>
+          </div>
         ) : filteredVendors.length === 0 ? (
           <div className="text-center text-gray-600 py-10">
             No vendors found matching your criteria.

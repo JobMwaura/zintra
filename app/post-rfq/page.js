@@ -19,6 +19,8 @@ function PostRFQIndex() {
     const fetchPublicRFQs = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
         const { data, error: fetchError } = await supabase
           .from('rfqs')
           .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
@@ -29,30 +31,41 @@ function PostRFQIndex() {
 
         if (fetchError) {
           console.error('Error fetching RFQs:', fetchError);
-          setError(fetchError.message);
+          setError(`Failed to load RFQs: ${fetchError.message}`);
+          setPublicRFQs([]);
           return;
         }
 
         setPublicRFQs(data || []);
 
-        // Fetch quote stats for all RFQs
+        // Fetch quote stats for all RFQs if any exist
         if (data && data.length > 0) {
-          const { data: stats, error: statsError } = await supabase
-            .from('rfq_quote_stats')
-            .select('rfq_id, total_quotes')
-            .in('rfq_id', data.map(r => r.id));
+          try {
+            const { data: stats, error: statsError } = await supabase
+              .from('rfq_quote_stats')
+              .select('rfq_id, total_quotes')
+              .in('rfq_id', data.map(r => r.id));
 
-          if (!statsError && stats) {
-            const statsMap = {};
-            stats.forEach(stat => {
-              statsMap[stat.rfq_id] = stat.total_quotes || 0;
-            });
-            setQuoteStats(statsMap);
+            if (!statsError && stats) {
+              const statsMap = {};
+              stats.forEach(stat => {
+                statsMap[stat.rfq_id] = stat.total_quotes || 0;
+              });
+              setQuoteStats(statsMap);
+            } else if (statsError) {
+              console.warn('Warning: Could not fetch quote stats:', statsError.message);
+              // Don't fail the whole page if stats fail to load
+              setQuoteStats({});
+            }
+          } catch (statsErr) {
+            console.warn('Warning: Stats fetch error:', statsErr);
+            setQuoteStats({});
           }
         }
       } catch (err) {
-        console.error('Unexpected error:', err);
-        setError(err.message);
+        console.error('Unexpected error fetching RFQs:', err);
+        setError(`Error: ${err.message || 'Unknown error'}`);
+        setPublicRFQs([]);
       } finally {
         setLoading(false);
       }
