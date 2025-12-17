@@ -107,15 +107,16 @@ CREATE TABLE IF NOT EXISTS public.rfq_view_tracking (
   viewed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create unique index to prevent duplicate views on same day
-CREATE UNIQUE INDEX IF NOT EXISTS idx_rfq_view_tracking_unique 
-ON public.rfq_view_tracking(rfq_id, COALESCE(viewer_user_id::TEXT, ''), COALESCE(viewer_ip::TEXT, ''), DATE(viewed_at));
-
+-- Create indexes for performance (note: no UNIQUE index due to NULL handling)
+-- Each view event is logged, deduplication happens at query time if needed
 CREATE INDEX IF NOT EXISTS idx_rfq_view_tracking_rfq_id 
 ON public.rfq_view_tracking(rfq_id);
 
 CREATE INDEX IF NOT EXISTS idx_rfq_view_tracking_viewed_at 
 ON public.rfq_view_tracking(viewed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_rfq_view_tracking_user_ip
+ON public.rfq_view_tracking(rfq_id, viewer_user_id, viewer_ip);
 
 
 -- STEP 7: Create trigger to update rfqs.view_count from rfq_view_tracking
