@@ -85,8 +85,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing trigger if it exists
-DROP TRIGGER IF NOT EXISTS trg_update_rfq_quote_count ON public.rfq_responses;
+-- Drop existing trigger if it exists (compatible with all PostgreSQL versions)
+DROP TRIGGER IF EXISTS trg_update_rfq_quote_count ON public.rfq_responses;
 
 -- Create new trigger
 CREATE TRIGGER trg_update_rfq_quote_count
@@ -136,8 +136,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing trigger if it exists
-DROP TRIGGER IF NOT EXISTS trg_update_rfq_view_count ON public.rfq_view_tracking;
+-- Drop existing trigger if it exists (compatible with all PostgreSQL versions)
+DROP TRIGGER IF EXISTS trg_update_rfq_view_count ON public.rfq_view_tracking;
 
 -- Create new trigger
 CREATE TRIGGER trg_update_rfq_view_count
