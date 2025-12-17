@@ -104,10 +104,12 @@ CREATE TABLE IF NOT EXISTS public.rfq_view_tracking (
   rfq_id UUID NOT NULL REFERENCES public.rfqs(id) ON DELETE CASCADE,
   viewer_ip TEXT,
   viewer_user_id UUID,
-  viewed_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(rfq_id, viewer_user_id, viewer_ip, viewed_at::DATE)
+  viewed_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Create unique index to prevent duplicate views on same day
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rfq_view_tracking_unique 
+ON public.rfq_view_tracking(rfq_id, COALESCE(viewer_user_id::TEXT, ''), COALESCE(viewer_ip::TEXT, ''), DATE(viewed_at));
 
 CREATE INDEX IF NOT EXISTS idx_rfq_view_tracking_rfq_id 
 ON public.rfq_view_tracking(rfq_id);
