@@ -44,6 +44,9 @@ export default function ConsolidatedRFQs() {
     publicEngagementScore: 0,
   });
 
+  // Alerts state
+  const [alerts, setAlerts] = useState([]);
+
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -118,6 +121,97 @@ export default function ConsolidatedRFQs() {
         averageMatchQuality,
         publicEngagementScore,
       });
+
+      // Calculate alerts
+      const calculatedAlerts = [];
+      const now = new Date();
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+
+      // Check each active RFQ for issues
+      (allRfqs || []).forEach(rfq => {
+        if (!activeStatuses.includes(rfq.status)) return;
+
+        const rfqResponses = (responses || []).filter(r => r.rfq_id === rfq.id);
+        const responseCount = rfqResponses.length;
+        const publishedDate = rfq.published_at ? new Date(rfq.published_at) : null;
+
+        // Direct RFQ alerts
+        if (rfq.rfq_type === 'direct') {
+          const responseRate = rfq.recipients_count ? (responseCount / rfq.recipients_count * 100) : 0;
+          
+          // No responses after 3 days
+          if (publishedDate && publishedDate < threeDaysAgo && responseCount === 0) {
+            calculatedAlerts.push({
+              id: `direct-${rfq.id}`,
+              type: 'warning',
+              title: 'No Responses - Direct RFQ',
+              description: `"${rfq.title}" has been active for 3+ days with no vendor responses`,
+              severity: 'high',
+              action: 'Review sent vendors or resend',
+            });
+          }
+
+          // Low response rate
+          if (responseRate < 30 && responseRate > 0) {
+            calculatedAlerts.push({
+              id: `response-rate-${rfq.id}`,
+              type: 'info',
+              title: 'Low Response Rate',
+              description: `"${rfq.title}" has only ${responseRate.toFixed(0)}% vendor response rate`,
+              severity: 'medium',
+              action: 'Monitor or follow up with vendors',
+            });
+          }
+        }
+
+        // Matched RFQ alerts
+        if (rfq.rfq_type === 'matched') {
+          const matchQuality = parseFloat(rfq.match_quality_score || '75');
+          
+          // Poor match quality
+          if (matchQuality < 60) {
+            calculatedAlerts.push({
+              id: `match-quality-${rfq.id}`,
+              type: 'warning',
+              title: 'Poor Match Quality',
+              description: `"${rfq.title}" has only ${matchQuality}% match quality (below 60% threshold)`,
+              severity: 'high',
+              action: 'Review or manually override matches',
+            });
+          }
+        }
+
+        // Public RFQ alerts
+        if (rfq.rfq_type === 'public') {
+          // No quotes after 5 days
+          if (publishedDate && publishedDate < fiveDaysAgo && responseCount === 0) {
+            calculatedAlerts.push({
+              id: `public-${rfq.id}`,
+              type: 'warning',
+              title: 'No Quotes - Public RFQ',
+              description: `"${rfq.title}" has been live for 5+ days with no vendor interest`,
+              severity: 'high',
+              action: 'Consider promoting or reviewing pricing',
+            });
+          }
+
+          // High engagement (trending)
+          const views = parseInt(rfq.view_count || '0') || 0;
+          if (views > 100 && responseCount > 5) {
+            calculatedAlerts.push({
+              id: `trending-${rfq.id}`,
+              type: 'success',
+              title: 'High Marketplace Engagement',
+              description: `"${rfq.title}" is trending with ${views} views and ${responseCount} quotes`,
+              severity: 'low',
+              action: 'Monitor for quality quotes',
+            });
+          }
+        }
+      });
+
+      setAlerts(calculatedAlerts.slice(0, 5)); // Limit to 5 most recent alerts
     } catch (error) {
       setMessage(`Error loading data: ${error.message}`);
     } finally {
@@ -411,6 +505,68 @@ export default function ConsolidatedRFQs() {
               </button>
             </div>
           </div>
+
+          {/* Alerts Section */}
+          {alerts.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900">Active Alerts</h3>
+              <div className="space-y-2">
+                {alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`p-4 rounded-lg border flex items-start gap-3 ${
+                      alert.type === 'warning'
+                        ? 'bg-amber-50 border-amber-200'
+                        : alert.type === 'success'
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-blue-50 border-blue-200'
+                    }`}
+                  >
+                    <div className="flex-shrink-0 mt-0.5">
+                      {alert.type === 'warning' && (
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                      )}
+                      {alert.type === 'success' && (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      )}
+                      {alert.type === 'info' && (
+                        <AlertCircle className="w-5 h-5 text-blue-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium text-sm ${
+                        alert.type === 'warning'
+                          ? 'text-amber-900'
+                          : alert.type === 'success'
+                          ? 'text-green-900'
+                          : 'text-blue-900'
+                      }`}>
+                        {alert.title}
+                      </p>
+                      <p className={`text-xs mt-1 ${
+                        alert.type === 'warning'
+                          ? 'text-amber-700'
+                          : alert.type === 'success'
+                          ? 'text-green-700'
+                          : 'text-blue-700'
+                      }`}>
+                        {alert.description}
+                      </p>
+                      <p className={`text-xs mt-2 font-medium ${
+                        alert.type === 'warning'
+                          ? 'text-amber-600'
+                          : alert.type === 'success'
+                          ? 'text-green-600'
+                          : 'text-blue-600'
+                      }`}>
+                        → {alert.action}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Message Alert */}
