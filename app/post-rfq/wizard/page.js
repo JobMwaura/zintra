@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { Check, ArrowRight, ArrowLeft, Zap } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, Zap, X } from 'lucide-react';
 
 export default function WizardRFQ() {
   const router = useRouter();
@@ -174,10 +174,20 @@ export default function WizardRFQ() {
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold" style={{ color: '#ea8f1e' }}>zintra</Link>
+          
           <div className="hidden md:flex gap-6">
             <Link href="/browse" className="text-gray-600 hover:text-gray-900">Browse Vendors</Link>
             <Link href="/login" className="text-gray-600 hover:text-gray-900">Sign In</Link>
           </div>
+
+          {/* Mobile Close Button */}
+          <Link 
+            href="/" 
+            className="md:hidden flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition"
+            title="Back to Home"
+          >
+            <X className="w-6 h-6 text-gray-600" />
+          </Link>
         </div>
       </nav>
 
@@ -396,6 +406,17 @@ export default function WizardRFQ() {
                   Previous
                 </button>
               )}
+              
+              {/* Back to Home Button - Always visible */}
+              <Link 
+                href="/" 
+                className="flex items-center gap-2 px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Back</span>
+              </Link>
+
               {currentStep < 5 ? (
                 <button type="button" onClick={nextStep} className="ml-auto flex items-center gap-2 px-6 py-2 text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#ea8f1e' }}>
                   Next
