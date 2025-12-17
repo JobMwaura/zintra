@@ -144,12 +144,12 @@ export default function BrowseVendors() {
 
         {/* Desktop Filters */}
         <div className="hidden md:flex gap-4 items-end px-4 pb-4 max-w-7xl mx-auto">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+          <div className="flex-1 min-w-0">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
             >
               {categories.map((cat) => (
                 <option key={cat}>{cat}</option>
@@ -157,7 +157,7 @@ export default function BrowseVendors() {
             </select>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <CountyTownFilter
               county={selectedCounty}
               town={selectedTown}
@@ -173,7 +173,7 @@ export default function BrowseVendors() {
             selectedTown) && (
             <button
               onClick={clearFilters}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium flex items-center whitespace-nowrap"
+              className="px-4 py-2.5 text-gray-600 hover:text-gray-900 font-medium flex items-center whitespace-nowrap border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <X className="w-4 h-4 mr-1" /> Clear
             </button>

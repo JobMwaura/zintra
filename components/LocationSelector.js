@@ -270,7 +270,7 @@ export function CountyTownFilter({
     <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${className}`}>
       {/* County Select */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
+        <label className="block text-sm font-medium text-slate-700 mb-2">
           {countyLabel}
         </label>
         <select
@@ -298,7 +298,7 @@ export function CountyTownFilter({
 
       {/* Town Select */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
+        <label className="block text-sm font-medium text-slate-700 mb-2">
           {townLabel}
         </label>
         <select

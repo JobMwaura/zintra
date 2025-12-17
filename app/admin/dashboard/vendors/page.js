@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { CountyTownFilter } from '@/components/LocationSelector';
+import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import {
   Search, Filter, MapPin, Star, CheckCircle, AlertTriangle, Eye, X, 
   Mail, Shield, User, Download, MessageSquare, ArrowLeft, TrendingUp,
@@ -860,11 +861,11 @@ export default function ConsolidatedVendors() {
             {/* Filters */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Plan</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Plan</label>
                 <select
                   value={planFilter}
                   onChange={(e) => setPlanFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="all">All Plans</option>
                   {planOptions.map(p => (
@@ -873,11 +874,11 @@ export default function ConsolidatedVendors() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Rating</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Rating</label>
                 <select
                   value={ratingFilter}
                   onChange={(e) => setRatingFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   {ratingOptions.map(r => (
                     <option key={r} value={r}>{r === 'all' ? 'All Ratings' : `${r} stars`}</option>
@@ -885,11 +886,11 @@ export default function ConsolidatedVendors() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Category</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="all">All Categories</option>
                   {categories.map(cat => (
@@ -898,37 +899,38 @@ export default function ConsolidatedVendors() {
                 </select>
               </div>
               <div className="md:col-span-2">
-                <CountyTownFilter
-                  county={countyFilter === 'all' ? '' : countyFilter}
-                  town={townFilter === 'all' ? '' : townFilter}
-                  onCountyChange={(e) => setCountyFilter(e.target.value || 'all')}
-                  onTownChange={(e) => setTownFilter(e.target.value || 'all')}
-                  countyPlaceholder="All Counties"
-                  townPlaceholder="All Locations"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Sort</label>
-                <div className="flex gap-2">
-                  <select
-                    value={sortKey}
-                    onChange={(e) => setSortKey(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  >
-                    <option value="created_at">Newest First</option>
-                    <option value="company_name">Name (A-Z)</option>
-                    <option value="rating">Rating</option>
-                    <option value="rfqs_completed">RFQs</option>
-                    <option value="revenue">Revenue</option>
-                  </select>
-                  <button
-                    onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1"
-                    title={`Sort ${sortDir === 'asc' ? 'Descending' : 'Ascending'}`}
-                  >
-                    <ArrowUpDown className="w-4 h-4" />
-                    {sortDir === 'asc' ? '↑' : '↓'}
-                  </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">County</label>
+                    <select
+                      value={countyFilter === 'all' ? '' : countyFilter}
+                      onChange={(e) => setCountyFilter(e.target.value || 'all')}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      <option value="">All Counties</option>
+                      {KENYA_COUNTIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
+                    <select
+                      value={townFilter === 'all' ? '' : townFilter}
+                      onChange={(e) => setTownFilter(e.target.value || 'all')}
+                      disabled={countyFilter === 'all'}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">All Locations</option>
+                      {countyFilter !== 'all' && KENYA_TOWNS_BY_COUNTY[countyFilter]?.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

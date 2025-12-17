@@ -297,20 +297,22 @@ export default function ZintraHomepage() {
 
       <section className="bg-white py-4 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center relative">
-            <div className="flex-1 relative w-full">
-              <Search className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search vendors, materials, or services..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  performLiveSearch(e.target.value);
-                }}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
-              />
+          <div className="hidden md:flex gap-4 items-end px-4 pb-4 max-w-7xl">
+            <div className="flex-1 min-w-0 relative">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+              <div className="relative">
+                <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search vendors, materials, or services..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    performLiveSearch(e.target.value);
+                  }}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
+                />
               
               {/* Live Search Results Dropdown */}
               {showSearchResults && searchQuery && (
@@ -372,17 +374,139 @@ export default function ZintraHomepage() {
                   )}
                 </div>
               )}
+              </div>
             </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-3.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white w-full md:w-auto transition-all"
+
+            <div className="flex-1 min-w-0">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all"
+              >
+                <option>All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.name}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <CountyTownFilter
+                county={selectedCounty}
+                town={selectedTown}
+                onCountyChange={(e) => setSelectedCounty(e.target.value)}
+                onTownChange={(e) => setSelectedTown(e.target.value)}
+                countyPlaceholder="All Counties"
+                townPlaceholder="All Locations"
+                className="w-full"
+              />
+            </div>
+
+            <button
+              onClick={handleSearch}
+              className="text-white px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg border border-gray-300 whitespace-nowrap"
+              style={{ backgroundColor: '#ca8637' }}
             >
-              <option>All Categories</option>
-              {categories.map((category) => (
-                <option key={category.name}>{category.name}</option>
-              ))}
-            </select>
+              Search
+            </button>
+          </div>
+
+          {/* Mobile Filters */}
+          <div className="md:hidden flex flex-col gap-3">
+            <div className="relative w-full">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+              <div className="relative">
+                <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search vendors, materials, or services..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    performLiveSearch(e.target.value);
+                  }}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
+                />
+              
+              {/* Live Search Results Dropdown */}
+              {showSearchResults && searchQuery && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                  {searchLoading ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2" style={{ borderColor: '#ca8637' }}></div>
+                      <p className="mt-2 text-sm">Searching...</p>
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="divide-y divide-gray-200">
+                      {searchResults.map((vendor) => (
+                        <Link
+                          key={vendor.id}
+                          href={`/vendor-profile/${vendor.id}`}
+                          onClick={() => setShowSearchResults(false)}
+                        >
+                          <div className="p-4 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                {vendor.logo_url ? (
+                                  <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain rounded" />
+                                ) : (
+                                  <Building2 className="w-5 h-5 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-gray-900 truncate">{vendor.company_name}</p>
+                                  {vendor.verified && (
+                                    <Shield className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <span>{vendor.category}</span>
+                                  {vendor.rating && (
+                                    <>
+                                      <span>•</span>
+                                      <div className="flex items-center gap-1">
+                                        <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                        <span>{vendor.rating.toFixed(1)}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p>No vendors found matching "{searchQuery}"</p>
+                      <p className="text-sm mt-1">Try a different search term</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all"
+              >
+                <option>All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.name}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+
             <CountyTownFilter
               county={selectedCounty}
               town={selectedTown}
@@ -390,11 +514,12 @@ export default function ZintraHomepage() {
               onTownChange={(e) => setSelectedTown(e.target.value)}
               countyPlaceholder="All Counties"
               townPlaceholder="All Locations"
-              className="w-full md:w-auto"
+              className="w-full"
             />
+
             <button
               onClick={handleSearch}
-              className="text-white px-8 py-3.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg w-full md:w-auto"
+              className="text-white px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg border border-gray-300 w-full"
               style={{ backgroundColor: '#ca8637' }}
             >
               Search
