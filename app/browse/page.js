@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
-import { CountyTownFilter } from '@/components/LocationSelector';
+import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 
 export default function BrowseVendors() {
   const [vendors, setVendors] = useState([]);
@@ -122,62 +122,82 @@ export default function BrowseVendors() {
 
       {/* Search & Filters */}
       <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search vendors..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
-            />
-          </div>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Desktop Filters - Single Row */}
+          <div className="hidden md:flex gap-3 items-center">
+            {/* Search Input */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search vendors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
+              />
+            </div>
 
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="md:hidden flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium"
-          >
-            <Filter className="w-5 h-5 mr-2" /> Filters
-          </button>
-        </div>
-
-        {/* Desktop Filters */}
-        <div className="hidden md:flex gap-4 items-end px-4 pb-4 max-w-7xl mx-auto">
-          <div className="flex-1 min-w-0">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+            {/* Category Dropdown */}
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
             >
               {categories.map((cat) => (
                 <option key={cat}>{cat}</option>
               ))}
             </select>
-          </div>
 
-          <div className="flex-1 min-w-0">
-            <CountyTownFilter
-              county={selectedCounty}
-              town={selectedTown}
-              onCountyChange={(e) => setSelectedCounty(e.target.value)}
-              onTownChange={(e) => setSelectedTown(e.target.value)}
-              countyPlaceholder="All Counties"
-              townPlaceholder="All Locations"
-            />
-          </div>
-
-          {(selectedCategory !== 'All Categories' ||
-            selectedCounty ||
-            selectedTown) && (
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2.5 text-gray-600 hover:text-gray-900 font-medium flex items-center whitespace-nowrap border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            {/* County Dropdown */}
+            <select
+              value={selectedCounty}
+              onChange={(e) => setSelectedCounty(e.target.value)}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
             >
-              <X className="w-4 h-4 mr-1" /> Clear
-            </button>
-          )}
+              <option value="">All Counties</option>
+              {KENYA_COUNTIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Location Dropdown */}
+            <select
+              value={selectedTown}
+              onChange={(e) => setSelectedTown(e.target.value)}
+              disabled={!selectedCounty}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">All Locations</option>
+              {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+
+            {/* Clear Button */}
+            {(selectedCategory !== 'All Categories' ||
+              selectedCounty ||
+              selectedTown ||
+              searchQuery) && (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2.5 text-gray-600 hover:text-gray-900 font-medium flex items-center whitespace-nowrap border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <X className="w-4 h-4 mr-1" /> Clear
+              </button>
+            )}
+          </div>
+
+          {/* Mobile: Filters Toggle */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="md:hidden w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium"
+          >
+            <Filter className="w-5 h-5 mr-2" /> Filters
+          </button>
         </div>
       </div>
 
