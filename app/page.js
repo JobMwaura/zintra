@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { CountyTownFilter } from '@/components/LocationSelector';
+import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -297,11 +298,11 @@ export default function ZintraHomepage() {
 
       <section className="bg-white py-4 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="hidden md:flex gap-4 items-end px-4 pb-4 max-w-7xl">
-            <div className="flex-1 min-w-0 relative">
+          <div className="hidden md:flex gap-4 items-stretch">
+            <div className="flex-1 min-w-0 relative flex flex-col">
               <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
-              <div className="relative">
-                <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search vendors, materials, or services..."
@@ -377,7 +378,7 @@ export default function ZintraHomepage() {
               </div>
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex flex-col">
               <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
               <select
                 value={selectedCategory}
@@ -391,21 +392,46 @@ export default function ZintraHomepage() {
               </select>
             </div>
 
-            <div className="flex-1 min-w-0">
-              <CountyTownFilter
-                county={selectedCounty}
-                town={selectedTown}
-                onCountyChange={(e) => setSelectedCounty(e.target.value)}
-                onTownChange={(e) => setSelectedTown(e.target.value)}
-                countyPlaceholder="All Counties"
-                townPlaceholder="All Locations"
-                className="w-full"
-              />
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="text-sm font-medium text-slate-700 mb-2">Location</div>
+              <div className="grid grid-cols-2 gap-2 flex-1">
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">County</label>
+                  <select
+                    value={selectedCounty}
+                    onChange={(e) => setSelectedCounty(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
+                  >
+                    <option value="">All Counties</option>
+                    {KENYA_COUNTIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">Location</label>
+                  <select
+                    value={selectedTown}
+                    onChange={(e) => setSelectedTown(e.target.value)}
+                    disabled={!selectedCounty}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">All Locations</option>
+                    {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             <button
               onClick={handleSearch}
-              className="text-white px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg border border-gray-300 whitespace-nowrap"
+              className="text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg border border-gray-300 whitespace-nowrap self-end"
               style={{ backgroundColor: '#ca8637' }}
             >
               Search
@@ -507,15 +533,38 @@ export default function ZintraHomepage() {
               </select>
             </div>
 
-            <CountyTownFilter
-              county={selectedCounty}
-              town={selectedTown}
-              onCountyChange={(e) => setSelectedCounty(e.target.value)}
-              onTownChange={(e) => setSelectedTown(e.target.value)}
-              countyPlaceholder="All Counties"
-              townPlaceholder="All Locations"
-              className="w-full"
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">County</label>
+              <select
+                value={selectedCounty}
+                onChange={(e) => setSelectedCounty(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all"
+              >
+                <option value="">All Counties</option>
+                {KENYA_COUNTIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
+              <select
+                value={selectedTown}
+                onChange={(e) => setSelectedTown(e.target.value)}
+                disabled={!selectedCounty}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">All Locations</option>
+                {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <button
               onClick={handleSearch}
