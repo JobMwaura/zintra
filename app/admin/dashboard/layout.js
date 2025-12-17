@@ -37,6 +37,7 @@ const navSections = [
     title: 'VENDOR MANAGEMENT',
     items: [
       { name: 'Vendors', icon: Building2, href: '/admin/dashboard/vendors' },
+      { name: 'RFQs', icon: ClipboardList, href: '/admin/dashboard/rfqs' },
       { name: 'Verification Requests', icon: ShieldCheck, href: '/admin/verifications' },
       { name: 'Subscription Plans', icon: ClipboardList, href: '/admin/dashboard/subscriptions' },
     ],

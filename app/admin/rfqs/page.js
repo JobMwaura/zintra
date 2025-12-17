@@ -7,8 +7,8 @@ export default function RFQsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to integrated RFQ management in dashboard
-    router.push('/admin/dashboard?tab=rfqs-pending');
+    // Redirect to RFQ management page in dashboard
+    router.push('/admin/dashboard/rfqs');
   }, [router]);
 
   return null;

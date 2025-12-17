@@ -7,15 +7,9 @@ export default function ActiveRFQsRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    // Silently redirect using router push (client-side) instead of navigation
-    // This prevents a full page reload and keeps the same component context
-    const timer = setTimeout(() => {
-      router.push('/admin/rfqs?tab=direct');
-    }, 0);
-    
-    return () => clearTimeout(timer);
+    // Redirect to RFQ management page in dashboard
+    router.push('/admin/dashboard/rfqs?tab=active');
   }, [router]);
 
-  // Return nothing - this page should never be visible as it redirects immediately
   return null;
 }
