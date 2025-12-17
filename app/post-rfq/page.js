@@ -74,6 +74,17 @@ function PostRFQIndex() {
     fetchPublicRFQs();
   }, []);
 
+  useEffect(() => {
+    // Handle RFQ type routing
+    if (type === 'direct') {
+      router.push('/post-rfq/direct');
+    } else if (type === 'matched') {
+      router.push('/post-rfq/wizard');
+    } else if (type === 'public') {
+      router.push('/post-rfq/public');
+    }
+  }, [type, router]);
+
   const calculateDaysLeft = (deadline) => {
     if (!deadline) return null;
     const today = new Date();
@@ -81,17 +92,6 @@ function PostRFQIndex() {
     const daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
     return daysLeft;
   };
-
-  // If type is specified, redirect to appropriate wizard
-  if (type === 'direct') {
-    return router.push('/post-rfq/direct');
-  }
-  if (type === 'matched') {
-    return router.push('/post-rfq/wizard');
-  }
-  if (type === 'public') {
-    return router.push('/post-rfq/public');
-  }
 
   // Show three RFQ type options
   return (
