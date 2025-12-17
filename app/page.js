@@ -72,6 +72,64 @@ function HowItWorksCarousel() {
   );
 }
 
+// Category cards for homepage display
+const CATEGORY_CARDS = [
+  {
+    name: 'Design & Planning',
+    icon: Building2,
+    type: 'services',
+    description: 'Professional architects and design consultants for your project planning'
+  },
+  {
+    name: 'Building & Construction',
+    icon: Home,
+    type: 'services',
+    description: 'General contractors and specialized construction professionals'
+  },
+  {
+    name: 'Electrical',
+    icon: Zap,
+    type: 'services',
+    description: 'Licensed electricians and electrical system specialists'
+  },
+  {
+    name: 'Plumbing',
+    icon: Droplet,
+    type: 'services',
+    description: 'Professional plumbers and water system experts'
+  },
+  {
+    name: 'Finishing & Interior',
+    icon: ChefHat,
+    type: 'services',
+    description: 'Painters, tilers, and interior finishing specialists'
+  },
+  {
+    name: 'HVAC & Mechanical',
+    icon: Wind,
+    type: 'services',
+    description: 'Climate control and mechanical system professionals'
+  },
+  {
+    name: 'Landscaping & Outdoor',
+    icon: Trees,
+    type: 'services',
+    description: 'Landscaping designers and outdoor construction experts'
+  },
+  {
+    name: 'Structural Materials',
+    icon: Layers,
+    type: 'materials',
+    description: 'Cement, blocks, steel reinforcement and structural supplies'
+  },
+  {
+    name: 'Roofing Materials',
+    icon: DoorOpen,
+    type: 'materials',
+    description: 'Mabati, tiles, and complete roofing solutions'
+  },
+];
+
 export default function ZintraHomepage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -566,7 +624,7 @@ export default function ZintraHomepage() {
       <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map((category, index) => {
+            {CATEGORY_CARDS.map((category, index) => {
               const IconComponent = category.icon;
               return (
                 <Link key={index} href={`/browse?category=${encodeURIComponent(category.name)}`}>
