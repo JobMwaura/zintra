@@ -296,24 +296,24 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      <section className="bg-white py-4 shadow-sm">
+      <section className="bg-white py-6 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="hidden md:flex gap-4 items-stretch">
-            <div className="flex-1 min-w-0 relative flex flex-col">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search vendors, materials, or services..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    performLiveSearch(e.target.value);
-                  }}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
-                />
+          {/* Desktop: Single Row Layout */}
+          <div className="hidden md:flex gap-3 items-center">
+            {/* Search Bar - Takes 40% */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search vendors, materials, or services..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  performLiveSearch(e.target.value);
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
+              />
               
               {/* Live Search Results Dropdown */}
               {showSearchResults && searchQuery && (
@@ -375,63 +375,53 @@ export default function ZintraHomepage() {
                   )}
                 </div>
               )}
-              </div>
             </div>
 
-            <div className="flex-1 min-w-0 flex flex-col">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all"
-              >
-                <option>All Categories</option>
-                {categories.map((category) => (
-                  <option key={category.name}>{category.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Category Dropdown */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
+            >
+              <option>All Categories</option>
+              {categories.map((category) => (
+                <option key={category.name}>{category.name}</option>
+              ))}
+            </select>
 
-            <div className="flex-1 min-w-0 flex flex-col">
-              <div className="text-sm font-medium text-slate-700 mb-2">Location</div>
-              <div className="grid grid-cols-2 gap-2 flex-1">
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">County</label>
-                  <select
-                    value={selectedCounty}
-                    onChange={(e) => setSelectedCounty(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
-                  >
-                    <option value="">All Counties</option>
-                    {KENYA_COUNTIES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">Location</label>
-                  <select
-                    value={selectedTown}
-                    onChange={(e) => setSelectedTown(e.target.value)}
-                    disabled={!selectedCounty}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">All Locations</option>
-                    {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+            {/* County Dropdown */}
+            <select
+              value={selectedCounty}
+              onChange={(e) => setSelectedCounty(e.target.value)}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
+            >
+              <option value="">All Counties</option>
+              {KENYA_COUNTIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
 
+            {/* Location Dropdown */}
+            <select
+              value={selectedTown}
+              onChange={(e) => setSelectedTown(e.target.value)}
+              disabled={!selectedCounty}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">All Locations</option>
+              {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+
+            {/* Search Button */}
             <button
               onClick={handleSearch}
-              className="text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg border border-gray-300 whitespace-nowrap self-end"
+              className="text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg whitespace-nowrap"
               style={{ backgroundColor: '#ca8637' }}
             >
               Search
@@ -441,20 +431,18 @@ export default function ZintraHomepage() {
           {/* Mobile Filters */}
           <div className="md:hidden flex flex-col gap-3">
             <div className="relative w-full">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
-              <div className="relative">
-                <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search vendors, materials, or services..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    performLiveSearch(e.target.value);
-                  }}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
-                />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  performLiveSearch(e.target.value);
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-all"
+              />
               
               {/* Live Search Results Dropdown */}
               {showSearchResults && searchQuery && (
@@ -516,31 +504,26 @@ export default function ZintraHomepage() {
                   )}
                 </div>
               )}
-              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+            <div className="grid grid-cols-2 gap-3">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all"
+                className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
               >
-                <option>All Categories</option>
+                <option>Categories</option>
                 {categories.map((category) => (
                   <option key={category.name}>{category.name}</option>
                 ))}
               </select>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">County</label>
               <select
                 value={selectedCounty}
                 onChange={(e) => setSelectedCounty(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all"
+                className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm"
               >
-                <option value="">All Counties</option>
+                <option value="">Counties</option>
                 {KENYA_COUNTIES.map((c) => (
                   <option key={c.value} value={c.value}>
                     {c.label}
@@ -549,26 +532,23 @@ export default function ZintraHomepage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
-              <select
-                value={selectedTown}
-                onChange={(e) => setSelectedTown(e.target.value)}
-                disabled={!selectedCounty}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">All Locations</option>
-                {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedTown}
+              onChange={(e) => setSelectedTown(e.target.value)}
+              disabled={!selectedCounty}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">All Locations</option>
+              {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
 
             <button
               onClick={handleSearch}
-              className="text-white px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg border border-gray-300 w-full"
+              className="text-white px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg w-full"
               style={{ backgroundColor: '#ca8637' }}
             >
               Search
