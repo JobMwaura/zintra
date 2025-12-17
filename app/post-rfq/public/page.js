@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { Check, Globe, Shield } from 'lucide-react';
+import { Check, Globe, Users } from 'lucide-react';
 
 export default function PublicRFQ() {
   const router = useRouter();
@@ -12,52 +12,83 @@ export default function PublicRFQ() {
     projectTitle: '',
     category: '',
     description: '',
-    timeline: '',
-    budgetRange: '',
+    budget_min: '',
+    budget_max: '',
     county: '',
     specificLocation: '',
-    visibilityDuration: '30',
+    timeline: '',
+    paymentTerms: 'upon_completion',
+    deadline: '',
+    visibilityDays: '7',
   });
+
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
   const categories = [
-    'Building & Structural Materials', 'Wood & Timber Solutions', 'Roofing & Waterproofing',
-    'Doors, Windows & Hardware', 'Flooring & Wall Finishes', 'Plumbing & Sanitation',
-    'Electrical & Lighting', 'Kitchen & Interior Fittings', 'HVAC & Climate Solutions',
-    'Painting & Surface Finishing', 'Concrete & Aggregates', 'Construction Services & Labor'
+    'Building & Structural Materials',
+    'Wood & Timber Solutions',
+    'Roofing & Waterproofing',
+    'Doors, Windows & Hardware',
+    'Flooring & Wall Finishes',
+    'Plumbing & Sanitation',
+    'Electrical & Lighting',
+    'Kitchen & Interior Fittings',
+    'HVAC & Climate Solutions',
+    'Painting & Surface Finishing',
+    'Concrete & Aggregates',
+    'Construction Services & Labor'
   ];
 
-  const budgetRanges = ['Under KSh 50,000', 'KSh 50,000 - 100,000', 'KSh 100,000 - 500,000', 'KSh 500,000 - 1,000,000', 'Over KSh 1,000,000'];
-  const counties = ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Naivasha', 'Thika', 'Ongata Rongai', 'Meru', 'Kericho', 'Kiambu', 'Other'];
+  const paymentTermsOptions = [
+    { value: 'upfront', label: 'Upfront Payment' },
+    { value: 'upon_completion', label: 'Upon Completion' },
+    { value: 'partial', label: 'Partial (50/50)' },
+    { value: 'monthly', label: 'Monthly Installments' },
+    { value: 'flexible', label: 'Flexible/Negotiable' }
+  ];
+
+  const counties = [
+    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Naivasha', 'Thika', 'Ongata Rongai', 'Meru', 'Kericho', 'Kiambu', 'Other'
+  ];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.projectTitle.trim()) newErrors.projectTitle = 'Required';
+    if (!formData.category) newErrors.category = 'Required';
+    if (!formData.description.trim()) newErrors.description = 'Required';
+    if (!formData.budget_min) newErrors.budget_min = 'Required';
+    if (!formData.budget_max) newErrors.budget_max = 'Required';
+    if (formData.budget_min && formData.budget_max && parseInt(formData.budget_min) > parseInt(formData.budget_max)) {
+      newErrors.budget_min = 'Min budget must be less than max';
+    }
+    if (!formData.county) newErrors.county = 'Required';
+    if (!formData.specificLocation.trim()) newErrors.specificLocation = 'Required';
+    if (!formData.timeline) newErrors.timeline = 'Required';
+    if (!formData.deadline) newErrors.deadline = 'Required - Set a quote submission deadline';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     setLoading(true);
-    setError(null);
-
-    if (!formData.projectTitle.trim() || !formData.category || !formData.description.trim() || !formData.budgetRange || !formData.county || !formData.specificLocation.trim() || !formData.timeline) {
-      setError('Please fill in all required fields');
-      setLoading(false);
-      return;
-    }
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setError('Please log in first');
+        setErrors({ auth: 'Please log in first' });
         setLoading(false);
         return;
       }
-
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + parseInt(formData.visibilityDuration));
 
       const { data: rfqData, error: rfqError } = await supabase
         .from('rfqs')
@@ -69,12 +100,14 @@ export default function PublicRFQ() {
           category: formData.category,
           location: formData.specificLocation,
           county: formData.county,
-          budget_range: formData.budgetRange,
+          budget_min: parseInt(formData.budget_min) || null,
+          budget_max: parseInt(formData.budget_max) || null,
           timeline: formData.timeline,
+          payment_terms: formData.paymentTerms,
+          deadline: formData.deadline ? new Date(formData.deadline) : null,
           rfq_type: 'public',
           visibility: 'public',
           status: 'open',
-          expires_at: expiryDate,
           created_at: new Date(),
           published_at: new Date(),
         }])
@@ -83,11 +116,12 @@ export default function PublicRFQ() {
       if (rfqError) throw rfqError;
 
       if (rfqData && rfqData[0]) {
+        const rfqId = rfqData[0].id;
         setSuccess(true);
-        setTimeout(() => router.push(`/rfq/${rfqData[0].id}`), 2000);
+        setTimeout(() => router.push(`/rfq/${rfqId}`), 2000);
       }
     } catch (err) {
-      setError(err.message || 'Failed to create RFQ');
+      setErrors({ submit: err.message || 'Failed to create RFQ' });
     } finally {
       setLoading(false);
     }
@@ -98,7 +132,7 @@ export default function PublicRFQ() {
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
         <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-md">
           <Check className="w-16 h-16 text-green-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-green-900 mb-2">RFQ Published Successfully!</h2>
+          <h2 className="text-2xl font-bold text-green-900 mb-2">Public RFQ Posted!</h2>
           <p className="text-green-700 mb-4">Your project is now visible to all vendors in the marketplace</p>
         </div>
       </div>
@@ -119,172 +153,204 @@ export default function PublicRFQ() {
 
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Globe className="w-8 h-8" style={{ color: '#ea8f1e' }} />
-            <h1 className="text-3xl font-bold" style={{ color: '#5f6466' }}>Post Publicly</h1>
-          </div>
-          <p className="text-center text-gray-600 mb-8">Let all vendors in our marketplace see your project and submit competitive quotes</p>
+          <h1 className="text-3xl font-bold text-center mb-2" style={{ color: '#5f6466' }}>Post Public RFQ</h1>
+          <p className="text-center text-gray-600 mb-8">Reach all qualified vendors in the marketplace</p>
 
-          {/* Benefits Card */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <h3 className="font-semibold text-blue-900 mb-3">Public RFQ Benefits:</h3>
-            <ul className="space-y-2 text-blue-700 text-sm">
-              <li className="flex gap-2">
-                <span className="text-lg">✓</span>
-                <span>Visible to all vendors in the marketplace</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-lg">✓</span>
-                <span>Receive competitive quotes from multiple vendors</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-lg">✓</span>
-                <span>Automatic vendor matching based on category and location</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-lg">✓</span>
-                <span>Compare quotes and vendor profiles side-by-side</span>
-              </li>
-            </ul>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+            <div className="flex items-start gap-3">
+              <Globe className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-2">Public RFQ Benefits</p>
+                <ul className="space-y-1">
+                  <li>✓ Visible to all vendors in the marketplace</li>
+                  <li>✓ Get competitive quotes from multiple suppliers</li>
+                  <li>✓ Better pricing through vendor competition</li>
+                  <li>✓ Discover new vendors and options</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Project Title *</label>
-              <input
-                type="text"
-                name="projectTitle"
-                placeholder="e.g., Kitchen Renovation with New Cabinets"
-                value={formData.projectTitle}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-              />
-            </div>
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Project Details</h2>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Project Description *</label>
-              <textarea
-                name="description"
-                placeholder="Describe your project in detail. The more details, the better quotes you'll receive."
-                value={formData.description}
-                onChange={handleInputChange}
-                rows="8"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-              />
-            </div>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Project Title *</label>
+                  <input 
+                    type="text" 
+                    name="projectTitle" 
+                    placeholder="e.g., Office Renovation - 500 sq meters"
+                    value={formData.projectTitle} 
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                  />
+                  {errors.projectTitle && <p className="text-red-500 text-sm mt-1">{errors.projectTitle}</p>}
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-              >
-                <option value="">Select a category</option>
-                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                    <select 
+                      name="category" 
+                      value={formData.category} 
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                    {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+                  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">County *</label>
-                <select
-                  name="county"
-                  value={formData.county}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-                >
-                  <option value="">Select county</option>
-                  {counties.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Timeline *</label>
+                    <select 
+                      name="timeline" 
+                      value={formData.timeline} 
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    >
+                      <option value="">Select timeline</option>
+                      <option value="urgent">Urgent (Within 1 week)</option>
+                      <option value="soon">Soon (1-2 weeks)</option>
+                      <option value="moderate">Moderate (2-4 weeks)</option>
+                      <option value="flexible">Flexible (No deadline)</option>
+                    </select>
+                    {errors.timeline && <p className="text-red-500 text-sm mt-1">{errors.timeline}</p>}
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
-                <input
-                  type="text"
-                  name="specificLocation"
-                  placeholder="e.g., Westlands, Nairobi"
-                  value={formData.specificLocation}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Budget Range *</label>
-                <select
-                  name="budgetRange"
-                  value={formData.budgetRange}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-                >
-                  <option value="">Select budget</option>
-                  {budgetRanges.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Timeline *</label>
-                <select
-                  name="timeline"
-                  value={formData.timeline}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-                >
-                  <option value="">Select timeline</option>
-                  <option value="urgent">Urgent (Within 1 week)</option>
-                  <option value="soon">Soon (1-2 weeks)</option>
-                  <option value="moderate">Moderate (2-4 weeks)</option>
-                  <option value="flexible">Flexible (No specific deadline)</option>
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Project Description *</label>
+                  <textarea 
+                    name="description" 
+                    placeholder="Provide detailed information about your project..."
+                    value={formData.description} 
+                    onChange={handleInputChange}
+                    rows="5"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                  />
+                  {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">How long should this RFQ be visible? *</label>
-              <select
-                name="visibilityDuration"
-                value={formData.visibilityDuration}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
-              >
-                <option value="7">1 week</option>
-                <option value="14">2 weeks</option>
-                <option value="30">1 month (Recommended)</option>
-                <option value="60">2 months</option>
-                <option value="90">3 months</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-2">After this period, vendors can still view your RFQ but won't receive new notifications</p>
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Budget & Location</h2>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Budget (KSh) *</label>
+                    <input 
+                      type="number" 
+                      name="budget_min" 
+                      placeholder="e.g., 100000"
+                      value={formData.budget_min} 
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    />
+                    {errors.budget_min && <p className="text-red-500 text-sm mt-1">{errors.budget_min}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Budget (KSh) *</label>
+                    <input 
+                      type="number" 
+                      name="budget_max" 
+                      placeholder="e.g., 1000000"
+                      value={formData.budget_max} 
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    />
+                    {errors.budget_max && <p className="text-red-500 text-sm mt-1">{errors.budget_max}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">County *</label>
+                    <select 
+                      name="county" 
+                      value={formData.county} 
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    >
+                      <option value="">Select county</option>
+                      {counties.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {errors.county && <p className="text-red-500 text-sm mt-1">{errors.county}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Specific Location *</label>
+                    <input 
+                      type="text" 
+                      name="specificLocation" 
+                      placeholder="e.g., Downtown area"
+                      value={formData.specificLocation} 
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    />
+                    {errors.specificLocation && <p className="text-red-500 text-sm mt-1">{errors.specificLocation}</p>}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700 font-semibold">Error</p>
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Quote Deadline & Payment</h2>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <p className="text-sm text-gray-700">
-                <strong>Privacy Notice:</strong> Your project details are secure. Only vendors who submit quotes will see your contact information.
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quote Submission Deadline *</label>
+                  <input 
+                    type="date" 
+                    name="deadline" 
+                    value={formData.deadline} 
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                  />
+                  <p className="text-xs text-gray-600 mt-2">When you need to receive quotes by - vendors will see this deadline</p>
+                  {errors.deadline && <p className="text-red-500 text-sm mt-1">{errors.deadline}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Terms</label>
+                  <select 
+                    name="paymentTerms" 
+                    value={formData.paymentTerms} 
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                  >
+                    {paymentTermsOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-600 mt-2">How you prefer to pay for the project</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-green-900 text-sm">
+                <strong>✓ What happens next:</strong> Your RFQ will be posted publicly. All vendors in the marketplace will see it and can submit quotes. You'll be able to compare options and select the best fit.
               </p>
             </div>
 
-            <div className="flex gap-4">
-              <Link href="/post-rfq" className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 text-center transition-colors">
-                Cancel
+            {errors.submit && <p className="text-red-500 text-center font-medium">{errors.submit}</p>}
+
+            <div className="flex gap-4 pt-6">
+              <Link href="/post-rfq" className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">
+                Back
               </Link>
-              <button
-                type="submit"
+              <button 
+                type="submit" 
                 disabled={loading}
-                className="flex-1 px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90 disabled:bg-gray-400"
+                className="ml-auto px-8 py-2 text-white rounded-lg hover:opacity-90 font-semibold disabled:bg-gray-400"
                 style={!loading ? { backgroundColor: '#ea8f1e' } : {}}
               >
-                {loading ? 'Publishing...' : 'Publish RFQ'}
+                {loading ? 'Publishing...' : 'Publish to Marketplace'}
               </button>
             </div>
           </form>
