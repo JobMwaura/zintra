@@ -25,14 +25,12 @@ const steps = [
 ];
 
 // Create categories from comprehensive construction categories
-const createCategoryOptions = () => {
-  return ALL_CATEGORIES_FLAT.map((cat) => ({
-    name: cat.label,
-    requiresProducts: true, // All categories require at least profile info
-    requiresPortfolio: false,
-    requiresServices: false,
-  }));
-};
+const categories = ALL_CATEGORIES_FLAT.map((cat) => ({
+  name: cat.label,
+  requiresProducts: true, // All categories require at least profile info
+  requiresPortfolio: false,
+  requiresServices: false,
+}));
 
 const plans = [
   {
@@ -122,12 +120,6 @@ export default function VendorRegistration() {
 
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
-  const [categories, setCategories] = useState([]);
-
-  // Initialize categories from comprehensive construction categories
-  useEffect(() => {
-    setCategories(createCategoryOptions());
-  }, []);
 
   // Determine which fields are required based on selected categories
   const selectedCategoryObjects = categories.filter(c => formData.selectedCategories.includes(c.name));
