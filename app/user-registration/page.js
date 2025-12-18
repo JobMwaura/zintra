@@ -21,6 +21,7 @@ export default function UserRegistration() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpMessage, setOtpMessage] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null); // Store user after signup
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -100,6 +101,11 @@ export default function UserRegistration() {
           return;
         }
 
+        // Store user data for use in later steps
+        if (data?.user) {
+          setCurrentUser(data.user);
+        }
+
         // Account created, move to phone verification
         setCurrentStep(2);
       } catch (err) {
@@ -176,13 +182,17 @@ export default function UserRegistration() {
     setOtpMessage(''); // Clear any previous messages
 
     try {
-      // Get current authenticated user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Use user from signup (stored in state) or fetch if not available
+      let user = currentUser;
       
-      if (userError || !user) {
-        setOtpMessage('❌ Error: Not authenticated. Please log in again.');
-        setLoading(false);
-        return;
+      if (!user) {
+        const { data: { user: fetchedUser }, error: userError } = await supabase.auth.getUser();
+        if (userError || !fetchedUser) {
+          setOtpMessage('❌ Error: Not authenticated. Please log in again.');
+          setLoading(false);
+          return;
+        }
+        user = fetchedUser;
       }
 
       // Update user metadata in Supabase Auth
