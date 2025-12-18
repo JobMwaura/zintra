@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle, Plus, X } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
+import PhoneInput from '@/components/PhoneInput';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import useOTP from '@/components/hooks/useOTP';
 
@@ -595,18 +596,15 @@ export default function VendorRegistration() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-slate-800 mb-1">Phone Number*</label>
-              <input
-                type="tel"
-                name="phone"
+              <PhoneInput
+                label="Business Phone Number"
                 value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="+254 712 345 678"
-                className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a] ${
-                  errors.phone ? 'border-red-400' : 'border-slate-300'
-                }`}
+                onChange={(phone) => setFormData({ ...formData, phone })}
+                country="KE"
+                required
+                error={errors.phone}
+                placeholder="721345678"
               />
-              {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-800 mb-1">WhatsApp Number</label>
