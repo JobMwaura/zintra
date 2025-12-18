@@ -149,6 +149,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyOTP
     }
     // Method 2: Find by phone number
     else if (phoneNumber) {
+      // First, clean up any expired OTPs for this phone
+      const now = new Date();
+      const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+      
+      try {
+        await supabase
+          .from('otp_verifications')
+          .update({ verified: false })
+          .eq('phone_number', phoneNumber)
+          .eq('verified', false)
+          .lt('created_at', tenMinutesAgo.toISOString());
+      } catch (cleanupError) {
+        console.log('[OTP Verify] Note: Could not cleanup old OTPs:', cleanupError);
+      }
+      
       const { data, error } = await supabase
         .from('otp_verifications')
         .select('*')

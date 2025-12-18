@@ -175,12 +175,37 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
       );
     }
 
+    // IMPORTANT: Invalidate previous unverified OTPs for this contact
+    // This prevents users from using old OTP codes
+    try {
+      if (validatedPhone) {
+        await supabase
+          .from('otp_verifications')
+          .delete()
+          .eq('phone_number', validatedPhone)
+          .eq('verified', false);
+        console.log('[OTP Send] Cleaned up previous unverified OTPs for phone');
+      }
+      if (validatedEmail) {
+        await supabase
+          .from('otp_verifications')
+          .delete()
+          .eq('email_address', validatedEmail)
+          .eq('verified', false);
+        console.log('[OTP Send] Cleaned up previous unverified OTPs for email');
+      }
+    } catch (cleanupError) {
+      console.log('[OTP Send] Note: Could not cleanup previous OTPs:', cleanupError);
+      // Don't fail if cleanup doesn't work, continue with new OTP
+    }
+
     // Generate OTP
     const otp = generateOTP(6);
     const otpId = `otp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     
-    console.log('[OTP Send] Generated code:', { otp, otpId, phone: validatedPhone, expiresAt: expiresAt.toISOString() });
+    console.log(`[OTP Send - ${requestId}] Generated code:`, { otp, otpId, phone: validatedPhone, expiresAt: expiresAt.toISOString() });
 
     // Send OTP via specified channel(s)
     let smsResult: any = null;
@@ -188,11 +213,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
     const channels = Array.isArray(channel) ? channel : [channel];
 
     if (channels.includes('sms') && validatedPhone) {
+      console.log(`[OTP Send - ${requestId}] Sending SMS with code ${otp}`);
       if (type === 'registration') {
         smsResult = await sendSMSOTPCustom(validatedPhone, otp, 'registration');
       } else {
         smsResult = await sendSMSOTPCustom(validatedPhone, otp, type);
       }
+      console.log(`[OTP Send - ${requestId}] SMS result:`, smsResult);
     }
 
     if (channels.includes('email') && validatedEmail) {
@@ -233,9 +260,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
           created_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString()
         });
-        console.log('[OTP Send] Stored in database:', { otp, phone: validatedPhone, otpId, insertResult });
+        console.log(`[OTP Send - ${requestId}] Stored in database:`, { otp, phone: validatedPhone, otpId, status: insertResult?.status || 'unknown' });
       } catch (dbError) {
-        console.error('Database error storing OTP:', dbError);
+        console.error(`[OTP Send - ${requestId}] Database error storing OTP:`, dbError);
         // Don't fail the request if DB storage fails - OTP was still sent
       }
     }
