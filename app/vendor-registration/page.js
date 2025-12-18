@@ -1003,7 +1003,9 @@ export default function VendorRegistration() {
                     className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a] bg-white"
                   >
                     <option value="">Select a category</option>
-                    {ALL_CATEGORIES_FLAT.map((cat) => (
+                    {ALL_CATEGORIES_FLAT.filter((cat) =>
+                      formData.selectedCategories.includes(cat.label)
+                    ).map((cat) => (
                       <option key={cat.value} value={cat.label}>
                         {cat.label}
                       </option>
