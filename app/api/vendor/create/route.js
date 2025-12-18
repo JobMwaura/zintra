@@ -22,6 +22,8 @@ export async function POST(request) {
       company_name: body.company_name,
       description: body.description || null,
       phone: body.phone || null,
+      phone_verified: body.phone_verified || false,
+      phone_verified_at: body.phone_verified_at || null,
       email: body.email,
       county: body.county || null,
       location: body.location || null,

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle, Plus, X } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
+import useOTP from '@/components/hooks/useOTP';
 
 const brand = {
   primary: '#c28a3a',
@@ -129,6 +130,14 @@ export default function VendorRegistration() {
 
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
+  
+  // OTP verification state
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpMessage, setOtpMessage] = useState('');
+  const { sendOTP, verifyOTP, loading: otpHookLoading } = useOTP();
 
   // Determine which fields are required based on selected categories
   const selectedCategoryObjects = categories.filter(c => formData.selectedCategories.includes(c.name));
@@ -250,6 +259,59 @@ export default function VendorRegistration() {
     });
   };
 
+  // OTP Verification Handlers
+  const handleSendPhoneOTP = async () => {
+    if (!formData.phone.trim()) {
+      setOtpMessage('Please enter a phone number first');
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpMessage('');
+
+    try {
+      const result = await sendOTP(formData.phone, 'sms', 'registration');
+      if (result.success) {
+        setShowPhoneVerification(true);
+        setOtpMessage('✓ SMS sent! Enter the 6-digit code');
+      } else {
+        setOtpMessage(result.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      setOtpMessage('Error sending OTP: ' + err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOTP = async () => {
+    if (!otpCode.trim() || otpCode.length !== 6) {
+      setOtpMessage('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpMessage('');
+
+    try {
+      const result = await verifyOTP(otpCode, formData.phone);
+      if (result.verified) {
+        setPhoneVerified(true);
+        setOtpMessage('✓ Phone verified successfully!');
+        setTimeout(() => {
+          setShowPhoneVerification(false);
+          setOtpCode('');
+        }, 1500);
+      } else {
+        setOtpMessage(result.message || 'Invalid OTP code');
+      }
+    } catch (err) {
+      setOtpMessage('Error verifying OTP: ' + err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const validateStep = () => {
     const newErrors = {};
 
@@ -286,6 +348,9 @@ export default function VendorRegistration() {
       }
       if (!formData.phone.trim()) {
         newErrors.phone = 'Phone number is required';
+      }
+      if (!phoneVerified) {
+        newErrors.phoneVerification = 'Phone number must be verified via OTP';
       }
     }
 
@@ -359,6 +424,8 @@ export default function VendorRegistration() {
           company_name: formData.businessName,
           description: formData.businessDescription || null,
           phone: formData.phone || null,
+          phone_verified: phoneVerified,
+          phone_verified_at: phoneVerified ? new Date().toISOString() : null,
           email: userEmail,
           county: formData.county || null,
           location: formData.location || null,
@@ -551,6 +618,104 @@ export default function VendorRegistration() {
                 placeholder="+254 712 345 678"
                 className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
               />
+            </div>
+          </div>
+
+          {/* Phone Verification with OTP */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 ${phoneVerified ? 'bg-green-500' : 'bg-amber-500'}`}>
+                  {phoneVerified ? (
+                    <Check className="h-4 w-4 text-white" />
+                  ) : (
+                    <span className="text-white text-sm font-bold">!</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    {phoneVerified ? '✓ Phone Verified' : 'Verify Your Phone Number'}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    {phoneVerified 
+                      ? `Phone verified at ${formData.phone}` 
+                      : 'We\'ll send an SMS code to verify your business phone number'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {!phoneVerified && !showPhoneVerification && (
+                <button
+                  type="button"
+                  onClick={handleSendPhoneOTP}
+                  disabled={!formData.phone.trim() || otpLoading}
+                  className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm transition ${
+                    formData.phone.trim() && !otpLoading
+                      ? 'bg-[#c28a3a] text-white hover:bg-[#a9742f]'
+                      : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  {otpLoading ? 'Sending OTP...' : 'Send Verification Code'}
+                </button>
+              )}
+
+              {showPhoneVerification && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-800 mb-2">Enter 6-Digit Code*</label>
+                    <input
+                      type="text"
+                      maxLength="6"
+                      value={otpCode}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setOtpCode(val.slice(0, 6));
+                      }}
+                      placeholder="000000"
+                      className="w-full text-center text-2xl tracking-widest font-mono rounded-lg border border-amber-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    />
+                    <p className="text-xs text-slate-600 mt-2">Check your SMS for the code</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyPhoneOTP}
+                    disabled={otpCode.length !== 6 || otpLoading}
+                    className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm transition ${
+                      otpCode.length === 6 && !otpLoading
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {otpLoading ? 'Verifying...' : 'Verify Code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPhoneVerification(false);
+                      setOtpCode('');
+                      setOtpMessage('');
+                    }}
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 font-medium text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {otpMessage && (
+                <p className={`text-xs mt-2 ${
+                  otpMessage.startsWith('✓') ? 'text-green-600' : 
+                  otpMessage.startsWith('✗') ? 'text-red-600' :
+                  'text-red-500'
+                }`}>
+                  {otpMessage}
+                </p>
+              )}
+
+              {errors.phoneVerification && (
+                <p className="text-xs text-red-500 mt-2">{errors.phoneVerification}</p>
+              )}
             </div>
           </div>
 
