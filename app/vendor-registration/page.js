@@ -997,12 +997,18 @@ export default function VendorRegistration() {
                     className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
                     placeholder="Sale price (optional)"
                   />
-                  <input
+                  <select
                     value={formData.productForm.category}
                     onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, category: e.target.value } })}
-                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-                    placeholder="Category"
-                  />
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a] bg-white"
+                  >
+                    <option value="">Select a category</option>
+                    {ALL_CATEGORIES_FLAT.map((cat) => (
+                      <option key={cat.value} value={cat.label}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     value={formData.productForm.unit}
                     onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, unit: e.target.value } })}

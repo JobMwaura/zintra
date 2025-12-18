@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import {
   MapPin,
   Phone,
@@ -1368,12 +1369,18 @@ export default function VendorProfilePage() {
                 className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Sale price (optional)"
               />
-              <input
+              <select
                 value={productForm.category}
                 onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="Category"
-              />
+                className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              >
+                <option value="">Select a category</option>
+                {ALL_CATEGORIES_FLAT.map((cat) => (
+                  <option key={cat.value} value={cat.label}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
               <input
                 value={productForm.unit}
                 onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}
