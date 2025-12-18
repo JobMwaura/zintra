@@ -5,6 +5,7 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock, MessageSquare, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import AuthGuard from '@/components/AuthGuard';
 
 function PostRFQIndex() {
   const router = useRouter();
@@ -379,8 +380,10 @@ function PostRFQIndex() {
 
 export default function PostRFQPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p>Loading...</p></div>}>
-      <PostRFQIndex />
-    </Suspense>
+    <AuthGuard>
+      <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p>Loading...</p></div>}>
+        <PostRFQIndex />
+      </Suspense>
+    </AuthGuard>
   );
 }

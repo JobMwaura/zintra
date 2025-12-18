@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import LocationSelector from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
+import AuthGuard from '@/components/AuthGuard';
 import {
   Check,
   Upload,
@@ -24,7 +25,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 
-export default function PostPublicRFQ() {
+function PostPublicRFQContent() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     // Step 1: Project Overview
@@ -1493,5 +1494,13 @@ export default function PostPublicRFQ() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PostPublicRFQ() {
+  return (
+    <AuthGuard>
+      <PostPublicRFQContent />
+    </AuthGuard>
   );
 }
