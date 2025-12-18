@@ -172,46 +172,74 @@ export default function UserRegistration() {
 
   // Step 3: Profile
   const handleStep3 = async () => {
+    setLoading(true);
+    setOtpMessage(''); // Clear any previous messages
+
     try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (user) {
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: {
-            full_name: formData.fullName,
-            phone: formData.phone,
-            phone_verified: true,
-            gender: formData.gender,
-            bio: formData.bio,
-          },
-        });
-
-        if (updateError) {
-          alert('Error saving profile: ' + updateError.message);
-          return;
-        }
-
-        // Also update the users table if it exists
-        const { error: dbError } = await supabase
-          .from('users')
-          .upsert({
-            id: user.id,
-            email: user.email,
-            full_name: formData.fullName,
-            phone: formData.phone,
-            phone_verified: true,
-            gender: formData.gender,
-            bio: formData.bio,
-            role: 'user',
-          });
-
-        if (dbError) {
-          console.error('DB Error:', dbError);
-        }
-
-        setCurrentStep(4);
+      // Get current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        setOtpMessage('❌ Error: Not authenticated. Please log in again.');
+        setLoading(false);
+        return;
       }
+
+      // Update user metadata in Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          full_name: formData.fullName,
+          phone: formData.phone,
+          phone_verified: true,
+          gender: formData.gender,
+          bio: formData.bio,
+        },
+      });
+
+      if (updateError) {
+        console.error('Auth update error:', updateError);
+        setOtpMessage(`❌ Error saving profile: ${updateError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      // Update users table with complete profile data
+      const { data: insertData, error: dbError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          full_name: formData.fullName,
+          phone: formData.phone,
+          phone_number: formData.phone, // Also save as phone_number field
+          phone_verified: true,
+          phone_verified_at: new Date().toISOString(),
+          gender: formData.gender || null,
+          bio: formData.bio || null,
+          role: 'user',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' })
+        .select();
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        setOtpMessage(`❌ Error updating profile: ${dbError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      // Success - move to completion step
+      setOtpMessage('✅ Profile saved successfully! Redirecting...');
+      
+      setTimeout(() => {
+        setCurrentStep(4);
+        setLoading(false);
+      }, 1000);
+
     } catch (err) {
-      alert('Error saving profile: ' + err.message);
+      console.error('Unexpected error:', err);
+      setOtpMessage(`❌ Unexpected error: ${err.message}`);
+      setLoading(false);
     }
   };
 
@@ -508,12 +536,25 @@ export default function UserRegistration() {
                 />
               </div>
 
+              {otpMessage && (
+                <div
+                  className={`mb-5 p-3 rounded-lg text-sm font-medium ${
+                    otpMessage.includes('✓') || otpMessage.includes('successfully')
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}
+                >
+                  {otpMessage}
+                </div>
+              )}
+
               <button
                 onClick={handleStep3}
-                className="w-full text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition"
+                disabled={loading}
+                className="w-full text-white py-2.5 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 transition"
                 style={{ backgroundColor: '#ea8f1e' }}
               >
-                Complete Registration
+                {loading ? 'Saving Profile...' : 'Complete Registration'}
               </button>
             </div>
           )}
