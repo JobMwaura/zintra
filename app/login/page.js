@@ -88,13 +88,14 @@ export default function Login() {
       console.log('🔹 Active tab:', activeTab);
       setMessage('✅ Login successful! Redirecting...');
 
-      // Vendors: try to find their vendor profile and redirect there; fallback to browse
       let redirectUrl = '/browse';
+
       if (activeTab === 'vendor') {
+        // VENDOR LOGIN: Find vendor profile and redirect to vendor dashboard
         const userId = data.user.id;
         const userEmail = data.user.email;
 
-        // Find vendor either by user_id or (fallback) email, then attach user_id if missing
+        // Find vendor either by user_id or (fallback) email
         const { data: vendorData, error: vendorError } = await supabase
           .from('vendors')
           .select('id,user_id')
@@ -103,7 +104,7 @@ export default function Login() {
           .maybeSingle();
 
         if (vendorError) {
-          console.warn('Vendor lookup failed, falling back to browse:', vendorError.message);
+          console.warn('Vendor lookup failed:', vendorError.message);
         }
 
         if (vendorData?.id) {
@@ -112,9 +113,15 @@ export default function Login() {
             await supabase.from('vendors').update({ user_id: userId }).eq('id', vendorData.id);
           }
           redirectUrl = `/vendor-profile/${vendorData.id}`;
+          console.log('✓ Vendor found, redirecting to vendor profile');
         } else {
+          console.log('⚠ No vendor profile found, redirecting to browse');
           redirectUrl = '/browse';
         }
+      } else {
+        // USER LOGIN: Redirect to user dashboard
+        redirectUrl = '/user-dashboard';
+        console.log('✓ User login detected, redirecting to user dashboard');
       }
 
       console.log('🔹 Redirecting to:', redirectUrl);
