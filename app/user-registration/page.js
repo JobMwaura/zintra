@@ -199,11 +199,11 @@ export default function UserRegistration() {
       // Instead, directly update the users table (RLS allows inserts with correct user_id)
       
       // Update users table with complete profile data
+      // Note: Don't include 'email' field as it may not exist in public.users table (it's in auth.users)
       const { data: insertData, error: dbError } = await supabase
         .from('users')
         .upsert({
           id: user.id,
-          email: user.email,
           full_name: formData.fullName,
           phone: formData.phone,
           phone_number: formData.phone, // Also save as phone_number field
