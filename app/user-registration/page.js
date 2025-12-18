@@ -101,10 +101,17 @@ export default function UserRegistration() {
           return;
         }
 
-        // Store user data for use in later steps
-        if (data?.user) {
-          setCurrentUser(data.user);
+        // CRITICAL: Verify user was created with valid ID
+        if (!data?.user?.id) {
+          setOtpMessage('❌ Error: Account created but user ID not returned. Please try again.');
+          setLoading(false);
+          return;
         }
+
+        console.log('✅ User created with ID:', data.user.id);
+
+        // Store user data for use in later steps
+        setCurrentUser(data.user);
 
         // Account created, move to phone verification
         setCurrentStep(2);
@@ -195,9 +202,16 @@ export default function UserRegistration() {
         user = fetchedUser;
       }
 
-      console.log('Step 3 - User ID:', user.id);
+      // Verify user ID exists
+      if (!user.id) {
+        setOtpMessage('❌ Error: User ID not found. Please try signing up again.');
+        setLoading(false);
+        return;
+      }
 
-      // Try INSERT first (better for RLS policies)
+      console.log('Step 3 - Inserting for user:', user.id);
+
+      // Try INSERT first
       const { data: insertData, error: insertError } = await supabase
         .from('users')
         .insert({
@@ -210,7 +224,7 @@ export default function UserRegistration() {
 
       // If insert failed because row exists, try update
       if (insertError && insertError.code === '23505') {
-        // Duplicate key error - row exists, so update it
+        console.log('Row exists, updating instead...');
         const { data: updateData, error: updateError } = await supabase
           .from('users')
           .update({
@@ -229,6 +243,13 @@ export default function UserRegistration() {
           return;
         }
       } else if (insertError) {
+        // Check if it's a foreign key error
+        if (insertError.code === '23503') {
+          console.error('Foreign key error - auth user not found:', insertError);
+          setOtpMessage('❌ Error: User account not created properly. Please try signing up again.');
+          setLoading(false);
+          return;
+        }
         console.error('Insert error:', insertError);
         setOtpMessage(`❌ Error saving profile: ${insertError.message}`);
         setLoading(false);
