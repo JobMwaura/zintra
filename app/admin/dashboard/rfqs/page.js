@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { categoryMatches } from '@/lib/constructionCategories';
 import { 
   Eye, Check, X, Search, Filter, MapPin, Calendar, DollarSign, Clock, User, FileText, 
   AlertTriangle, Shield, ArrowLeft, CheckCircle, AlertCircle, TrendingUp, Plus, Edit2, Trash2 
@@ -222,29 +223,80 @@ export default function ConsolidatedRFQs() {
   // Pending tab handlers
   const notifyVendors = async (rfq) => {
     const category = rfq.category || rfq.auto_category;
+    
+    // Fetch ALL active vendors (don't filter by category at DB level)
     const { data: vendors } = await supabase
       .from('vendors')
-      .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time')
-      .eq('status', 'active')
-      .eq('category', category);
+      .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time, service_counties')
+      .eq('status', 'active');
 
-    const matching = (vendors || [])
+    // Enhanced matching with fuzzy category matching and service area support
+    let matching = (vendors || [])
       .filter((v) => {
-        const countyOk = !rfq.county || (v.county || '').toLowerCase() === rfq.county.toLowerCase();
-        const qualityOk = (v.rating || 0) >= 3.5 && (v.verified || false);
-        return countyOk && qualityOk;
+        // 1. Category matching: Use fuzzy matching instead of exact match
+        const categoryMatch = categoryMatches(v.category, category);
+        if (!categoryMatch) return false;
+
+        // 2. Location matching: Check primary county or service_counties array
+        if (rfq.county) {
+          const rfqCountyLower = (rfq.county || '').toLowerCase();
+          const vendorCountyLower = (v.county || '').toLowerCase();
+          const serviceCounties = (v.service_counties || []).map(c => c.toLowerCase());
+          
+          const locationOk = 
+            vendorCountyLower === rfqCountyLower || // Primary county match
+            serviceCounties.includes(rfqCountyLower); // Or in service_counties array
+          
+          if (!locationOk) return false;
+        }
+
+        return true; // Include all vendors that match category + location
       })
       .sort((a, b) => {
-        const ratingDiff = (b.rating || 0) - (a.rating || 0);
-        if (ratingDiff !== 0) return ratingDiff;
-        const responseDiff = (a.response_time || 9999) - (b.response_time || 9999);
-        if (responseDiff !== 0) return responseDiff;
-        return (b.rfqs_completed || 0) - (a.rfqs_completed || 0);
-      })
-      .slice(0, 8);
+        // Scoring system: prefer verified and high-rated vendors
+        const aVerified = a.verified ? 2 : 0;
+        const bVerified = b.verified ? 2 : 0;
+        
+        const aRating = (a.rating || 0);
+        const bRating = (b.rating || 0);
+        
+        const aResponseTime = a.response_time || 9999;
+        const bResponseTime = b.response_time || 9999;
+        
+        const aCompleted = a.rfqs_completed || 0;
+        const bCompleted = b.rfqs_completed || 0;
+
+        // Multi-factor scoring:
+        // 1. Verified badge (highest priority)
+        if (aVerified !== bVerified) return bVerified - aVerified;
+        // 2. Rating (second priority)
+        if (aRating !== bRating) return bRating - aRating;
+        // 3. Response time (third priority)
+        if (aResponseTime !== bResponseTime) return aResponseTime - bResponseTime;
+        // 4. Completed RFQs (tiebreaker)
+        return bCompleted - aCompleted;
+      });
+
+    // Graceful fallback: If very few matches, relax criteria
+    if (matching.length < 3) {
+      console.warn(`⚠️ Low match count (${matching.length}). Relaxing criteria...`);
+      
+      // Fallback: Match on category alone, include all quality levels
+      matching = (vendors || [])
+        .filter((v) => categoryMatches(v.category, category))
+        .sort((a, b) => {
+          const aVerified = a.verified ? 1 : 0;
+          const bVerified = b.verified ? 1 : 0;
+          if (aVerified !== bVerified) return bVerified - aVerified;
+          return (b.rating || 0) - (a.rating || 0);
+        });
+    }
+
+    // Limit to top 8 vendors
+    matching = matching.slice(0, 8);
 
     if (matching.length === 0) {
-      setMessage('⚠️ No matching vendors found for this RFQ');
+      setMessage('⚠️ No vendors found matching this RFQ category. Please check the category selection.');
       return;
     }
 
