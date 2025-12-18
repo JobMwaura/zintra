@@ -179,10 +179,10 @@ export default function UserRegistration() {
   // Step 3: Profile
   const handleStep3 = async () => {
     setLoading(true);
-    setOtpMessage(''); // Clear any previous messages
+    setOtpMessage('');
 
     try {
-      // Use user from signup (stored in state) or fetch if not available
+      // Get the authenticated user
       let user = currentUser;
       
       if (!user) {
@@ -195,25 +195,42 @@ export default function UserRegistration() {
         user = fetchedUser;
       }
 
-      // Don't call updateUser() as it requires an active session
-      // Instead, directly update the users table (RLS allows inserts with correct user_id)
-      
-      // Update users table with complete profile data
-      // Note: Don't include 'email' field as it may not exist in public.users table (it's in auth.users)
-      // Only update minimal required fields that exist in the schema
-      const { data: insertData, error: dbError } = await supabase
+      console.log('Step 3 - User ID:', user.id);
+
+      // Try INSERT first (better for RLS policies)
+      const { data: insertData, error: insertError } = await supabase
         .from('users')
-        .upsert({
+        .insert({
           id: user.id,
           full_name: formData.fullName,
           phone: formData.phone,
           bio: formData.bio || null,
-        }, { onConflict: 'id' })
+        })
         .select();
 
-      if (dbError) {
-        console.error('Database error:', dbError);
-        setOtpMessage(`❌ Error updating profile: ${dbError.message}`);
+      // If insert failed because row exists, try update
+      if (insertError && insertError.code === '23505') {
+        // Duplicate key error - row exists, so update it
+        const { data: updateData, error: updateError } = await supabase
+          .from('users')
+          .update({
+            full_name: formData.fullName,
+            phone: formData.phone,
+            bio: formData.bio || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id)
+          .select();
+
+        if (updateError) {
+          console.error('Update error:', updateError);
+          setOtpMessage(`❌ Error updating profile: ${updateError.message}`);
+          setLoading(false);
+          return;
+        }
+      } else if (insertError) {
+        console.error('Insert error:', insertError);
+        setOtpMessage(`❌ Error saving profile: ${insertError.message}`);
         setLoading(false);
         return;
       }
