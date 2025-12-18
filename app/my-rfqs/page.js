@@ -1,218 +1,311 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+/**
+ * User RFQ Dashboard - Main Page
+ * 
+ * Comprehensive dashboard for managing RFQs
+ * Features: Tabbed interface, search, filter, sort, statistics
+ * Tab: Pending, Active, History, Messages, Favorites
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useRFQDashboard } from '@/hooks/useRFQDashboard';
+import {
+  RFQTabs,
+  StatisticsCard,
+  FilterBar,
+  PendingTab,
+  ActiveTab,
+  HistoryTab,
+  MessagesTab,
+  FavoritesTab
+} from '@/components';
+import { Plus, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { Check, X, Loader2, AlertCircle, Shield, Star, ChevronDown, ChevronUp } from 'lucide-react';
-import QuoteComparisonTable from '@/components/QuoteComparisonTable';
+import { useRouter } from 'next/navigation';
 
 export default function MyRFQsPage() {
-  const [rfqs, setRfqs] = useState([]);
-  const [vendorMap, setVendorMap] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
-  const [acting, setActing] = useState(null);
-  const [expandedRfqId, setExpandedRfqId] = useState(null);
-  const [selectedQuoteId, setSelectedQuoteId] = useState(null);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
+  // Dashboard state
+  const {
+    allRFQs,
+    filteredRFQs,
+    stats,
+    pendingRFQs,
+    activeRFQs,
+    historyRFQs,
+    isLoading,
+    error,
+    setSearchQuery,
+    setStatusFilter,
+    setDateRangeFilter,
+    setSortBy,
+    formatDate,
+    getDaysUntilDeadline,
+    getStatusStyles,
+    getPriceStats,
+    toggleFavorite,
+    updateRFQStatus,
+    fetchRFQs
+  } = useRFQDashboard();
+
+  // Notification state
+  const { notifications, unreadCount } = useNotifications();
+
+  // UI state
+  const [activeTab, setActiveTab] = useState('pending');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const [statusValue, setStatusValue] = useState('all');
+  const [dateRangeValue, setDateRangeValue] = useState('all');
+  const [sortValue, setSortValue] = useState('latest');
+
+  // Redirect if not authenticated
   useEffect(() => {
-    fetchRFQs();
-  }, []);
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
-  const fetchRFQs = async () => {
+  // Handle search
+  const handleSearch = useCallback((query) => {
+    setSearchValue(query);
+    setSearchQuery(query);
+  }, [setSearchQuery]);
+
+  // Handle status filter
+  const handleStatusFilter = useCallback((status) => {
+    setStatusValue(status);
+    setStatusFilter(status);
+  }, [setStatusFilter]);
+
+  // Handle date range filter
+  const handleDateRangeFilter = useCallback((range) => {
+    setDateRangeValue(range);
+    setDateRangeFilter(range);
+  }, [setDateRangeFilter]);
+
+  // Handle sort
+  const handleSort = useCallback((sort) => {
+    setSortValue(sort);
+    setSortBy(sort);
+  }, [setSortBy]);
+
+  // Handle refresh
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMessage('Please sign in to view your RFQs');
-        setLoading(false);
-        return;
-      }
+      await fetchRFQs();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchRFQs]);
 
-      const { data, error } = await supabase
-        .from('rfqs')
-        .select('*, rfq_responses(*)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+  // Handle view quotes
+  const handleViewQuotes = useCallback((rfqId) => {
+    router.push(`/quote-comparison/${rfqId}`);
+  }, [router]);
 
-      if (error) {
-        setMessage(`Error loading RFQs: ${error.message}`);
-        setLoading(false);
-        return;
-      }
+  // Handle view details
+  const handleViewDetails = useCallback((rfqId) => {
+    router.push(`/rfqs/${rfqId}`);
+  }, [router]);
 
-      const rfqsData = data || [];
-      setRfqs(rfqsData);
+  // Handle message
+  const handleMessage = useCallback((rfqId) => {
+    router.push(`/messages?rfq=${rfqId}`);
+  }, [router]);
 
-      // fetch vendor profiles for responses
-      const vendorIds = Array.from(
-        new Set(
-          rfqsData.flatMap((r) => (r.rfq_responses || []).map((resp) => resp.vendor_id)).filter(Boolean)
-        )
-      );
-      if (vendorIds.length) {
-        const { data: vendors } = await supabase
-          .from('vendors')
-          .select('id, user_id, company_name, rating, verified, phone, email');
-        const map = {};
-        (vendors || []).forEach((v) => {
-          // Map both by id and user_id for flexibility
-          map[v.id] = v;
-          if (v.user_id) map[v.user_id] = v;
-        });
-        setVendorMap(map);
-      } else {
-        setVendorMap({});
-      }
-      setLoading(false);
-    } catch (err) {
-      setMessage(`Error: ${err.message}`);
-      setLoading(false);
+  // Handle favorite toggle
+  const handleFavorite = useCallback((rfqId) => {
+    toggleFavorite(rfqId);
+  }, [toggleFavorite]);
+
+  // Get current tab data
+  const getTabData = () => {
+    switch (activeTab) {
+      case 'pending':
+        return pendingRFQs;
+      case 'active':
+        return activeRFQs;
+      case 'history':
+        return historyRFQs;
+      case 'messages':
+        return notifications;
+      case 'favorites':
+        // Filter for favorites (would need favorite flag in RFQ model)
+        return allRFQs.filter(rfq => rfq.is_favorite);
+      default:
+        return [];
     }
   };
 
-  const updateResponseStatus = async (responseId, newStatus, rfqId, note) => {
-    try {
-      setActing(responseId);
-      await supabase
-        .from('rfq_responses')
-        .update({ status: newStatus, revision_note: note || null })
-        .eq('id', responseId);
-      if (newStatus === 'accepted' && rfqId) {
-        await supabase.from('rfqs').update({ status: 'accepted' }).eq('id', rfqId);
-      }
-      setMessage('Updated successfully');
-      fetchRFQs();
-      setActing(null);
-    } catch (err) {
-      setMessage(`Error: ${err.message}`);
-      setActing(null);
-    }
-  };
-
-  if (loading) {
+  // Render loading state
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
       </div>
     );
   }
 
+  // Render not authenticated state
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-slate-500">My RFQs</p>
-            <h1 className="text-2xl font-bold text-slate-900">Requests & Quotes</h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">My RFQs</h1>
+              <p className="text-slate-600 mt-1">Manage and track all your requests for quotations</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+
+              <Link
+                href="/post-rfq"
+                className="flex items-center gap-2 px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition"
+              >
+                <Plus className="w-5 h-5" />
+                Create RFQ
+              </Link>
+            </div>
           </div>
-          <Link href="/post-rfq" className="text-amber-700 font-semibold hover:underline">
-            Post another RFQ
-          </Link>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-4">
-        {message && (
-          <div className={`p-3 rounded-lg text-sm ${message.startsWith('Error') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-            {message}
-          </div>
-        )}
-
-        {rfqs.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-6 text-center">
-            <AlertCircle className="w-6 h-6 text-slate-500 mx-auto mb-2" />
-            <p className="text-slate-700">You have not posted any RFQs yet.</p>
-          </div>
-        ) : (
-          rfqs.map((rfq) => (
-            <div key={rfq.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <button
-                  onClick={() => setExpandedRfqId(expandedRfqId === rfq.id ? null : rfq.id)}
-                  className="flex items-center gap-3 flex-1 hover:text-orange-600 transition"
-                >
-                  {expandedRfqId === rfq.id ? (
-                    <ChevronUp className="h-5 w-5 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-slate-400" />
-                  )}
-                  <div className="flex-1 text-left">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">RFQ</p>
-                    <p className="font-semibold text-slate-900">{rfq.title}</p>
-                    <p className="text-sm text-slate-600">{rfq.category} • {rfq.location || rfq.county || 'N/A'}</p>
-                  </div>
-                </button>
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
-                    {rfq.status}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
-                    {(rfq.rfq_responses || []).length} quotes
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm text-slate-700 mb-3">{rfq.description}</p>
-
-              {expandedRfqId === rfq.id && (
-                <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
-                  {(rfq.rfq_responses || []).length === 0 ? (
-                    <p className="text-sm text-slate-500">No quotes yet.</p>
-                  ) : (
-                    <>
-                      <QuoteComparisonTable
-                        quotes={rfq.rfq_responses || []}
-                        vendors={vendorMap}
-                        onSelectQuote={(quoteId) => setSelectedQuoteId(quoteId)}
-                        selectedQuoteId={selectedQuoteId}
-                      />
-
-                      {/* Actions for selected quote */}
-                      {selectedQuoteId && (
-                        <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-3">
-                          <p className="text-sm font-semibold text-slate-900">Actions for selected quote:</p>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              onClick={() => {
-                                const quote = rfq.rfq_responses.find(r => r.id === selectedQuoteId);
-                                updateResponseStatus(selectedQuoteId, 'accepted', rfq.id);
-                              }}
-                              disabled={acting === selectedQuoteId}
-                              className="inline-flex items-center gap-1 px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60 hover:bg-emerald-700 transition"
-                            >
-                              <Check className="w-4 h-4" /> Accept
-                            </button>
-                            <button
-                              onClick={() => {
-                                updateResponseStatus(selectedQuoteId, 'rejected', rfq.id);
-                              }}
-                              disabled={acting === selectedQuoteId}
-                              className="inline-flex items-center gap-1 px-4 py-2 rounded border border-slate-300 text-slate-700 text-sm font-semibold disabled:opacity-60 hover:bg-slate-50 transition"
-                            >
-                              <X className="w-4 h-4" /> Reject
-                            </button>
-                            <button
-                              onClick={() => {
-                                const note = prompt('What would you like revised? (e.g., price, timeline, scope)');
-                                if (note !== null) {
-                                  updateResponseStatus(selectedQuoteId, 'revised', rfq.id, note);
-                                }
-                              }}
-                              disabled={acting === selectedQuoteId}
-                              className="inline-flex items-center gap-1 px-4 py-2 rounded border border-amber-300 text-amber-700 text-sm font-semibold disabled:opacity-60 hover:bg-amber-50 transition"
-                            >
-                              Request Revision
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <div className="text-red-600 text-2xl">⚠️</div>
+            <div>
+              <h3 className="font-semibold text-red-900">Error Loading Dashboard</h3>
+              <p className="text-red-800 text-sm mt-1">{error}</p>
+              <button
+                onClick={handleRefresh}
+                className="mt-3 text-sm text-red-700 hover:text-red-900 font-semibold underline"
+              >
+                Try again
+              </button>
             </div>
-          ))
+          </div>
         )}
+
+        {/* Statistics Cards */}
+        <StatisticsCard
+          stats={stats}
+          isLoading={isLoading}
+        />
+
+        {/* Filter Bar */}
+        <FilterBar
+          onSearch={handleSearch}
+          onStatusFilter={handleStatusFilter}
+          onDateRangeFilter={handleDateRangeFilter}
+          onSort={handleSort}
+          searchValue={searchValue}
+          statusValue={statusValue}
+          dateRangeValue={dateRangeValue}
+          sortValue={sortValue}
+        />
+
+        {/* Tab Navigation */}
+        <RFQTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          stats={stats}
+        />
+
+        {/* Tab Content */}
+        <div className="mt-6">
+          {activeTab === 'pending' && (
+            <PendingTab
+              rfqs={pendingRFQs}
+              onViewQuotes={handleViewQuotes}
+              onViewDetails={handleViewDetails}
+              onMessage={handleMessage}
+              onFavorite={handleFavorite}
+              isLoading={isLoading}
+              formatDate={formatDate}
+              getDaysUntilDeadline={getDaysUntilDeadline}
+              getStatusStyles={getStatusStyles}
+              getPriceStats={getPriceStats}
+            />
+          )}
+
+          {activeTab === 'active' && (
+            <ActiveTab
+              rfqs={activeRFQs}
+              onViewQuotes={handleViewQuotes}
+              onViewDetails={handleViewDetails}
+              onMessage={handleMessage}
+              onFavorite={handleFavorite}
+              isLoading={isLoading}
+              formatDate={formatDate}
+              getDaysUntilDeadline={getDaysUntilDeadline}
+              getStatusStyles={getStatusStyles}
+              getPriceStats={getPriceStats}
+            />
+          )}
+
+          {activeTab === 'history' && (
+            <HistoryTab
+              rfqs={historyRFQs}
+              onViewQuotes={handleViewQuotes}
+              onViewDetails={handleViewDetails}
+              onMessage={handleMessage}
+              onFavorite={handleFavorite}
+              isLoading={isLoading}
+              formatDate={formatDate}
+              getDaysUntilDeadline={getDaysUntilDeadline}
+              getStatusStyles={getStatusStyles}
+              getPriceStats={getPriceStats}
+            />
+          )}
+
+          {activeTab === 'messages' && (
+            <MessagesTab
+              messages={notifications}
+              rfqs={allRFQs}
+              onOpenThread={(thread) => handleMessage(thread.rfq_id)}
+              isLoading={isLoading}
+              formatDate={formatDate}
+            />
+          )}
+
+          {activeTab === 'favorites' && (
+            <FavoritesTab
+              rfqs={allRFQs.filter(rfq => rfq.is_favorite)}
+              onViewQuotes={handleViewQuotes}
+              onViewDetails={handleViewDetails}
+              onMessage={handleMessage}
+              onFavorite={handleFavorite}
+              isLoading={isLoading}
+              formatDate={formatDate}
+              getDaysUntilDeadline={getDaysUntilDeadline}
+              getStatusStyles={getStatusStyles}
+              getPriceStats={getPriceStats}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
