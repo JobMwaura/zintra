@@ -200,19 +200,14 @@ export default function UserRegistration() {
       
       // Update users table with complete profile data
       // Note: Don't include 'email' field as it may not exist in public.users table (it's in auth.users)
+      // Only update minimal required fields that exist in the schema
       const { data: insertData, error: dbError } = await supabase
         .from('users')
         .upsert({
           id: user.id,
           full_name: formData.fullName,
           phone: formData.phone,
-          phone_number: formData.phone, // Also save as phone_number field
-          phone_verified: true,
-          phone_verified_at: new Date().toISOString(),
-          gender: formData.gender || null,
           bio: formData.bio || null,
-          role: 'user',
-          updated_at: new Date().toISOString(),
         }, { onConflict: 'id' })
         .select();
 
