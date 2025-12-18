@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle, Plus, X } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 
@@ -94,6 +94,7 @@ export default function VendorRegistration() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: '',
@@ -114,8 +115,16 @@ export default function VendorRegistration() {
     // Conditional fields
     services: [],
     newService: '',
-    priceRangeMin: '',
-    priceRangeMax: '',
+    products: [],
+    productForm: {
+      name: '',
+      description: '',
+      price: '',
+      sale_price: '',
+      category: '',
+      unit: '',
+      offer_label: '',
+    },
   });
 
   const [errors, setErrors] = useState({});
@@ -192,6 +201,55 @@ export default function VendorRegistration() {
     });
   };
 
+  const addProduct = () => {
+    const { name, price, category } = formData.productForm;
+    
+    if (!name.trim() || !price.trim() || !category.trim()) {
+      setErrors({
+        ...errors,
+        productForm: 'Product name, price, and category are required',
+      });
+      return;
+    }
+
+    if (formData.products.length >= 5) {
+      setErrors({
+        ...errors,
+        products: 'Maximum 5 products allowed',
+      });
+      return;
+    }
+
+    const newProduct = {
+      ...formData.productForm,
+      id: Date.now(),
+    };
+
+    setFormData({
+      ...formData,
+      products: [...formData.products, newProduct],
+      productForm: {
+        name: '',
+        description: '',
+        price: '',
+        sale_price: '',
+        category: '',
+        unit: '',
+        offer_label: '',
+      },
+    });
+
+    setShowProductModal(false);
+    setErrors({ ...errors, productForm: '', products: '' });
+  };
+
+  const removeProduct = (id) => {
+    setFormData({
+      ...formData,
+      products: formData.products.filter((p) => p.id !== id),
+    });
+  };
+
   const validateStep = () => {
     const newErrors = {};
 
@@ -240,6 +298,9 @@ export default function VendorRegistration() {
     if (currentStep === 4) {
       if (needsServices && formData.services.length === 0) {
         newErrors.services = 'Add at least one service for your selected categories';
+      }
+      if (needsProducts && formData.products.length === 0) {
+        newErrors.products = 'Add at least one product for your selected categories';
       }
     }
 
@@ -306,8 +367,7 @@ export default function VendorRegistration() {
           website: formData.websiteUrl || null,
           category: formData.selectedCategories.length ? formData.selectedCategories.join(', ') : null,
           services: formData.services.length ? formData.services.join(', ') : null,
-          price_min: formData.priceRangeMin ? parseInt(formData.priceRangeMin, 10) : null,
-          price_max: formData.priceRangeMax ? parseInt(formData.priceRangeMax, 10) : null,
+          products: formData.products.length ? formData.products : null,
         }),
       });
 
@@ -645,29 +705,51 @@ export default function VendorRegistration() {
           )}
 
           {needsProducts && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-slate-800 mb-1">Min Price (Optional)</label>
-                <input
-                  type="number"
-                  name="priceRangeMin"
-                  value={formData.priceRangeMin}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 5,000"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-                />
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-slate-800">Your Top 5 Products* ({formData.products.length}/5)</label>
+                <button
+                  type="button"
+                  onClick={() => setShowProductModal(true)}
+                  disabled={formData.products.length >= 5}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#c28a3a] text-white rounded-lg font-medium hover:bg-[#a9742f] text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4" /> Add Product
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-800 mb-1">Max Price (Optional)</label>
-                <input
-                  type="number"
-                  name="priceRangeMax"
-                  value={formData.priceRangeMax}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 50,000"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-                />
-              </div>
+
+              {formData.products.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {formData.products.map((product) => (
+                    <div key={product.id} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-900">{product.name}</p>
+                        <p className="text-xs text-slate-600 mt-0.5">{product.category}</p>
+                        <p className="text-sm font-semibold text-slate-800 mt-1">KSh {Number(product.price).toLocaleString()}</p>
+                        {product.description && (
+                          <p className="text-xs text-slate-600 mt-1">{product.description}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeProduct(product.id)}
+                        className="ml-3 text-red-500 hover:text-red-700 flex-shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {formData.products.length === 0 && (
+                <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-4 text-center mb-4">
+                  <p className="text-sm text-slate-600">No products added yet</p>
+                </div>
+              )}
+
+              {errors.products && <p className="text-xs text-red-500 mt-1">{errors.products}</p>}
+              {errors.productForm && <p className="text-xs text-red-500 mt-1">{errors.productForm}</p>}
             </div>
           )}
 
@@ -878,6 +960,81 @@ export default function VendorRegistration() {
               </div>
             )}
           </form>
+
+          {/* PRODUCT MODAL */}
+          {showProductModal && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900">Add Product</h3>
+                  <button onClick={() => setShowProductModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="space-y-4 mb-6">
+                  <input
+                    value={formData.productForm.name}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, name: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Product name"
+                  />
+                  <textarea
+                    rows={2}
+                    value={formData.productForm.description}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, description: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Description (optional)"
+                  />
+                  <input
+                    value={formData.productForm.price}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, price: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Price"
+                  />
+                  <input
+                    value={formData.productForm.sale_price}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, sale_price: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Sale price (optional)"
+                  />
+                  <input
+                    value={formData.productForm.category}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, category: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Category"
+                  />
+                  <input
+                    value={formData.productForm.unit}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, unit: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Unit (e.g., bag, sq.ft)"
+                  />
+                  <input
+                    value={formData.productForm.offer_label}
+                    onChange={(e) => setFormData({ ...formData, productForm: { ...formData.productForm, offer_label: e.target.value } })}
+                    className="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                    placeholder="Offer label (e.g., 20% off)"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProductModal(false)}
+                    className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addProduct}
+                    className="flex-1 px-4 py-2 bg-[#c28a3a] text-white rounded-lg font-medium hover:bg-[#a9742f]"
+                  >
+                    Add Product
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
