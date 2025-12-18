@@ -86,15 +86,28 @@ export function useOTP() {
     setError(null);
 
     try {
+      // Build request body - support both otpId and phoneNumber/email
+      const body = { otpCode: code };
+      
+      if (identifier) {
+        // If identifier looks like a phone number (starts with + or 0 or contains digits)
+        if (identifier.startsWith('+') || identifier.startsWith('0') || /\d/.test(identifier)) {
+          body.phoneNumber = identifier;
+        } else {
+          // Otherwise treat it as otpId
+          body.otpId = identifier;
+        }
+      } else if (otpId) {
+        // Use previously stored otpId from sendOTP
+        body.otpId = otpId;
+      }
+
       const response = await fetch('/api/otp/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          otpId: identifier || otpId,
-          otpCode: code,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();

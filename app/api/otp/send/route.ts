@@ -179,6 +179,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
     const otp = generateOTP(6);
     const otpId = `otp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    console.log('[OTP Send] Generated code:', { otp, otpId, phone: validatedPhone, expiresAt: expiresAt.toISOString() });
 
     // Send OTP via specified channel(s)
     let smsResult: any = null;
@@ -219,7 +221,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
     // Store OTP record in database for verification
     if (anySuccess) {
       try {
-        await supabase.from('otp_verifications').insert({
+        const insertResult = await supabase.from('otp_verifications').insert({
           id: otpId,
           user_id: userId || null,
           phone_number: validatedPhone,
@@ -231,6 +233,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
           created_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString()
         });
+        console.log('[OTP Send] Stored in database:', { otp, phone: validatedPhone, otpId, insertResult });
       } catch (dbError) {
         console.error('Database error storing OTP:', dbError);
         // Don't fail the request if DB storage fails - OTP was still sent

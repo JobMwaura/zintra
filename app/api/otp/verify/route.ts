@@ -90,8 +90,18 @@ function hashOTP(otp: string): string {
  * In production, use bcrypt compare
  */
 function compareOTP(provided: string, stored: string): boolean {
-  // Simple comparison - in production use bcrypt.compare()
-  return hashOTP(provided) === stored || provided === stored;
+  // Direct string comparison - both should be plain text 6-digit codes
+  const isMatch = provided === stored;
+  console.log('[OTP Compare]', {
+    provided,
+    stored,
+    isMatch,
+    providedType: typeof provided,
+    storedType: typeof stored,
+    providedLength: provided.length,
+    storedLength: stored.length
+  });
+  return isMatch;
 }
 
 // ============================================================================
@@ -149,6 +159,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyOTP
         .single();
 
       if (error || !data) {
+        console.log('[OTP Verify] Error finding OTP for phone:', { phoneNumber, error });
         return NextResponse.json(
           {
             success: false,
@@ -157,6 +168,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyOTP
           { status: 404 }
         );
       }
+      console.log('[OTP Verify] Found record for phone:', { 
+        phoneNumber, 
+        recordId: data.id,
+        recordPhone: data.phone_number,
+        storedCode: data.otp_code,
+        createdAt: data.created_at,
+        verified: data.verified 
+      });
       otpRecord = data;
     }
     // Method 3: Find by email
@@ -221,6 +240,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyOTP
 
     // Verify OTP code
     const isValid = compareOTP(otpCode, otpRecord.otp_code);
+
+    console.log('[OTP Verify]', {
+      provided: otpCode,
+      stored: otpRecord.otp_code,
+      isValid,
+      match: otpCode === otpRecord.otp_code
+    });
 
     if (!isValid) {
       // Increment attempts
