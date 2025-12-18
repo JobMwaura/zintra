@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
-import { Check, X, Loader2, AlertCircle, Shield, Star } from 'lucide-react';
+import { Check, X, Loader2, AlertCircle, Shield, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import QuoteComparisonTable from '@/components/QuoteComparisonTable';
 
 export default function MyRFQsPage() {
   const [rfqs, setRfqs] = useState([]);
@@ -11,6 +12,8 @@ export default function MyRFQsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [acting, setActing] = useState(null);
+  const [expandedRfqId, setExpandedRfqId] = useState(null);
+  const [selectedQuoteId, setSelectedQuoteId] = useState(null);
 
   useEffect(() => {
     fetchRFQs();
@@ -53,7 +56,9 @@ export default function MyRFQsPage() {
           .select('id, user_id, company_name, rating, verified, phone, email');
         const map = {};
         (vendors || []).forEach((v) => {
-          map[v.user_id || v.id] = v;
+          // Map both by id and user_id for flexibility
+          map[v.id] = v;
+          if (v.user_id) map[v.user_id] = v;
         });
         setVendorMap(map);
       } else {
@@ -123,108 +128,88 @@ export default function MyRFQsPage() {
           rfqs.map((rfq) => (
             <div key={rfq.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-500">RFQ</p>
-                  <p className="font-semibold text-slate-900">{rfq.title}</p>
-                  <p className="text-sm text-slate-600">{rfq.category} • {rfq.location || rfq.county || 'N/A'}</p>
+                <button
+                  onClick={() => setExpandedRfqId(expandedRfqId === rfq.id ? null : rfq.id)}
+                  className="flex items-center gap-3 flex-1 hover:text-orange-600 transition"
+                >
+                  {expandedRfqId === rfq.id ? (
+                    <ChevronUp className="h-5 w-5 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-slate-400" />
+                  )}
+                  <div className="flex-1 text-left">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">RFQ</p>
+                    <p className="font-semibold text-slate-900">{rfq.title}</p>
+                    <p className="text-sm text-slate-600">{rfq.category} • {rfq.location || rfq.county || 'N/A'}</p>
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
+                    {rfq.status}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+                    {(rfq.rfq_responses || []).length} quotes
+                  </span>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
-                  {rfq.status}
-                </span>
               </div>
               <p className="text-sm text-slate-700 mb-3">{rfq.description}</p>
 
-              <div className="space-y-3">
-                {(rfq.rfq_responses || []).length === 0 ? (
-                  <p className="text-sm text-slate-500">No quotes yet.</p>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-slate-600">Vendor</th>
-                            <th className="px-3 py-2 text-left text-slate-600">Price</th>
-                            <th className="px-3 py-2 text-left text-slate-600">Timeline</th>
-                            <th className="px-3 py-2 text-left text-slate-600">Terms</th>
-                            <th className="px-3 py-2 text-left text-slate-600">Trust</th>
-                            <th className="px-3 py-2 text-left text-slate-600">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {rfq.rfq_responses
-                            .slice()
-                            .sort((a, b) => (a.amount || 0) - (b.amount || 0))
-                            .map((resp) => {
-                              const vendor = vendorMap[resp.vendor_id];
-                              return (
-                                <tr key={resp.id} className="hover:bg-slate-50">
-                                  <td className="px-3 py-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-slate-900">{vendor?.company_name || 'Vendor'}</span>
-                                      {vendor?.verified && <Shield className="w-4 h-4 text-emerald-600" />}
-                                      {vendor?.rating ? (
-                                        <span className="inline-flex items-center gap-1 text-xs text-slate-600">
-                                          <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> {vendor.rating}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-900">KSh {resp.amount?.toLocaleString?.() || resp.amount}</td>
-                                  <td className="px-3 py-2 text-slate-700">{resp.timeline || 'N/A'}</td>
-                                  <td className="px-3 py-2 text-slate-700">{resp.terms || 'N/A'}</td>
-                                  <td className="px-3 py-2 text-slate-700">
-                                    <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">
-                                      {resp.trust_level || 'neutral'}
-                                    </span>
-                                    {resp.risk_flag && <span className="ml-2 text-xs text-red-600">⚠️ check details</span>}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={() => updateResponseStatus(resp.id, 'accepted', rfq.id)}
-                                        disabled={acting === resp.id}
-                                        className="inline-flex items-center gap-1 px-3 py-1 rounded bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60"
-                                      >
-                                        <Check className="w-4 h-4" /> Accept
-                                      </button>
-                                      <button
-                                        onClick={() => updateResponseStatus(resp.id, 'declined', rfq.id)}
-                                        disabled={acting === resp.id}
-                                        className="inline-flex items-center gap-1 px-3 py-1 rounded border border-slate-300 text-slate-700 text-xs font-semibold disabled:opacity-60"
-                                      >
-                                        <X className="w-4 h-4" /> Decline
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          const note = prompt('What would you like revised? (price, timeline, scope)');
-                                          if (note !== null) {
-                                            updateResponseStatus(resp.id, 'revision_requested', rfq.id, note);
-                                          }
-                                        }}
-                                        disabled={acting === resp.id}
-                                        className="inline-flex items-center gap-1 px-3 py-1 rounded border border-amber-300 text-amber-700 text-xs font-semibold disabled:opacity-60"
-                                      >
-                                        Request revision
-                                      </button>
-                                      <button
-                                        onClick={() => updateResponseStatus(resp.id, resp.saved ? 'submitted' : 'saved', rfq.id)}
-                                        disabled={acting === resp.id}
-                                        className="inline-flex items-center gap-1 px-3 py-1 rounded border border-slate-300 text-slate-700 text-xs font-semibold disabled:opacity-60"
-                                      >
-                                        {resp.saved ? 'Unsave' : 'Save'}
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
+              {expandedRfqId === rfq.id && (
+                <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                  {(rfq.rfq_responses || []).length === 0 ? (
+                    <p className="text-sm text-slate-500">No quotes yet.</p>
+                  ) : (
+                    <>
+                      <QuoteComparisonTable
+                        quotes={rfq.rfq_responses || []}
+                        vendors={vendorMap}
+                        onSelectQuote={(quoteId) => setSelectedQuoteId(quoteId)}
+                        selectedQuoteId={selectedQuoteId}
+                      />
+
+                      {/* Actions for selected quote */}
+                      {selectedQuoteId && (
+                        <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-3">
+                          <p className="text-sm font-semibold text-slate-900">Actions for selected quote:</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => {
+                                const quote = rfq.rfq_responses.find(r => r.id === selectedQuoteId);
+                                updateResponseStatus(selectedQuoteId, 'accepted', rfq.id);
+                              }}
+                              disabled={acting === selectedQuoteId}
+                              className="inline-flex items-center gap-1 px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60 hover:bg-emerald-700 transition"
+                            >
+                              <Check className="w-4 h-4" /> Accept
+                            </button>
+                            <button
+                              onClick={() => {
+                                updateResponseStatus(selectedQuoteId, 'rejected', rfq.id);
+                              }}
+                              disabled={acting === selectedQuoteId}
+                              className="inline-flex items-center gap-1 px-4 py-2 rounded border border-slate-300 text-slate-700 text-sm font-semibold disabled:opacity-60 hover:bg-slate-50 transition"
+                            >
+                              <X className="w-4 h-4" /> Reject
+                            </button>
+                            <button
+                              onClick={() => {
+                                const note = prompt('What would you like revised? (e.g., price, timeline, scope)');
+                                if (note !== null) {
+                                  updateResponseStatus(selectedQuoteId, 'revised', rfq.id, note);
+                                }
+                              }}
+                              disabled={acting === selectedQuoteId}
+                              className="inline-flex items-center gap-1 px-4 py-2 rounded border border-amber-300 text-amber-700 text-sm font-semibold disabled:opacity-60 hover:bg-amber-50 transition"
+                            >
+                              Request Revision
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           ))
         )}
