@@ -18,7 +18,7 @@
 import { useState, useMemo } from 'react';
 import { Bell, Trash2, CheckCheck, Filter, Search, Clock } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function NotificationsPage() {
   const { user } = useAuth();

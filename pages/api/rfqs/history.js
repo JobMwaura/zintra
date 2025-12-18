@@ -1,8 +1,8 @@
 /**
- * API Route: GET /api/rfqs/active
+ * API Route: GET /api/rfqs/history
  * 
- * Fetch RFQs with 2 or more quotes
- * Includes price statistics for each RFQ
+ * Fetch closed/completed RFQs
+ * Includes selected quote and completion details
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -13,7 +13,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     // Get user from JWT token
     const authHeader = request.headers.get('authorization');
@@ -38,8 +38,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const searchQuery = searchParams.get('search') || '';
     const sortBy = searchParams.get('sort') || 'latest';
+    const dateRange = searchParams.get('dateRange') || 'all';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+
+    // Calculate date filter
+    let dateFilter = null;
+    if (dateRange !== 'all') {
+      const now = new Date();
+      switch (dateRange) {
+        case 'week':
+          dateFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'quarter':
+          dateFilter = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+      }
+    }
 
     // Build base query
     let query = supabase
@@ -55,7 +73,13 @@ export async function GET(request: NextRequest) {
           selected
         )
       `)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .in('status', ['closed', 'completed']);
+
+    // Apply date filter if specified
+    if (dateFilter) {
+      query = query.gte('created_at', dateFilter.toISOString());
+    }
 
     // Apply search filter
     if (searchQuery) {
@@ -73,9 +97,6 @@ export async function GET(request: NextRequest) {
       case 'deadline-far':
         query = query.order('deadline', { ascending: false });
         break;
-      case 'quotes-least':
-        // Will be sorted in post-processing
-        break;
       default: // 'latest'
         query = query.order('created_at', { ascending: false });
     }
@@ -91,55 +112,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Filter for active (>= 2 quotes) in post-processing
-    let activeRFQs = data.filter(rfq => rfq.rfq_responses.length >= 2);
-
-    // Apply quote-based sorting
-    if (sortBy === 'quotes-most') {
-      activeRFQs.sort((a, b) => b.rfq_responses.length - a.rfq_responses.length);
-    } else if (sortBy === 'quotes-least') {
-      activeRFQs.sort((a, b) => a.rfq_responses.length - b.rfq_responses.length);
-    }
-
-    // Calculate price statistics for each RFQ
-    const rfqsWithStats = activeRFQs.map(rfq => {
-      const prices = rfq.rfq_responses
-        .map(r => r.quote_price)
-        .filter(p => p !== null && p !== undefined)
-        .sort((a, b) => a - b);
-
-      const stats = {
-        min: prices.length > 0 ? prices[0] : null,
-        max: prices.length > 0 ? prices[prices.length - 1] : null,
-        avg: prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : null,
-        priceVariance: prices.length > 1 ? prices[prices.length - 1] - prices[0] : 0
-      };
-
+    // Enrich data with selected quote info
+    const rfqsWithSelectedQuote = data.map(rfq => {
+      const selectedQuote = rfq.rfq_responses.find(r => r.selected);
       return {
         ...rfq,
-        priceStats: stats
+        selectedQuote: selectedQuote || null,
+        totalQuotes: rfq.rfq_responses.length,
+        avgQuotePrice: rfq.rfq_responses.length > 0
+          ? rfq.rfq_responses
+              .map(r => r.quote_price)
+              .filter(p => p !== null)
+              .reduce((a, b) => a + b, 0) / rfq.rfq_responses.length
+          : null
       };
     });
 
-    // Apply price-based sorting
-    if (sortBy === 'price-low') {
-      rfqsWithStats.sort((a, b) => (a.priceStats.min || 0) - (b.priceStats.min || 0));
-    } else if (sortBy === 'price-high') {
-      rfqsWithStats.sort((a, b) => (b.priceStats.max || 0) - (a.priceStats.max || 0));
-    }
-
     // Apply pagination
-    const paginatedRFQs = rfqsWithStats.slice(offset, offset + limit);
+    const paginatedRFQs = rfqsWithSelectedQuote.slice(offset, offset + limit);
 
     return NextResponse.json({
       success: true,
       data: paginatedRFQs,
       count: paginatedRFQs.length,
-      total: activeRFQs.length
+      total: rfqsWithSelectedQuote.length
     });
 
   } catch (error) {
-    console.error('Error in active RFQs endpoint:', error);
+    console.error('Error in history RFQs endpoint:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -181,8 +181,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Send OTP via specified channel(s)
-    let smsResult = null;
-    let emailResult = null;
+    let smsResult: any = null;
+    let emailResult: any = null;
     const channels = Array.isArray(channel) ? channel : [channel];
 
     if (channels.includes('sms') && validatedPhone) {
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
     const anySuccess = smsSuccess || emailSuccess;
 
     if (!anySuccess) {
-      const errors = [];
+      const errors: string[] = [];
       if (smsResult?.error) errors.push(`SMS: ${smsResult.error}`);
       if (emailResult?.error) errors.push(`Email: ${emailResult.error}`);
 

@@ -1,8 +1,8 @@
 /**
- * API Route: GET /api/rfqs/pending
+ * API Route: GET /api/rfqs/active
  * 
- * Fetch RFQs with fewer than 2 quotes
- * Optimized query with quote counts
+ * Fetch RFQs with 2 or more quotes
+ * Includes price statistics for each RFQ
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -13,7 +13,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     // Get user from JWT token
     const authHeader = request.headers.get('authorization');
@@ -46,12 +46,16 @@ export async function GET(request: NextRequest) {
       .from('rfqs')
       .select(`
         *,
-        rfq_responses(id, vendor_name, quote_price, created_at)
+        rfq_responses(
+          id,
+          vendor_id,
+          vendor_name,
+          quote_price,
+          created_at,
+          selected
+        )
       `)
       .eq('user_id', user.id);
-
-    // Filter: Only RFQs with fewer than 2 quotes (pending)
-    // This is done in post-processing due to Supabase count limitations
 
     // Apply search filter
     if (searchQuery) {
@@ -69,6 +73,9 @@ export async function GET(request: NextRequest) {
       case 'deadline-far':
         query = query.order('deadline', { ascending: false });
         break;
+      case 'quotes-least':
+        // Will be sorted in post-processing
+        break;
       default: // 'latest'
         query = query.order('created_at', { ascending: false });
     }
@@ -84,20 +91,55 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Filter for pending (< 2 quotes) in post-processing
-    const pendingRFQs = data
-      .filter(rfq => rfq.rfq_responses.length < 2)
-      .slice(offset, offset + limit);
+    // Filter for active (>= 2 quotes) in post-processing
+    let activeRFQs = data.filter(rfq => rfq.rfq_responses.length >= 2);
+
+    // Apply quote-based sorting
+    if (sortBy === 'quotes-most') {
+      activeRFQs.sort((a, b) => b.rfq_responses.length - a.rfq_responses.length);
+    } else if (sortBy === 'quotes-least') {
+      activeRFQs.sort((a, b) => a.rfq_responses.length - b.rfq_responses.length);
+    }
+
+    // Calculate price statistics for each RFQ
+    const rfqsWithStats = activeRFQs.map(rfq => {
+      const prices = rfq.rfq_responses
+        .map(r => r.quote_price)
+        .filter(p => p !== null && p !== undefined)
+        .sort((a, b) => a - b);
+
+      const stats = {
+        min: prices.length > 0 ? prices[0] : null,
+        max: prices.length > 0 ? prices[prices.length - 1] : null,
+        avg: prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : null,
+        priceVariance: prices.length > 1 ? prices[prices.length - 1] - prices[0] : 0
+      };
+
+      return {
+        ...rfq,
+        priceStats: stats
+      };
+    });
+
+    // Apply price-based sorting
+    if (sortBy === 'price-low') {
+      rfqsWithStats.sort((a, b) => (a.priceStats.min || 0) - (b.priceStats.min || 0));
+    } else if (sortBy === 'price-high') {
+      rfqsWithStats.sort((a, b) => (b.priceStats.max || 0) - (a.priceStats.max || 0));
+    }
+
+    // Apply pagination
+    const paginatedRFQs = rfqsWithStats.slice(offset, offset + limit);
 
     return NextResponse.json({
       success: true,
-      data: pendingRFQs,
-      count: pendingRFQs.length,
-      total: data.filter(rfq => rfq.rfq_responses.length < 2).length
+      data: paginatedRFQs,
+      count: paginatedRFQs.length,
+      total: activeRFQs.length
     });
 
   } catch (error) {
-    console.error('Error in pending RFQs endpoint:', error);
+    console.error('Error in active RFQs endpoint:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

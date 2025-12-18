@@ -9,19 +9,17 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useRFQDashboard } from '@/hooks/useRFQDashboard';
-import {
-  RFQTabs,
-  StatisticsCard,
-  FilterBar,
-  PendingTab,
-  ActiveTab,
-  HistoryTab,
-  MessagesTab,
-  FavoritesTab
-} from '@/components';
+import RFQTabs from '../../components/RFQTabs';
+import StatisticsCard from '../../components/StatisticsCard';
+import FilterBar from '../../components/FilterBar';
+import PendingTab from '../../components/PendingTab';
+import ActiveTab from '../../components/ActiveTab';
+import HistoryTab from '../../components/HistoryTab';
+import MessagesTab from '../../components/MessagesTab';
+import FavoritesTab from '../../components/FavoritesTab';
 import { Plus, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
