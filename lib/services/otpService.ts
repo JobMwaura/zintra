@@ -71,10 +71,20 @@ interface TextSMSPayload {
 }
 
 interface TextSMSResponse {
-  success: boolean;
-  message: string;
+  success?: boolean;
+  message?: string;
   messageId?: string;
   code?: string;
+  responses?: Array<{
+    'response-code'?: number;
+    'response-description'?: string;
+    'response_code'?: string;
+    'response_description'?: string;
+    messageid?: string;
+    messageId?: string;
+    networkid?: number;
+    mobile?: number | string;
+  }>;
 }
 
 /**
@@ -231,17 +241,46 @@ export async function sendSMSOTPCustom(
 
     const data: TextSMSResponse = await response.json();
 
-    return data.success
+    console.log('[OTP SMS Response] Full:', JSON.stringify(data, null, 2));
+
+    // Check if response has the expected structure
+    // TextSMS Kenya might return { responses: [{...}] } instead of { success: boolean }
+    let isSuccess = false;
+    let errorMessage = 'Failed to send SMS';
+    let messageId = '';
+
+    if (data.success !== undefined) {
+      // Standard response format
+      isSuccess = data.success;
+      errorMessage = data.message || 'Failed to send SMS';
+    } else if (data.responses && Array.isArray(data.responses) && data.responses.length > 0) {
+      // Array response format from TextSMS Kenya
+      const firstResponse = data.responses[0];
+      console.log('[OTP SMS Response Item]', firstResponse);
+      
+      // Check for successful response (code 200 means success)
+      const responseCode = firstResponse['response-code'] || firstResponse['response_code'];
+      const responseDesc = firstResponse['response-description'] || firstResponse['response_description'];
+      messageId = firstResponse['messageid'] || firstResponse['messageId'] || '';
+      
+      isSuccess = responseCode === 200 || responseCode === '200';
+      errorMessage = responseDesc || 'Failed to send SMS';
+    }
+
+    console.log('[OTP SMS Parsed]', { isSuccess, errorMessage, messageId });
+
+    return isSuccess
       ? {
           success: true,
-          messageId: data.messageId || 'sms_' + Date.now(),
+          messageId: messageId || 'sms_' + Date.now(),
           timestamp: new Date().toISOString()
         }
       : {
           success: false,
-          error: data.message || 'Failed to send SMS'
+          error: errorMessage
         };
   } catch (error) {
+    console.error('[OTP SMS Error]', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
