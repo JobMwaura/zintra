@@ -195,24 +195,9 @@ export default function UserRegistration() {
         user = fetchedUser;
       }
 
-      // Update user metadata in Supabase Auth
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
-          full_name: formData.fullName,
-          phone: formData.phone,
-          phone_verified: true,
-          gender: formData.gender,
-          bio: formData.bio,
-        },
-      });
-
-      if (updateError) {
-        console.error('Auth update error:', updateError);
-        setOtpMessage(`❌ Error saving profile: ${updateError.message}`);
-        setLoading(false);
-        return;
-      }
-
+      // Don't call updateUser() as it requires an active session
+      // Instead, directly update the users table (RLS allows inserts with correct user_id)
+      
       // Update users table with complete profile data
       const { data: insertData, error: dbError } = await supabase
         .from('users')
