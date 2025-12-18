@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileUp, Send } from 'lucide-react';
+import { X, FileUp, Send, AlertCircle, Lock } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { CountySelect } from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
@@ -31,29 +32,75 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     confirmed: false,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [rfqCount, setRfqCount] = useState(0);
   const [status, setStatus] = useState('');
+  const [quotaInfo, setQuotaInfo] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
 
   /** 🧩 Determine user badge */
   const userBadge =
     user?.email && user?.phone ? 'Verified Buyer' : 'Unverified Buyer';
 
-  /** 🗓️ Track daily RFQ count (local only for now) */
+  /** 📊 Check quota when user and modal open */
   useEffect(() => {
-    const todayCount = parseInt(localStorage.getItem('rfq_count_today') || '0', 10);
-    setRfqCount(todayCount);
-  }, []);
+    if (!isOpen || !user?.id) {
+      setQuotaInfo(null);
+      return;
+    }
+
+    const checkQuota = async () => {
+      setQuotaLoading(true);
+      try {
+        const response = await fetch(`/api/rfq-rate-limit?userId=${user.id}`);
+        const data = await response.json();
+        setQuotaInfo(data);
+      } catch (err) {
+        console.error('Error checking quota:', err);
+        setQuotaInfo({ error: 'Could not check quota' });
+      }
+      setQuotaLoading(false);
+    };
+
+    checkQuota();
+  }, [isOpen, user?.id]);
 
   /** 📨 Handle submit (with Supabase insert + optional upload) */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (rfqCount >= 2) {
-      alert('You’ve reached your daily RFQ limit (2 per day). Please try again tomorrow.');
+    // ✅ Check authentication
+    if (!user || !user.id) {
+      setStatus('❌ Please sign in to post RFQs');
       return;
     }
+
+    // ✅ Check suspension status
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_suspended, suspension_reason, suspension_until')
+        .eq('id', user.id)
+        .single();
+
+      if (userData?.is_suspended) {
+        const untilDate = userData.suspension_until 
+          ? new Date(userData.suspension_until).toLocaleString()
+          : 'indefinitely';
+        setStatus(`🔒 Your account is suspended until ${untilDate}. Reason: ${userData.suspension_reason || 'Not specified'}`);
+        return;
+      }
+    } catch (err) {
+      console.error('Error checking suspension:', err);
+    }
+
+    // ✅ Check quota from server
+    if (quotaInfo?.isLimited) {
+      const resetTime = new Date(quotaInfo.resetTime).toLocaleTimeString();
+      setStatus(`⚠️ Daily limit reached (2 RFQs per day). Resets at ${resetTime}.`);
+      return;
+    }
+
     if (!form.title || !form.description || !form.confirmed) {
-      alert('Please fill in required fields and confirm authenticity.');
+      setStatus('❌ Please fill in all required fields');
       return;
     }
 
@@ -61,6 +108,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
     try {
       setStatus('');
+      
       /** Upload file if exists */
       let attachmentUrl = null;
       if (form.attachment) {
@@ -115,9 +163,6 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         if (requestError) throw requestError;
       }
 
-      /** Update daily count and notify */
-      const todayCount = parseInt(localStorage.getItem('rfq_count_today') || '0', 10);
-      localStorage.setItem('rfq_count_today', todayCount + 1);
       setStatus('✅ Request sent successfully! Redirecting...');
       setSubmitting(false);
       setTimeout(() => {
@@ -132,6 +177,45 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   };
 
   if (!isOpen) return null;
+
+  // ✅ NEW: Show login prompt if not authenticated
+  if (!user || !user.id) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-orange-600" />
+              <h2 className="text-lg font-semibold text-slate-900">Sign In Required</h2>
+            </div>
+            <button onClick={onClose}>
+              <X className="h-5 w-5 text-slate-500 hover:text-slate-700" />
+            </button>
+          </div>
+          <div className="px-6 py-6 space-y-4">
+            <p className="text-slate-700">
+              You need to sign in to post RFQs and request quotes from vendors.
+            </p>
+            <div className="space-y-2">
+              <Link 
+                href="/user-registration"
+                className="block w-full text-center rounded-lg py-2.5 text-sm font-medium text-white shadow-md transition hover:opacity-90"
+                style={{ backgroundColor: BRAND.primary }}
+              >
+                Create Account
+              </Link>
+              <Link 
+                href="/login"
+                className="block w-full text-center rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+              >
+                Sign In
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -149,23 +233,50 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="max-h-[80vh] overflow-y-auto px-6 py-5 space-y-5">
           {status && (
-            <div className={`p-3 rounded-lg text-sm ${status.startsWith('⚠️') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-              {status}
+            <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${
+              status.includes('❌') || status.includes('⚠️') || status.includes('🔒')
+                ? 'bg-red-50 text-red-700 border border-red-200'
+                : 'bg-green-50 text-green-700 border border-green-200'
+            }`}>
+              {status.includes('❌') || status.includes('⚠️') || status.includes('🔒') ? (
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              ) : null}
+              <span>{status}</span>
             </div>
           )}
-          {/* User Info */}
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
-                userBadge === 'Verified Buyer'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              {userBadge}
-            </span>
-            <span className="text-slate-400">•</span>
-            <span>RFQs today: {rfqCount}/2</span>
+
+          {/* User Info & Quota */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  userBadge === 'Verified Buyer'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {userBadge}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span>{user?.email}</span>
+            </div>
+
+            {/* Quota Status */}
+            {quotaLoading ? (
+              <p className="text-xs text-slate-500">Checking quota...</p>
+            ) : quotaInfo?.isLimited ? (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
+                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                <p className="text-xs text-red-700">
+                  Daily limit reached (2 RFQs per day). Resets at {new Date(quotaInfo.resetTime).toLocaleTimeString()}
+                </p>
+              </div>
+            ) : quotaInfo && !quotaInfo.error ? (
+              <div className="flex items-center gap-2 text-xs text-slate-600">
+                <span className="font-medium">{quotaInfo.remaining}/{quotaInfo.dailyLimit}</span>
+                <span>RFQs remaining today</span>
+              </div>
+            ) : null}
           </div>
 
           {/* Title */}
@@ -259,11 +370,12 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           <div className="flex items-start gap-2">
             <input
               type="checkbox"
+              id="confirm"
               checked={form.confirmed}
               onChange={(e) => setForm({ ...form, confirmed: e.target.checked })}
               className="mt-1 h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
             />
-            <label className="text-sm text-slate-700">
+            <label htmlFor="confirm" className="text-sm text-slate-700">
               I confirm this is a genuine quote request intended for professional follow-up.
             </label>
           </div>
@@ -276,8 +388,8 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg py-2.5 text-sm font-medium text-white shadow-md transition hover:opacity-90"
+            disabled={submitting || quotaInfo?.isLimited}
+            className="w-full rounded-lg py-2.5 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: BRAND.primary }}
           >
             {submitting ? 'Sending...' : (
