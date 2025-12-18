@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import LocationSelector from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
-import AuthGuard from '@/components/AuthGuard';
+import AuthGuard from '../../../components/AuthGuard';
 import {
   Check,
   Upload,

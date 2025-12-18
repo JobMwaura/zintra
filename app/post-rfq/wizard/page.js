@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import AuthGuard from '@/components/AuthGuard';
+import AuthGuard from '../../../components/AuthGuard';
 import { Check, ArrowRight, ArrowLeft, Zap, X } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
