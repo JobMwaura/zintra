@@ -51,6 +51,7 @@ export default function VendorProfilePage() {
   const [showHighlightsManager, setShowHighlightsManager] = useState(false);
   const [showDirectRFQ, setShowDirectRFQ] = useState(false);
   const [showReviewResponses, setShowReviewResponses] = useState(false);
+  const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Data needed for rendering
@@ -603,13 +604,31 @@ export default function VendorProfilePage() {
             </section>
           )}
 
-          {/* Subscription Panel */}
+          {/* Subscription Info */}
           {canEdit && (
-            <SubscriptionPanel
-              vendor={vendor}
-              subscription={subscription}
-              daysRemaining={daysRemaining}
-            />
+            <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-slate-900">Subscription</h4>
+                <button
+                  onClick={() => setShowSubscriptionPanel(true)}
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-800"
+                >
+                  View
+                </button>
+              </div>
+              <div className="text-sm text-slate-700">
+                {subscription ? (
+                  <>
+                    <p className="font-semibold text-slate-900">{subscription.plan_type}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {daysRemaining ? `${daysRemaining} days remaining` : 'Active'}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-slate-500">No active subscription</p>
+                )}
+              </div>
+            </section>
           )}
         </div>
       </div>
@@ -692,6 +711,16 @@ export default function VendorProfilePage() {
             // Refresh reviews
             setShowReviewResponses(false);
           }}
+        />
+      )}
+
+      {/* Subscription Panel Modal */}
+      {showSubscriptionPanel && canEdit && (
+        <SubscriptionPanel
+          vendor={vendor}
+          subscription={subscription}
+          daysRemaining={daysRemaining}
+          onClose={() => setShowSubscriptionPanel(false)}
         />
       )}
 
