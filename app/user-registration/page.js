@@ -161,6 +161,24 @@ export default function UserRegistration() {
       const result = await verifyOTP(otpCode, formData.phone);
       if (result.verified) {
         setPhoneVerified(true);
+        
+        // CRITICAL: Update database to mark phone as verified
+        if (currentUser && currentUser.id) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              phone_verified: true,
+              phone_verified_at: new Date().toISOString(),
+              phone_number: formData.phone,
+            })
+            .eq('id', currentUser.id);
+
+          if (updateError) {
+            console.error('Error updating phone verification in DB:', updateError);
+            // Don't block the flow, just log it
+          }
+        }
+        
         setOtpMessage('✓ Phone verified successfully!');
         setTimeout(() => {
           setShowPhoneOTP(false);
@@ -218,6 +236,9 @@ export default function UserRegistration() {
           id: user.id,
           full_name: formData.fullName,
           phone: formData.phone,
+          phone_number: formData.phone,
+          phone_verified: phoneVerified,
+          phone_verified_at: phoneVerified ? new Date().toISOString() : null,
           bio: formData.bio || null,
         })
         .select();
@@ -230,6 +251,9 @@ export default function UserRegistration() {
           .update({
             full_name: formData.fullName,
             phone: formData.phone,
+            phone_number: formData.phone,
+            phone_verified: phoneVerified,
+            phone_verified_at: phoneVerified ? new Date().toISOString() : null,
             bio: formData.bio || null,
             updated_at: new Date().toISOString(),
           })
