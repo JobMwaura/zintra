@@ -213,7 +213,7 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              <Link href="/edit-profile">
+              <Link href="/my-profile">
                 <button
                   className="px-6 py-3 rounded-lg font-semibold text-white hover:opacity-90 transition"
                   style={{ backgroundColor: '#ea8f1e' }}
@@ -247,7 +247,7 @@ export default function UserDashboard() {
                     My RFQs
                   </button>
                 </Link>
-                <Link href="/messages">
+                <Link href="/vendor-messages">
                   <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
                     Messages
                   </button>
@@ -261,21 +261,25 @@ export default function UserDashboard() {
                 Account Settings
               </h3>
               <div className="space-y-3">
-                <Link href="/edit-profile">
+                <Link href="/my-profile">
                   <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
                     Edit Profile
                   </button>
                 </Link>
-                <Link href="/change-password">
-                  <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
-                    Change Password
-                  </button>
-                </Link>
-                <Link href="/preferences">
-                  <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
-                    Preferences
-                  </button>
-                </Link>
+                <button 
+                  disabled
+                  className="w-full text-left px-4 py-2 rounded-lg text-gray-400 cursor-not-allowed font-medium"
+                  title="Coming soon"
+                >
+                  Change Password
+                </button>
+                <button 
+                  disabled
+                  className="w-full text-left px-4 py-2 rounded-lg text-gray-400 cursor-not-allowed font-medium"
+                  title="Coming soon"
+                >
+                  Preferences
+                </button>
               </div>
             </div>
           </div>
