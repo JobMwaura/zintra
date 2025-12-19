@@ -213,7 +213,7 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              <Link href="/my-profile">
+              <Link href="/edit-profile">
                 <button
                   className="px-6 py-3 rounded-lg font-semibold text-white hover:opacity-90 transition"
                   style={{ backgroundColor: '#ea8f1e' }}
@@ -247,7 +247,7 @@ export default function UserDashboard() {
                     My RFQs
                   </button>
                 </Link>
-                <Link href="/vendor-messages">
+                <Link href="/user-messages">
                   <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
                     Messages
                   </button>
@@ -261,7 +261,7 @@ export default function UserDashboard() {
                 Account Settings
               </h3>
               <div className="space-y-3">
-                <Link href="/my-profile">
+                <Link href="/edit-profile">
                   <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
                     Edit Profile
                   </button>
