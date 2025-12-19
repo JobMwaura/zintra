@@ -91,9 +91,24 @@ export default function Login() {
       let redirectUrl = '/browse';
 
       if (activeTab === 'vendor') {
-        // VENDOR LOGIN: Redirect to editable vendor dashboard
-        console.log('✓ Vendor login detected, redirecting to vendor dashboard');
-        redirectUrl = '/dashboard';
+        // VENDOR LOGIN: Fetch vendor ID and redirect to editable vendor profile
+        console.log('✓ Vendor login detected, fetching vendor profile...');
+        const { data: vendorData, error: vendorError } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (vendorError) {
+          console.error('❌ Error fetching vendor:', vendorError);
+          redirectUrl = '/browse'; // fallback
+        } else if (vendorData) {
+          redirectUrl = `/vendor-profile/${vendorData.id}`;
+          console.log('✓ Vendor found, redirecting to:', redirectUrl);
+        } else {
+          console.log('⚠️ No vendor profile found for user');
+          redirectUrl = '/browse'; // fallback if no vendor profile
+        }
       } else {
         // USER LOGIN: Redirect to user dashboard
         redirectUrl = '/user-dashboard';
