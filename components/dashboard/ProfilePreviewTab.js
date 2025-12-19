@@ -99,6 +99,33 @@ export default function ProfilePreviewTab() {
     );
   }
 
+  // Calculate derived values BEFORE conditional returns
+  let initials = 'V';
+  let categories = [];
+  let averageRating = null;
+
+  if (vendor) {
+    initials = (vendor.company_name || 'V')
+      .split(' ')
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+
+    if (vendor.categories) {
+      if (Array.isArray(vendor.categories)) {
+        categories = vendor.categories;
+      } else if (typeof vendor.categories === 'string') {
+        categories = vendor.categories.split(',').map((c) => c.trim());
+      }
+    }
+
+    if (reviews && reviews.length > 0) {
+      const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+      averageRating = (sum / reviews.length).toFixed(1);
+    }
+  }
+
   if (!vendor) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
@@ -111,30 +138,6 @@ export default function ProfilePreviewTab() {
       </div>
     );
   }
-
-  const initials = useMemo(() => {
-    return (vendor.company_name || 'V')
-      .split(' ')
-      .map((word) => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  }, [vendor.company_name]);
-
-  const categories = useMemo(() => {
-    if (!vendor.categories) return [];
-    if (Array.isArray(vendor.categories)) return vendor.categories;
-    if (typeof vendor.categories === 'string') {
-      return vendor.categories.split(',').map((c) => c.trim());
-    }
-    return [];
-  }, [vendor.categories]);
-
-  const averageRating = useMemo(() => {
-    if (!reviews || reviews.length === 0) return null;
-    const avg = (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1);
-    return avg;
-  }, [reviews]);
 
   return (
     <div className="space-y-0 bg-slate-50 -m-6 p-0">
