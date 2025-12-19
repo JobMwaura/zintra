@@ -9,8 +9,8 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
 
 export async function GET(request: NextRequest) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Calculate date filter
-    let dateFilter = null;
+    let dateFilter: Date | null = null;
     if (dateRange !== 'all') {
       const now = new Date();
       switch (dateRange) {
