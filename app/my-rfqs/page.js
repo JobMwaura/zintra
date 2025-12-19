@@ -62,7 +62,7 @@ export default function MyRFQsPage() {
   const [dateRangeValue, setDateRangeValue] = useState('all');
   const [sortValue, setSortValue] = useState('latest');
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (only after auth loading is complete)
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -142,11 +142,14 @@ export default function MyRFQsPage() {
     }
   };
 
-  // Render loading state
-  if (authLoading) {
+  // Render loading state while authentication is being checked
+  if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading RFQ dashboard...</p>
+        </div>
       </div>
     );
   }
