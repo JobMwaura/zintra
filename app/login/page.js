@@ -91,33 +91,9 @@ export default function Login() {
       let redirectUrl = '/browse';
 
       if (activeTab === 'vendor') {
-        // VENDOR LOGIN: Find vendor profile and redirect to vendor dashboard
-        const userId = data.user.id;
-        const userEmail = data.user.email;
-
-        // Find vendor either by user_id or (fallback) email
-        const { data: vendorData, error: vendorError } = await supabase
-          .from('vendors')
-          .select('id,user_id')
-          .or(`user_id.eq.${userId},email.eq.${userEmail}`)
-          .limit(1)
-          .maybeSingle();
-
-        if (vendorError) {
-          console.warn('Vendor lookup failed:', vendorError.message);
-        }
-
-        if (vendorData?.id) {
-          // If vendor exists but not linked, link it to this user for future logins
-          if (!vendorData.user_id) {
-            await supabase.from('vendors').update({ user_id: userId }).eq('id', vendorData.id);
-          }
-          redirectUrl = `/vendor-profile/${vendorData.id}`;
-          console.log('✓ Vendor found, redirecting to vendor profile');
-        } else {
-          console.log('⚠ No vendor profile found, redirecting to browse');
-          redirectUrl = '/browse';
-        }
+        // VENDOR LOGIN: Redirect to editable vendor dashboard
+        console.log('✓ Vendor login detected, redirecting to vendor dashboard');
+        redirectUrl = '/dashboard';
       } else {
         // USER LOGIN: Redirect to user dashboard
         redirectUrl = '/user-dashboard';
