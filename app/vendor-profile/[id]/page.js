@@ -114,14 +114,20 @@ export default function VendorProfilePage() {
     const fetchVendor = async () => {
       try {
         setLoading(true);
+        console.log('🔹 Fetching vendor with ID:', vendorId);
+        
         const { data, error: fetchError } = await supabase
           .from('vendors')
           .select('*')
           .eq('id', vendorId)
           .single();
 
+        console.log('✓ Vendor data:', data);
+        console.log('✗ Vendor error:', fetchError);
+
         if (fetchError || !data) {
-          setError('Vendor not found');
+          console.error('Vendor fetch error:', fetchError?.message || 'No data returned');
+          setError('Vendor not found. The vendor may have been deleted or the ID is incorrect.');
           setLoading(false);
           return;
         }
