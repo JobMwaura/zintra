@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { LogOut, User, Phone, CheckCircle, AlertCircle } from 'lucide-react';
+import { LogOut, User, Phone, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 
 export default function UserDashboard() {
   const { user, signOut } = useAuth();
@@ -13,39 +13,40 @@ export default function UserDashboard() {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) {
-        setError('No user logged in');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch user data from users table
-        const { data, error: fetchError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (fetchError) {
-          console.error('Error fetching user data:', fetchError);
-          setError('Failed to load user data');
-        } else {
-          setUserData(data);
-        }
-      } catch (err) {
-        console.error('Unexpected error:', err);
-        setError('An unexpected error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchUserData();
   }, [user, supabase]);
+
+  const fetchUserData = async () => {
+    if (!user) {
+      setError('No user logged in');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching user data:', fetchError);
+        setError('Failed to load user data');
+      } else {
+        setUserData(data);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -134,26 +135,36 @@ export default function UserDashboard() {
                     ? 'bg-green-50 border-green-200'
                     : 'bg-yellow-50 border-yellow-200'
                 }`}>
-                  <div className="flex items-center space-x-3">
-                    {userData?.phone_verified ? (
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <AlertCircle className="w-6 h-6 text-yellow-600" />
-                    )}
-                    <div>
-                      <h3 className={`font-semibold ${
-                        userData?.phone_verified ? 'text-green-900' : 'text-yellow-900'
-                      }`}>
-                        {userData?.phone_verified ? 'Phone Verified' : 'Phone Not Verified'}
-                      </h3>
-                      <p className={`text-sm ${
-                        userData?.phone_verified ? 'text-green-700' : 'text-yellow-700'
-                      }`}>
-                        {userData?.phone_verified
-                          ? `Your phone number (${userData?.phone_number || 'N/A'}) has been verified via SMS OTP`
-                          : 'Please verify your phone number to complete your account setup'}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {userData?.phone_verified ? (
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      ) : (
+                        <AlertCircle className="w-6 h-6 text-yellow-600" />
+                      )}
+                      <div>
+                        <h3 className={`font-semibold ${
+                          userData?.phone_verified ? 'text-green-900' : 'text-yellow-900'
+                        }`}>
+                          {userData?.phone_verified ? 'Phone Verified' : 'Phone Not Verified'}
+                        </h3>
+                        <p className={`text-sm ${
+                          userData?.phone_verified ? 'text-green-700' : 'text-yellow-700'
+                        }`}>
+                          {userData?.phone_verified
+                            ? `Your phone number (${userData?.phone_number || 'N/A'}) has been verified via SMS OTP`
+                            : 'Please verify your phone number to complete your account setup'}
+                        </p>
+                      </div>
                     </div>
+                    {!userData?.phone_verified && (
+                      <button
+                        onClick={() => setShowPhoneVerification(true)}
+                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition flex-shrink-0 ml-4"
+                      >
+                        Verify Now
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -267,15 +278,15 @@ export default function UserDashboard() {
                   </button>
                 </Link>
                 <button 
-                  disabled
-                  className="w-full text-left px-4 py-2 rounded-lg text-gray-400 cursor-not-allowed font-medium"
+                  onClick={() => alert('Change Password feature coming soon')}
+                  className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
                   title="Coming soon"
                 >
                   Change Password
                 </button>
                 <button 
-                  disabled
-                  className="w-full text-left px-4 py-2 rounded-lg text-gray-400 cursor-not-allowed font-medium"
+                  onClick={() => alert('Preferences feature coming soon')}
+                  className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
                   title="Coming soon"
                 >
                   Preferences
@@ -284,6 +295,224 @@ export default function UserDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Phone Verification Modal */}
+      {showPhoneVerification && (
+        <PhoneVerificationModal
+          userEmail={user?.email}
+          userPhone={userData?.phone_number}
+          onClose={() => setShowPhoneVerification(false)}
+          onSuccess={() => {
+            setShowPhoneVerification(false);
+            // Refresh user data to show updated verification status
+            setLoading(true);
+            fetchUserData();
+          }}
+          supabase={supabase}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Phone Verification Modal Component
+ */
+function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supabase }) {
+  const [step, setStep] = useState(1); // 1: Send OTP, 2: Verify OTP
+  const [phone, setPhone] = useState(userPhone || '');
+  const [otpCode, setOtpCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+
+  const handleSendOTP = async () => {
+    if (!phone.trim()) {
+      setMessage('Please enter a phone number');
+      setMessageType('error');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phone,
+          method: 'sms',
+          purpose: 'verification',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('✓ OTP sent! Check your SMS');
+        setMessageType('success');
+        setStep(2);
+      } else {
+        setMessage(data.error || 'Failed to send OTP');
+        setMessageType('error');
+      }
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpCode.trim() || otpCode.length !== 6) {
+      setMessage('Please enter a valid 6-digit code');
+      setMessageType('error');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phone,
+          code: otpCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.verified) {
+        // Update user profile with verified phone
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            phone_verified: true,
+            phone_verified_at: new Date().toISOString(),
+            phone_number: phone,
+          })
+          .eq('id', (await supabase.auth.getUser()).data.user.id);
+
+        if (updateError) {
+          setMessage('Failed to update profile');
+          setMessageType('error');
+          return;
+        }
+
+        setMessage('✓ Phone verified successfully!');
+        setMessageType('success');
+        
+        setTimeout(() => {
+          onSuccess();
+        }, 1500);
+      } else {
+        setMessage(data.error || 'Invalid OTP code');
+        setMessageType('error');
+      }
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {step === 1 ? 'Verify Your Phone' : 'Enter OTP Code'}
+          </h2>
+          <p className="text-gray-600">
+            {step === 1 
+              ? 'Enter your phone number to receive an OTP'
+              : 'Enter the 6-digit code sent to your phone'}
+          </p>
+        </div>
+
+        {/* Message Display */}
+        {message && (
+          <div className={`p-3 rounded-lg mb-4 ${
+            messageType === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {message}
+          </div>
+        )}
+
+        {/* Step 1: Enter Phone */}
+        {step === 1 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g., +254700000000"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+              disabled={loading}
+            />
+            <button
+              onClick={handleSendOTP}
+              disabled={loading}
+              className="w-full mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <span>{loading ? 'Sending...' : 'Send OTP'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Enter OTP */}
+        {step === 2 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              OTP Code
+            </label>
+            <input
+              type="text"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              maxLength="6"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-center text-2xl tracking-widest"
+              disabled={loading}
+            />
+            <button
+              onClick={handleVerifyOTP}
+              disabled={loading}
+              className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <span>{loading ? 'Verifying...' : 'Verify OTP'}</span>
+            </button>
+            <button
+              onClick={() => setStep(1)}
+              disabled={loading}
+              className="w-full mt-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+            >
+              Back
+            </button>
+          </div>
+        )}
+
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="w-full mt-4 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+        >
+          Close
+        </button>
       </div>
     </div>
   );
