@@ -96,22 +96,6 @@ AFTER DELETE ON public.vendor_profile_likes
 FOR EACH ROW
 EXECUTE FUNCTION public.decrement_profile_likes();
 
--- Function to increment profile views
-CREATE OR REPLACE FUNCTION public.increment_profile_views()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Insert or update the stats row
-  INSERT INTO public.vendor_profile_stats (vendor_id, likes_count, views_count)
-  VALUES (NEW.vendor_id, 0, 1)
-  ON CONFLICT (vendor_id)
-  DO UPDATE SET 
-    views_count = vendor_profile_stats.views_count + 1,
-    last_viewed_at = now(),
-    updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
 -- ============================================================================
 -- RLS POLICIES
 -- ============================================================================
