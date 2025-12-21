@@ -106,7 +106,7 @@ SELECT
   (SELECT COUNT(*) FROM public.rfq_quotes WHERE rfq_id = r.id AND vendor_id = rr.vendor_id)::integer AS quote_count,
   (SELECT COUNT(*) FROM public.rfq_quotes WHERE rfq_id = r.id)::integer AS total_quotes,
   u.email AS requester_email,
-  u.user_metadata->>'full_name' AS requester_name
+  COALESCE(u.raw_user_meta_data->>'full_name', u.email) AS requester_name
 FROM public.rfqs r
 LEFT JOIN public.rfq_recipients rr ON r.id = rr.rfq_id
 LEFT JOIN auth.users u ON r.user_id = u.id
