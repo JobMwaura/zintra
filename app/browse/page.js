@@ -38,7 +38,14 @@ export default function BrowseVendors() {
       try {
         setLoading(true);
         setError(null);
-        const { data, error: fetchError } = await supabase.from('vendors').select('*');
+        
+        // Fetch vendors with their stats
+        const { data: vendorData, error: fetchError } = await supabase
+          .from('vendors')
+          .select(`
+            *,
+            vendor_profile_stats(views_count, likes_count)
+          `);
 
         if (fetchError) {
           console.error('❌ Error fetching vendors:', fetchError.message);
@@ -49,7 +56,7 @@ export default function BrowseVendors() {
             'All Categories',
             ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
           ]);
-        } else if (!data || data.length === 0) {
+        } else if (!vendorData || vendorData.length === 0) {
           console.warn('No vendors found in database');
           setVendors([]);
           // Set comprehensive categories for filtering even with no vendors
@@ -58,7 +65,13 @@ export default function BrowseVendors() {
             ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
           ]);
         } else {
-          setVendors(data);
+          // Flatten the stats into each vendor object for easier access
+          const vendorsWithStats = vendorData.map(vendor => ({
+            ...vendor,
+            views_count: vendor.vendor_profile_stats?.[0]?.views_count || 0,
+            likes_count: vendor.vendor_profile_stats?.[0]?.likes_count || 0,
+          }));
+          setVendors(vendorsWithStats);
           // Use comprehensive construction categories
           setCategories([
             'All Categories',
@@ -259,7 +272,7 @@ export default function BrowseVendors() {
                     {vendor.description || 'No description available.'}
                   </p>
 
-                  <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
                     <div className="flex items-center">
                       <MapPin className="w-4 h-4 mr-1" /> {vendor.location}
                     </div>
@@ -273,10 +286,24 @@ export default function BrowseVendors() {
                     )}
                   </div>
 
+                  {/* Views & Likes Stats */}
+                  <div className="flex gap-3 mb-4 text-xs">
+                    {vendor.views_count > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+                        👁️ {vendor.views_count.toLocaleString()} {vendor.views_count === 1 ? 'view' : 'views'}
+                      </span>
+                    )}
+                    {vendor.likes_count > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded-full">
+                        ❤️ {vendor.likes_count} {vendor.likes_count === 1 ? 'like' : 'likes'}
+                      </span>
+                    )}
+                  </div>
+
                   {/* ✅ Navigation to redesigned Vendor Profile */}
                   <Link href={`/vendor-profile/${vendor.id}`}>
                     <button
-                      className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium transition-colors"
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium transition-colors"
                     >
                       View Profile
                     </button>

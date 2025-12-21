@@ -242,6 +242,39 @@ export default function VendorProfilePage() {
     fetchProfileStats();
   }, [vendor?.id, currentUser?.id]);
 
+  // Track profile view
+  useEffect(() => {
+    if (!vendor?.id) return;
+
+    const trackView = async () => {
+      try {
+        console.log('📊 Tracking view for vendor:', vendor.id);
+        const response = await fetch('/api/track-vendor-profile-view', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ vendorId: vendor.id }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.warn('⚠️ Failed to track profile view:', error);
+          return;
+        }
+
+        console.log('✅ Profile view tracked successfully');
+      } catch (err) {
+        console.error('❌ Error tracking profile view:', err);
+      }
+    };
+
+    // Track view after a short delay (user is definitely looking at the profile)
+    const timer = setTimeout(trackView, 1000);
+
+    return () => clearTimeout(timer);
+  }, [vendor?.id]);
+
   // Handle profile like/unlike
   const handleLikeProfile = async () => {
     if (!vendor?.id || !currentUser?.id) {
