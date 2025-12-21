@@ -44,8 +44,7 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
         .from('reviews')
         .insert({
           vendor_id: vendor.id,
-          reviewer_id: currentUser.id,
-          reviewer_name: reviewerName,
+          author: reviewerName,
           rating: selectedRating,
           comment: reviewText.trim(),
         })

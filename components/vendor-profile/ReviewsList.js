@@ -91,7 +91,7 @@ export default function ReviewsList({ reviews, averageRating }) {
               {/* Reviewer Info */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <p className="font-semibold text-slate-900">{review.reviewer_name || 'Anonymous'}</p>
+                  <p className="font-semibold text-slate-900">{review.author || 'Anonymous'}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex items-center gap-0.5">
                       {[...Array(5)].map((_, i) => (
@@ -135,9 +135,9 @@ export default function ReviewsList({ reviews, averageRating }) {
                 <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <p className="text-sm font-semibold text-slate-900 mb-2">Vendor Response</p>
                   <p className="text-slate-700 text-sm">{review.vendor_response}</p>
-                  {review.response_date && (
+                  {review.responded_at && (
                     <p className="text-xs text-slate-500 mt-2">
-                      {new Date(review.response_date).toLocaleDateString('en-US', {
+                      {new Date(review.responded_at).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',
