@@ -21,6 +21,7 @@ import {
   Bell,
   Heart,
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 import DirectRFQPopup from '@/components/DirectRFQPopup';
 import ProductUploadModal from '@/components/vendor-profile/ProductUploadModal';
 import ServiceUploadModal from '@/components/vendor-profile/ServiceUploadModal';
