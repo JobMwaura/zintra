@@ -1317,7 +1317,9 @@ export default function VendorProfilePage() {
       {/* Direct RFQ Popup */}
       {showDirectRFQ && (
         <DirectRFQPopup
+          isOpen={showDirectRFQ}
           vendor={vendor}
+          user={currentUser}
           onClose={() => setShowDirectRFQ(false)}
         />
       )}
