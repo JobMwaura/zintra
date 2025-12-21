@@ -34,7 +34,6 @@ COMMENT ON COLUMN public.vendor_status_updates.likes_count IS 'Total number of l
 
 -- Grant permissions for authenticated users
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.vendor_status_updates TO authenticated;
-GRANT USAGE ON SEQUENCE vendor_status_updates_id_seq TO authenticated;
 
 -- ============================================================================
 -- PART 2: VENDOR STATUS UPDATES LIKES TABLE
