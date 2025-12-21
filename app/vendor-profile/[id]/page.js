@@ -33,6 +33,8 @@ import ReviewResponses from '@/components/vendor-profile/ReviewResponses';
 import StatusUpdateModal from '@/components/vendor-profile/StatusUpdateModal';
 import StatusUpdateCard from '@/components/vendor-profile/StatusUpdateCard';
 import RFQInboxTab from '@/components/vendor-profile/RFQInboxTab';
+import ReviewRatingSystem from '@/components/vendor-profile/ReviewRatingSystem';
+import ReviewsList from '@/components/vendor-profile/ReviewsList';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -797,45 +799,22 @@ export default function VendorProfilePage() {
             {/* Reviews Tab */}
             {activeTab === 'reviews' && (
               <>
-          {/* Reviews Section */}
-          {reviews.length > 0 && (
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-900">Reviews ({reviews.length})</h3>
-                {canEdit && (
-                  <button
-                    onClick={() => setShowReviewResponses(true)}
-                    className="text-xs font-semibold text-amber-700 hover:text-amber-800"
-                  >
-                    Respond
-                  </button>
-                )}
+              <div className="space-y-6">
+                {/* Rating System - Top */}
+                <ReviewRatingSystem 
+                  vendor={vendor} 
+                  currentUser={currentUser}
+                  onReviewAdded={(newReview) => {
+                    setReviews([newReview, ...reviews]);
+                  }}
+                />
+
+                {/* Reviews List */}
+                <ReviewsList 
+                  reviews={reviews}
+                  averageRating={averageRating}
+                />
               </div>
-              <div className="space-y-4">
-                {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-slate-200 pb-4 last:border-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-semibold text-slate-900">{review.reviewer_name || 'Anonymous'}</p>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-4 h-4 ${
-                                i < (review.rating || 0) ? 'text-amber-500 fill-amber-500' : 'text-slate-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <span className="text-sm text-slate-500">{new Date(review.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-slate-700 text-sm">{review.comment}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
               </>
             )}
 
