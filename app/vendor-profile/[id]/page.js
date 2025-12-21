@@ -242,21 +242,36 @@ export default function VendorProfilePage() {
 
   // Handle profile like/unlike
   const handleLikeProfile = async () => {
-    if (!vendor?.id || !currentUser?.id) return;
+    if (!vendor?.id || !currentUser?.id) {
+      console.warn('Cannot like: vendor.id=', vendor?.id, 'currentUser.id=', currentUser?.id);
+      return;
+    }
+
+    if (canEdit) {
+      console.warn('Cannot like your own profile');
+      return;
+    }
 
     try {
       setLikeLoading(true);
+      console.log('🔹 Toggling like for vendor:', vendor.id, 'user:', currentUser.id, 'currently liked:', userLiked);
 
       if (userLiked) {
         // Unlike
-        const { error } = await supabase
+        console.log('→ Attempting to unlike...');
+        const { data, error } = await supabase
           .from('vendor_profile_likes')
           .delete()
           .eq('vendor_id', vendor.id)
-          .eq('user_id', currentUser.id);
+          .eq('user_id', currentUser.id)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Unlike error:', error);
+          throw error;
+        }
 
+        console.log('✅ Unlike successful, deleted:', data);
         setUserLiked(false);
         setProfileStats((prev) => ({
           ...prev,
@@ -264,15 +279,21 @@ export default function VendorProfilePage() {
         }));
       } else {
         // Like
-        const { error } = await supabase
+        console.log('→ Attempting to like...');
+        const { data, error } = await supabase
           .from('vendor_profile_likes')
           .insert({
             vendor_id: vendor.id,
             user_id: currentUser.id,
-          });
+          })
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Like error:', error);
+          throw error;
+        }
 
+        console.log('✅ Like successful, inserted:', data);
         setUserLiked(true);
         setProfileStats((prev) => ({
           ...prev,
@@ -280,7 +301,8 @@ export default function VendorProfilePage() {
         }));
       }
     } catch (err) {
-      console.error('Error toggling profile like:', err);
+      console.error('❌ Error toggling profile like:', err);
+      alert(`Error: ${err.message || 'Failed to update like'}`);
     } finally {
       setLikeLoading(false);
     }
@@ -483,8 +505,9 @@ export default function VendorProfilePage() {
                   className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold transition ${
                     userLiked
                       ? 'border-red-500 text-red-700 bg-red-50 hover:bg-red-100'
-                      : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
+                      : 'border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title={likeLoading ? 'Updating...' : userLiked ? 'Unlike this profile' : 'Like this profile'}
                 >
                   <Heart
                     className={`w-5 h-5 ${userLiked ? 'fill-current' : ''}`}
