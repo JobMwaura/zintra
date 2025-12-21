@@ -522,18 +522,41 @@ export default function VendorProfilePage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setShowDirectRFQ(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100"
-              >
-                <MessageSquare className="w-5 h-5" /> Contact Vendor
-              </button>
-              <button
-                onClick={() => setShowDirectRFQ(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
-              >
-                Request Quote
-              </button>
+              {/* Show Inbox & Quotes buttons when vendor is logged into their own profile */}
+              {canEdit ? (
+                <>
+                  <Link
+                    href="/vendor-messages"
+                    className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition"
+                  >
+                    <MessageSquare className="w-5 h-5" /> Inbox
+                  </Link>
+                  <Link
+                    href="/vendor-quotes"
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100 transition"
+                  >
+                    📋 Quotes
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {/* Show Contact & Request Quote buttons when viewing other vendors */}
+                  <button
+                    onClick={() => setShowDirectRFQ(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100"
+                  >
+                    <MessageSquare className="w-5 h-5" /> Contact Vendor
+                  </button>
+                  <button
+                    onClick={() => setShowDirectRFQ(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    Request Quote
+                  </button>
+                </>
+              )}
+              
+              {/* Like button - only for non-vendors or when viewing other vendors */}
               {currentUser && !canEdit && (
                 <button
                   onClick={handleLikeProfile}
@@ -560,17 +583,21 @@ export default function VendorProfilePage() {
                   <span>{profileStats.likes_count}</span>
                 </button>
               )}
-              <button
-                onClick={() => setSaved((s) => !s)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${
-                  saved
-                    ? 'border-amber-500 text-amber-700 bg-amber-50'
-                    : 'border-slate-200 text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
-                Save
-              </button>
+              
+              {/* Save button - only for non-vendors or when viewing other vendors */}
+              {!canEdit && (
+                <button
+                  onClick={() => setSaved((s) => !s)}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${
+                    saved
+                      ? 'border-amber-500 text-amber-700 bg-amber-50'
+                      : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
+                  Save
+                </button>
+              )}
             </div>
           </div>
 
