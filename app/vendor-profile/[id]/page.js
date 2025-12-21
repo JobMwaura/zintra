@@ -156,6 +156,10 @@ export default function VendorProfilePage() {
     if (vendorId) fetchData();
   }, [vendorId]);
 
+  const canEdit =
+    !!currentUser &&
+    (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
+
   // Fetch RFQ Inbox data for vendor
   useEffect(() => {
     const fetchRFQData = async () => {
@@ -195,10 +199,6 @@ export default function VendorProfilePage() {
 
     return () => clearInterval(interval);
   }, [vendor?.id, canEdit]);
-
-  const canEdit =
-    !!currentUser &&
-    (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
 
   const initials = useMemo(() => {
     if (!vendor?.company_name) return 'VN';
