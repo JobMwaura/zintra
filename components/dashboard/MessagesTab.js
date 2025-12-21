@@ -61,71 +61,79 @@ export default function VendorMessages() {
       }
 
       if (allConversations && allConversations.length > 0) {
-        // ✅ FIXED: Query profiles table instead of admin.getUserById
-        const enrichedConvs = await Promise.all(
-          allConversations.map(async (conv) => {
-            const otherId = conv.participant_1_id === currentUser.id 
-              ? conv.participant_2_id 
-              : conv.participant_1_id;
-
-            // ✅ FIXED: Get user info from vendor_profiles or similar table instead of admin API
-            let otherEmail = 'Unknown User';
-            let otherName = 'Unknown';
-            try {
-              // Try to get from vendor_profiles table
-              const { data: profile } = await supabase
-                .from('vendor_profiles') // UPDATE THIS IF YOUR TABLE IS DIFFERENT
-                .select('email, company_name')
-                .eq('user_id', otherId)
-                .maybeSingle();
-
-              if (profile?.email) {
-                otherEmail = profile.email;
-                otherName = profile.company_name || profile.email;
-              }
-            } catch (e) {
-              console.warn('Could not fetch user profile:', e);
-            }
-
-            // Get last message
-            const { data: lastMsg, error: msgError } = await supabase
-              .from('messages')
-              .select('body, created_at, sender_id, is_read, message_type')
-              .eq('conversation_id', conv.id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (msgError && msgError.code !== 'PGRST116') {
-              console.warn('Error fetching last message:', msgError);
-            }
-
-            // Count unread
-            const { count: unreadCount, error: countError } = await supabase
-              .from('messages')
-              .select('*', { count: 'exact', head: true })
-              .eq('conversation_id', conv.id)
-              .eq('is_read', false)
-              .neq('sender_id', currentUser.id);
-
-            if (countError && countError.code !== 'PGRST116') {
-              console.warn('Error counting unread:', countError);
-            }
-
-            return {
-              id: conv.id,
-              otherUserId: otherId,
-              otherEmail: otherEmail,
-              otherName: otherName,
-              lastMessage: lastMsg?.body || 'No messages',
-              lastMessageTime: lastMsg?.created_at,
-              unreadCount: unreadCount || 0,
-              created_at: conv.created_at,
-              conversation_type: conv.conversation_type || 'customer', // 'customer' or 'admin'
-              messageType: lastMsg?.message_type || 'vendor_to_customer'
-            };
-          })
+        // ✅ OPTIMIZED: Batch queries instead of N+1
+        
+        // Step 1: Get all user IDs we need to fetch
+        const otherUserIds = allConversations.map(conv => 
+          conv.participant_1_id === currentUser.id 
+            ? conv.participant_2_id 
+            : conv.participant_1_id
         );
+
+        // Step 2: Fetch all vendor profiles in one query
+        const { data: allProfiles } = await supabase
+          .from('vendors')
+          .select('user_id, email, company_name')
+          .in('user_id', otherUserIds);
+        
+        const profileMap = {};
+        if (allProfiles) {
+          allProfiles.forEach(profile => {
+            profileMap[profile.user_id] = {
+              email: profile.email || 'Unknown User',
+              name: profile.company_name || profile.email || 'Unknown'
+            };
+          });
+        }
+
+        // Step 3: Fetch all messages for these conversations in one query
+        const convIds = allConversations.map(c => c.id);
+        const { data: allMessages } = await supabase
+          .from('messages')
+          .select('id, conversation_id, body, created_at, sender_id, is_read, message_type')
+          .in('conversation_id', convIds)
+          .order('created_at', { ascending: false });
+
+        // Build maps for quick lookup
+        const lastMessageMap = {};
+        const unreadCountMap = {};
+        
+        if (allMessages) {
+          allMessages.forEach(msg => {
+            // Get last message per conversation
+            if (!lastMessageMap[msg.conversation_id]) {
+              lastMessageMap[msg.conversation_id] = msg;
+            }
+            
+            // Count unread per conversation
+            if (!msg.is_read && msg.sender_id !== currentUser.id) {
+              unreadCountMap[msg.conversation_id] = (unreadCountMap[msg.conversation_id] || 0) + 1;
+            }
+          });
+        }
+
+        // Step 4: Enrich conversations with data from maps
+        const enrichedConvs = allConversations.map(conv => {
+          const otherId = conv.participant_1_id === currentUser.id 
+            ? conv.participant_2_id 
+            : conv.participant_1_id;
+          
+          const profile = profileMap[otherId] || { email: 'Unknown User', name: 'Unknown' };
+          const lastMsg = lastMessageMap[conv.id];
+
+          return {
+            id: conv.id,
+            otherUserId: otherId,
+            otherEmail: profile.email,
+            otherName: profile.name,
+            lastMessage: lastMsg?.body || 'No messages',
+            lastMessageTime: lastMsg?.created_at,
+            unreadCount: unreadCountMap[conv.id] || 0,
+            created_at: conv.created_at,
+            conversation_type: conv.conversation_type || 'customer',
+            messageType: lastMsg?.message_type || 'vendor_to_customer'
+          };
+        });
 
         setConversations(enrichedConvs);
       } else {
