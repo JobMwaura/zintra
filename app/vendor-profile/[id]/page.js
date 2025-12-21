@@ -42,6 +42,9 @@ export default function VendorProfilePage() {
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
 
+  // Tab navigation state
+  const [activeTab, setActiveTab] = useState('overview');
+
   // Modal visibility states
   const [showProductModal, setShowProductModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
@@ -365,11 +368,33 @@ export default function VendorProfilePage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
-        {/* Left Column */}
-        <div className="space-y-6">
-          {/* About Section */}
-          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200">
+          {['overview', 'products', 'services', 'reviews'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition ${
+                activeTab === tab
+                  ? 'border-amber-600 text-amber-700'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <>
+              {/* About Section */}
+              <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-semibold text-slate-900">About {vendor.company_name}</h3>
               {canEdit && (
@@ -385,7 +410,12 @@ export default function VendorProfilePage() {
               {vendor.description || 'No description yet. Add your story and expertise here to win buyer trust.'}
             </p>
           </section>
+              </>
+            )}
 
+            {/* Products Tab */}
+            {activeTab === 'products' && (
+              <>
           {/* Products Section */}
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -425,7 +455,12 @@ export default function VendorProfilePage() {
               <p className="text-slate-500 text-sm">No products yet.</p>
             )}
           </section>
+              </>
+            )}
 
+            {/* Services Tab */}
+            {activeTab === 'services' && (
+              <>
           {/* Services Section */}
           <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -462,7 +497,12 @@ export default function VendorProfilePage() {
               <p className="text-slate-500 text-sm">No services yet.</p>
             )}
           </section>
+              </>
+            )}
 
+            {/* Reviews Tab */}
+            {activeTab === 'reviews' && (
+              <>
           {/* Reviews Section */}
           {reviews.length > 0 && (
             <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
@@ -502,7 +542,9 @@ export default function VendorProfilePage() {
               </div>
             </section>
           )}
-        </div>
+              </>
+            )}
+          </div>
 
         {/* Right Sidebar */}
         <div className="space-y-4">
@@ -604,33 +646,95 @@ export default function VendorProfilePage() {
             </section>
           )}
 
-          {/* Subscription Info */}
-          {canEdit && (
+          {/* Certifications */}
+          {vendor.certifications && vendor.certifications.length > 0 && (
             <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-base font-semibold text-slate-900">Subscription</h4>
-                <button
-                  onClick={() => setShowSubscriptionPanel(true)}
-                  className="text-xs font-semibold text-amber-700 hover:text-amber-800"
-                >
-                  View
-                </button>
+                <h4 className="text-base font-semibold text-slate-900">Certifications</h4>
+                {canEdit && (
+                  <button
+                    onClick={() => setShowCertManager(true)}
+                    className="text-xs font-semibold text-amber-700 hover:text-amber-800"
+                  >
+                    Manage
+                  </button>
+                )}
               </div>
-              <div className="text-sm text-slate-700">
-                {subscription ? (
-                  <>
-                    <p className="font-semibold text-slate-900">{subscription.plan_type}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {daysRemaining ? `${daysRemaining} days remaining` : 'Active'}
-                    </p>
-                  </>
+              <div className="space-y-2 text-sm text-slate-700">
+                {Array.isArray(vendor.certifications) ? (
+                  vendor.certifications.map((cert, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <Award className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-slate-900">{cert.name || cert}</p>
+                        {cert.issuer && <p className="text-xs text-slate-500">Issued by: {cert.issuer}</p>}
+                        {cert.date && <p className="text-xs text-slate-500">Date: {cert.date}</p>}
+                      </div>
+                    </div>
+                  ))
                 ) : (
-                  <p className="text-slate-500">No active subscription</p>
+                  <p className="text-slate-500 text-sm">No certifications yet.</p>
                 )}
               </div>
             </section>
           )}
+
+          {/* Subscription Info */}
+          {canEdit && (
+            <section 
+              className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-5 shadow-sm cursor-pointer hover:shadow-md transition"
+              onClick={() => setShowSubscriptionPanel(true)}
+            >
+              <h4 className="text-base font-semibold text-slate-900 mb-3">Subscription</h4>
+              {subscription ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm">{subscription.plan_type || 'Plan Name'}</p>
+                    <p className="text-xs text-slate-600 mt-1">{subscription.price || 'KES N/A'}/month</p>
+                  </div>
+                  
+                  {/* Days Remaining Progress Bar */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-blue-900">{daysRemaining} days remaining</p>
+                      <p className="text-xs text-blue-700">{daysRemaining > 0 ? 'Active' : 'Expired'}</p>
+                    </div>
+                    <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${daysRemaining > 10 ? 'bg-green-500' : daysRemaining > 5 ? 'bg-amber-500' : 'bg-red-500'} transition-all`}
+                        style={{ width: `${Math.min((daysRemaining / 30) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSubscriptionPanel(true);
+                    }}
+                    className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition"
+                  >
+                    Manage Subscription
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">No active subscription</p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSubscriptionPanel(true);
+                    }}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition"
+                  >
+                    View Plans
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
         </div>
+      </div>
       </div>
 
       {/* Modal Components */}
