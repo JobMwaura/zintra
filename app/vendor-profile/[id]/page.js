@@ -19,6 +19,7 @@ import {
   LogOut,
   User,
   Bell,
+  Heart,
 } from 'lucide-react';
 import DirectRFQPopup from '@/components/DirectRFQPopup';
 import ProductUploadModal from '@/components/vendor-profile/ProductUploadModal';
@@ -65,6 +66,9 @@ export default function VendorProfilePage() {
   const [rfqInboxData, setRfqInboxData] = useState([]);
   const [rfqStats, setRfqStats] = useState({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
   const [rfqLoading, setRfqLoading] = useState(false);
+  const [profileStats, setProfileStats] = useState({ likes_count: 0, views_count: 0 });
+  const [userLiked, setUserLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
 
   // Data needed for rendering
   const [products, setProducts] = useState([]);
@@ -199,6 +203,88 @@ export default function VendorProfilePage() {
 
     return () => clearInterval(interval);
   }, [vendor?.id, canEdit]);
+
+  // Fetch profile stats and like status
+  useEffect(() => {
+    const fetchProfileStats = async () => {
+      if (!vendor?.id) return;
+
+      try {
+        // Fetch profile stats
+        const { data: stats } = await supabase
+          .from('vendor_profile_stats')
+          .select('likes_count, views_count')
+          .eq('vendor_id', vendor.id)
+          .maybeSingle();
+
+        if (stats) {
+          setProfileStats(stats);
+        }
+
+        // Check if current user liked this profile
+        if (currentUser) {
+          const { data: likeData } = await supabase
+            .from('vendor_profile_likes')
+            .select('id')
+            .eq('vendor_id', vendor.id)
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+          setUserLiked(!!likeData);
+        }
+      } catch (err) {
+        console.error('Error fetching profile stats:', err);
+      }
+    };
+
+    fetchProfileStats();
+  }, [vendor?.id, currentUser?.id]);
+
+  // Handle profile like/unlike
+  const handleLikeProfile = async () => {
+    if (!vendor?.id || !currentUser?.id) return;
+
+    try {
+      setLikeLoading(true);
+
+      if (userLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('vendor_profile_likes')
+          .delete()
+          .eq('vendor_id', vendor.id)
+          .eq('user_id', currentUser.id);
+
+        if (error) throw error;
+
+        setUserLiked(false);
+        setProfileStats((prev) => ({
+          ...prev,
+          likes_count: Math.max(0, prev.likes_count - 1),
+        }));
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('vendor_profile_likes')
+          .insert({
+            vendor_id: vendor.id,
+            user_id: currentUser.id,
+          });
+
+        if (error) throw error;
+
+        setUserLiked(true);
+        setProfileStats((prev) => ({
+          ...prev,
+          likes_count: prev.likes_count + 1,
+        }));
+      }
+    } catch (err) {
+      console.error('Error toggling profile like:', err);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
 
   const initials = useMemo(() => {
     if (!vendor?.company_name) return 'VN';
@@ -390,6 +476,31 @@ export default function VendorProfilePage() {
               >
                 Request Quote
               </button>
+              {currentUser && !canEdit && (
+                <button
+                  onClick={handleLikeProfile}
+                  disabled={likeLoading}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold transition ${
+                    userLiked
+                      ? 'border-red-500 text-red-700 bg-red-50 hover:bg-red-100'
+                      : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <Heart
+                    className={`w-5 h-5 ${userLiked ? 'fill-current' : ''}`}
+                  />
+                  <span>{profileStats.likes_count}</span>
+                </button>
+              )}
+              {!currentUser && (
+                <button
+                  onClick={() => router.push('/login')}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <Heart className="w-5 h-5" />
+                  <span>{profileStats.likes_count}</span>
+                </button>
+              )}
               <button
                 onClick={() => setSaved((s) => !s)}
                 className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${
@@ -408,6 +519,15 @@ export default function VendorProfilePage() {
             <div className="flex items-center gap-1">
               <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
               {averageRating || '4.9'} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
+            </div>
+            <span className="w-px h-4 bg-slate-200" />
+            <div className="flex items-center gap-1">
+              <Heart className="w-4 h-4 text-red-500 fill-red-500" />
+              {profileStats.likes_count} {profileStats.likes_count === 1 ? 'like' : 'likes'}
+            </div>
+            <span className="w-px h-4 bg-slate-200" />
+            <div className="flex items-center gap-1">
+              👁️ {profileStats.views_count} {profileStats.views_count === 1 ? 'view' : 'views'}
             </div>
             <span className="w-px h-4 bg-slate-200" />
             <span className="capitalize">Plan: {vendor.plan || 'Free'}</span>
