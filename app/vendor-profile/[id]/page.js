@@ -335,7 +335,10 @@ export default function VendorProfilePage() {
               >
                 <MessageSquare className="w-5 h-5" /> Contact Vendor
               </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300">
+              <button
+                onClick={() => setShowDirectRFQ(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
+              >
                 Request Quote
               </button>
               <button
@@ -410,6 +413,67 @@ export default function VendorProfilePage() {
               {vendor.description || 'No description yet. Add your story and expertise here to win buyer trust.'}
             </p>
           </section>
+
+          {/* Featured Products Preview in Overview */}
+          {products.length > 0 && (
+            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">Featured Products</h3>
+                <p className="text-sm text-slate-600">Browse our most popular offerings</p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {products.slice(0, 4).map((product) => (
+                  <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-200 transition overflow-hidden">
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="aspect-[4/3] object-cover w-full"
+                      />
+                    )}
+                    <div className="p-3">
+                      <h4 className="font-semibold text-slate-900 text-sm truncate">{product.name}</h4>
+                      <p className="text-sm text-slate-600 mb-2">{product.price}</p>
+                      <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
+                        {product.status || 'In Stock'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {products.length > 4 && (
+                <p className="text-sm text-slate-500 mt-3">+ {products.length - 4} more products</p>
+              )}
+            </section>
+          )}
+
+          {/* Featured Services Preview in Overview */}
+          {services.length > 0 && (
+            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">Services We Offer</h3>
+                <p className="text-sm text-slate-600">Our professional service offerings</p>
+              </div>
+              <div className="space-y-3">
+                {services.slice(0, 4).map((service) => (
+                  <div key={service.id} className="flex gap-3 p-3 rounded-lg border border-slate-200 hover:border-amber-200 transition">
+                    <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                      ✓
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-900 text-sm font-semibold">{service.name}</p>
+                      {service.description && (
+                        <p className="text-slate-600 text-sm line-clamp-2">{service.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {services.length > 4 && (
+                <p className="text-sm text-slate-500 mt-3">+ {services.length - 4} more services</p>
+              )}
+            </section>
+          )}
               </>
             )}
 
@@ -582,6 +646,34 @@ export default function VendorProfilePage() {
               </div>
             </div>
           </section>
+
+          {/* Business Locations */}
+          {(vendor.locations && vendor.locations.length > 0) || vendor.location ? (
+            <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-slate-900">Business Locations</h4>
+                {canEdit && (
+                  <button
+                    onClick={() => setShowLocationManager(true)}
+                    className="text-xs font-semibold text-amber-700 hover:text-amber-800"
+                  >
+                    Manage
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2 text-sm text-slate-700">
+                {(vendor.locations || (vendor.location ? [vendor.location] : [])).filter(Boolean).map((loc, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-slate-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-slate-900">
+                      {loc}
+                      {vendor.county && idx === 0 ? `, ${vendor.county}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           {/* Business Hours */}
           {vendor.business_hours && (
