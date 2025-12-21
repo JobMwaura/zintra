@@ -13,36 +13,47 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
   const [success, setSuccess] = useState(false);
 
   const handleSubmitReview = async () => {
-    if (!vendor?.id) {
-      setError('Vendor information missing');
-      return;
-    }
-
-    if (!currentUser) {
-      setError('Please sign in to leave a review');
-      return;
-    }
-
-    if (selectedRating === 0) {
-      setError('Please select a rating');
-      return;
-    }
-
-    if (!reviewText.trim()) {
-      setError('Please write a review');
-      return;
-    }
-
+    // Validation checks
     try {
+      if (!vendor?.id) {
+        setError('Vendor information missing');
+        console.warn('⚠️ Vendor ID missing:', vendor);
+        return;
+      }
+
+      if (!currentUser) {
+        setError('Please sign in to leave a review');
+        return;
+      }
+
+      if (selectedRating === 0) {
+        setError('Please select a rating');
+        return;
+      }
+
+      if (!reviewText.trim()) {
+        setError('Please write a review');
+        return;
+      }
+
       setSubmitting(true);
       setError(null);
 
       // Get the reviewer's full name
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw new Error(`Auth error: ${authError.message}`);
+      
       const reviewerName = 
         userData?.user?.user_metadata?.full_name || 
         userData?.user?.email?.split('@')[0] || 
         'Anonymous';
+
+      console.log('📝 Submitting review:', {
+        vendor_id: vendor.id,
+        author: reviewerName,
+        rating: selectedRating,
+        comment: reviewText.trim(),
+      });
 
       // Insert the review
       const { data, error: insertError } = await supabase
@@ -55,7 +66,10 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
         })
         .select();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('❌ Insert error:', insertError);
+        throw new Error(insertError.message);
+      }
 
       console.log('✅ Review submitted successfully:', data);
       
@@ -69,12 +83,12 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
 
       // Trigger callback to refresh reviews
       if (onReviewAdded && data && data.length > 0) {
+        console.log('📌 Calling onReviewAdded with:', data[0]);
         onReviewAdded(data[0]);
       }
     } catch (err) {
       console.error('❌ Error submitting review:', err);
       setError(err.message || 'Failed to submit review');
-    } finally {
       setSubmitting(false);
     }
   };

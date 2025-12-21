@@ -805,7 +805,9 @@ export default function VendorProfilePage() {
                   vendor={vendor} 
                   currentUser={currentUser}
                   onReviewAdded={(newReview) => {
-                    setReviews([newReview, ...reviews]);
+                    if (newReview && newReview.id) {
+                      setReviews(prev => [newReview, ...prev]);
+                    }
                   }}
                 />
 
