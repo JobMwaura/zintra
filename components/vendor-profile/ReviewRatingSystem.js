@@ -63,7 +63,7 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
       setTimeout(() => setSuccess(false), 3000);
 
       // Trigger callback to refresh reviews
-      if (onReviewAdded) {
+      if (onReviewAdded && data && data.length > 0) {
         onReviewAdded(data[0]);
       }
     } catch (err) {
