@@ -110,7 +110,7 @@ SELECT
 FROM public.rfqs r
 LEFT JOIN public.rfq_recipients rr ON r.id = rr.rfq_id
 LEFT JOIN auth.users u ON r.user_id = u.id
-WHERE rr.vendor_id IS NOT NULL OR r.type = 'public'
+WHERE rr.vendor_id IS NOT NULL OR rr.recipient_type IS NULL
 ORDER BY r.created_at DESC;
 
 COMMENT ON VIEW public.vendor_rfq_inbox IS 'Unified view of all RFQs received by a vendor, including direct, matched, wizard, and public RFQs';
