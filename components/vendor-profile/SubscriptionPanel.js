@@ -1,8 +1,10 @@
 'use client';
 
 import { X, CheckCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function SubscriptionPanel({ vendor, onClose, subscription, daysRemaining }) {
+  const router = useRouter();
   if (!subscription) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -16,7 +18,10 @@ export default function SubscriptionPanel({ vendor, onClose, subscription, daysR
 
           <div className="p-6 text-center">
             <p className="text-slate-600 mb-4">No active subscription</p>
-            <button className="px-6 py-2 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700">
+            <button 
+              onClick={() => router.push('/subscription-plans')}
+              className="px-6 py-2 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700"
+            >
               Upgrade Plan
             </button>
           </div>
@@ -80,7 +85,10 @@ export default function SubscriptionPanel({ vendor, onClose, subscription, daysR
             >
               Close
             </button>
-            <button className="flex-1 px-4 py-2 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700">
+            <button 
+              onClick={() => router.push('/subscription-plans')}
+              className="flex-1 px-4 py-2 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700"
+            >
               Manage Subscription
             </button>
           </div>
