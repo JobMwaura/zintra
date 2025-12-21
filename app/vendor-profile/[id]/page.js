@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   LogOut,
   User,
+  Bell,
 } from 'lucide-react';
 import DirectRFQPopup from '@/components/DirectRFQPopup';
 import ProductUploadModal from '@/components/vendor-profile/ProductUploadModal';
@@ -61,6 +62,9 @@ export default function VendorProfilePage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
   const [statusUpdates, setStatusUpdates] = useState([]);
+  const [rfqInboxData, setRfqInboxData] = useState([]);
+  const [rfqStats, setRfqStats] = useState({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
+  const [rfqLoading, setRfqLoading] = useState(false);
 
   // Data needed for rendering
   const [products, setProducts] = useState([]);
@@ -151,6 +155,46 @@ export default function VendorProfilePage() {
 
     if (vendorId) fetchData();
   }, [vendorId]);
+
+  // Fetch RFQ Inbox data for vendor
+  useEffect(() => {
+    const fetchRFQData = async () => {
+      if (!canEdit || !vendor?.id) return;
+      
+      try {
+        setRfqLoading(true);
+        const { data: rfqs, error } = await supabase
+          .from('vendor_rfq_inbox')
+          .select('*')
+          .eq('vendor_id', vendor.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching RFQ data:', error);
+          return;
+        }
+
+        setRfqInboxData(rfqs || []);
+
+        // Calculate stats
+        const total = rfqs?.length || 0;
+        const unread = rfqs?.filter((r) => r.viewed_at === null).length || 0;
+        const pending = rfqs?.filter((r) => r.status === 'pending').length || 0;
+        const with_quotes = rfqs?.filter((r) => r.quote_count > 0).length || 0;
+
+        setRfqStats({ total, unread, pending, with_quotes });
+      } catch (err) {
+        console.error('Error loading RFQ data:', err);
+      } finally {
+        setRfqLoading(false);
+      }
+    };
+
+    const interval = setInterval(fetchRFQData, 30000); // Refresh every 30 seconds
+    fetchRFQData();
+
+    return () => clearInterval(interval);
+  }, [vendor?.id, canEdit]);
 
   const canEdit =
     !!currentUser &&
@@ -423,6 +467,40 @@ export default function VendorProfilePage() {
             </p>
           </section>
 
+          {/* Status Updates Box in Overview */}
+          {canEdit && (
+            <section className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Business Updates</h3>
+                  <p className="text-sm text-slate-600">Keep your customers informed</p>
+                </div>
+                <button
+                  onClick={() => setShowStatusUpdateModal(true)}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
+                >
+                  + Share Update
+                </button>
+              </div>
+              {statusUpdates.length > 0 && (
+                <div className="space-y-3">
+                  {statusUpdates.slice(0, 2).map((update) => (
+                    <div key={update.id} className="bg-white rounded-lg p-3 border border-amber-100">
+                      <p className="text-sm text-slate-700 line-clamp-2">{update.content}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                        <span>❤️ {update.likes_count || 0} likes</span>
+                        <span>{new Date(update.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {statusUpdates.length > 2 && (
+                    <p className="text-sm text-slate-600 text-center py-2">+ {statusUpdates.length - 2} more updates</p>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Featured Products Preview in Overview */}
           {products.length > 0 && (
             <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
@@ -667,6 +745,97 @@ export default function VendorProfilePage() {
 
         {/* Right Sidebar */}
         <div className="space-y-4">
+          {/* RFQ Inbox Widget - Top Right */}
+          {canEdit && (
+            <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 shadow-sm sticky top-20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                  <h4 className="text-base font-semibold text-slate-900">RFQ Inbox</h4>
+                  {rfqStats.unread > 0 && (
+                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                      {rfqStats.unread}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{rfqStats.total}</p>
+                  <p className="text-xs text-slate-600">Total</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-2xl font-bold text-red-600">{rfqStats.unread}</p>
+                  <p className="text-xs text-slate-600">Unread</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-2xl font-bold text-amber-600">{rfqStats.pending}</p>
+                  <p className="text-xs text-slate-600">Pending</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-2xl font-bold text-emerald-600">{rfqStats.with_quotes}</p>
+                  <p className="text-xs text-slate-600">With Quotes</p>
+                </div>
+              </div>
+
+              {/* Recent RFQs */}
+              {rfqInboxData.length > 0 && (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {rfqInboxData.slice(0, 5).map((rfq) => (
+                    <div
+                      key={rfq.id}
+                      className="bg-white rounded-lg p-3 border border-blue-100 hover:border-blue-300 cursor-pointer transition"
+                    >
+                      <div className="flex items-start gap-2 mb-1">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                            rfq.rfq_type === 'direct'
+                              ? 'bg-blue-100 text-blue-800'
+                              : rfq.rfq_type === 'matched'
+                              ? 'bg-purple-100 text-purple-800'
+                              : rfq.rfq_type === 'wizard'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-cyan-100 text-cyan-800'
+                          }`}
+                        >
+                          {rfq.rfq_type_label}
+                        </span>
+                        {rfq.viewed_at === null && (
+                          <span className="inline-flex w-2 h-2 bg-red-500 rounded-full mt-1.5"></span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900 line-clamp-1">{rfq.title}</p>
+                      <p className="text-xs text-slate-600">{rfq.category} • {rfq.county}</p>
+                      <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
+                        <span>💬 {rfq.quote_count}/{rfq.total_quotes} quotes</span>
+                        <span>{new Date(rfq.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {rfqInboxData.length === 0 && !rfqLoading && (
+                <p className="text-sm text-slate-600 text-center py-4">No RFQs yet</p>
+              )}
+
+              {rfqLoading && (
+                <p className="text-sm text-slate-600 text-center py-2">Loading RFQs...</p>
+              )}
+
+              {rfqInboxData.length > 0 && (
+                <button
+                  onClick={() => setActiveTab('rfqs')}
+                  className="w-full mt-3 px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition"
+                >
+                  View All RFQs
+                </button>
+              )}
+            </section>
+          )}
+
           {/* Business Information */}
           <section className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
             <h4 className="text-base font-semibold text-slate-900 mb-3">Business Information</h4>
