@@ -28,6 +28,9 @@ import CertificationManager from '@/components/vendor-profile/CertificationManag
 import HighlightsManager from '@/components/vendor-profile/HighlightsManager';
 import SubscriptionPanel from '@/components/vendor-profile/SubscriptionPanel';
 import ReviewResponses from '@/components/vendor-profile/ReviewResponses';
+import StatusUpdateModal from '@/components/vendor-profile/StatusUpdateModal';
+import StatusUpdateCard from '@/components/vendor-profile/StatusUpdateCard';
+import RFQInboxTab from '@/components/vendor-profile/RFQInboxTab';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -56,6 +59,8 @@ export default function VendorProfilePage() {
   const [showReviewResponses, setShowReviewResponses] = useState(false);
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
+  const [statusUpdates, setStatusUpdates] = useState([]);
 
   // Data needed for rendering
   const [products, setProducts] = useState([]);
@@ -373,18 +378,22 @@ export default function VendorProfilePage() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-slate-200">
-          {['overview', 'products', 'services', 'reviews'].map((tab) => (
+        <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
+          {['overview', 'products', 'services', 'reviews', ...(canEdit ? ['updates', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-semibold text-sm border-b-2 transition ${
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-amber-600 text-amber-700'
                   : 'border-transparent text-slate-600 hover:text-slate-900'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'updates'
+                ? 'Updates'
+                : tab === 'rfqs'
+                ? 'RFQ Inbox'
+                : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -606,6 +615,52 @@ export default function VendorProfilePage() {
               </div>
             </section>
           )}
+              </>
+            )}
+
+            {/* Status Updates Tab */}
+            {activeTab === 'updates' && canEdit && (
+              <>
+              <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-900">Business Updates</h3>
+                  <button
+                    onClick={() => setShowStatusUpdateModal(true)}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700"
+                  >
+                    Share Update
+                  </button>
+                </div>
+                <p className="text-sm text-slate-600 mb-6">
+                  Post updates about your business, special offers, achievements, and news to keep your customers informed.
+                </p>
+              </section>
+
+              {statusUpdates.length > 0 ? (
+                <div className="space-y-4">
+                  {statusUpdates.map((update) => (
+                    <StatusUpdateCard
+                      key={update.id}
+                      update={update}
+                      vendor={vendor}
+                      currentUser={currentUser}
+                      onDelete={(id) => setStatusUpdates(statusUpdates.filter((u) => u.id !== id))}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <section className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                  <p className="text-slate-600 mb-2">No updates yet</p>
+                  <p className="text-sm text-slate-500">Share your first business update to engage with customers</p>
+                </section>
+              )}
+              </>
+            )}
+
+            {/* RFQ Inbox Tab */}
+            {activeTab === 'rfqs' && canEdit && (
+              <>
+              <RFQInboxTab vendor={vendor} currentUser={currentUser} />
               </>
             )}
           </div>
@@ -917,6 +972,18 @@ export default function VendorProfilePage() {
           subscription={subscription}
           daysRemaining={daysRemaining}
           onClose={() => setShowSubscriptionPanel(false)}
+        />
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusUpdateModal && canEdit && (
+        <StatusUpdateModal
+          vendor={vendor}
+          onClose={() => setShowStatusUpdateModal(false)}
+          onSuccess={(newUpdate) => {
+            setStatusUpdates([newUpdate, ...statusUpdates]);
+            setShowStatusUpdateModal(false);
+          }}
         />
       )}
 
