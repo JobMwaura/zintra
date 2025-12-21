@@ -327,7 +327,7 @@ export default function VendorProfilePage() {
   const averageRating = useMemo(() => {
     if (!reviews.length) return null;
     const total = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-    return (total / reviews.length).toFixed(1);
+    return total / reviews.length;  // Return as number, not string
   }, [reviews]);
 
   const handleLogoUpload = async (event) => {
