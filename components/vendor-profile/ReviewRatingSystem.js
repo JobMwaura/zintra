@@ -13,6 +13,11 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
   const [success, setSuccess] = useState(false);
 
   const handleSubmitReview = async () => {
+    if (!vendor?.id) {
+      setError('Vendor information missing');
+      return;
+    }
+
     if (!currentUser) {
       setError('Please sign in to leave a review');
       return;
