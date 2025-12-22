@@ -237,7 +237,11 @@ export default function RFQCreate() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push('/rfq-dashboard')}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              router.push('/rfq-dashboard');
+            }}
             className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4 font-semibold transition"
           >
             <ArrowLeft size={20} />
@@ -291,8 +295,12 @@ export default function RFQCreate() {
               return (
                 <button
                   key={type.id}
-                  onClick={() => handleTypeSelect(type.id)}
-                  className={`w-full p-6 rounded-lg border-2 transition text-left ${type.color} hover:shadow-lg`}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleTypeSelect(type.id);
+                  }}
+                  className={`w-full p-6 rounded-lg border-2 transition text-left cursor-pointer ${type.color} hover:shadow-lg hover:border-current`}
                 >
                   <div className="flex items-start gap-4">
                     <Icon size={32} className="text-blue-600 flex-shrink-0" />
@@ -473,13 +481,21 @@ export default function RFQCreate() {
             {/* Action Buttons */}
             <div className="flex gap-4 mt-8">
               <button
-                onClick={() => setStep(1)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setStep(1);
+                }}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
               >
                 Back
               </button>
               <button
-                onClick={handleNext}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNext();
+                }}
                 className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
               >
                 Review
@@ -556,7 +572,11 @@ export default function RFQCreate() {
             {/* Action Buttons */}
             <div className="flex gap-4">
               <button
-                onClick={() => setStep(2)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setStep(2);
+                }}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
               >
                 Back to Edit
