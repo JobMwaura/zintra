@@ -24,6 +24,7 @@ export async function POST(request) {
     // Get the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('Missing or invalid auth header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized: No bearer token provided' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -33,31 +34,33 @@ export async function POST(request) {
     // Extract the JWT token
     const token = authHeader.substring(7);
 
-    // Create a user client with the token to get the user ID
-    const userClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        global: {
-          headers: {
-            authorization: `Bearer ${token}`,
-          },
-        },
+    // Decode JWT manually to extract user ID from 'sub' claim
+    let userId;
+    try {
+      // JWT format: header.payload.signature
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
       }
-    );
-
-    // Get the current user from the token
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    
-    if (authError || !user) {
-      console.error('Auth error:', authError);
+      
+      // Decode the payload (second part)
+      const payload = JSON.parse(
+        Buffer.from(parts[1], 'base64').toString('utf-8')
+      );
+      
+      if (!payload.sub) {
+        throw new Error('Missing user ID in token');
+      }
+      
+      userId = payload.sub;
+      console.log('✅ Token decoded successfully, user ID:', userId);
+    } catch (decodeError) {
+      console.error('❌ Token decode error:', decodeError.message);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        JSON.stringify({ error: 'Unauthorized: Invalid token format' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
-
-    const userId = user.id;
 
     // Validate inputs
     if (!vendorId || !action || !['like', 'unlike'].includes(action)) {
