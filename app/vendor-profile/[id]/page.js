@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import DirectRFQPopup from '@/components/DirectRFQPopup';
+import VendorMessagingModal from '@/components/VendorMessagingModal';
 import ProductUploadModal from '@/components/vendor-profile/ProductUploadModal';
 import ServiceUploadModal from '@/components/vendor-profile/ServiceUploadModal';
 import BusinessHoursEditor from '@/components/vendor-profile/BusinessHoursEditor';
@@ -61,6 +62,7 @@ export default function VendorProfilePage() {
   const [showCertManager, setShowCertManager] = useState(false);
   const [showHighlightsManager, setShowHighlightsManager] = useState(false);
   const [showDirectRFQ, setShowDirectRFQ] = useState(false);
+  const [showMessaging, setShowMessaging] = useState(false);
   const [showReviewResponses, setShowReviewResponses] = useState(false);
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -542,7 +544,7 @@ export default function VendorProfilePage() {
                 <>
                   {/* Show Contact & Request Quote buttons when viewing other vendors */}
                   <button
-                    onClick={() => setShowDirectRFQ(true)}
+                    onClick={() => setShowMessaging(true)}
                     className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100"
                   >
                     <MessageSquare className="w-5 h-5" /> Contact Vendor
@@ -1348,6 +1350,16 @@ export default function VendorProfilePage() {
           vendor={vendor}
           user={currentUser}
           onClose={() => setShowDirectRFQ(false)}
+        />
+      )}
+
+      {/* Vendor Messaging Modal */}
+      {showMessaging && vendor && currentUser && (
+        <VendorMessagingModal
+          vendorId={vendor.id}
+          vendorName={vendor.company_name}
+          userId={currentUser.id}
+          onClose={() => setShowMessaging(false)}
         />
       )}
     </div>
