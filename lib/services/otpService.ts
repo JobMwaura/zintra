@@ -77,7 +77,7 @@ interface TextSMSResponse {
   success?: boolean;
   message?: string;
   messageId?: string;
-  code?: string;
+  code?: string | number;
   responses?: Array<{
     'response-code'?: number;
     'response-description'?: string;
@@ -154,9 +154,10 @@ export async function sendSMSOTP(
       pass_type: 'plain'
     };
 
-    // Send request to TextSMS Kenya
+    // Send request to TextSMS Kenya using /sendotp/ endpoint
+    // (dedicated for OTP/sensitive transaction traffic)
     const response = await fetch(
-      'https://sms.textsms.co.ke/api/services/sendsms/',
+      'https://sms.textsms.co.ke/api/services/sendotp/',
       {
         method: 'POST',
         headers: {
@@ -233,8 +234,10 @@ export async function sendSMSOTPCustom(
       pass_type: 'plain'
     };
 
+    // Use /sendotp/ endpoint (for sensitive transaction traffic like OTP)
+    // instead of /sendsms/ endpoint
     const response = await fetch(
-      'https://sms.textsms.co.ke/api/services/sendsms/',
+      'https://sms.textsms.co.ke/api/services/sendotp/',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -244,22 +247,30 @@ export async function sendSMSOTPCustom(
 
     const data: TextSMSResponse = await response.json();
 
-    console.log('[OTP SMS Response] Full:', JSON.stringify(data, null, 2));
+    console.log('[OTP SendOTP] Request:', { 
+      phone: normalizedPhone, 
+      type, 
+      endpoint: '/sendotp/',
+      timestamp: new Date().toISOString()
+    });
+    console.log('[OTP SendOTP Response]', JSON.stringify(data, null, 2));
 
     // Check if response has the expected structure
-    // TextSMS Kenya might return { responses: [{...}] } instead of { success: boolean }
+    // TextSMS Kenya's /sendotp/ endpoint might return different format than /sendsms/
     let isSuccess = false;
-    let errorMessage = 'Failed to send SMS';
+    let errorMessage = 'Failed to send OTP';
     let messageId = '';
 
     if (data.success !== undefined) {
-      // Standard response format
+      // Standard response format { success: boolean, message?: string }
       isSuccess = data.success;
-      errorMessage = data.message || 'Failed to send SMS';
+      errorMessage = data.message || 'Failed to send OTP';
+      messageId = data.messageId || '';
+      console.log('[OTP SendOTP] Using standard format response');
     } else if (data.responses && Array.isArray(data.responses) && data.responses.length > 0) {
       // Array response format from TextSMS Kenya
       const firstResponse = data.responses[0];
-      console.log('[OTP SMS Response Item]', firstResponse);
+      console.log('[OTP SendOTP] Response item:', firstResponse);
       
       // Check for successful response (code 200 means success)
       const responseCode = firstResponse['response-code'] || firstResponse['response_code'];
@@ -267,10 +278,22 @@ export async function sendSMSOTPCustom(
       messageId = firstResponse['messageid'] || firstResponse['messageId'] || '';
       
       isSuccess = responseCode === 200 || responseCode === '200';
-      errorMessage = responseDesc || 'Failed to send SMS';
+      errorMessage = responseDesc || 'Failed to send OTP';
+      console.log('[OTP SendOTP] Using array format response - code:', responseCode, 'success:', isSuccess);
+    } else if (data.code !== undefined) {
+      // Alternative response format with just a code
+      isSuccess = data.code === '200' || data.code === 200 || data.code === '201';
+      errorMessage = data.message || `Failed to send OTP (code: ${data.code})`;
+      console.log('[OTP SendOTP] Using code-based format response - code:', data.code);
     }
 
-    console.log('[OTP SMS Parsed]', { isSuccess, errorMessage, messageId });
+    console.log('[OTP SendOTP Parsed]', { 
+      isSuccess, 
+      errorMessage, 
+      messageId, 
+      phone: normalizedPhone,
+      type
+    });
 
     return isSuccess
       ? {
