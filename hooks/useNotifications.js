@@ -166,7 +166,7 @@ export function useNotifications() {
       // Reset unread count
       setUnreadCount(0);
     } catch (err) {
-      console.error('Error marking all notifications as read:', err);
+      console.error('Error marking all as read:', err);
       setError(err.message);
     }
   }, [user?.id, supabase]);
@@ -285,8 +285,16 @@ function showNotificationToast(notification) {
   // Only show toast for unread notifications
   if (notification.read_at) return;
 
+  // Transform notification for toast component
+  // Handle both 'body' and 'message' field names
+  const toastNotification = {
+    type: notification.type || 'message',
+    title: notification.title,
+    body: notification.body || notification.message
+  };
+
   const event = new CustomEvent('notification:new', {
-    detail: notification
+    detail: toastNotification
   });
 
   window.dispatchEvent(event);

@@ -2,6 +2,7 @@
 
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import NotificationToast from '@/components/NotificationToast';
 
 export default function RootLayout({ children }) {
   return (
@@ -9,6 +10,7 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           {children}
+          <NotificationToast />
         </AuthProvider>
       </body>
     </html>

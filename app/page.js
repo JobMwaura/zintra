@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock } from 'lucide-react';
+import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { CountyTownFilter } from '@/components/LocationSelector';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
+import { useNotifications } from '@/hooks/useNotifications';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -132,6 +133,7 @@ const CATEGORY_CARDS = [
 
 export default function ZintraHomepage() {
   const router = useRouter();
+  const { unreadCount } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedCounty, setSelectedCounty] = useState('');
@@ -357,8 +359,13 @@ export default function ZintraHomepage() {
                           </button>
                         </Link>
                         <Link href="/user-messages">
-                          <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-200">
-                            Messages
+                          <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-200 flex items-center justify-between">
+                            <span>Messages</span>
+                            {unreadCount > 0 && (
+                              <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                {unreadCount}
+                              </span>
+                            )}
                           </button>
                         </Link>
                         <button

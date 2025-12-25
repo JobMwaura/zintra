@@ -5,25 +5,23 @@ import { supabase } from '@/lib/supabaseClient';
 import { Mail, Search, Plus, Send, Paperclip, AlertCircle, Check } from 'lucide-react';
 
 export default function VendorMessages() {
-  // Message type filter
-  const [messageType, setMessageType] = useState('all'); // 'all', 'customers', 'admin'
-  
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [user, setUser] = useState(null);
+  const [vendor, setVendor] = useState(null);
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState(''); // Status message
+  const [message, setMessage] = useState('');
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
-    fetchConversations();
+    fetchData();
   }, []);
 
-  // ✅ FIXED: Better conversation fetching with error handling
-  const fetchConversations = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setMessage('');
@@ -31,146 +29,131 @@ export default function VendorMessages() {
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !currentUser) {
-        console.error('Auth error:', userError);
+        console.error('❌ Auth error:', userError);
         setMessage('❌ Error: Please log in again');
         setLoading(false);
         return;
       }
 
+      console.log('✅ Current user:', currentUser?.id);
       setUser(currentUser);
 
-      // ✅ Get conversations (adjust table name if different)
-      const { data: allConversations, error: convError } = await supabase
-        .from('conversations')
-        .select(`
-          id,
-          participant_1_id,
-          participant_2_id,
-          conversation_type,
-          last_message_at,
-          created_at
-        `)
-        .or(`participant_1_id.eq.${currentUser.id},participant_2_id.eq.${currentUser.id}`)
-        .order('last_message_at', { ascending: false });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        setToken(session.access_token);
+      }
 
-      if (convError) {
-        console.error('Error fetching conversations:', convError);
-        setMessage(`❌ Error loading conversations: ${convError.message}`);
+      const { data: vendorData, error: vendorError } = await supabase
+        .from('vendors')
+        .select('id, user_id, company_name')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (vendorError) {
+        console.error('❌ Error fetching vendor:', vendorError);
+        setMessage('❌ Error loading vendor profile');
         setLoading(false);
         return;
       }
 
-      if (allConversations && allConversations.length > 0) {
-        // ✅ OPTIMIZED: Batch queries instead of N+1
-        
-        // Step 1: Get all user IDs we need to fetch
-        const otherUserIds = allConversations.map(conv => 
-          conv.participant_1_id === currentUser.id 
-            ? conv.participant_2_id 
-            : conv.participant_1_id
-        );
-
-        // Step 2: Fetch all vendor profiles in one query
-        const { data: allProfiles } = await supabase
-          .from('vendors')
-          .select('user_id, email, company_name')
-          .in('user_id', otherUserIds);
-        
-        const profileMap = {};
-        if (allProfiles) {
-          allProfiles.forEach(profile => {
-            profileMap[profile.user_id] = {
-              email: profile.email || 'Unknown User',
-              name: profile.company_name || profile.email || 'Unknown'
-            };
-          });
-        }
-
-        // Step 3: Fetch all messages for these conversations in one query
-        const convIds = allConversations.map(c => c.id);
-        const { data: allMessages } = await supabase
-          .from('messages')
-          .select('id, conversation_id, body, created_at, sender_id, is_read, message_type')
-          .in('conversation_id', convIds)
-          .order('created_at', { ascending: false });
-
-        // Build maps for quick lookup
-        const lastMessageMap = {};
-        const unreadCountMap = {};
-        
-        if (allMessages) {
-          allMessages.forEach(msg => {
-            // Get last message per conversation
-            if (!lastMessageMap[msg.conversation_id]) {
-              lastMessageMap[msg.conversation_id] = msg;
-            }
-            
-            // Count unread per conversation
-            if (!msg.is_read && msg.sender_id !== currentUser.id) {
-              unreadCountMap[msg.conversation_id] = (unreadCountMap[msg.conversation_id] || 0) + 1;
-            }
-          });
-        }
-
-        // Step 4: Enrich conversations with data from maps
-        const enrichedConvs = allConversations.map(conv => {
-          const otherId = conv.participant_1_id === currentUser.id 
-            ? conv.participant_2_id 
-            : conv.participant_1_id;
-          
-          const profile = profileMap[otherId] || { email: 'Unknown User', name: 'Unknown' };
-          const lastMsg = lastMessageMap[conv.id];
-
-          return {
-            id: conv.id,
-            otherUserId: otherId,
-            otherEmail: profile.email,
-            otherName: profile.name,
-            lastMessage: lastMsg?.body || 'No messages',
-            lastMessageTime: lastMsg?.created_at,
-            unreadCount: unreadCountMap[conv.id] || 0,
-            created_at: conv.created_at,
-            conversation_type: conv.conversation_type || 'customer',
-            messageType: lastMsg?.message_type || 'vendor_to_customer'
-          };
-        });
-
-        setConversations(enrichedConvs);
-      } else {
-        setConversations([]);
+      if (!vendorData) {
+        console.warn('⚠️  No vendor profile found for user:', currentUser.id);
+        setMessage('❌ You must have a vendor profile to use messages');
+        setLoading(false);
+        return;
       }
 
+      console.log('✅ Vendor data:', vendorData);
+      setVendor(vendorData);
+
+      const { data: allMessages, error: messagesError } = await supabase
+        .from('vendor_messages')
+        .select('*')
+        .eq('vendor_id', vendorData.id)
+        .order('created_at', { ascending: false });
+
+      if (messagesError) {
+        console.error('❌ Error fetching messages:', messagesError);
+        setMessage(`❌ Error loading messages: ${messagesError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Total messages fetched:', allMessages?.length || 0, allMessages);
+
+      const conversationMap = {};
+      if (allMessages) {
+        for (const msg of allMessages) {
+          const userId = msg.user_id;
+          if (!conversationMap[userId]) {
+            conversationMap[userId] = [];
+          }
+          conversationMap[userId].push(msg);
+        }
+      }
+
+      console.log('📦 Conversation map keys:', Object.keys(conversationMap));
+
+      const convList = Object.keys(conversationMap).map(userId => {
+        const msgs = conversationMap[userId];
+        const lastMsg = msgs[0];
+        const unreadCount = msgs.filter(m => m.is_read === false && m.sender_type === 'user').length;
+
+        return {
+          userId,
+          vendorId: vendorData.id,
+          userEmail: 'User',
+          lastMessage: lastMsg?.message_text || 'No messages',
+          lastMessageTime: lastMsg?.created_at,
+          unreadCount,
+          created_at: lastMsg?.created_at,
+          senderType: lastMsg?.sender_type
+        };
+      });
+
+      convList.sort((a, b) => {
+        const timeA = new Date(a.lastMessageTime || 0);
+        const timeB = new Date(b.lastMessageTime || 0);
+        return timeB - timeA;
+      });
+
+      console.log('💬 Final conversation list:', convList);
+      setConversations(convList);
       setLoading(false);
     } catch (err) {
-      console.error('Error in fetchConversations:', err);
+      console.error('Error in fetchData:', err);
       setMessage(`❌ Unexpected error: ${err.message}`);
       setLoading(false);
     }
   };
 
-  // ✅ FIXED: Better message fetching
-  const fetchMessages = async (conversationId) => {
+  const fetchMessages = async (userId) => {
+    if (!vendor) return;
+
     try {
+      console.log('🔄 Fetching messages for userId:', userId, 'vendorId:', vendor.id);
       const { data: msgs, error } = await supabase
-        .from('messages')
+        .from('vendor_messages')
         .select('*')
-        .eq('conversation_id', conversationId)
+        .eq('vendor_id', vendor.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error fetching messages:', error);
+        console.error('❌ Error fetching messages:', error);
         setMessage(`❌ Error loading messages: ${error.message}`);
         return;
       }
 
+      console.log('✅ Messages fetched:', msgs?.length || 0, msgs);
       setMessages(msgs || []);
 
-      // Mark messages as read
       const { error: updateError } = await supabase
-        .from('messages')
+        .from('vendor_messages')
         .update({ is_read: true })
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', user?.id);
+        .eq('vendor_id', vendor.id)
+        .eq('user_id', userId)
+        .eq('sender_type', 'user');
 
       if (updateError) {
         console.warn('Error marking as read:', updateError);
@@ -181,31 +164,20 @@ export default function VendorMessages() {
     }
   };
 
-  // Filter conversations by type
-  const filteredByType = conversations.filter(conv => {
-    if (messageType === 'all') return true;
-    if (messageType === 'customers') return conv.conversation_type === 'customer' || !conv.conversation_type;
-    if (messageType === 'admin') return conv.conversation_type === 'admin';
-    return true;
-  });
-
-  // Filter by search
-  const filteredConversations = filteredByType.filter(conv =>
-    conv.otherEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.otherName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredConversations = conversations.filter(conv =>
+    conv.userEmail.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSelectConversation = (conv) => {
     setSelectedConversation(conv);
     setMessage('');
-    fetchMessages(conv.id);
+    fetchMessages(conv.userId);
   };
 
-  // ✅ FIXED: Better message sending
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
-    if (!messageText.trim() || !selectedConversation || !user) {
+    if (!messageText.trim() || !selectedConversation || !vendor || !token) {
       setMessage('❌ Please enter a message');
       return;
     }
@@ -214,44 +186,36 @@ export default function VendorMessages() {
       setSending(true);
       setMessage('');
 
-      const { error } = await supabase
-        .from('messages')
-        .insert([{
-          conversation_id: selectedConversation.id,
-          sender_id: user.id,
-          recipient_id: selectedConversation.otherUserId,
-          body: messageText,
-          is_read: false,
-          message_type: selectedConversation.messageType || 'vendor_to_customer'
-        }]);
+      const response = await fetch('/api/vendor/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          vendorId: vendor.id,
+          userId: selectedConversation.userId,
+          messageText: messageText,
+          senderType: 'vendor'
+        })
+      });
 
-      if (error) {
-        console.error('Error sending message:', error);
-        setMessage(`❌ Error sending message: ${error.message}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Error sending message:', result.error);
+        setMessage(`❌ Error sending message: ${result.error}`);
         setSending(false);
         return;
-      }
-
-      // Update last message time in conversation
-      const { error: updateError } = await supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', selectedConversation.id);
-
-      if (updateError) {
-        console.warn('Error updating conversation:', updateError);
       }
 
       setMessageText('');
       setMessage('✅ Message sent!');
       
-      // Refresh messages and conversations
-      await fetchMessages(selectedConversation.id);
-      await fetchConversations();
+      await fetchMessages(selectedConversation.userId);
+      await fetchData();
       
-      // Clear success message after 2 seconds
       setTimeout(() => setMessage(''), 2000);
-      
       setSending(false);
     } catch (err) {
       console.error('Error:', err);
@@ -273,47 +237,9 @@ export default function VendorMessages() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Conversations List */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Messages</h2>
-          
-          {/* ✅ NEW: Message Type Filter Tabs */}
-          <div className="flex gap-2 mb-3 border-b border-gray-200 pb-2">
-            <button
-              onClick={() => setMessageType('all')}
-              className={`text-xs font-medium px-3 py-1 rounded transition ${
-                messageType === 'all'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setMessageType('customers')}
-              className={`text-xs font-medium px-3 py-1 rounded transition ${
-                messageType === 'customers'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Customers
-            </button>
-            <button
-              onClick={() => setMessageType('admin')}
-              className={`text-xs font-medium px-3 py-1 rounded transition ${
-                messageType === 'admin'
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Admin
-            </button>
-          </div>
-
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
             <input
@@ -326,42 +252,29 @@ export default function VendorMessages() {
           </div>
         </div>
 
-        {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
           {filteredConversations.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               <Mail className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-              <p className="text-sm">
-                {messageType === 'all' ? 'No conversations yet' : `No ${messageType} conversations`}
-              </p>
+              <p className="text-sm">No conversations yet</p>
             </div>
           ) : (
             <div className="space-y-1 p-2">
               {filteredConversations.map((conv) => (
                 <button
-                  key={conv.id}
+                  key={conv.userId}
                   onClick={() => handleSelectConversation(conv)}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    selectedConversation?.id === conv.id
+                    selectedConversation?.userId === conv.userId
                       ? 'bg-orange-100'
                       : 'hover:bg-gray-100'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900 text-sm">
-                          {conv.otherName}
-                        </p>
-                        {/* ✅ Badge showing message type */}
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          conv.conversation_type === 'admin'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {conv.conversation_type === 'admin' ? '👨‍💼 Admin' : '👤 Customer'}
-                        </span>
-                      </div>
+                      <p className="font-medium text-gray-900 text-sm">
+                        {conv.userEmail}
+                      </p>
                       <p className="text-xs text-gray-600 truncate mt-1">
                         {conv.lastMessage}
                       </p>
@@ -386,7 +299,6 @@ export default function VendorMessages() {
           )}
         </div>
 
-        {/* New Message Button */}
         <div className="p-4 border-t border-gray-200">
           <button
             className="w-full px-4 py-2 rounded-lg text-white font-medium flex items-center justify-center gap-2"
@@ -398,11 +310,9 @@ export default function VendorMessages() {
         </div>
       </div>
 
-      {/* Chat Area */}
       <div className="flex-1 flex flex-col bg-gray-50">
         {selectedConversation ? (
           <>
-            {/* Status Message */}
             {message && (
               <div className={`p-4 flex items-center gap-2 ${
                 message.includes('✅')
@@ -418,31 +328,19 @@ export default function VendorMessages() {
               </div>
             )}
 
-            {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {selectedConversation.otherName}
-                    </h3>
-                    {/* ✅ Message type badge in header */}
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      selectedConversation.conversation_type === 'admin'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {selectedConversation.conversation_type === 'admin' ? '👨‍💼 Admin' : '👤 Customer'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {selectedConversation.userEmail}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
                     Conversation started {new Date(selectedConversation.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 <div className="text-center py-12">
@@ -454,19 +352,19 @@ export default function VendorMessages() {
                 messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${msg.sender_type === 'vendor' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
                       className={`max-w-xs px-4 py-2 rounded-lg ${
-                        msg.sender_id === user?.id
+                        msg.sender_type === 'vendor'
                           ? 'text-white'
                           : 'bg-white text-gray-900 border border-gray-200'
                       }`}
-                      style={msg.sender_id === user?.id ? { backgroundColor: '#ea8f1e' } : {}}
+                      style={msg.sender_type === 'vendor' ? { backgroundColor: '#ea8f1e' } : {}}
                     >
-                      <p className="text-sm">{msg.body}</p>
+                      <p className="text-sm">{msg.message_text}</p>
                       <p className={`text-xs mt-1 ${
-                        msg.sender_id === user?.id
+                        msg.sender_type === 'vendor'
                           ? 'text-orange-100'
                           : 'text-gray-500'
                       }`}>
@@ -481,7 +379,6 @@ export default function VendorMessages() {
               )}
             </div>
 
-            {/* Message Input */}
             <form onSubmit={handleSendMessage} className="bg-white border-t border-gray-200 p-4">
               <div className="flex gap-3">
                 <button

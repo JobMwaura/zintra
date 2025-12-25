@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { LogOut, User, Phone, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import DashboardNotificationsPanel from '@/components/DashboardNotificationsPanel';
 
 export default function UserDashboard() {
   const { user, signOut } = useAuth();
@@ -237,6 +238,9 @@ export default function UserDashboard() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Notifications Panel */}
+            <DashboardNotificationsPanel />
+
             {/* Quick Links Card */}
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h3 className="text-lg font-bold mb-4" style={{ color: '#5f6466' }}>
