@@ -69,29 +69,57 @@ export default function UserMessagesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <div className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+      {/* Header with Navigation */}
+      <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          {/* Left Section - Back Button & Title */}
+          <div className="flex items-center space-x-4 flex-1">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-slate-100 rounded-lg transition"
+              title="Back"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 text-slate-600" />
+            </button>
+            
+            {/* Breadcrumb Navigation */}
+            <nav className="flex items-center space-x-2 text-sm">
+              <Link 
+                href={dashboardHref}
+                className="text-slate-600 hover:text-slate-900 transition"
+              >
+                Dashboard
+              </Link>
+              <span className="text-slate-400">/</span>
+              <span className="text-slate-900 font-medium">Messages</span>
+            </nav>
+          </div>
+
+          {/* Right Section - Title & Actions */}
           <div className="flex items-center space-x-4">
+            <div className="text-right hidden sm:block">
+              <h1 className="text-lg font-bold text-slate-900">Vendor Messages</h1>
+              <p className="text-xs text-slate-500">Direct conversations with vendors</p>
+            </div>
             <Link 
               href={dashboardHref}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-              title="Back to dashboard"
+              className="px-4 py-2 text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition border border-amber-200"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              Back
             </Link>
-            <div>
-              <p className="text-sm text-slate-500">Messages</p>
-              <h1 className="text-2xl font-bold text-slate-900">Vendor Messages</h1>
-            </div>
           </div>
-          <Link href={dashboardHref} className="text-amber-600 font-semibold hover:text-amber-700 transition">
-            Back to Dashboard
-          </Link>
         </div>
       </div>
 
+      {/* Mobile Header Title */}
+      <div className="bg-white border-b border-slate-200 sm:hidden px-4 py-3">
+        <h1 className="text-lg font-bold text-slate-900">Vendor Messages</h1>
+        <p className="text-xs text-slate-500">Direct conversations with vendors</p>
+      </div>
+
       {/* Messages Component */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <UserVendorMessagesTab />
       </div>
     </div>
