@@ -8,24 +8,33 @@
  * const { notifications, unreadCount, markAsRead, deleteNotification } = useNotifications();
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@supabase/supabase-js';
 
+// Initialize Supabase client once (outside component to prevent recreation)
+let supabaseClient = null;
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+  }
+  return supabaseClient;
+}
+
 export function useNotifications() {
   const { user } = useAuth();
-  
-  // Initialize Supabase client
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  const supabase = getSupabaseClient();
 
   // State management
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const subscriptionRef = useRef(null);
+  const fetchedRef = useRef(false);
 
   /**
    * Fetch all notifications for current user
@@ -70,7 +79,7 @@ export function useNotifications() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, supabase]);
+  }, [user?.id]);
 
   /**
    * Subscribe to real-time notification changes
@@ -84,13 +93,24 @@ export function useNotifications() {
       return;
     }
 
-    // Fetch initial notifications
-    fetchNotifications();
+    // Only fetch once when user changes
+    if (!fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchNotifications();
+    }
+
+    // Cleanup old subscription
+    if (subscriptionRef.current) {
+      try {
+        subscriptionRef.current.unsubscribe();
+      } catch (err) {
+        console.error('Error unsubscribing from old subscription:', err);
+      }
+    }
 
     // Subscribe to real-time INSERT events
-    let channel = null;
     try {
-      channel = supabase
+      const channel = supabase
         .channel(`notifications:user_id=eq.${user.id}`)
         .on(
           'postgres_changes',
@@ -132,6 +152,8 @@ export function useNotifications() {
             console.log('⚠ Real-time notifications connection closed');
           }
         });
+
+      subscriptionRef.current = channel;
     } catch (err) {
       console.error('Error setting up notification subscription:', err);
       setError(err?.message || 'Failed to subscribe to notifications');
@@ -140,14 +162,15 @@ export function useNotifications() {
     // Cleanup subscription on unmount
     return () => {
       try {
-        if (channel) {
-          channel.unsubscribe();
+        if (subscriptionRef.current) {
+          subscriptionRef.current.unsubscribe();
+          subscriptionRef.current = null;
         }
       } catch (err) {
         console.error('Error unsubscribing from notifications:', err);
       }
     };
-  }, [user?.id, fetchNotifications, supabase]);
+  }, [user?.id]);
 
   /**
    * Mark a single notification as read
