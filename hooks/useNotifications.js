@@ -32,7 +32,12 @@ export function useNotifications() {
    * Ordered by most recent first
    */
   const fetchNotifications = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -42,18 +47,26 @@ export function useNotifications() {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100); // Limit to prevent loading huge datasets
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Fetch error details:', fetchError);
+        throw fetchError;
+      }
 
-      setNotifications(data || []);
+      const notificationArray = Array.isArray(data) ? data : [];
+      setNotifications(notificationArray);
 
       // Calculate unread count
-      const unread = (data || []).filter(n => !n.read_at).length;
+      const unread = notificationArray.filter(n => !n.read_at).length;
       setUnreadCount(unread);
+      setError(null);
     } catch (err) {
       console.error('Error fetching notifications:', err);
-      setError(err.message);
+      setError(err?.message || 'Failed to load notifications');
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -64,44 +77,77 @@ export function useNotifications() {
    * Automatically fetches initial notifications and listens for new ones
    */
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
 
     // Fetch initial notifications
     fetchNotifications();
 
     // Subscribe to real-time INSERT events
-    const channel = supabase
-      .channel(`notifications:user_id=eq.${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const newNotification = payload.new;
-          
-          // Add new notification to the top of list
-          setNotifications(prev => [newNotification, ...prev]);
-          
-          // Increment unread count
-          if (!newNotification.read_at) {
-            setUnreadCount(prev => prev + 1);
-          }
+    let channel = null;
+    try {
+      channel = supabase
+        .channel(`notifications:user_id=eq.${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            try {
+              const newNotification = payload?.new;
+              
+              // Validate notification
+              if (!newNotification || !newNotification.id) {
+                console.warn('Invalid notification received:', newNotification);
+                return;
+              }
+              
+              // Add new notification to the top of list
+              setNotifications(prev => [newNotification, ...prev]);
+              
+              // Increment unread count
+              if (!newNotification.read_at) {
+                setUnreadCount(prev => prev + 1);
+              }
 
-          // Dispatch custom event for toast notifications
-          showNotificationToast(newNotification);
-        }
-      )
-      .subscribe();
+              // Dispatch custom event for toast notifications
+              showNotificationToast(newNotification);
+            } catch (err) {
+              console.error('Error handling new notification:', err);
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✓ Real-time notifications subscribed');
+          } else if (status === 'CLOSED') {
+            console.log('⚠ Real-time notifications connection closed');
+          }
+        });
+    } catch (err) {
+      console.error('Error setting up notification subscription:', err);
+      setError(err?.message || 'Failed to subscribe to notifications');
+    }
 
     // Cleanup subscription on unmount
     return () => {
-      channel.unsubscribe();
+      try {
+        if (channel) {
+          channel.unsubscribe();
+        }
+      } catch (err) {
+        console.error('Error unsubscribing from notifications:', err);
+      }
     };
-  }, [user?.id, fetchNotifications]);
+  }, [user?.id, fetchNotifications, supabase]);
 
   /**
    * Mark a single notification as read
