@@ -102,7 +102,7 @@ export default function VendorMessages() {
         return {
           userId,
           vendorId: vendorData.id,
-          userEmail: 'User',
+          userEmail: lastMsg?.sender_name || 'User',
           lastMessage: lastMsg?.message_text || 'No messages',
           lastMessageTime: lastMsg?.created_at,
           unreadCount,

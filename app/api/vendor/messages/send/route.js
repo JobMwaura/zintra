@@ -70,9 +70,21 @@ export async function POST(request) {
     // For user messages: sender must be the current user
     // For vendor messages: sender must own the vendor
     let actualUserId = currentUserId;
+    let senderName = currentUserEmail; // Default to email
     
     if (senderType === 'user') {
       actualUserId = currentUserId;
+      
+      // Get user's full name from users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('full_name, email')
+        .eq('id', currentUserId)
+        .single();
+      
+      if (!userError && userData) {
+        senderName = userData.full_name || userData.email || currentUserEmail;
+      }
     } else if (senderType === 'vendor') {
       // Verify vendor is owned by current user
       const { data: vendor, error: vendorError } = await supabase
@@ -91,6 +103,17 @@ export async function POST(request) {
       // If userId provided, use it (for responding to specific user)
       if (userId) {
         actualUserId = userId;
+        
+        // Get the user's full name for the response context
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('full_name, email')
+          .eq('id', userId)
+          .single();
+        
+        if (!userError && userData) {
+          // This doesn't change senderName for vendor messages, but keeps it as "You"
+        }
       }
     }
 
@@ -103,7 +126,7 @@ export async function POST(request) {
         sender_type: senderType,
         message_text: messageText,
         is_read: false,
-        sender_name: senderType === 'vendor' ? 'You' : currentUserEmail, // Add sender name
+        sender_name: senderType === 'vendor' ? 'You' : senderName,
       })
       .select();
 
