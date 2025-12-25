@@ -12,9 +12,28 @@ export default function UserVendorMessages() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [messageType, setMessageType] = useState('all'); // 'all', 'vendors', 'admin'
   const messagesEndRef = useRef(null);
+  const searchDebounceTimer = useRef(null);
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    if (searchDebounceTimer.current) {
+      clearTimeout(searchDebounceTimer.current);
+    }
+    
+    searchDebounceTimer.current = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => {
+      if (searchDebounceTimer.current) {
+        clearTimeout(searchDebounceTimer.current);
+      }
+    };
+  }, [searchTerm]);
 
   // Get current user and fetch conversations
   useEffect(() => {
@@ -31,7 +50,7 @@ export default function UserVendorMessages() {
 
         setCurrentUser(user);
 
-        // Fetch all conversations with vendors
+        // Fetch conversations with pagination (last 20)
         const { data: vendorMessages, error } = await supabase
           .from('vendor_messages')
           .select(`
@@ -42,7 +61,8 @@ export default function UserVendorMessages() {
             is_read
           `)
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(500); // Limit to prevent massive datasets
 
         if (error) {
           console.error('Error fetching messages:', error);
@@ -68,7 +88,7 @@ export default function UserVendorMessages() {
           });
         }
 
-        // Fetch vendor details for each conversation
+        // Fetch vendor details for each conversation (single query with IN)
         const vendorIds = Object.keys(conversationMap);
         if (vendorIds.length > 0) {
           const { data: vendors, error: vendorError } = await supabase
@@ -95,9 +115,10 @@ export default function UserVendorMessages() {
 
           setConversations(enrichedConversations);
         }
+
+        setLoading(false);
       } catch (err) {
         console.error('Error initializing messages:', err);
-      } finally {
         setLoading(false);
       }
     };
@@ -105,18 +126,20 @@ export default function UserVendorMessages() {
     initializeMessages();
   }, []);
 
-  // Fetch messages for selected vendor
+  // Fetch messages for selected vendor with real-time subscription
   useEffect(() => {
     if (!selectedVendor || !currentUser) return;
 
-    const fetchMessages = async () => {
+    const fetchAndSubscribeMessages = async () => {
       try {
+        // Initial fetch (last 100 messages for this conversation)
         const { data: msgs, error } = await supabase
           .from('vendor_messages')
           .select('*')
           .eq('vendor_id', selectedVendor.vendor_id)
           .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: true });
+          .order('created_at', { ascending: true })
+          .limit(100);
 
         if (error) {
           console.error('Error fetching messages:', error);
@@ -126,7 +149,7 @@ export default function UserVendorMessages() {
         setMessages(msgs || []);
 
         // Mark vendor messages as read
-        const { error: updateError } = await supabase
+        await supabase
           .from('vendor_messages')
           .update({ is_read: true })
           .eq('vendor_id', selectedVendor.vendor_id)
@@ -134,19 +157,38 @@ export default function UserVendorMessages() {
           .eq('sender_type', 'vendor')
           .eq('is_read', false);
 
-        if (updateError) {
-          console.warn('Error marking messages as read:', updateError);
-        }
+        // Subscribe to new messages for this vendor
+        const subscription = supabase
+          .channel(`messages:${selectedVendor.vendor_id}:${currentUser.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'vendor_messages',
+              filter: `vendor_id=eq.${selectedVendor.vendor_id} AND user_id=eq.${currentUser.id}`,
+            },
+            (payload) => {
+              console.log('🔔 New message received:', payload.new);
+              setMessages((prev) => [...prev, payload.new]);
+            }
+          )
+          .subscribe((status) => {
+            console.log('Subscription status:', status);
+          });
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (err) {
-        console.error('Error fetching messages:', err);
+        console.error('Error in fetchAndSubscribeMessages:', err);
       }
     };
 
-    fetchMessages();
-
-    // Poll for new messages every 3 seconds
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
+    const unsubscribe = fetchAndSubscribeMessages();
+    return () => {
+      unsubscribe?.then((unsub) => unsub?.());
+    };
   }, [selectedVendor, currentUser]);
 
   // Auto-scroll to latest message
@@ -223,7 +265,7 @@ export default function UserVendorMessages() {
   });
 
   const filteredConversations = filteredByType.filter(conv =>
-    conv.vendor_name.toLowerCase().includes(searchTerm.toLowerCase())
+    conv.vendor_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
   );
 
   return (
