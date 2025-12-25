@@ -362,6 +362,13 @@ export default function VendorMessages() {
                       }`}
                       style={msg.sender_type === 'vendor' ? { backgroundColor: '#ea8f1e' } : {}}
                     >
+                      <p className={`text-xs font-semibold mb-1 ${
+                        msg.sender_type === 'vendor'
+                          ? 'text-orange-100'
+                          : 'text-gray-700'
+                      }`}>
+                        {msg.sender_name || (msg.sender_type === 'vendor' ? 'You' : 'User')}
+                      </p>
                       <p className="text-sm">{msg.message_text}</p>
                       <p className={`text-xs mt-1 ${
                         msg.sender_type === 'vendor'

@@ -34,6 +34,7 @@ export async function POST(request) {
     // Extract and decode JWT token
     const token = authHeader.substring(7);
     let currentUserId;
+    let currentUserEmail;
     try {
       const parts = token.split('.');
       if (parts.length !== 3) throw new Error('Invalid JWT format');
@@ -42,6 +43,7 @@ export async function POST(request) {
       );
       if (!payload.sub) throw new Error('Missing user ID in token');
       currentUserId = payload.sub;
+      currentUserEmail = payload.email || 'user'; // Get email from token
     } catch (decodeError) {
       console.error('❌ Token decode error:', decodeError.message);
       return new Response(
@@ -101,6 +103,7 @@ export async function POST(request) {
         sender_type: senderType,
         message_text: messageText,
         is_read: false,
+        sender_name: senderType === 'vendor' ? 'You' : currentUserEmail, // Add sender name
       })
       .select();
 
