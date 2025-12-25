@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
@@ -137,10 +137,12 @@ export default function ZintraHomepage() {
   const [selectedCounty, setSelectedCounty] = useState('');
   const [selectedTown, setSelectedTown] = useState('');
   const [vendorProfileLink, setVendorProfileLink] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
   const [categories, setCategories] = useState([]);
   const [featuredVendors, setFeaturedVendors] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [showSignUpDropdown, setShowSignUpDropdown] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [stats, setStats] = useState([
     { icon: Users, value: '—', label: 'Verified Vendors' },
     { icon: TrendingUp, value: '—', label: 'Active RFQs' },
@@ -150,6 +152,10 @@ export default function ZintraHomepage() {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  
+  // Refs for menu management
+  const userMenuRef = useRef(null);
+  const signUpMenuRef = useRef(null);
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
@@ -195,27 +201,51 @@ export default function ZintraHomepage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           console.log('No user logged in');
+          setCurrentUser(null);
+          setVendorProfileLink('');
           return;
         }
+
+        // Set current user
+        setCurrentUser(user);
+
+        // Check if user is a vendor
         const { data: vendor, error } = await supabase
           .from('vendors')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
+
         if (error) {
           console.error('Error fetching vendor:', error);
           return;
         }
+
         if (vendor?.id) {
           console.log('Vendor found, setting profile link:', vendor.id);
           setVendorProfileLink(`/vendor-profile/${vendor.id}`);
         } else {
           console.log('No vendor found for user:', user.id);
+          setVendorProfileLink('');
         }
       } catch (err) {
         console.error('Error in fetchVendorProfile:', err);
       }
     };
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+      } else {
+        setCurrentUser(null);
+        setVendorProfileLink('');
+      }
+    });
+
+    fetchVendorProfile();
+
+    return () => subscription?.unsubscribe();;
     const fetchData = async () => {
       // Use comprehensive construction categories
       setCategories([
@@ -260,6 +290,21 @@ export default function ZintraHomepage() {
     fetchData();
   }, []);
 
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+      if (signUpMenuRef.current && !signUpMenuRef.current.contains(event.target)) {
+        setShowSignUpDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -276,20 +321,71 @@ export default function ZintraHomepage() {
               <Link href="/contact" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Contact</Link>
             </div>
             <div className="flex items-center space-x-4">
-              {vendorProfileLink ? (
-                <Link href={vendorProfileLink}>
-                  <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
-                    My Profile
-                  </button>
-                </Link>
+              {currentUser ? (
+                // User is logged in - show profile options
+                <div className="flex items-center space-x-4">
+                  {vendorProfileLink ? (
+                    // User is a vendor
+                    <Link href={vendorProfileLink}>
+                      <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                        My Profile
+                      </button>
+                    </Link>
+                  ) : (
+                    // User is not a vendor - show dashboard
+                    <Link href="/user-dashboard">
+                      <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                        Dashboard
+                      </button>
+                    </Link>
+                  )}
+                  
+                  {/* User menu dropdown */}
+                  <div className="relative" ref={userMenuRef}>
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className="text-gray-700 hover:text-gray-900 font-medium transition-colors border border-gray-300 px-4 py-2 rounded-lg"
+                    >
+                      Menu ▼
+                    </button>
+                    
+                    {showUserMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <Link href="/my-profile">
+                          <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-200">
+                            My Profile
+                          </button>
+                        </Link>
+                        <Link href="/user-messages">
+                          <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-200">
+                            Messages
+                          </button>
+                        </Link>
+                        <button
+                          onClick={async () => {
+                            await supabase.auth.signOut();
+                            setCurrentUser(null);
+                            setVendorProfileLink('');
+                            setShowUserMenu(false);
+                            router.push('/');
+                          }}
+                          className="w-full text-left px-4 py-2 text-red-700 hover:bg-red-50 transition-colors"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
+                // User is not logged in - show login and signup
                 <>
                   <Link href="/login">
                     <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Login</button>
                   </Link>
                   
                   {/* Sign Up Dropdown */}
-                  <div className="relative">
+                  <div className="relative" ref={signUpMenuRef}>
                     <button
                       type="button"
                       onClick={() => setShowSignUpDropdown(!showSignUpDropdown)}
