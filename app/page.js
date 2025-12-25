@@ -140,6 +140,7 @@ export default function ZintraHomepage() {
   const [categories, setCategories] = useState([]);
   const [featuredVendors, setFeaturedVendors] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
+  const [showSignUpDropdown, setShowSignUpDropdown] = useState(false);
   const [stats, setStats] = useState([
     { icon: Users, value: '—', label: 'Verified Vendors' },
     { icon: TrendingUp, value: '—', label: 'Active RFQs' },
@@ -286,11 +287,53 @@ export default function ZintraHomepage() {
                   <Link href="/login">
                     <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Login</button>
                   </Link>
-                  <Link href="/vendor-registration">
-                    <button className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                  
+                  {/* Sign Up Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowSignUpDropdown(!showSignUpDropdown)}
+                      className="text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm"
+                      style={{ backgroundColor: '#ca8637' }}
+                    >
                       Sign Up
                     </button>
-                  </Link>
+                    
+                    {/* Dropdown Menu */}
+                    {showSignUpDropdown && (
+                      <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                        {/* User Registration Option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            router.push('/user-registration');
+                            setShowSignUpDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-200 transition-colors"
+                        >
+                          <div className="font-semibold text-gray-900 mb-1">👤 User Sign Up</div>
+                          <div className="text-sm text-gray-600">
+                            Create an account to find and request quotes from verified contractors
+                          </div>
+                        </button>
+                        
+                        {/* Vendor Registration Option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            router.push('/vendor-registration');
+                            setShowSignUpDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-amber-50 transition-colors"
+                        >
+                          <div className="font-semibold text-gray-900 mb-1">🏢 Vendor Registration</div>
+                          <div className="text-sm text-gray-600">
+                            Register your construction business to receive RFQs and grow your client base
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
