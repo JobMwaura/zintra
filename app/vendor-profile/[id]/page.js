@@ -280,6 +280,7 @@ export default function VendorProfilePage() {
   const handleLikeProfile = async () => {
     if (!vendor?.id || !currentUser?.id) {
       console.warn('Cannot like: vendor.id=', vendor?.id, 'currentUser.id=', currentUser?.id);
+      alert('Please log in to like vendors');
       return;
     }
 
@@ -292,48 +293,47 @@ export default function VendorProfilePage() {
       setLikeLoading(true);
       console.log('🔹 Toggling like for vendor:', vendor.id, 'user:', currentUser.id, 'currently liked:', userLiked);
 
-      if (userLiked) {
-        // Unlike
-        console.log('→ Attempting to unlike...');
-        const { data, error } = await supabase
-          .from('vendor_profile_likes')
-          .delete()
-          .eq('vendor_id', vendor.id)
-          .eq('user_id', currentUser.id)
-          .select();
+      // Get the session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session. Please log in again.');
+      }
 
-        if (error) {
-          console.error('❌ Unlike error:', error);
-          throw error;
-        }
+      const action = userLiked ? 'unlike' : 'like';
+      console.log('→ Attempting to', action, '...');
 
-        console.log('✅ Unlike successful, deleted:', data);
-        setUserLiked(false);
-        setProfileStats((prev) => ({
-          ...prev,
-          likes_count: Math.max(0, prev.likes_count - 1),
-        }));
-      } else {
-        // Like
-        console.log('→ Attempting to like...');
-        const { data, error } = await supabase
-          .from('vendor_profile_likes')
-          .insert({
-            vendor_id: vendor.id,
-            user_id: currentUser.id,
-          })
-          .select();
+      const response = await fetch('/api/vendor/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          vendorId: vendor.id,
+          action: action,
+        }),
+      });
 
-        if (error) {
-          console.error('❌ Like error:', error);
-          throw error;
-        }
+      const result = await response.json();
 
-        console.log('✅ Like successful, inserted:', data);
+      if (!response.ok) {
+        console.error(`❌ ${action} error:`, result.error);
+        throw new Error(result.error || `Failed to ${action} vendor`);
+      }
+
+      console.log(`✅ ${action} successful:`, result.data);
+
+      if (action === 'like') {
         setUserLiked(true);
         setProfileStats((prev) => ({
           ...prev,
           likes_count: prev.likes_count + 1,
+        }));
+      } else {
+        setUserLiked(false);
+        setProfileStats((prev) => ({
+          ...prev,
+          likes_count: Math.max(0, prev.likes_count - 1),
         }));
       }
     } catch (err) {
