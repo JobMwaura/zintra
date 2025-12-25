@@ -103,6 +103,11 @@ EXECUTE FUNCTION public.decrement_profile_likes();
 -- Enable RLS on vendor_profile_likes
 ALTER TABLE public.vendor_profile_likes ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow read profile likes" ON public.vendor_profile_likes;
+DROP POLICY IF EXISTS "Allow insert profile likes" ON public.vendor_profile_likes;
+DROP POLICY IF EXISTS "Allow delete own profile likes" ON public.vendor_profile_likes;
+
 -- Policy: Allow SELECT for all
 CREATE POLICY "Allow read profile likes" ON public.vendor_profile_likes
 FOR SELECT USING (true);
@@ -117,6 +122,11 @@ FOR DELETE USING (auth.uid() = user_id);
 
 -- Enable RLS on vendor_profile_stats
 ALTER TABLE public.vendor_profile_stats ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow read profile stats" ON public.vendor_profile_stats;
+DROP POLICY IF EXISTS "Allow update own profile stats" ON public.vendor_profile_stats;
+DROP POLICY IF EXISTS "Allow update own profile stats update" ON public.vendor_profile_stats;
 
 -- Policy: Allow SELECT for all (everyone can see stats)
 CREATE POLICY "Allow read profile stats" ON public.vendor_profile_stats
