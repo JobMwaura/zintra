@@ -162,20 +162,23 @@ export default function UserRegistration() {
       if (result.verified) {
         setPhoneVerified(true);
         
-        // CRITICAL: Update database to mark phone as verified
+        // CRITICAL: Mark phone as verified in database
+        // Use UPSERT (insert or update) because users table row may not exist yet
         if (currentUser && currentUser.id) {
-          const { error: updateError } = await supabase
+          const { error: upsertError } = await supabase
             .from('users')
-            .update({
+            .upsert({
+              id: currentUser.id,
               phone_verified: true,
               phone_verified_at: new Date().toISOString(),
               phone_number: formData.phone,
-            })
-            .eq('id', currentUser.id);
+            }, { onConflict: 'id' });
 
-          if (updateError) {
-            console.error('Error updating phone verification in DB:', updateError);
+          if (upsertError) {
+            console.error('Error updating phone verification in DB:', upsertError);
             // Don't block the flow, just log it
+          } else {
+            console.log('✅ Phone marked as verified for user:', currentUser.id);
           }
         }
         
