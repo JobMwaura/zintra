@@ -8,16 +8,22 @@
  * const { rfqs, stats, loading, search, filter, sort } = useRFQDashboard();
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@supabase/supabase-js';
 
 export function useRFQDashboard() {
   const { user } = useAuth();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  
+  // Create supabase client once and reuse it
+  const supabaseRef = useRef(null);
+  if (!supabaseRef.current) {
+    supabaseRef.current = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+  }
+  const supabase = supabaseRef.current;
 
   // State management
   const [allRFQs, setAllRFQs] = useState([]);
@@ -83,11 +89,73 @@ export function useRFQDashboard() {
   }, [user?.id, supabase]);
 
   /**
-   * Initial fetch on mount
+   * Initial fetch on mount and when user changes
    */
   useEffect(() => {
-    fetchRFQs();
-  }, [fetchRFQs]);
+    if (user?.id) {
+      fetchRFQs();
+    }
+  }, [user?.id]);
+
+  /**
+   * Refetch RFQs when user returns to the page (page visibility)
+   * This ensures the page is up-to-date after a new RFQ is created
+   */
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        // User came back to the page - refetch data
+        console.log('Page became visible - refetching RFQs');
+        try {
+          setLoading(true);
+          setError(null);
+
+          const { data: rfqs, error: rfqError } = await supabase
+            .from('rfqs')
+            .select(`
+              id,
+              title,
+              description,
+              category,
+              budget_range,
+              location,
+              county,
+              deadline,
+              status,
+              created_at,
+              updated_at,
+              rfq_responses (
+                id,
+                vendor_id,
+                amount,
+                status as quote_status,
+                created_at,
+                vendors (
+                  id,
+                  company_name,
+                  rating
+                )
+              )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (rfqError) throw rfqError;
+          setAllRFQs(rfqs || []);
+        } catch (err) {
+          console.error('Error refetching RFQs on visibility change:', err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.id, supabase]);
 
   /**
    * Calculate statistics from RFQs
