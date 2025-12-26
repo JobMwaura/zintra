@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { CountySelect } from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
+import { getUserProfile } from '@/app/actions/getUserProfile';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -49,20 +50,19 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     const fetchUserProfile = async () => {
       setProfileLoading(true);
       try {
-        const { data: profile, error } = await supabase
-          .from('users')
-          .select('phone_verified, email_verified, phone, phone_number')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching user profile:', error);
+        // Use server action to bypass RLS restrictions
+        // Server-side service role can always read user data
+        const result = await getUserProfile(user.id);
+        
+        if (!result.success) {
+          console.error('❌ Error fetching user profile:', result.error);
           setUserProfile(null);
           setProfileLoading(false);
           return;
         }
 
-        console.log('✅ User profile fetched:', {
+        const profile = result.data;
+        console.log('✅ User profile fetched from server:', {
           id: user.id,
           phone_verified: profile?.phone_verified,
           email_verified: profile?.email_verified,
@@ -73,7 +73,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         setUserProfile(profile);
         setProfileLoading(false);
       } catch (err) {
-        console.error('Error fetching user profile:', err);
+        console.error('❌ Error in fetchUserProfile:', err);
         setUserProfile(null);
         setProfileLoading(false);
       }
