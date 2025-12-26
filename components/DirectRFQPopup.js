@@ -202,11 +202,19 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           rfq_id: rfqData.id,
           vendor_id: vendorRecipientId,
           user_id: user?.id || null,
+          project_title: form.title || 'Untitled Project',
           status: 'pending',
           created_at: new Date().toISOString(),
         }]);
 
-        if (requestError) throw requestError;
+        if (requestError) {
+          console.error('❌ Error sending RFQ request to vendor:', {
+            error: requestError.message,
+            code: requestError.code,
+            details: requestError.details,
+          });
+          throw requestError;
+        }
       }
 
       setStatus('✅ Request sent successfully! Redirecting...');
