@@ -46,7 +46,7 @@ export function useRFQDashboard() {
       setLoading(true);
       setError(null);
 
-      // Fetch RFQs with quote counts
+      // Fetch RFQs without embeds to avoid relationship conflicts
       const { data: rfqs, error: rfqError } = await supabase
         .from('rfqs')
         .select(`
@@ -60,26 +60,34 @@ export function useRFQDashboard() {
           deadline,
           status,
           created_at,
-          updated_at,
-          rfq_responses (
-            id,
-            vendor_id,
-            amount,
-            status as quote_status,
-            created_at,
-            vendors (
-              id,
-              company_name,
-              rating
-            )
-          )
+          updated_at
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (rfqError) throw rfqError;
 
-      setAllRFQs(rfqs || []);
+      // Fetch rfq_responses separately to get quote counts
+      if (rfqs && rfqs.length > 0) {
+        const rfqIds = rfqs.map(r => r.id);
+        const { data: responses, error: responsesError } = await supabase
+          .from('rfq_responses')
+          .select('id, rfq_id, vendor_id, amount, status')
+          .in('rfq_id', rfqIds);
+
+        if (responsesError) {
+          console.error('Error fetching responses:', responsesError);
+        } else {
+          // Merge responses into RFQs
+          const rfqsWithResponses = rfqs.map(rfq => ({
+            ...rfq,
+            rfq_responses: responses.filter(r => r.rfq_id === rfq.id) || []
+          }));
+          setAllRFQs(rfqsWithResponses);
+        }
+      } else {
+        setAllRFQs(rfqs || []);
+      }
     } catch (err) {
       console.error('Error fetching RFQs:', err);
       setError(err.message);
@@ -123,25 +131,33 @@ export function useRFQDashboard() {
               deadline,
               status,
               created_at,
-              updated_at,
-              rfq_responses (
-                id,
-                vendor_id,
-                amount,
-                status as quote_status,
-                created_at,
-                vendors (
-                  id,
-                  company_name,
-                  rating
-                )
-              )
+              updated_at
             `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
           if (rfqError) throw rfqError;
-          setAllRFQs(rfqs || []);
+
+          // Fetch rfq_responses separately
+          if (rfqs && rfqs.length > 0) {
+            const rfqIds = rfqs.map(r => r.id);
+            const { data: responses, error: responsesError } = await supabase
+              .from('rfq_responses')
+              .select('id, rfq_id, vendor_id, amount, status')
+              .in('rfq_id', rfqIds);
+
+            if (responsesError) {
+              console.error('Error fetching responses:', responsesError);
+            } else {
+              const rfqsWithResponses = rfqs.map(rfq => ({
+                ...rfq,
+                rfq_responses: responses.filter(r => r.rfq_id === rfq.id) || []
+              }));
+              setAllRFQs(rfqsWithResponses);
+            }
+          } else {
+            setAllRFQs(rfqs || []);
+          }
         } catch (err) {
           console.error('Error refetching RFQs on visibility change:', err);
         } finally {
