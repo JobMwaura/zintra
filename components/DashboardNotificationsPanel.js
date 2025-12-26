@@ -166,62 +166,64 @@ export default function DashboardNotificationsPanel() {
             const notificationLink = getNotificationLink(notification);
             
             return (
-              <Link key={notification.id} href={notificationLink}>
-                <div
-                  className={`p-3 rounded-lg border-l-4 cursor-pointer transition hover:bg-gray-50 ${
-                    notification.read_at
-                      ? 'bg-gray-50 border-gray-300'
-                      : 'bg-blue-50 border-blue-500'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    {/* Left: Icon and Content */}
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      {/* Icon */}
-                      <div className="flex-shrink-0 mt-1">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-semibold text-sm ${
-                          notification.read_at ? 'text-gray-700' : 'text-gray-900'
-                        }`}>
-                          {notification.title || 'Notification'}
-                        </p>
-                        <p className={`text-sm mt-1 line-clamp-2 ${
-                          notification.read_at ? 'text-gray-600' : 'text-gray-700'
-                        }`}>
-                          {notification.body || notification.message || 'No message'}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          {formatTimeAgo(notification.created_at)}
-                        </p>
-                      </div>
+              <div
+                key={notification.id}
+                className={`p-3 rounded-lg border-l-4 transition ${
+                  notification.read_at
+                    ? 'bg-gray-50 border-gray-300'
+                    : 'bg-blue-50 border-blue-500'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  {/* Left: Icon and Content - Clickable */}
+                  <Link 
+                    href={notificationLink}
+                    className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
+                  >
+                    {/* Icon */}
+                    <div className="flex-shrink-0 mt-1">
+                      {getNotificationIcon(notification.type)}
                     </div>
 
-                    {/* Right: Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {!notification.read_at && (
-                        <button
-                          onClick={(e) => handleMarkAsRead(notification.id, e)}
-                          className="p-1.5 hover:bg-gray-200 rounded-lg transition" 
-                          title="Mark as read"
-                        >
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                        </button>
-                      )}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold text-sm ${
+                        notification.read_at ? 'text-gray-700' : 'text-gray-900'
+                      }`}>
+                        {notification.title || 'Notification'}
+                      </p>
+                      <p className={`text-sm mt-1 line-clamp-2 ${
+                        notification.read_at ? 'text-gray-600' : 'text-gray-700'
+                      }`}>
+                        {notification.body || notification.message || 'No message'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {formatTimeAgo(notification.created_at)}
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* Right: Actions - NOT Clickable (not in Link) */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!notification.read_at && (
                       <button
-                        onClick={(e) => handleDelete(notification.id, e)}
-                        className="p-1.5 hover:bg-red-100 rounded-lg transition"
-                        title="Delete"
+                        onClick={(e) => handleMarkAsRead(notification.id, e)}
+                        className="p-1.5 hover:bg-gray-200 rounded-lg transition" 
+                        title="Mark as read"
                       >
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                        <CheckCircle className="w-4 h-4 text-green-600" />
                       </button>
-                    </div>
+                    )}
+                    <button
+                      onClick={(e) => handleDelete(notification.id, e)}
+                      className="p-1.5 hover:bg-red-100 rounded-lg transition"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </button>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })
         )}

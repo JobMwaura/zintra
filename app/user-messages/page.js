@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import UserVendorMessagesTab from '@/components/UserVendorMessagesTab';
 import { ArrowLeft, Loader } from 'lucide-react';
 
 export default function UserMessagesPage() {
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
   const supabase = createClient();
   const [dashboardHref, setDashboardHref] = useState('/user-dashboard');
   const [isLoading, setIsLoading] = useState(true);
@@ -17,19 +19,30 @@ export default function UserMessagesPage() {
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
+        // If auth context is still loading, wait for it
+        if (authLoading) {
+          return;
+        }
+
+        // Use auth context user instead of direct supabase call
+        if (!authUser) {
+          console.log('No authenticated user found, redirecting to login');
           router.push('/login');
           return;
         }
 
         // Check if user has a vendor profile (they shouldn't be here if they do)
-        const { data: vendor } = await supabase
+        const { data: vendor, error: vendorError } = await supabase
           .from('vendors')
           .select('id')
-          .eq('user_id', user.id)
+          .eq('user_id', authUser.id)
           .maybeSingle();
+
+        if (vendorError && vendorError.code !== 'PGRST116') {
+          // PGRST116 is "not found" error which is fine
+          console.error('Error checking vendor profile:', vendorError);
+          throw vendorError;
+        }
 
         // If they have a vendor profile, redirect them to vendor messages instead
         if (vendor?.id) {
@@ -50,7 +63,7 @@ export default function UserMessagesPage() {
     };
 
     checkUserAuth();
-  }, [router, supabase]);
+  }, [authUser, authLoading, router, supabase]);
 
   if (isLoading) {
     return (
