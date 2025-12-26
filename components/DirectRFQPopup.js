@@ -344,7 +344,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           {/* Location */}
           <div>
             <CountySelect
-              county={form.location}
+              value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
               required={true}
             />
