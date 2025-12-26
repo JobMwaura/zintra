@@ -393,6 +393,14 @@ function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supa
       const data = await response.json();
 
       if (response.ok && data.verified) {
+        // Get current user ID
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser?.id) {
+          setMessage('Error: Could not get user ID');
+          setMessageType('error');
+          return;
+        }
+
         // Update user profile with verified phone
         const { error: updateError } = await supabase
           .from('users')
@@ -401,13 +409,16 @@ function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supa
             phone_verified_at: new Date().toISOString(),
             phone_number: phone,
           })
-          .eq('id', (await supabase.auth.getUser()).data.user.id);
+          .eq('id', authUser.id);
 
         if (updateError) {
-          setMessage('Failed to update profile');
+          console.error('Error updating phone_verified:', updateError);
+          setMessage(`Failed to update profile: ${updateError.message}`);
           setMessageType('error');
           return;
         }
+
+        console.log('✅ Phone verified and saved for user:', authUser.id);
 
         setMessage('✓ Phone verified successfully!');
         setMessageType('success');

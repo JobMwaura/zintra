@@ -165,7 +165,8 @@ export default function UserRegistration() {
         // CRITICAL: Mark phone as verified in database
         // Use UPSERT (insert or update) because users table row may not exist yet
         if (currentUser && currentUser.id) {
-          const { error: upsertError } = await supabase
+          console.log('Attempting to save phone_verified for user:', currentUser.id);
+          const { data: upsertData, error: upsertError } = await supabase
             .from('users')
             .upsert({
               id: currentUser.id,
@@ -175,11 +176,18 @@ export default function UserRegistration() {
             }, { onConflict: 'id' });
 
           if (upsertError) {
-            console.error('Error updating phone verification in DB:', upsertError);
-            // Don't block the flow, just log it
+            console.error('❌ Error saving phone_verified to database:', {
+              error: upsertError,
+              message: upsertError.message,
+              code: upsertError.code,
+              userId: currentUser.id,
+            });
           } else {
             console.log('✅ Phone marked as verified for user:', currentUser.id);
+            console.log('Upsert data:', upsertData);
           }
+        } else {
+          console.warn('⚠️ CurrentUser not available during OTP verification');
         }
         
         setOtpMessage('✓ Phone verified successfully!');
