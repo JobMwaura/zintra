@@ -35,10 +35,36 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [status, setStatus] = useState('');
   const [quotaInfo, setQuotaInfo] = useState(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
-  /** 🧩 Determine user badge */
+  /** 🧩 Fetch user profile to check phone_verified status */
+  useEffect(() => {
+    if (!isOpen || !user?.id) {
+      setUserProfile(null);
+      return;
+    }
+
+    const fetchUserProfile = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('phone_verified, email_verified')
+          .eq('id', user.id)
+          .single();
+
+        setUserProfile(profile);
+      } catch (err) {
+        console.error('Error fetching user profile:', err);
+        setUserProfile(null);
+      }
+    };
+
+    fetchUserProfile();
+  }, [isOpen, user?.id]);
+
+  /** 🧩 Determine user badge based on phone_verified */
   const userBadge =
-    user?.email && user?.phone ? 'Verified Buyer' : 'Unverified Buyer';
+    userProfile?.phone_verified ? 'Verified Buyer' : 'Unverified Buyer';
 
   /** 📊 Check quota when user and modal open */
   useEffect(() => {
