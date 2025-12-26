@@ -176,11 +176,9 @@ export default function VendorProfilePage() {
       
       try {
         setRfqLoading(true);
-        const { data: rfqs, error } = await supabase
-          .from('vendor_rfq_inbox')
-          .select('*')
-          .eq('vendor_id', vendor.id)
-          .order('created_at', { ascending: false });
+        const { data: rfqs, error } = await supabase.rpc('get_vendor_rfq_inbox', {
+          p_vendor_id: vendor.id
+        });
 
         if (error) {
           console.error('Error fetching RFQ data:', error);

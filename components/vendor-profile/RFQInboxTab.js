@@ -32,11 +32,9 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('vendor_rfq_inbox')
-        .select('*')
-        .eq('vendor_id', vendor.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_vendor_rfq_inbox', {
+        p_vendor_id: vendor.id
+      });
 
       if (error) throw error;
 
