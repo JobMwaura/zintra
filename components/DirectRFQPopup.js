@@ -36,26 +36,46 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [quotaInfo, setQuotaInfo] = useState(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   /** 🧩 Fetch user profile to check phone_verified status */
   useEffect(() => {
     if (!isOpen || !user?.id) {
       setUserProfile(null);
+      setProfileLoading(false);
       return;
     }
 
     const fetchUserProfile = async () => {
+      setProfileLoading(true);
       try {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('users')
-          .select('phone_verified, email_verified')
+          .select('phone_verified, email_verified, phone, phone_number')
           .eq('id', user.id)
           .single();
 
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          setUserProfile(null);
+          setProfileLoading(false);
+          return;
+        }
+
+        console.log('✅ User profile fetched:', {
+          id: user.id,
+          phone_verified: profile?.phone_verified,
+          email_verified: profile?.email_verified,
+          phone: profile?.phone,
+          phone_number: profile?.phone_number,
+        });
+
         setUserProfile(profile);
+        setProfileLoading(false);
       } catch (err) {
         console.error('Error fetching user profile:', err);
         setUserProfile(null);
+        setProfileLoading(false);
       }
     };
 
@@ -276,12 +296,14 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <span
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  userBadge === 'Verified Buyer'
+                  profileLoading
+                    ? 'bg-gray-100 text-gray-500'
+                    : userBadge === 'Verified Buyer'
                     ? 'bg-green-100 text-green-700'
                     : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                {userBadge}
+                {profileLoading ? 'Checking status...' : userBadge}
               </span>
               <span className="text-slate-400">•</span>
               <span>{user?.email}</span>
