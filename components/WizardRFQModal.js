@@ -9,7 +9,7 @@ import RfqFormRenderer from '@/components/RfqFormRenderer';
 import AuthInterceptor from '@/components/AuthInterceptor';
 import templates from '@/public/data/rfq-templates-v2-hierarchical.json';
 
-export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onSuccess = () => {} }) {
+export default function WizardRFQModal({ isOpen = false, onClose = () => {}, onSuccess = () => {} }) {
   const {
     rfqType,
     setRfqType,
@@ -23,6 +23,9 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     sharedFields,
     updateSharedField,
     updateSharedFields,
+    selectedVendors,
+    toggleVendor,
+    setVendors,
     isGuestMode,
     setUserAuthenticated,
     guestPhone,
@@ -41,42 +44,79 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   const [successMessage, setSuccessMessage] = useState('');
   const [showResumeOption, setShowResumeOption] = useState(false);
   const [savedDraft, setSavedDraft] = useState(null);
+  const [availableVendors, setAvailableVendors] = useState([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
 
   const autoSaveRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
-    setRfqType('direct');
+
+    setRfqType('wizard');
+
     if (isInitialized() && selectedCategory && selectedJobType) {
-      const hasSavedDraft = hasDraft('direct', selectedCategory, selectedJobType);
+      const hasSavedDraft = hasDraft('wizard', selectedCategory, selectedJobType);
       if (hasSavedDraft) {
-        const draft = loadFormData('direct', selectedCategory, selectedJobType);
+        const draft = loadFormData('wizard', selectedCategory, selectedJobType);
         if (draft) {
           setSavedDraft(draft);
           setShowResumeOption(true);
         }
       }
     }
+
     autoSaveRef.current = createAutoSave(2000);
   }, [isOpen, selectedCategory, selectedJobType, setRfqType, isInitialized, hasDraft, loadFormData, createAutoSave]);
+
+  // Fetch available vendors when job type is selected
+  useEffect(() => {
+    if (currentStep === 'vendors' && selectedJobType) {
+      fetchVendors();
+    }
+  }, [currentStep, selectedJobType]);
+
+  const fetchVendors = async () => {
+    setLoadingVendors(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/vendors/by-jobtype?jobType=${selectedJobType}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setAvailableVendors(data.vendors || []);
+      } else {
+        setError(data.message || 'Failed to load vendors');
+        setAvailableVendors([]);
+      }
+    } catch (err) {
+      console.error('Fetch vendors error:', err);
+      setError('Network error loading vendors');
+      setAvailableVendors([]);
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
 
   const handleCategorySelect = (category) => {
     setSelectedCategory(category.slug);
     setSelectedJobType(null);
+    setVendors([]);
     setCurrentStep('jobtype');
     setError('');
   };
 
   const handleJobTypeSelect = (jobType) => {
     setSelectedJobType(jobType.slug);
-    setCurrentStep('template');
+    setCurrentStep('vendors');
     setError('');
   };
 
   const handleTemplateFieldChange = (fieldName, value) => {
     updateTemplateField(fieldName, value);
+
     if (autoSaveRef.current) {
-      autoSaveRef.current('direct', selectedCategory, selectedJobType, 
+      autoSaveRef.current('wizard', selectedCategory, selectedJobType, 
         { ...templateFields, [fieldName]: value }, 
         sharedFields
       );
@@ -85,8 +125,9 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   const handleSharedFieldChange = (fieldName, value) => {
     updateSharedField(fieldName, value);
+
     if (autoSaveRef.current) {
-      autoSaveRef.current('direct', selectedCategory, selectedJobType, 
+      autoSaveRef.current('wizard', selectedCategory, selectedJobType, 
         templateFields, 
         { ...sharedFields, [fieldName]: value }
       );
@@ -94,11 +135,18 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   };
 
   const handleProceedFromShared = () => {
-    saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+    if (selectedVendors.length === 0) {
+      setError('Please select at least one vendor');
+      return;
+    }
+
+    saveFormData('wizard', selectedCategory, selectedJobType, templateFields, sharedFields);
+
     if (isGuestMode) {
       setShowAuthModal(true);
       return;
     }
+
     submitRfq();
   };
 
@@ -117,36 +165,45 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     setIsSubmitting(true);
     setError('');
     setSuccessMessage('');
+
     try {
       const formData = getAllFormData();
+
       const response = await fetch('/api/rfq/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          selectedVendorIds: selectedVendors,
           guestPhone: guestPhone,
           guestPhoneVerified: guestPhoneVerified,
         }),
       });
+
       const result = await response.json();
+
       if (!response.ok) {
         if (response.status === 402) {
           setError("You've reached your monthly RFQ limit. Please upgrade your plan.");
           setIsSubmitting(false);
           return;
         }
+
         if (response.status === 429) {
           setError('Too many requests. Please wait a moment and try again.');
           setIsSubmitting(false);
           return;
         }
+
         setError(result.message || 'Failed to submit RFQ. Please try again.');
         setIsSubmitting(false);
         return;
       }
-      setSuccessMessage('RFQ submitted successfully! Vendors will contact you soon.');
-      clearFormData('direct', selectedCategory, selectedJobType);
+
+      setSuccessMessage('RFQ submitted successfully! Selected vendors will be contacted.');
+      clearFormData('wizard', selectedCategory, selectedJobType);
       resetRfq();
+
       setTimeout(() => {
         onSuccess(result);
         handleClose();
@@ -159,14 +216,19 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   };
 
   const handlePrevStep = () => {
-    saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+    saveFormData('wizard', selectedCategory, selectedJobType, templateFields, sharedFields);
+
     switch (currentStep) {
       case 'jobtype':
         setSelectedJobType(null);
+        setVendors([]);
         setCurrentStep('category');
         break;
-      case 'template':
+      case 'vendors':
         setCurrentStep('jobtype');
+        break;
+      case 'template':
+        setCurrentStep('vendors');
         break;
       case 'shared':
         setCurrentStep('template');
@@ -179,7 +241,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   const handleClose = () => {
     if (selectedCategory && selectedJobType) {
-      saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+      saveFormData('wizard', selectedCategory, selectedJobType, templateFields, sharedFields);
     }
     resetRfq();
     setCurrentStep('category');
@@ -192,6 +254,9 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     if (savedDraft) {
       updateTemplateFields(savedDraft.templateFields);
       updateSharedFields(savedDraft.sharedFields);
+      if (savedDraft.selectedVendors) {
+        setVendors(savedDraft.selectedVendors);
+      }
     }
     setShowResumeOption(false);
   };
@@ -201,7 +266,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   };
 
   const getProgressPercentage = () => {
-    const steps = ['category', 'jobtype', 'template', 'shared'];
+    const steps = ['category', 'jobtype', 'vendors', 'template', 'shared'];
     const currentIndex = steps.indexOf(currentStep);
     return Math.round(((currentIndex + 1) / steps.length) * 100);
   };
@@ -233,14 +298,14 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
         
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-start gap-4 border-b border-blue-800">
+        <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4 flex justify-between items-start gap-4 border-b border-purple-800">
           <div>
-            <h2 className="text-2xl font-bold">Get RFQ Quotes</h2>
-            <p className="text-blue-100 text-sm mt-1">Direct Request - Step {['category', 'jobtype', 'template', 'shared'].indexOf(currentStep) + 1} of 4</p>
+            <h2 className="text-2xl font-bold">Get Vendor Quotes</h2>
+            <p className="text-purple-100 text-sm mt-1">Wizard Mode - Step {['category', 'jobtype', 'vendors', 'template', 'shared'].indexOf(currentStep) + 1} of 5</p>
           </div>
           <button
             onClick={handleClose}
-            className="text-blue-100 hover:text-white text-2xl leading-none"
+            className="text-purple-100 hover:text-white text-2xl leading-none"
             aria-label="Close modal"
           >
             ✕
@@ -250,21 +315,21 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
         {!['category'].includes(currentStep) && (
           <div className="h-1 bg-gray-200">
             <div
-              className="h-full bg-blue-600 transition-all duration-300"
+              className="h-full bg-purple-600 transition-all duration-300"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
         )}
 
         {showResumeOption && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 m-4 rounded">
+          <div className="bg-purple-50 border-l-4 border-purple-500 p-4 m-4 rounded">
             <p className="text-sm text-gray-700 mb-3">
               📝 We found a saved draft. Would you like to resume?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={handleResumeDraft}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-medium"
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded font-medium"
               >
                 Resume Draft
               </button>
@@ -291,6 +356,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
         )}
 
         <div className="p-6">
+          
           {currentStep === 'category' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">What type of project do you have?</h3>
@@ -305,7 +371,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
           {currentStep === 'jobtype' && (
             <div className="space-y-4">
-              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="bg-purple-50 p-3 rounded border border-purple-200">
                 <p className="text-sm"><strong>Category:</strong> {getCategoryName()}</p>
               </div>
               <h3 className="text-lg font-semibold">What type of job is it?</h3>
@@ -317,11 +383,76 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
             </div>
           )}
 
-          {currentStep === 'template' && (
+          {currentStep === 'vendors' && (
             <div className="space-y-4">
-              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="bg-purple-50 p-3 rounded border border-purple-200">
                 <p className="text-sm"><strong>Category:</strong> {getCategoryName()}</p>
                 <p className="text-sm"><strong>Job Type:</strong> {getJobTypeName()}</p>
+              </div>
+              <h3 className="text-lg font-semibold">Select vendors to contact</h3>
+              <p className="text-sm text-gray-600">Choose one or more vendors you'd like to quote this project.</p>
+
+              {loadingVendors ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <span className="ml-3 text-gray-600">Loading vendors...</span>
+                </div>
+              ) : availableVendors.length === 0 ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+                  <p className="text-yellow-800 text-sm">
+                    No vendors available for this job type yet. Please try another category or continue.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {availableVendors.map((vendor) => (
+                    <label
+                      key={vendor.id}
+                      className="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedVendors.includes(vendor.id)}
+                        onChange={() => toggleVendor(vendor.id)}
+                        className="mt-1 w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                      />
+                      <div className="ml-3 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-gray-900">{vendor.name}</h4>
+                          {vendor.rating && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                              ⭐ {vendor.rating}
+                            </span>
+                          )}
+                        </div>
+                        {vendor.description && (
+                          <p className="text-sm text-gray-600 mt-1">{vendor.description}</p>
+                        )}
+                        {vendor.location && (
+                          <p className="text-xs text-gray-500 mt-1">📍 {vendor.location}</p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {selectedVendors.length > 0 && (
+                <div className="mt-4 p-3 bg-purple-50 rounded border border-purple-200">
+                  <p className="text-sm text-purple-900">
+                    ✓ {selectedVendors.length} vendor{selectedVendors.length !== 1 ? 's' : ''} selected
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === 'template' && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 p-3 rounded border border-purple-200 space-y-1">
+                <p className="text-sm"><strong>Category:</strong> {getCategoryName()}</p>
+                <p className="text-sm"><strong>Job Type:</strong> {getJobTypeName()}</p>
+                <p className="text-sm"><strong>Vendors:</strong> {selectedVendors.length} selected</p>
               </div>
               <h3 className="text-lg font-semibold">Tell us about your project</h3>
               <RfqFormRenderer
@@ -357,18 +488,20 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
             <button
               onClick={() => {
                 if (currentStep === 'category') setCurrentStep('jobtype');
-                else if (currentStep === 'jobtype') setCurrentStep('template');
+                else if (currentStep === 'jobtype') setCurrentStep('vendors');
+                else if (currentStep === 'vendors') setCurrentStep('template');
                 else if (currentStep === 'template') {
-                  saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+                  saveFormData('wizard', selectedCategory, selectedJobType, templateFields, sharedFields);
                   setCurrentStep('shared');
                 }
               }}
               disabled={
                 (currentStep === 'category' && !selectedCategory) ||
                 (currentStep === 'jobtype' && !selectedJobType) ||
+                (currentStep === 'vendors' && selectedVendors.length === 0) ||
                 isSubmitting
               }
-              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
+              className="flex-1 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
             >
               Next →
             </button>
@@ -377,7 +510,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
           {currentStep === 'shared' && (
             <button
               onClick={handleProceedFromShared}
-              disabled={isSubmitting}
+              disabled={isSubmitting || selectedVendors.length === 0}
               className="flex-1 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
             >
               {isSubmitting ? 'Submitting...' : 'Submit RFQ'}

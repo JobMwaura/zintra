@@ -1,0 +1,1000 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-12-31",
+  "description": "Zintra RFQ Template Schema - Dynamic, category-specific templates for Direct, Wizard, and Public RFQs",
+  "categories": [
+    {
+      "slug": "architectural_design",
+      "label": "Architectural & Design"
+    },
+    {
+      "slug": "building_masonry",
+      "label": "Building & Masonry"
+    },
+    {
+      "slug": "roofing_waterproofing",
+      "label": "Roofing & Waterproofing"
+    },
+    {
+      "slug": "doors_windows_glass",
+      "label": "Doors, Windows & Glass"
+    },
+    {
+      "slug": "flooring_wall_finishes",
+      "label": "Flooring & Wall Finishes"
+    },
+    {
+      "slug": "plumbing_drainage",
+      "label": "Plumbing & Drainage"
+    },
+    {
+      "slug": "electrical_solar",
+      "label": "Electrical & Solar"
+    },
+    {
+      "slug": "hvac_climate",
+      "label": "HVAC & Climate Control"
+    },
+    {
+      "slug": "carpentry_joinery",
+      "label": "Carpentry & Joinery"
+    },
+    {
+      "slug": "kitchens_wardrobes",
+      "label": "Kitchens & Wardrobes"
+    },
+    {
+      "slug": "painting_decorating",
+      "label": "Painting & Decorating"
+    },
+    {
+      "slug": "pools_water_features",
+      "label": "Swimming Pools & Water Features"
+    },
+    {
+      "slug": "landscaping_outdoor",
+      "label": "Landscaping & Outdoor Works"
+    },
+    {
+      "slug": "fencing_gates",
+      "label": "Fencing & Gates"
+    },
+    {
+      "slug": "security_smart",
+      "label": "Security & Smart Systems"
+    },
+    {
+      "slug": "interior_decor",
+      "label": "Interior Design & Décor"
+    },
+    {
+      "slug": "project_management_qs",
+      "label": "Project Management & QS"
+    },
+    {
+      "slug": "equipment_hire",
+      "label": "Equipment Hire & Scaffolding"
+    },
+    {
+      "slug": "waste_cleaning",
+      "label": "Waste Management & Site Cleaning"
+    },
+    {
+      "slug": "special_structures",
+      "label": "Special Structures (tanks, steel, etc.)"
+    }
+  ],
+  "sharedGeneralFields": [
+    {
+      "name": "project_title",
+      "label": "Project title",
+      "type": "text",
+      "placeholder": "e.g. 3-bedroom bungalow in Ruiru",
+      "required": false
+    },
+    {
+      "name": "location",
+      "label": "Location (town / estate)",
+      "type": "text",
+      "placeholder": "e.g. Ruiru, Membley, Kiambu Road",
+      "required": true
+    },
+    {
+      "name": "start_date",
+      "label": "When would you like to start?",
+      "type": "date",
+      "required": false
+    },
+    {
+      "name": "budget_level",
+      "label": "Approximate budget level",
+      "type": "select",
+      "options": [
+        "Budget-conscious",
+        "Mid-range",
+        "Premium / flexible"
+      ],
+      "required": false
+    },
+    {
+      "name": "extra_notes",
+      "label": "Anything else vendors should know?",
+      "type": "textarea",
+      "placeholder": "Special preferences, constraints, timelines...",
+      "required": false
+    }
+  ],
+  "templates": [
+    {
+      "id": "building_full_house",
+      "categorySlug": "building_masonry",
+      "label": "Full house construction",
+      "description": "For a complete residential house build from foundation to finishes.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "house_type",
+          "label": "What are you building?",
+          "type": "text",
+          "placeholder": "e.g. 3-bedroom bungalow, 4-bedroom maisonette",
+          "required": true
+        },
+        {
+          "name": "storeys",
+          "label": "Number of storeys",
+          "type": "select",
+          "options": ["Bungalow (1 storey)", "2 storeys", "3 storeys or more"],
+          "required": true
+        },
+        {
+          "name": "scope_of_work",
+          "label": "Scope of work",
+          "type": "select",
+          "options": [
+            "Full house build (foundation to finishes)",
+            "Structure only (foundation, walls, slab, roof)",
+            "Finishes and completion of existing structure",
+            "Extension or additional floor"
+          ],
+          "required": true
+        },
+        {
+          "name": "has_drawings",
+          "label": "Do you already have drawings and approvals?",
+          "type": "select",
+          "options": [
+            "Yes, full drawings and approvals",
+            "Drawings ready, approvals in progress",
+            "Drawings in progress",
+            "No, I still need plans and approvals"
+          ],
+          "required": true
+        },
+        {
+          "name": "material_supply",
+          "label": "Who should supply materials?",
+          "type": "select",
+          "options": [
+            "Contractor to supply materials and labour",
+            "I will supply materials, need labour only",
+            "Mix of both / open to advice"
+          ],
+          "required": true
+        },
+        {
+          "name": "plot_status",
+          "label": "Current status of the plot",
+          "type": "select",
+          "options": [
+            "Empty plot",
+            "Foundation done",
+            "Up to slab",
+            "Structure up, needs finishes",
+            "Ongoing build, need change of contractor"
+          ],
+          "required": true
+        },
+        {
+          "name": "approx_size",
+          "label": "Approximate house size (if known)",
+          "type": "text",
+          "placeholder": "e.g. 150 m² or 1600 sq ft",
+          "required": false
+        },
+        {
+          "name": "attachments",
+          "label": "Upload drawings or site photos (optional)",
+          "type": "file",
+          "multiple": true,
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "plumbing_full_house",
+      "categorySlug": "plumbing_drainage",
+      "label": "Full house plumbing installation",
+      "description": "For complete plumbing and drainage works for a house or extension.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "property_type",
+          "label": "Type of property",
+          "type": "select",
+          "options": [
+            "New residential house",
+            "Apartment unit(s)",
+            "Renovation / upgrade",
+            "Commercial building"
+          ],
+          "required": true
+        },
+        {
+          "name": "num_bathrooms",
+          "label": "Number of bathrooms/toilets",
+          "type": "number",
+          "min": 1,
+          "required": true
+        },
+        {
+          "name": "water_source",
+          "label": "Main water source",
+          "type": "select",
+          "options": ["County water", "Borehole", "Water vendor/truck", "Mixed"],
+          "required": false
+        },
+        {
+          "name": "storage_tank",
+          "label": "Water storage",
+          "type": "select",
+          "options": [
+            "No storage tank yet",
+            "On-ground tank needed",
+            "Roof-top tank needed",
+            "Both on-ground and roof-top"
+          ],
+          "required": false
+        },
+        {
+          "name": "sewer_solution",
+          "label": "Waste water/sewer solution",
+          "type": "select",
+          "options": [
+            "Connected to main sewer",
+            "Existing septic tank",
+            "Need new septic tank",
+            "Need soak pit / biodigester"
+          ],
+          "required": true
+        },
+        {
+          "name": "fixtures_spec",
+          "label": "Any preferred fixtures/brands?",
+          "type": "textarea",
+          "placeholder": "e.g. specific toilet, taps, sinks, water heaters...",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "electrical_house_solar",
+      "categorySlug": "electrical_solar",
+      "label": "House electrical wiring & solar backup",
+      "description": "For full wiring of a house plus optional solar backup/inverter system.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_type",
+          "label": "What do you need?",
+          "type": "select",
+          "options": [
+            "Full electrical wiring for new house",
+            "Rewiring / upgrade of existing house",
+            "Solar backup system only",
+            "Both wiring and solar backup"
+          ],
+          "required": true
+        },
+        {
+          "name": "num_rooms",
+          "label": "Approximate number of rooms",
+          "type": "number",
+          "min": 1,
+          "required": false
+        },
+        {
+          "name": "power_issues",
+          "label": "Any power issues?",
+          "type": "select",
+          "options": [
+            "Frequent blackouts",
+            "High bills, want efficiency",
+            "Just want backup for key loads",
+            "No major issues, new install"
+          ],
+          "required": false
+        },
+        {
+          "name": "solar_priority_loads",
+          "label": "What should run on solar/inverter?",
+          "type": "textarea",
+          "placeholder": "e.g. lights, TV, Wi-Fi, fridge, security system...",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "pool_new_construction",
+      "categorySlug": "pools_water_features",
+      "label": "New swimming pool construction",
+      "description": "For building a new residential or commercial swimming pool.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "pool_use",
+          "label": "Pool use",
+          "type": "select",
+          "options": ["Residential", "Commercial / public", "Hotel / Airbnb"],
+          "required": true
+        },
+        {
+          "name": "pool_size",
+          "label": "Preferred size (if known)",
+          "type": "text",
+          "placeholder": "e.g. 8m x 4m, 10m x 5m",
+          "required": false
+        },
+        {
+          "name": "pool_type",
+          "label": "Pool type",
+          "type": "select",
+          "options": [
+            "Skimmer pool",
+            "Deck-level pool",
+            "Infinity pool",
+            "Not sure, need advice"
+          ],
+          "required": true
+        },
+        {
+          "name": "finish_level",
+          "label": "Finishes level",
+          "type": "select",
+          "options": [
+            "Basic functional",
+            "Mid-range with good aesthetics",
+            "Premium / luxury finishes"
+          ],
+          "required": false
+        },
+        {
+          "name": "extras",
+          "label": "Extras",
+          "type": "multiselect",
+          "options": [
+            "Heating",
+            "Lighting",
+            "Water features (fountain, waterfall)",
+            "Decking",
+            "Pool cover"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "roofing_residential",
+      "categorySlug": "roofing_waterproofing",
+      "label": "Residential roofing & waterproofing",
+      "description": "For new roof installation or reroofing of residential properties.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_type",
+          "label": "Type of work",
+          "type": "select",
+          "options": [
+            "New roof installation",
+            "Reroofing / replacement",
+            "Roof repairs / maintenance",
+            "Waterproofing / leaks"
+          ],
+          "required": true
+        },
+        {
+          "name": "roof_material",
+          "label": "Preferred roof material",
+          "type": "select",
+          "options": [
+            "Concrete tiles",
+            "Metal/steel sheets",
+            "Asphalt shingles",
+            "Thatch",
+            "Other / no preference"
+          ],
+          "required": false
+        },
+        {
+          "name": "roof_size",
+          "label": "Approximate roof area (if known)",
+          "type": "text",
+          "placeholder": "e.g. 200 m² or 2150 sq ft",
+          "required": false
+        },
+        {
+          "name": "roof_pitch",
+          "label": "Roof pitch/slope",
+          "type": "select",
+          "options": [
+            "Low pitch (flat or near-flat)",
+            "Medium pitch",
+            "Steep pitch",
+            "Not sure"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "painting_house",
+      "categorySlug": "painting_decorating",
+      "label": "House painting & decoration",
+      "description": "For interior and exterior painting of residential properties.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_scope",
+          "label": "Scope of work",
+          "type": "select",
+          "options": [
+            "Interior painting only",
+            "Exterior painting only",
+            "Both interior and exterior",
+            "Painting + other finishes (wallpaper, etc.)"
+          ],
+          "required": true
+        },
+        {
+          "name": "property_size",
+          "label": "Property size",
+          "type": "text",
+          "placeholder": "e.g. 150 m² or 1600 sq ft",
+          "required": false
+        },
+        {
+          "name": "num_rooms",
+          "label": "Number of rooms",
+          "type": "number",
+          "min": 1,
+          "required": false
+        },
+        {
+          "name": "surface_condition",
+          "label": "Current surface condition",
+          "type": "select",
+          "options": [
+            "New/clean walls, ready to paint",
+            "Walls need light prep (fill holes, patch)",
+            "Walls need deep prep (sanding, stripping)",
+            "Not sure"
+          ],
+          "required": false
+        },
+        {
+          "name": "paint_finish",
+          "label": "Preferred paint finish",
+          "type": "select",
+          "options": [
+            "Matte/flat",
+            "Eggshell",
+            "Satin",
+            "Semi-gloss",
+            "High gloss"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "landscaping_garden",
+      "categorySlug": "landscaping_outdoor",
+      "label": "Landscaping & garden design",
+      "description": "For landscaping, garden design, and outdoor grounds work.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_type",
+          "label": "Type of landscaping work",
+          "type": "select",
+          "options": [
+            "Garden design and installation",
+            "Lawn/grass installation",
+            "Hardscape (paths, patios, etc.)",
+            "Trees and shrubs only",
+            "Complete grounds development"
+          ],
+          "required": true
+        },
+        {
+          "name": "plot_size",
+          "label": "Plot size (if known)",
+          "type": "text",
+          "placeholder": "e.g. 0.5 acres, 2000 m²",
+          "required": false
+        },
+        {
+          "name": "water_features",
+          "label": "Water features needed?",
+          "type": "select",
+          "options": [
+            "No water features",
+            "Simple fountain or bird bath",
+            "Pond or water garden",
+            "Stream or water wall",
+            "Unsure"
+          ],
+          "required": false
+        },
+        {
+          "name": "maintenance_level",
+          "label": "Desired maintenance level",
+          "type": "select",
+          "options": [
+            "Low maintenance",
+            "Medium (regular care)",
+            "High maintenance (showcase garden)"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "carpentry_built_ins",
+      "categorySlug": "carpentry_joinery",
+      "label": "Carpentry & built-in joinery",
+      "description": "For custom carpentry, wardrobes, shelving, and built-in furniture.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_type",
+          "label": "Type of carpentry work",
+          "type": "select",
+          "options": [
+            "Built-in wardrobes",
+            "Kitchen cabinetry",
+            "Wall shelving/storage",
+            "Custom furniture",
+            "Doors and doorframes",
+            "Mixed carpentry"
+          ],
+          "required": true
+        },
+        {
+          "name": "material_preference",
+          "label": "Material preference",
+          "type": "select",
+          "options": [
+            "Softwood (pine, etc.)",
+            "Hardwood (teak, mahogany, etc.)",
+            "MDF / engineered wood",
+            "Mix of materials",
+            "No preference"
+          ],
+          "required": false
+        },
+        {
+          "name": "finish_type",
+          "label": "Finish type",
+          "type": "select",
+          "options": [
+            "Natural wood finish",
+            "Stained and varnished",
+            "Painted",
+            "Lacquered / high-gloss",
+            "Other / undecided"
+          ],
+          "required": false
+        },
+        {
+          "name": "num_pieces",
+          "label": "Approximate number of pieces/items",
+          "type": "number",
+          "min": 1,
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "kitchens_design_install",
+      "categorySlug": "kitchens_wardrobes",
+      "label": "Kitchen design & installation",
+      "description": "For complete kitchen design, cabinetry, and installation.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "scope",
+          "label": "Scope of work",
+          "type": "select",
+          "options": [
+            "Kitchen design only",
+            "Cabinetry and countertops",
+            "Full kitchen remodel (design + install)",
+            "Kitchen extension"
+          ],
+          "required": true
+        },
+        {
+          "name": "kitchen_size",
+          "label": "Kitchen size (if known)",
+          "type": "text",
+          "placeholder": "e.g. 12 m² or 130 sq ft",
+          "required": false
+        },
+        {
+          "name": "appliances",
+          "label": "Who supplies appliances?",
+          "type": "select",
+          "options": [
+            "Contractor to supply",
+            "I will supply",
+            "Mix of both",
+            "Not decided yet"
+          ],
+          "required": false
+        },
+        {
+          "name": "style_preference",
+          "label": "Style preference",
+          "type": "select",
+          "options": [
+            "Modern minimalist",
+            "Traditional",
+            "Contemporary",
+            "European",
+            "Other / no preference"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "doors_windows_installation",
+      "categorySlug": "doors_windows_glass",
+      "label": "Doors, windows & glass installation",
+      "description": "For installation of doors, windows, and glass systems.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "item_type",
+          "label": "What are you installing?",
+          "type": "multiselect",
+          "options": [
+            "External doors",
+            "Internal doors",
+            "Windows",
+            "Glass partitions",
+            "Mirrors",
+            "Glass railings"
+          ],
+          "required": true
+        },
+        {
+          "name": "num_windows",
+          "label": "Number of windows (if applicable)",
+          "type": "number",
+          "min": 0,
+          "required": false
+        },
+        {
+          "name": "num_doors",
+          "label": "Number of doors (if applicable)",
+          "type": "number",
+          "min": 0,
+          "required": false
+        },
+        {
+          "name": "material_type",
+          "label": "Preferred material",
+          "type": "select",
+          "options": [
+            "Aluminum",
+            "Wood",
+            "uPVC / composite",
+            "Steel",
+            "Mix / undecided"
+          ],
+          "required": false
+        },
+        {
+          "name": "glass_spec",
+          "label": "Glass specification (if needed)",
+          "type": "select",
+          "options": [
+            "Plain glass",
+            "Tinted",
+            "Tempered safety glass",
+            "Double glazing",
+            "Low-E / energy efficient",
+            "Not sure"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "security_system_install",
+      "categorySlug": "security_smart",
+      "label": "Security & smart home systems",
+      "description": "For security systems, CCTV, access control, and smart home integration.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "security_type",
+          "label": "Type of security needed",
+          "type": "multiselect",
+          "options": [
+            "CCTV cameras",
+            "Alarm system",
+            "Access control (gates, doors)",
+            "Intercom",
+            "Safe room / secure door",
+            "Smart locks"
+          ],
+          "required": true
+        },
+        {
+          "name": "property_type",
+          "label": "Property type",
+          "type": "select",
+          "options": [
+            "Residential house",
+            "Apartment",
+            "Commercial office",
+            "Retail/shop",
+            "Industrial"
+          ],
+          "required": true
+        },
+        {
+          "name": "num_cameras",
+          "label": "Number of CCTV cameras (if applicable)",
+          "type": "number",
+          "min": 0,
+          "required": false
+        },
+        {
+          "name": "smart_features",
+          "label": "Smart home features desired",
+          "type": "select",
+          "options": [
+            "Basic security only",
+            "Security + smart lighting",
+            "Full smart home integration",
+            "No smart features"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "flooring_installation",
+      "categorySlug": "flooring_wall_finishes",
+      "label": "Flooring & wall finishes",
+      "description": "For flooring installation and wall finishing works.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_type",
+          "label": "Type of work",
+          "type": "select",
+          "options": [
+            "Flooring installation only",
+            "Wall finishes only",
+            "Both flooring and walls",
+            "Floor + wall tiling"
+          ],
+          "required": true
+        },
+        {
+          "name": "flooring_material",
+          "label": "Flooring material",
+          "type": "select",
+          "options": [
+            "Ceramic tiles",
+            "Porcelain tiles",
+            "Natural stone",
+            "Wooden floor",
+            "Laminate",
+            "Vinyl / PVC",
+            "Polished concrete",
+            "Multiple materials"
+          ],
+          "required": false
+        },
+        {
+          "name": "area_size",
+          "label": "Area to be covered (if known)",
+          "type": "text",
+          "placeholder": "e.g. 200 m² or 2150 sq ft",
+          "required": false
+        },
+        {
+          "name": "subfloor_condition",
+          "label": "Subfloor condition",
+          "type": "select",
+          "options": [
+            "New concrete slab ready",
+            "Existing floor needs removal",
+            "Existing floor OK, just overlay",
+            "Not sure"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "fencing_gates_install",
+      "categorySlug": "fencing_gates",
+      "label": "Fencing & gates installation",
+      "description": "For fencing, gates, and boundary works.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "fencing_type",
+          "label": "Type of fencing",
+          "type": "select",
+          "options": [
+            "Wire/mesh fencing",
+            "Wooden fence",
+            "Brick/concrete walls",
+            "Metal railings",
+            "Combination / mixed",
+            "Not sure"
+          ],
+          "required": true
+        },
+        {
+          "name": "fence_height",
+          "label": "Fence height",
+          "type": "select",
+          "options": [
+            "Up to 1 meter",
+            "1-1.5 meters",
+            "1.5-2 meters",
+            "Over 2 meters"
+          ],
+          "required": false
+        },
+        {
+          "name": "fence_length",
+          "label": "Total fence length (if known)",
+          "type": "text",
+          "placeholder": "e.g. 150 meters",
+          "required": false
+        },
+        {
+          "name": "gates_needed",
+          "label": "Gates required?",
+          "type": "select",
+          "options": [
+            "Main gate only",
+            "Multiple gates",
+            "Automatic gate system",
+            "No gates"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "hvac_installation",
+      "categorySlug": "hvac_climate",
+      "label": "HVAC & climate control systems",
+      "description": "For air conditioning, heating, and ventilation systems.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "work_type",
+          "label": "Type of work",
+          "type": "select",
+          "options": [
+            "Air conditioning installation",
+            "Heating system installation",
+            "Ventilation system",
+            "Full HVAC system",
+            "Upgrade/replacement"
+          ],
+          "required": true
+        },
+        {
+          "name": "property_size",
+          "label": "Property size",
+          "type": "text",
+          "placeholder": "e.g. 200 m² or 2150 sq ft",
+          "required": false
+        },
+        {
+          "name": "num_zones",
+          "label": "Number of zones/rooms to condition",
+          "type": "number",
+          "min": 1,
+          "required": false
+        },
+        {
+          "name": "system_type",
+          "label": "System type preference",
+          "type": "select",
+          "options": [
+            "Window units",
+            "Split system (wall-mounted)",
+            "Central ducted system",
+            "VRF / multi-split",
+            "Not sure / need advice"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "interior_design_consultation",
+      "categorySlug": "interior_decor",
+      "label": "Interior design & décor consultation",
+      "description": "For interior design planning, styling, and décor advice.",
+      "rfqTypes": ["direct", "wizard", "public"],
+      "fields": [
+        {
+          "name": "service_type",
+          "label": "Type of service needed",
+          "type": "select",
+          "options": [
+            "Design consultation only",
+            "Design + shopping/sourcing",
+            "Full implementation",
+            "Styling refresh of existing space"
+          ],
+          "required": true
+        },
+        {
+          "name": "space_type",
+          "label": "Space type",
+          "type": "select",
+          "options": [
+            "Residential living area",
+            "Bedroom",
+            "Kitchen/dining",
+            "Bathroom",
+            "Commercial office",
+            "Retail space"
+          ],
+          "required": true
+        },
+        {
+          "name": "style_preference",
+          "label": "Style preference",
+          "type": "select",
+          "options": [
+            "Modern",
+            "Contemporary",
+            "Traditional",
+            "Minimalist",
+            "Eclectic",
+            "Other / undecided"
+          ],
+          "required": false
+        },
+        {
+          "name": "budget_range",
+          "label": "Budget range for décor",
+          "type": "select",
+          "options": [
+            "Under 50,000 KES",
+            "50,000 - 150,000 KES",
+            "150,000 - 500,000 KES",
+            "Over 500,000 KES"
+          ],
+          "required": false
+        }
+      ]
+    }
+  ]
+}

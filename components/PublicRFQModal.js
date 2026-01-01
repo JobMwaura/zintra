@@ -9,7 +9,7 @@ import RfqFormRenderer from '@/components/RfqFormRenderer';
 import AuthInterceptor from '@/components/AuthInterceptor';
 import templates from '@/public/data/rfq-templates-v2-hierarchical.json';
 
-export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onSuccess = () => {} }) {
+export default function PublicRFQModal({ isOpen = false, onClose = () => {}, onSuccess = () => {} }) {
   const {
     rfqType,
     setRfqType,
@@ -23,8 +23,6 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     sharedFields,
     updateSharedField,
     updateSharedFields,
-    isGuestMode,
-    setUserAuthenticated,
     guestPhone,
     guestPhoneVerified,
     getAllFormData,
@@ -46,17 +44,20 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   useEffect(() => {
     if (!isOpen) return;
-    setRfqType('direct');
+
+    setRfqType('public');
+
     if (isInitialized() && selectedCategory && selectedJobType) {
-      const hasSavedDraft = hasDraft('direct', selectedCategory, selectedJobType);
+      const hasSavedDraft = hasDraft('public', selectedCategory, selectedJobType);
       if (hasSavedDraft) {
-        const draft = loadFormData('direct', selectedCategory, selectedJobType);
+        const draft = loadFormData('public', selectedCategory, selectedJobType);
         if (draft) {
           setSavedDraft(draft);
           setShowResumeOption(true);
         }
       }
     }
+
     autoSaveRef.current = createAutoSave(2000);
   }, [isOpen, selectedCategory, selectedJobType, setRfqType, isInitialized, hasDraft, loadFormData, createAutoSave]);
 
@@ -75,8 +76,9 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   const handleTemplateFieldChange = (fieldName, value) => {
     updateTemplateField(fieldName, value);
+
     if (autoSaveRef.current) {
-      autoSaveRef.current('direct', selectedCategory, selectedJobType, 
+      autoSaveRef.current('public', selectedCategory, selectedJobType, 
         { ...templateFields, [fieldName]: value }, 
         sharedFields
       );
@@ -85,8 +87,9 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   const handleSharedFieldChange = (fieldName, value) => {
     updateSharedField(fieldName, value);
+
     if (autoSaveRef.current) {
-      autoSaveRef.current('direct', selectedCategory, selectedJobType, 
+      autoSaveRef.current('public', selectedCategory, selectedJobType, 
         templateFields, 
         { ...sharedFields, [fieldName]: value }
       );
@@ -94,17 +97,12 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   };
 
   const handleProceedFromShared = () => {
-    saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
-    if (isGuestMode) {
-      setShowAuthModal(true);
-      return;
-    }
-    submitRfq();
+    saveFormData('public', selectedCategory, selectedJobType, templateFields, sharedFields);
+    setShowAuthModal(true);
   };
 
-  const handleAuthSuccess = (user) => {
+  const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    setUserAuthenticated(user);
     submitRfq();
   };
 
@@ -117,8 +115,10 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     setIsSubmitting(true);
     setError('');
     setSuccessMessage('');
+
     try {
       const formData = getAllFormData();
+
       const response = await fetch('/api/rfq/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,25 +128,31 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
           guestPhoneVerified: guestPhoneVerified,
         }),
       });
+
       const result = await response.json();
+
       if (!response.ok) {
         if (response.status === 402) {
           setError("You've reached your monthly RFQ limit. Please upgrade your plan.");
           setIsSubmitting(false);
           return;
         }
+
         if (response.status === 429) {
           setError('Too many requests. Please wait a moment and try again.');
           setIsSubmitting(false);
           return;
         }
+
         setError(result.message || 'Failed to submit RFQ. Please try again.');
         setIsSubmitting(false);
         return;
       }
-      setSuccessMessage('RFQ submitted successfully! Vendors will contact you soon.');
-      clearFormData('direct', selectedCategory, selectedJobType);
+
+      setSuccessMessage('RFQ posted successfully! Vendors will view and respond to your request.');
+      clearFormData('public', selectedCategory, selectedJobType);
       resetRfq();
+
       setTimeout(() => {
         onSuccess(result);
         handleClose();
@@ -159,7 +165,8 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   };
 
   const handlePrevStep = () => {
-    saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+    saveFormData('public', selectedCategory, selectedJobType, templateFields, sharedFields);
+
     switch (currentStep) {
       case 'jobtype':
         setSelectedJobType(null);
@@ -179,7 +186,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   const handleClose = () => {
     if (selectedCategory && selectedJobType) {
-      saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+      saveFormData('public', selectedCategory, selectedJobType, templateFields, sharedFields);
     }
     resetRfq();
     setCurrentStep('category');
@@ -233,14 +240,14 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
         
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-start gap-4 border-b border-blue-800">
+        <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-start gap-4 border-b border-indigo-800">
           <div>
-            <h2 className="text-2xl font-bold">Get RFQ Quotes</h2>
-            <p className="text-blue-100 text-sm mt-1">Direct Request - Step {['category', 'jobtype', 'template', 'shared'].indexOf(currentStep) + 1} of 4</p>
+            <h2 className="text-2xl font-bold">Post Your Project</h2>
+            <p className="text-indigo-100 text-sm mt-1">Public Listing - Step {['category', 'jobtype', 'template', 'shared'].indexOf(currentStep) + 1} of 4</p>
           </div>
           <button
             onClick={handleClose}
-            className="text-blue-100 hover:text-white text-2xl leading-none"
+            className="text-indigo-100 hover:text-white text-2xl leading-none"
             aria-label="Close modal"
           >
             ✕
@@ -250,21 +257,21 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
         {!['category'].includes(currentStep) && (
           <div className="h-1 bg-gray-200">
             <div
-              className="h-full bg-blue-600 transition-all duration-300"
+              className="h-full bg-indigo-600 transition-all duration-300"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
         )}
 
         {showResumeOption && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 m-4 rounded">
+          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 m-4 rounded">
             <p className="text-sm text-gray-700 mb-3">
               📝 We found a saved draft. Would you like to resume?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={handleResumeDraft}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-medium"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded font-medium"
               >
                 Resume Draft
               </button>
@@ -291,6 +298,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
         )}
 
         <div className="p-6">
+          
           {currentStep === 'category' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">What type of project do you have?</h3>
@@ -305,7 +313,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
           {currentStep === 'jobtype' && (
             <div className="space-y-4">
-              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="bg-indigo-50 p-3 rounded border border-indigo-200">
                 <p className="text-sm"><strong>Category:</strong> {getCategoryName()}</p>
               </div>
               <h3 className="text-lg font-semibold">What type of job is it?</h3>
@@ -319,7 +327,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
           {currentStep === 'template' && (
             <div className="space-y-4">
-              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="bg-indigo-50 p-3 rounded border border-indigo-200 space-y-1">
                 <p className="text-sm"><strong>Category:</strong> {getCategoryName()}</p>
                 <p className="text-sm"><strong>Job Type:</strong> {getJobTypeName()}</p>
               </div>
@@ -359,7 +367,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
                 if (currentStep === 'category') setCurrentStep('jobtype');
                 else if (currentStep === 'jobtype') setCurrentStep('template');
                 else if (currentStep === 'template') {
-                  saveFormData('direct', selectedCategory, selectedJobType, templateFields, sharedFields);
+                  saveFormData('public', selectedCategory, selectedJobType, templateFields, sharedFields);
                   setCurrentStep('shared');
                 }
               }}
@@ -368,7 +376,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
                 (currentStep === 'jobtype' && !selectedJobType) ||
                 isSubmitting
               }
-              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
+              className="flex-1 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
             >
               Next →
             </button>
@@ -380,7 +388,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
               disabled={isSubmitting}
               className="flex-1 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit RFQ'}
+              {isSubmitting ? 'Posting...' : 'Post Project'}
             </button>
           )}
         </div>
@@ -388,7 +396,10 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
       <AuthInterceptor
         isOpen={showAuthModal}
-        onLoginSuccess={handleAuthSuccess}
+        onLoginSuccess={() => {
+          setShowAuthModal(false);
+          submitRfq();
+        }}
         onGuestSubmit={handleGuestSubmit}
         onCancel={() => setShowAuthModal(false)}
       />
