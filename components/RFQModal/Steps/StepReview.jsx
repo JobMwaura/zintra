@@ -98,6 +98,35 @@ export default function StepReview({
           </div>
         </div>
 
+        {/* Reference Images */}
+        {formData.referenceImages && formData.referenceImages.length > 0 && (
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <h4 className="font-medium text-gray-900 mb-3">Reference Images</h4>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {formData.referenceImages.map((image, idx) => (
+                <div
+                  key={image.key || idx}
+                  className="relative group"
+                >
+                  <div className="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={image.fileUrl}
+                      alt={image.fileName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1 truncate" title={image.fileName}>
+                    {image.fileName}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              📦 {formData.referenceImages.length} image(s) stored in AWS S3
+            </p>
+          </div>
+        )}
+
         {/* Recipients */}
         {rfqType !== 'public' && (
           <div className="mb-6 pb-6 border-b border-gray-200">

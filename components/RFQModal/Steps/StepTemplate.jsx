@@ -1,11 +1,15 @@
 'use client';
 
+import RFQImageUpload from '../RFQImageUpload';
+
 export default function StepTemplate({
   templateFields,
   fieldMetadata,
   onFieldChange,
   selectedJobType,
-  errors
+  errors,
+  referenceImages = [],
+  onImagesChange = () => {}
 }) {
   if (!fieldMetadata || fieldMetadata.length === 0) {
     return (
@@ -124,6 +128,22 @@ export default function StepTemplate({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Image Upload Section */}
+      <div className="border-t pt-6">
+        <h4 className="text-sm font-semibold text-gray-900 mb-4">Reference Images (Optional)</h4>
+        <RFQImageUpload
+          images={referenceImages}
+          onUpload={(imageData) => {
+            onImagesChange([...referenceImages, imageData]);
+          }}
+          onRemove={(imageKey) => {
+            onImagesChange(referenceImages.filter(img => img.key !== imageKey));
+          }}
+          maxImages={5}
+          maxSize={10}
+        />
       </div>
     </div>
   );

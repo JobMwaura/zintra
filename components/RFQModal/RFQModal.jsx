@@ -13,6 +13,7 @@ import StepRecipients from './Steps/StepRecipients';
 import StepAuth from './Steps/StepAuth';
 import StepReview from './Steps/StepReview';
 import StepSuccess from './Steps/StepSuccess';
+import RFQImageUpload from './RFQImageUpload';
 import { getAllCategories, getJobTypesForCategory, getFieldsForJobType, categoryRequiresJobType } from '@/lib/rfqTemplateUtils';
 
 export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose = () => {} }) {
@@ -31,6 +32,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
     
     // Step 2
     templateFields: {},
+    referenceImages: [],
     
     // Step 3
     projectTitle: '',
@@ -257,6 +259,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
         budget_min: parseInt(formData.budgetMin) || null,
         budget_max: parseInt(formData.budgetMax) || null,
         details: Object.keys(formData.templateFields).length > 0 ? formData.templateFields : null,
+        reference_images: formData.referenceImages.length > 0 ? formData.referenceImages : [],
         rfq_type: rfqType,
         visibility: rfqType === 'direct' ? 'private' : rfqType === 'wizard' ? 'matching' : 'public',
         selected_vendors: rfqType === 'direct' ? formData.selectedVendors : rfqType === 'wizard' ? formData.selectedVendors : [],
@@ -358,6 +361,8 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
               fieldMetadata={templateFieldsMetadata}
               onFieldChange={handleTemplateFieldChange}
               selectedJobType={formData.selectedJobType}
+              referenceImages={formData.referenceImages}
+              onImagesChange={(images) => handleInputChange('referenceImages', images)}
               errors={errors}
             />
           )}
