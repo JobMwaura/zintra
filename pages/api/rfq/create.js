@@ -82,9 +82,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';
+import path from 'path';
 
 // Load templates (Tweak 1: source of truth)
-import templates from '@/public/data/rfq-templates-v2-hierarchical.json';
+const templatesPath = path.join(process.cwd(), 'public/data/rfq-templates-v2-hierarchical.json');
+const templates = JSON.parse(fs.readFileSync(templatesPath, 'utf-8'));
 
 // Constants
 const TIER_LIMITS = {
