@@ -207,13 +207,13 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
   };
 
   const getCategoryName = () => {
-    const category = templates.categories.find((c) => c.slug === selectedCategory);
+    const category = templates.majorCategories.find((c) => c.slug === selectedCategory);
     return category ? category.label : 'Unknown';
   };
 
   const getJobTypeName = () => {
     if (!selectedCategory || !selectedJobType) return '';
-    const category = templates.categories.find((c) => c.slug === selectedCategory);
+    const category = templates.majorCategories.find((c) => c.slug === selectedCategory);
     if (!category) return '';
     const jobType = category.jobTypes.find((jt) => jt.slug === selectedJobType);
     return jobType ? jobType.label : '';
@@ -221,7 +221,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
 
   const getTemplateFields = () => {
     if (!selectedCategory || !selectedJobType) return [];
-    const category = templates.categories.find((c) => c.slug === selectedCategory);
+    const category = templates.majorCategories.find((c) => c.slug === selectedCategory);
     if (!category) return [];
     const jobType = category.jobTypes.find((jt) => jt.slug === selectedJobType);
     return jobType ? jobType.fields : [];
@@ -296,7 +296,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
               <h3 className="text-lg font-semibold">What type of project do you have?</h3>
               <p className="text-sm text-gray-600">Select a category that matches your project.</p>
               <RfqCategorySelector
-                categories={templates.categories}
+                categories={templates.majorCategories}
                 onSelect={handleCategorySelect}
                 selectedCategory={selectedCategory}
               />
@@ -310,7 +310,7 @@ export default function DirectRFQModal({ isOpen = false, onClose = () => {}, onS
               </div>
               <h3 className="text-lg font-semibold">What type of job is it?</h3>
               <RfqJobTypeSelector
-                jobTypes={templates.categories.find((c) => c.slug === selectedCategory)?.jobTypes || []}
+                jobTypes={templates.majorCategories.find((c) => c.slug === selectedCategory)?.jobTypes || []}
                 onSelect={handleJobTypeSelect}
                 selectedJobType={selectedJobType}
               />
