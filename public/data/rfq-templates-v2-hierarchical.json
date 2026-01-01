@@ -1,219 +1,61 @@
 {
-  "version": "2.0",
-  "lastUpdated": "2025-12-31",
-  "description": "Hierarchical RFQ Template Schema - 20 Major Categories × 3-7 Job Types each, Guest-Friendly Form Flow",
+  "version": "2.1",
+  "lastUpdated": "2026-01-01",
+  "description": "Comprehensive RFQ Template Schema - 20 Major Categories with detailed category-specific fields",
   "majorCategories": [
     {
       "id": "architectural_design",
       "slug": "architectural_design",
-      "label": "Architectural Plans & Approvals",
+      "label": "Architectural & Design",
       "icon": "🏛️",
       "description": "House designs, commercial plans, council approvals",
       "jobTypes": [
         {
-          "id": "arch_new_residential",
-          "slug": "arch_new_residential",
-          "label": "New house / residential design",
-          "description": "Design for a new residential property from scratch",
+          "id": "arch_design",
+          "slug": "arch_design",
+          "label": "Architectural & Design Services",
+          "description": "Tell us about the project you want designed",
           "fields": [
             {
-              "name": "property_description",
-              "label": "What kind of house?",
-              "type": "text",
-              "placeholder": "e.g. 3-bedroom bungalow, 4-bedroom maisonette",
+              "name": "project_type",
+              "label": "Type of project",
+              "type": "select",
+              "options": ["New residential house", "Apartments & flats", "Commercial building", "Mixed-use", "Other"],
               "required": true
+            },
+            {
+              "name": "plot_details",
+              "label": "Plot details",
+              "type": "text",
+              "placeholder": "e.g. 50×100, corner plot, sloping ground",
+              "required": false
             },
             {
               "name": "number_of_floors",
-              "label": "Number of floors (storeys)",
-              "type": "select",
-              "options": ["1", "2", "3", "4+"],
-              "required": true
-            },
-            {
-              "name": "plot_size",
-              "label": "Approximate plot size (if known)",
-              "type": "text",
-              "placeholder": "e.g. 50 × 100, 1/8 acre, 40 × 80, not sure",
-              "required": false
-            },
-            {
-              "name": "existing_plans",
-              "label": "Do you already have any sketches or existing plans?",
-              "type": "select",
-              "options": ["None", "Rough sketches only", "Old drawings that need changes", "Approved plans (need modification)"],
-              "required": false
-            },
-            {
-              "name": "council_support",
-              "label": "Do you need help with council approvals?",
-              "type": "select",
-              "options": ["Yes, full support", "Maybe, advise me", "No, design only"],
-              "required": false
-            },
-            {
-              "name": "renders",
-              "label": "Do you want 3D renders or visualisations?",
-              "type": "select",
-              "options": ["Yes", "Not necessary", "Not sure"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload any rough sketches, old plans or inspiration images",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "arch_extension",
-          "slug": "arch_extension",
-          "label": "Extension / renovation / alteration",
-          "description": "Plans for extending or modifying existing structure",
-          "fields": [
-            {
-              "name": "property_type",
-              "label": "What type of property?",
-              "type": "text",
-              "placeholder": "e.g. existing bungalow, apartment, villa",
-              "required": true
-            },
-            {
-              "name": "scope_of_work",
-              "label": "What's the scope of the extension/renovation?",
-              "type": "textarea",
-              "placeholder": "e.g. add one bedroom, extend kitchen, renovate entire ground floor",
-              "required": true
-            },
-            {
-              "name": "existing_plans",
-              "label": "Do you have original building plans?",
-              "type": "select",
-              "options": ["Yes, complete", "Partial", "No"],
-              "required": false
-            },
-            {
-              "name": "council_approvals",
-              "label": "Do you need council approvals?",
-              "type": "select",
-              "options": ["Yes, full support", "Maybe, advise me", "Already approved"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload existing plans, photos of current state, or sketches",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "arch_apartments",
-          "slug": "arch_apartments",
-          "label": "Apartments / multi-unit housing",
-          "description": "Design for apartment blocks or multi-unit residential",
-          "fields": [
-            {
-              "name": "num_units",
-              "label": "How many units?",
-              "type": "number",
-              "min": 2,
-              "required": true
-            },
-            {
-              "name": "num_floors",
               "label": "Number of floors",
               "type": "select",
-              "options": ["2-3", "4-5", "6+"],
-              "required": true
-            },
-            {
-              "name": "unit_types",
-              "label": "Unit types (e.g. 1-bed, 2-bed, studio)",
-              "type": "text",
-              "placeholder": "e.g. mix of 1-bed and 2-bed units",
-              "required": true
-            },
-            {
-              "name": "amenities",
-              "label": "Special amenities (if any)?",
-              "type": "textarea",
-              "placeholder": "e.g. gym, pool, parking, garden",
+              "options": ["Bungalow", "2 storeys", "3+ storeys", "Not sure yet"],
               "required": false
             },
             {
-              "name": "uploads",
-              "label": "Upload site plan, sketches, or reference images",
-              "type": "file",
-              "multiple": true,
+              "name": "scope_of_design",
+              "label": "Scope of design",
+              "type": "radio",
+              "options": ["Floor plans", "Elevations & 3D views", "Structural drawings", "Council approval pack", "Interior layout"],
               "required": false
-            }
-          ]
-        },
-        {
-          "id": "arch_commercial",
-          "slug": "arch_commercial",
-          "label": "Commercial or mixed-use building",
-          "description": "Design for office, retail, or mixed-use development",
-          "fields": [
+            },
             {
-              "name": "building_type",
-              "label": "Building type",
+              "name": "project_stage",
+              "label": "Stage of project",
               "type": "select",
-              "options": ["Office", "Retail / Shop", "Hotel", "Restaurant / Food court", "Mixed-use", "Other"],
-              "required": true
+              "options": ["Just an idea", "I have rough sketches", "I have old plans that need updating"],
+              "required": false
             },
             {
-              "name": "building_size",
-              "label": "Approximate building size or floors",
-              "type": "text",
-              "placeholder": "e.g. 5-storey office, 2000m² retail, 3-floor mixed",
-              "required": true
-            },
-            {
-              "name": "special_features",
-              "label": "Any special features or functions?",
+              "name": "style_preference",
+              "label": "Style preference",
               "type": "textarea",
-              "placeholder": "e.g. rooftop garden, parking, green building standards",
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload site details, sketches, or reference designs",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "arch_council_approvals",
-          "slug": "arch_council_approvals",
-          "label": "Council approvals / regularisation only",
-          "description": "Get approvals for existing or nearly-complete structures",
-          "fields": [
-            {
-              "name": "current_status",
-              "label": "Current status of the structure",
-              "type": "select",
-              "options": ["Completed", "Nearly completed", "Plans exist but unapproved", "Partially done"],
-              "required": true
-            },
-            {
-              "name": "issues",
-              "label": "Any specific issues with the structure?",
-              "type": "textarea",
-              "placeholder": "e.g. non-compliance with building code, no inspection certificates",
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload all available drawings, photos, inspection reports",
-              "type": "file",
-              "multiple": true,
+              "placeholder": "Modern, Swahili, contemporary, minimal, etc.",
               "required": false
             }
           ]
@@ -221,411 +63,58 @@
       ]
     },
     {
-      "id": "structural_engineering",
-      "slug": "structural_engineering",
-      "label": "Structural Engineering & Civil Works",
+      "id": "building_masonry",
+      "slug": "building_masonry",
+      "label": "Building & Masonry",
       "icon": "🏗️",
-      "description": "Structural design, assessments, foundations",
+      "description": "Construction, walls, foundations, slabs",
       "jobTypes": [
         {
-          "id": "struct_design_new",
-          "slug": "struct_design_new",
-          "label": "Structural design for a new building",
+          "id": "building_construction",
+          "slug": "building_construction",
+          "label": "Building & Masonry Work",
+          "description": "Describe the building or structure you need constructed",
           "fields": [
             {
-              "name": "building_type",
-              "label": "Type of building",
-              "type": "text",
-              "placeholder": "e.g. Bungalow, maisonette, apartment block, commercial",
-              "required": true
-            },
-            {
-              "name": "num_floors",
-              "label": "Number of floors",
-              "type": "select",
-              "options": ["1", "2", "3", "4+"],
-              "required": true
-            },
-            {
-              "name": "architectural_drawings",
-              "label": "Do you already have architectural drawings?",
-              "type": "select",
-              "options": ["Yes, complete", "In progress", "No, I need architectural design first"],
-              "required": true
-            },
-            {
-              "name": "engineer_scope",
-              "label": "What service do you need from the engineer?",
-              "type": "select",
-              "options": ["Full structural design & drawings", "Review/check of existing design", "Structural assessment & report", "Advice & site visit only"],
-              "required": true
-            },
-            {
-              "name": "known_issues",
-              "label": "Any known issues or concerns?",
-              "type": "textarea",
-              "placeholder": "e.g. Cracks on walls, foundation doubts, heavy soil",
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload architectural drawings, photos, or previous reports",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "struct_check",
-          "slug": "struct_check",
-          "label": "Structural check / assessment of existing building",
-          "fields": [
-            {
-              "name": "building_condition",
-              "label": "Current condition of the building",
-              "type": "select",
-              "options": ["Appears sound", "Some visible cracks", "Significant damage", "Recent settlement/movement"],
-              "required": true
-            },
-            {
-              "name": "issues_observed",
-              "label": "What issues have you observed?",
-              "type": "textarea",
-              "placeholder": "e.g. cracks, tilting, sagging roof, movement",
-              "required": true
-            },
-            {
-              "name": "uploads",
-              "label": "Upload photos of affected areas, plans if available",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "struct_retaining_walls",
-          "slug": "struct_retaining_walls",
-          "label": "Retaining walls / slope stabilisation",
-          "fields": [
-            {
-              "name": "wall_height",
-              "label": "Approximate height of retaining wall",
-              "type": "text",
-              "placeholder": "e.g. 2m, 3.5m, varies",
-              "required": true
-            },
-            {
-              "name": "wall_length",
-              "label": "Approximate length",
-              "type": "text",
-              "placeholder": "e.g. 15m, 30m, around the perimeter",
-              "required": false
-            },
-            {
-              "name": "soil_condition",
-              "label": "Ground/soil condition",
-              "type": "select",
-              "options": ["Soft soil", "Rocky", "Mix of soil & rock", "Unstable/sliding", "Not sure"],
-              "required": true
-            },
-            {
-              "name": "uploads",
-              "label": "Upload site photos, surveys, or existing sketches",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "site_prep_earthworks",
-      "slug": "site_prep_earthworks",
-      "label": "Site Prep, Excavation & Earthworks",
-      "icon": "🏗️",
-      "description": "Site clearance, excavation, levelling, grading",
-      "jobTypes": [
-        {
-          "id": "site_clearance",
-          "slug": "site_clearance",
-          "label": "Site clearance (bush, debris, old structures)",
-          "fields": [
-            {
-              "name": "site_area",
-              "label": "Approximate site area",
-              "type": "text",
-              "placeholder": "e.g. 1/4 acre, 1000m², 50 × 100",
-              "required": true
-            },
-            {
-              "name": "current_condition",
-              "label": "Current site condition",
-              "type": "select",
-              "options": ["Bushy/overgrown", "Rubble/construction waste", "Old structures to demolish", "Mix of above"],
-              "required": true
-            },
-            {
-              "name": "debris_disposal",
-              "label": "Do you need debris removed?",
-              "type": "select",
-              "options": ["Yes, full removal", "Separate usable materials", "Leave on site"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload site photos from different angles",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "excavation",
-          "slug": "excavation",
-          "label": "Excavation (foundations / basement / pool)",
-          "fields": [
-            {
-              "name": "excavation_type",
-              "label": "Type of excavation",
-              "type": "select",
-              "options": ["Foundations for house", "Basement", "Swimming pool", "Septic/biodigester", "Other"],
-              "required": true
-            },
-            {
-              "name": "approximate_size",
-              "label": "Approximate size or length",
-              "type": "text",
-              "placeholder": "e.g. 3-bedroom house footprint, 8 × 4m pool, 30m strip footing",
-              "required": true
-            },
-            {
-              "name": "site_condition",
-              "label": "Current site condition",
-              "type": "select",
-              "options": ["Bushy/overgrown", "Flat and clear", "Rocky/uneven", "Demolition needed first"],
-              "required": true
-            },
-            {
-              "name": "ground_type",
-              "label": "Ground type (if known)",
-              "type": "select",
-              "options": ["Mostly soft soil", "Mix of soil & stones", "Very rocky", "Not sure"],
-              "required": false
-            },
-            {
-              "name": "site_access",
-              "label": "Site access",
-              "type": "select",
-              "options": ["Good access for trucks", "Narrow estate road", "Only small pickups", "Difficult access / manual carry"],
-              "required": true
-            },
-            {
-              "name": "material_disposal",
-              "label": "Do you need disposal of excavated material?",
-              "type": "select",
-              "options": ["Yes, contractor should remove", "No, leave on site", "Not sure"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload site photos, Google pin, or any drawings",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "levelling_grading",
-          "slug": "levelling_grading",
-          "label": "Levelling / grading",
-          "fields": [
-            {
-              "name": "area_size",
-              "label": "Approximate area to be levelled",
-              "type": "text",
-              "placeholder": "e.g. 500m², 1 acre, full plot",
-              "required": true
-            },
-            {
-              "name": "current_slope",
-              "label": "Current ground slope",
-              "type": "select",
-              "options": ["Flat", "Slight slope", "Steep slope", "Very uneven"],
-              "required": true
-            },
-            {
-              "name": "final_level",
-              "label": "Target final level",
-              "type": "text",
-              "placeholder": "e.g. flat for building, gentle slope for drainage, specific elevation",
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload site photos showing current condition",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "general_building_masonry",
-      "slug": "general_building_masonry",
-      "label": "General Building & Masonry",
-      "icon": "🧱",
-      "description": "House construction, walls, concrete, masonry",
-      "jobTypes": [
-        {
-          "id": "build_full_house",
-          "slug": "build_full_house",
-          "label": "Full house construction (shell or full build)",
-          "fields": [
-            {
-              "name": "property_description",
+              "name": "what_building",
               "label": "What are you building?",
               "type": "text",
-              "placeholder": "e.g. 3-bedroom bungalow, 4-bedroom maisonette, extension to existing house",
+              "placeholder": "e.g. 3-bedroom bungalow, perimeter wall, small extension",
               "required": true
             },
             {
               "name": "scope_of_work",
               "label": "Scope of work",
               "type": "select",
-              "options": ["Full house build (from foundation up)", "Superstructure only (walling, slab, roof structure)", "Finishes & completion of existing structure"],
+              "options": ["Full house construction", "Extension", "Perimeter wall", "Slab only", "Foundation only"],
               "required": true
             },
             {
-              "name": "drawings_approvals",
-              "label": "Do you already have drawings and approvals?",
+              "name": "site_status",
+              "label": "Current status of site",
               "type": "select",
-              "options": ["Yes, full set", "Drawings ready, approvals pending", "In progress", "No, I still need plans & approvals"],
-              "required": true
+              "options": ["Bare plot", "Foundation done", "Up to slab", "Structure up, needs finishes", "Ongoing build, need new contractor"],
+              "required": false
             },
             {
-              "name": "material_supply",
-              "label": "Who should supply materials?",
+              "name": "materials_supply",
+              "label": "Who supplies materials?",
               "type": "select",
-              "options": ["Contractor to supply materials & labour", "I will supply materials, need labour only", "Mixed – open to advice"],
-              "required": true
+              "options": ["Contractor supplies all", "Client supplies, labour only", "Mixed"],
+              "required": false
             },
             {
-              "name": "project_stage",
-              "label": "Stage of the project",
-              "type": "select",
-              "options": ["Not yet started (bare plot)", "Foundation done", "Up to slab", "Structure up, needs finishes", "Ongoing works, need change of contractor"],
-              "required": true
+              "name": "approximate_size",
+              "label": "Approximate house or wall size",
+              "type": "text",
+              "placeholder": "e.g. 150m² house, 50m perimeter wall",
+              "required": false
             },
             {
               "name": "special_requirements",
               "label": "Any special requirements?",
               "type": "textarea",
-              "placeholder": "e.g. want affordable build, want high-end finishes, specific blocks/stones",
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload drawings, photos of the site or current stage",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "build_boundary_wall",
-          "slug": "build_boundary_wall",
-          "label": "Boundary / perimeter wall",
-          "fields": [
-            {
-              "name": "wall_length",
-              "label": "Approximate length of wall",
-              "type": "text",
-              "placeholder": "e.g. 100m, around property, partial",
-              "required": true
-            },
-            {
-              "name": "wall_height",
-              "label": "Desired wall height",
-              "type": "select",
-              "options": ["1m", "1.5m", "2m", "2.5m", "Other"],
-              "required": true
-            },
-            {
-              "name": "material_type",
-              "label": "Preferred material",
-              "type": "select",
-              "options": ["Stone/block", "Brick", "Reinforced concrete", "Wire mesh (chain link)", "Mix/not sure"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload plot photos, boundary line sketches",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "build_walling_only",
-          "slug": "build_walling_only",
-          "label": "Walling only (blocks/stone)",
-          "fields": [
-            {
-              "name": "wall_area",
-              "label": "Approximate area of walling",
-              "type": "text",
-              "placeholder": "e.g. 200m² (perimeter walls), full house shell",
-              "required": true
-            },
-            {
-              "name": "block_type",
-              "label": "Block type preference",
-              "type": "select",
-              "options": ["Standard cement blocks", "Hollow blocks", "Quarry stone", "Kiln bricks", "Not specified"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload site photos, floor plans if available",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "build_concrete_works",
-          "slug": "build_concrete_works",
-          "label": "Concrete works (slab, beams, columns)",
-          "fields": [
-            {
-              "name": "concrete_type",
-              "label": "Type of concrete work",
-              "type": "select",
-              "options": ["Ground floor slab", "First floor slab", "Beams & columns", "Roof slab", "Mixed"],
-              "required": true
-            },
-            {
-              "name": "approximate_area",
-              "label": "Approximate area or scale",
-              "type": "text",
-              "placeholder": "e.g. 150m² slab, 3-storey structure",
-              "required": true
-            },
-            {
-              "name": "uploads",
-              "label": "Upload structural drawings or sketches if available",
-              "type": "file",
-              "multiple": true,
+              "placeholder": "Stone type, block type, etc.",
               "required": false
             }
           ]
@@ -640,134 +129,50 @@
       "description": "Roof installation, repairs, waterproofing",
       "jobTypes": [
         {
-          "id": "roof_new",
-          "slug": "roof_new",
-          "label": "New roof for a building",
+          "id": "roofing_work",
+          "slug": "roofing_work",
+          "label": "Roofing & Waterproofing",
+          "description": "Tell us about your roofing or waterproofing project",
           "fields": [
             {
-              "name": "building_type",
-              "label": "Building type",
+              "name": "job_type",
+              "label": "Type of job",
               "type": "select",
-              "options": ["Bungalow / Maisonette", "Apartment block", "Commercial", "Other"],
+              "options": ["New roof", "Re-roofing", "Leak repair", "Waterproofing only"],
+              "required": true
+            },
+            {
+              "name": "roof_type",
+              "label": "Roof type",
+              "type": "select",
+              "options": ["Tiles", "Mabati sheets", "Shingles", "Concrete slab", "Other"],
               "required": true
             },
             {
               "name": "roof_area",
               "label": "Approximate roof area or building size",
               "type": "text",
-              "placeholder": "e.g. 3-bed bungalow, 4-storey flats, 150m² roof",
-              "required": true
+              "placeholder": "e.g. 10m × 12m, 3-bedroom house",
+              "required": false
             },
             {
-              "name": "roof_material",
-              "label": "Preferred roofing material",
+              "name": "existing_situation",
+              "label": "Existing situation",
               "type": "select",
-              "options": ["Stone-coated tiles", "Mabati sheets", "Concrete slab", "Not sure – advise me"],
+              "options": ["No roof yet", "Old roof in place", "Leaking slab", "Damp walls"],
               "required": false
             },
             {
-              "name": "gutters_rainwater",
-              "label": "Do you need gutters and rainwater management?",
-              "type": "select",
-              "options": ["Yes", "No", "Not sure"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload building photos, plans if available",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "roof_replacement",
-          "slug": "roof_replacement",
-          "label": "Re-roofing / roof replacement",
-          "fields": [
-            {
-              "name": "roof_condition",
-              "label": "Current roof status",
-              "type": "select",
-              "options": ["Old roof to be removed", "Leaking", "Damaged tiles/sheets", "Aged but functional"],
-              "required": true
-            },
-            {
-              "name": "building_size",
-              "label": "Building size (for estimate)",
-              "type": "text",
-              "placeholder": "e.g. 200m² roof area, 3-bed house",
-              "required": true
-            },
-            {
-              "name": "new_material",
-              "label": "Preferred new material",
-              "type": "select",
-              "options": ["Same as old", "Upgrade to better material", "Not sure"],
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload photos of current roof condition",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "roof_repairs",
-          "slug": "roof_repairs",
-          "label": "Roof repairs (leaks, damaged sheets/tiles)",
-          "fields": [
-            {
-              "name": "issues_observed",
-              "label": "What issues have you observed?",
+              "name": "visible_issues",
+              "label": "Visible issues",
               "type": "textarea",
-              "placeholder": "e.g. water dripping, missing tiles, bent sheets, rust",
-              "required": true
-            },
-            {
-              "name": "affected_area",
-              "label": "Approximate affected area",
-              "type": "text",
-              "placeholder": "e.g. corner section, whole front section, multiple spots",
+              "placeholder": "Leaks in bedroom, ceiling stains, noisy roof, etc.",
               "required": false
             },
             {
-              "name": "uploads",
-              "label": "Upload photos showing the damage",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "waterproofing",
-          "slug": "waterproofing",
-          "label": "Waterproofing of flat roof / balcony / wet area",
-          "fields": [
-            {
-              "name": "area_type",
-              "label": "What area needs waterproofing?",
-              "type": "multiselect",
-              "options": ["Flat roof", "Balcony", "Bathroom", "Water tank", "Other"],
-              "required": true
-            },
-            {
-              "name": "current_issue",
-              "label": "What's the current issue?",
+              "name": "material_preference",
+              "label": "Preference on materials/brands",
               "type": "textarea",
-              "placeholder": "e.g. water seepage, dampness, visible cracks",
-              "required": true
-            },
-            {
-              "name": "uploads",
-              "label": "Upload photos of affected areas",
-              "type": "file",
-              "multiple": true,
               "required": false
             }
           ]
@@ -778,222 +183,982 @@
       "id": "doors_windows_glass",
       "slug": "doors_windows_glass",
       "label": "Doors, Windows & Glass",
-      "icon": "🚪",
-      "description": "Windows, doors, glass partitions, security",
+      "icon": "🪟",
+      "description": "Doors, windows, glass work, partitions",
       "jobTypes": [
         {
-          "id": "doors_windows_new",
-          "slug": "doors_windows_new",
-          "label": "New doors and windows for a building",
+          "id": "doors_windows",
+          "slug": "doors_windows",
+          "label": "Doors, Windows & Glass Work",
+          "description": "What kind of doors/windows or glass work do you need?",
           "fields": [
+            {
+              "name": "type_of_work",
+              "label": "Type of work",
+              "type": "radio",
+              "options": ["New doors", "New windows", "Replacement", "Glass partitions", "Shower enclosures", "Security grills"],
+              "required": true
+            },
             {
               "name": "material_preference",
               "label": "Material preference",
               "type": "select",
-              "options": ["Aluminium", "uPVC", "Wood", "Steel", "Not sure"],
+              "options": ["Timber", "Aluminium", "uPVC", "Steel", "Not sure"],
               "required": false
             },
             {
-              "name": "quantity",
+              "name": "approximate_quantity",
               "label": "Approximate quantity",
               "type": "text",
-              "placeholder": "e.g. 8 windows, 5 doors, 2 showers",
-              "required": true
+              "placeholder": "e.g. 6 windows, 4 doors, 2 shower cubicles",
+              "required": false
             },
             {
-              "name": "supply_install",
-              "label": "Do you need supply and installation, or installation only?",
+              "name": "measurements",
+              "label": "Have measurements?",
               "type": "select",
-              "options": ["Supply & installation", "Installation only"],
-              "required": true
+              "options": ["Yes, I have exact sizes", "I have rough sizes", "I need site measurements"],
+              "required": false
             },
             {
               "name": "special_requirements",
-              "label": "Special requirements",
+              "label": "Any special requirements?",
               "type": "textarea",
-              "placeholder": "e.g. burglar-proof, sound proof, tinted glass",
-              "required": false
-            },
-            {
-              "name": "uploads",
-              "label": "Upload sizes, sketches, inspiration photos",
-              "type": "file",
-              "multiple": true,
+              "placeholder": "Soundproof, burglar-proof, sliding vs hinged, etc.",
               "required": false
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "flooring_wall_finishes",
+      "slug": "flooring_wall_finishes",
+      "label": "Flooring & Wall Finishes",
+      "icon": "🟫",
+      "description": "Tiles, wooden floors, wall finishes, plaster",
+      "jobTypes": [
         {
-          "id": "doors_windows_replacement",
-          "slug": "doors_windows_replacement",
-          "label": "Replacement/upgrade of existing doors/windows",
+          "id": "flooring_finishes",
+          "slug": "flooring_finishes",
+          "label": "Flooring & Wall Finishes",
+          "description": "Tell us about your flooring or wall finish needs",
           "fields": [
+            {
+              "name": "type_of_finish",
+              "label": "Type of finish",
+              "type": "radio",
+              "options": ["Floor tiles", "Wall tiles", "Wooden/laminate flooring", "Carpet", "Decorative plaster", "Gypsum wall/ceiling"],
+              "required": true
+            },
+            {
+              "name": "area_to_cover",
+              "label": "Area to be covered",
+              "type": "text",
+              "placeholder": "e.g. living room + bedrooms, approx. 80m²",
+              "required": false
+            },
+            {
+              "name": "existing_condition",
+              "label": "Existing condition",
+              "type": "select",
+              "options": ["Bare screed", "Old tiles", "Old terrazzo", "Painted walls"],
+              "required": false
+            },
+            {
+              "name": "quality_level",
+              "label": "Preferred quality level",
+              "type": "select",
+              "options": ["Budget", "Mid-range", "High-end"],
+              "required": false
+            },
+            {
+              "name": "specific_look",
+              "label": "Any specific look/brand?",
+              "type": "textarea",
+              "placeholder": "e.g. wood-look tiles, large-format, granite, etc.",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plumbing_drainage",
+      "slug": "plumbing_drainage",
+      "label": "Plumbing & Drainage",
+      "icon": "🚿",
+      "description": "Water supply, bathrooms, drainage systems",
+      "jobTypes": [
+        {
+          "id": "plumbing_work",
+          "slug": "plumbing_work",
+          "label": "Plumbing & Drainage Work",
+          "description": "Describe the plumbing or drainage work you need",
+          "fields": [
+            {
+              "name": "type_of_job",
+              "label": "Type of job",
+              "type": "select",
+              "options": ["New house plumbing", "Renovation", "Bathroom upgrade", "Kitchen upgrade", "Drainage/sewer work"],
+              "required": true
+            },
+            {
+              "name": "num_bathrooms",
+              "label": "Number of bathrooms/toilets",
+              "type": "number",
+              "required": false
+            },
+            {
+              "name": "water_source",
+              "label": "Water source",
+              "type": "select",
+              "options": ["County water", "Borehole", "Trucked water", "Mixed", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "waste_solution",
+              "label": "Waste solution",
+              "type": "select",
+              "options": ["Main sewer", "Existing septic", "Need new septic", "Need biodigester", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "fixtures_needed",
+              "label": "Fixtures needed",
+              "type": "radio",
+              "options": ["Toilets", "Sinks", "Showers", "Bathtubs", "Water heaters", "Kitchen sinks"],
+              "required": false
+            },
+            {
+              "name": "known_problems",
+              "label": "Any known problems?",
+              "type": "textarea",
+              "placeholder": "Low pressure, leaks, blocked drains, etc.",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "electrical_solar",
+      "slug": "electrical_solar",
+      "label": "Electrical & Solar",
+      "icon": "⚡",
+      "description": "Wiring, sockets, solar, backup power",
+      "jobTypes": [
+        {
+          "id": "electrical_work",
+          "slug": "electrical_work",
+          "label": "Electrical & Solar Work",
+          "description": "Tell us about your electrical or solar requirements",
+          "fields": [
+            {
+              "name": "type_of_job",
+              "label": "Type of job",
+              "type": "radio",
+              "options": ["Full house wiring", "Rewiring", "Additional sockets/lights", "Solar backup", "Security lighting"],
+              "required": true
+            },
+            {
+              "name": "property_type",
+              "label": "Property type",
+              "type": "select",
+              "options": ["New build", "Existing house", "Apartment", "Commercial"],
+              "required": false
+            },
+            {
+              "name": "approximate_rooms",
+              "label": "Approximate number of rooms",
+              "type": "number",
+              "required": false
+            },
+            {
+              "name": "main_priorities",
+              "label": "Main priorities",
+              "type": "radio",
+              "options": ["Safety/compliance", "Lower bills", "Backup during blackouts", "Extra sockets/lights"],
+              "required": false
+            },
+            {
+              "name": "solar_backup_needs",
+              "label": "If solar/backup: what should stay on?",
+              "type": "textarea",
+              "placeholder": "Lights, Wi-Fi, TV, fridge, security system…",
+              "required": false
+            },
+            {
+              "name": "existing_issues",
+              "label": "Any existing issues?",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hvac_climate",
+      "slug": "hvac_climate",
+      "label": "HVAC & Climate Control",
+      "icon": "❄️",
+      "description": "Cooling, heating, ventilation, air conditioning",
+      "jobTypes": [
+        {
+          "id": "hvac_work",
+          "slug": "hvac_work",
+          "label": "HVAC & Climate Control",
+          "description": "Describe your cooling, heating, or ventilation needs",
+          "fields": [
+            {
+              "name": "type_of_work",
+              "label": "Type of work",
+              "type": "select",
+              "options": ["New AC install", "AC service & repair", "Ventilation system", "Heating system"],
+              "required": true
+            },
+            {
+              "name": "space_type",
+              "label": "Space type",
+              "type": "select",
+              "options": ["Bedroom", "Entire house", "Office", "Shop", "Server room", "Other"],
+              "required": false
+            },
+            {
+              "name": "num_rooms_units",
+              "label": "Number of rooms or units",
+              "type": "text",
+              "required": false
+            },
+            {
+              "name": "existing_system",
+              "label": "Existing system?",
+              "type": "select",
+              "options": ["No system yet", "Existing units need service", "Replacement of old system"],
+              "required": false
+            },
+            {
+              "name": "main_concerns",
+              "label": "Main concerns",
+              "type": "radio",
+              "options": ["Heat", "Humidity", "Air quality", "Noise"],
+              "required": false
+            },
+            {
+              "name": "capacity_details",
+              "label": "Any capacity info or model details?",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carpentry_joinery",
+      "slug": "carpentry_joinery",
+      "label": "Carpentry & Joinery",
+      "icon": "🪛",
+      "description": "Doors, wardrobes, shelving, furniture",
+      "jobTypes": [
+        {
+          "id": "carpentry_work",
+          "slug": "carpentry_work",
+          "label": "Carpentry & Joinery Work",
+          "description": "What carpentry or joinery work do you need?",
+          "fields": [
+            {
+              "name": "type_of_work",
+              "label": "Type of work",
+              "type": "radio",
+              "options": ["Doors", "Wardrobes", "Shelving", "Ceilings", "Custom furniture"],
+              "required": true
+            },
+            {
+              "name": "material_preference",
+              "label": "Material preference",
+              "type": "select",
+              "options": ["Solid timber", "MDF", "Plywood", "Mixed", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "approximate_quantity",
+              "label": "Approximate quantity/rooms",
+              "type": "text",
+              "placeholder": "e.g. 3 bedrooms wardrobes, 1 TV unit",
+              "required": false
+            },
+            {
+              "name": "finish_preference",
+              "label": "Finish preference",
+              "type": "select",
+              "options": ["Painted", "Varnished wood", "Laminate", "High gloss"],
+              "required": false
+            },
+            {
+              "name": "design_reference",
+              "label": "Design reference",
+              "type": "textarea",
+              "placeholder": "Describe style or paste link you like",
+              "required": false
+            },
+            {
+              "name": "service_type",
+              "label": "Need design + build or build only?",
+              "type": "select",
+              "options": ["Design + Build", "Build only"],
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kitchens_wardrobes",
+      "slug": "kitchens_wardrobes",
+      "label": "Kitchens & Wardrobes",
+      "icon": "🍳",
+      "description": "Kitchen design and installation, wardrobes",
+      "jobTypes": [
+        {
+          "id": "kitchen_wardrobe",
+          "slug": "kitchen_wardrobe",
+          "label": "Kitchens & Wardrobes",
+          "description": "Tell us about your kitchen or wardrobe project",
+          "fields": [
+            {
+              "name": "type_of_job",
+              "label": "Type of job",
+              "type": "select",
+              "options": ["New kitchen", "Kitchen remodel", "New wardrobes", "Wardrobe remodel"],
+              "required": true
+            },
+            {
+              "name": "rooms_areas",
+              "label": "Rooms/areas",
+              "type": "text",
+              "placeholder": "e.g. main kitchen + pantry, 2 bedrooms wardrobes",
+              "required": false
+            },
+            {
+              "name": "layout_status",
+              "label": "Layout status",
+              "type": "select",
+              "options": ["No design yet", "Rough sketch", "Have full design"],
+              "required": false
+            },
+            {
+              "name": "front_finish",
+              "label": "Front finish preference",
+              "type": "select",
+              "options": ["MDF laminate", "Solid wood", "Glass-front", "High-gloss", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "countertop_preference",
+              "label": "Countertop preference",
+              "type": "select",
+              "options": ["Granite", "Quartz", "Laminate", "Solid surface", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "storage_priorities",
+              "label": "Storage priorities",
+              "type": "radio",
+              "options": ["Maximize storage", "Easy cleaning", "Display cabinets", "Hidden appliances"],
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "painting_decorating",
+      "slug": "painting_decorating",
+      "label": "Painting & Decorating",
+      "icon": "🎨",
+      "description": "Interior and exterior painting, decorative finishes",
+      "jobTypes": [
+        {
+          "id": "painting_work",
+          "slug": "painting_work",
+          "label": "Painting & Decorating",
+          "description": "Describe your painting or decorating needs",
+          "fields": [
+            {
+              "name": "type_of_project",
+              "label": "Type of project",
+              "type": "radio",
+              "options": ["Interior painting", "Exterior painting", "Repainting", "Decorative finishes", "Wallpaper"],
+              "required": true
+            },
+            {
+              "name": "property_type",
+              "label": "Property type",
+              "type": "select",
+              "options": ["Apartment", "Bungalow", "Maisonette", "Commercial", "Other"],
+              "required": false
+            },
+            {
+              "name": "approximate_size",
+              "label": "Approximate size",
+              "type": "text",
+              "placeholder": "e.g. 3-bedroom house, full interior",
+              "required": false
+            },
+            {
+              "name": "wall_condition",
+              "label": "Current wall condition",
+              "type": "select",
+              "options": ["New plaster", "Old paint", "Damp patches", "Cracks"],
+              "required": false
+            },
+            {
+              "name": "paint_quality",
+              "label": "Paint quality level",
+              "type": "select",
+              "options": ["Budget", "Standard", "Premium"],
+              "required": false
+            },
+            {
+              "name": "colours_style",
+              "label": "Colours / style idea",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "swimming_pools",
+      "slug": "swimming_pools",
+      "label": "Swimming Pools & Water Features",
+      "icon": "🏊",
+      "description": "Pool construction, renovation, water features",
+      "jobTypes": [
+        {
+          "id": "pool_work",
+          "slug": "pool_work",
+          "label": "Swimming Pools & Water Features",
+          "description": "Tell us about your pool or water feature",
+          "fields": [
+            {
+              "name": "type_of_job",
+              "label": "Type of job",
+              "type": "select",
+              "options": ["New pool build", "Renovation", "Leak repair", "Water feature only"],
+              "required": true
+            },
+            {
+              "name": "use_type",
+              "label": "Use",
+              "type": "select",
+              "options": ["Residential", "Hotel/Airbnb", "Public/commercial"],
+              "required": false
+            },
+            {
+              "name": "approx_size",
+              "label": "Approx size or shape",
+              "type": "text",
+              "placeholder": "e.g. 8m × 4m rectangle, L-shaped",
+              "required": false
+            },
+            {
+              "name": "pool_type",
+              "label": "Pool type",
+              "type": "select",
+              "options": ["Skimmer", "Deck-level", "Infinity", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "extra_features",
+              "label": "Extra features",
+              "type": "radio",
+              "options": ["Lighting", "Heating", "Fountain", "Waterfall", "Decking"],
+              "required": false
+            },
+            {
+              "name": "finishes_level",
+              "label": "Finishes level",
+              "type": "select",
+              "options": ["Basic", "Mid-range", "Luxury"],
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "landscaping_outdoor",
+      "slug": "landscaping_outdoor",
+      "label": "Landscaping & Outdoor Works",
+      "icon": "🌿",
+      "description": "Gardens, paving, irrigation, outdoor design",
+      "jobTypes": [
+        {
+          "id": "landscaping_work",
+          "slug": "landscaping_work",
+          "label": "Landscaping & Outdoor Works",
+          "description": "Describe your outdoor and landscaping project",
+          "fields": [
+            {
+              "name": "type_of_work",
+              "label": "Type of work",
+              "type": "radio",
+              "options": ["Lawn", "Paving", "Planting", "Irrigation", "Outdoor lighting", "Garden design"],
+              "required": true
+            },
+            {
+              "name": "area_size",
+              "label": "Area size",
+              "type": "text",
+              "placeholder": "e.g. front garden ~50m², backyard ~100m²",
+              "required": false
+            },
             {
               "name": "current_condition",
               "label": "Current condition",
               "type": "select",
-              "options": ["Old and worn", "Broken/damaged", "Functional but want upgrade", "Mix of above"],
-              "required": true
-            },
-            {
-              "name": "quantity",
-              "label": "How many to replace?",
-              "type": "text",
-              "placeholder": "e.g. all doors in house, specific windows",
-              "required": true
-            },
-            {
-              "name": "new_material",
-              "label": "Preferred new material",
-              "type": "select",
-              "options": ["Aluminium", "uPVC", "Wood", "Steel", "Same as existing"],
+              "options": ["Bare soil", "Existing grass", "Overgrown", "Mixed"],
               "required": false
             },
             {
-              "name": "uploads",
-              "label": "Upload photos of current doors/windows",
-              "type": "file",
-              "multiple": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "id": "glass_partitions",
-          "slug": "glass_partitions",
-          "label": "Glass partitions and shower enclosures",
-          "fields": [
-            {
-              "name": "partition_type",
-              "label": "Type of glass work",
-              "type": "select",
-              "options": ["Office partitions", "Shower enclosure", "Glass railings", "Glass doors", "Other"],
-              "required": true
-            },
-            {
-              "name": "quantity_scale",
-              "label": "Approximate quantity or scale",
-              "type": "text",
-              "placeholder": "e.g. 2 shower enclosures, full office partition",
-              "required": true
-            },
-            {
-              "name": "glass_type",
-              "label": "Glass type preference",
-              "type": "select",
-              "options": ["Clear", "Frosted", "Tinted", "Tempered safety", "Not sure"],
+              "name": "preferred_style",
+              "label": "Preferred style",
+              "type": "textarea",
+              "placeholder": "Low maintenance, lots of flowers, modern, etc.",
               "required": false
             },
             {
-              "name": "uploads",
-              "label": "Upload sketches, photos, dimension details",
-              "type": "file",
-              "multiple": true,
+              "name": "service_type",
+              "label": "Need design + installation or installation only?",
+              "type": "select",
+              "options": ["Design + Installation", "Installation only"],
+              "required": false
+            },
+            {
+              "name": "drainage_issues",
+              "label": "Any drainage/water issues?",
+              "type": "textarea",
               "required": false
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "fencing_gates",
+      "slug": "fencing_gates",
+      "label": "Fencing & Gates",
+      "icon": "🚪",
+      "description": "Fences, gates, perimeter security",
+      "jobTypes": [
         {
-          "id": "security_doors_grills",
-          "slug": "security_doors_grills",
-          "label": "Security doors and grills",
+          "id": "fencing_work",
+          "slug": "fencing_work",
+          "label": "Fencing & Gates",
+          "description": "Tell us about your fencing or gate needs",
           "fields": [
             {
-              "name": "security_type",
-              "label": "Type of security needed",
+              "name": "type_of_fencing",
+              "label": "Type of fencing",
               "type": "select",
-              "options": ["Security door (main entrance)", "Window grills", "Full house grilling", "Gate", "Mix"],
+              "options": ["Masonry wall", "Chain-link", "Electric fence", "Live fence", "Metal panel"],
               "required": true
             },
             {
-              "name": "quantity",
-              "label": "How many doors/windows to secure?",
+              "name": "perimeter_length",
+              "label": "Approximate perimeter length",
               "type": "text",
-              "placeholder": "e.g. all ground floor windows, main entrance only",
-              "required": true
-            },
-            {
-              "name": "material_style",
-              "label": "Material and style preference",
-              "type": "select",
-              "options": ["Mild steel", "Stainless steel", "Burglar bars", "Decorative grills", "Not sure"],
+              "placeholder": "e.g. 50m front, 100m total",
               "required": false
             },
             {
-              "name": "uploads",
-              "label": "Upload photos, dimension sketches",
-              "type": "file",
-              "multiple": true,
+              "name": "gate_requirements",
+              "label": "Gate requirements",
+              "type": "radio",
+              "options": ["Main gate", "Pedestrian gate", "Sliding", "Swing", "Motorized"],
+              "required": false
+            },
+            {
+              "name": "site_conditions",
+              "label": "Site conditions",
+              "type": "select",
+              "options": ["Flat", "Slight slope", "Steep", "Rocky"],
+              "required": false
+            },
+            {
+              "name": "security_priority",
+              "label": "Security priority level",
+              "type": "select",
+              "options": ["Standard", "High", "Very high"],
+              "required": false
+            },
+            {
+              "name": "existing_fence",
+              "label": "Any existing fence to remove?",
+              "type": "select",
+              "options": ["Yes", "No", "Partial"],
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "security_smart",
+      "slug": "security_smart",
+      "label": "Security & Smart Systems",
+      "icon": "🔒",
+      "description": "CCTV, alarms, access control, smart home",
+      "jobTypes": [
+        {
+          "id": "security_work",
+          "slug": "security_work",
+          "label": "Security & Smart Systems",
+          "description": "Describe your security or smart system project",
+          "fields": [
+            {
+              "name": "type_of_system",
+              "label": "Type of system",
+              "type": "radio",
+              "options": ["CCTV", "Intruder alarm", "Access control", "Intercom", "Smart locks", "Smart lighting"],
+              "required": true
+            },
+            {
+              "name": "property_type",
+              "label": "Property type",
+              "type": "select",
+              "options": ["Home", "Apartment block", "Shop", "Office", "Other"],
+              "required": false
+            },
+            {
+              "name": "num_key_areas",
+              "label": "Number of key areas",
+              "type": "text",
+              "placeholder": "e.g. 4 cameras, 2 doors with access control",
+              "required": false
+            },
+            {
+              "name": "existing_systems",
+              "label": "Existing systems?",
+              "type": "select",
+              "options": ["None", "Some equipment in place", "Full system needs upgrade"],
+              "required": false
+            },
+            {
+              "name": "remote_access",
+              "label": "Remote access needed?",
+              "type": "select",
+              "options": ["Yes (phone app)", "No", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "special_requirements",
+              "label": "Any special requirements?",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "interior_design",
+      "slug": "interior_design",
+      "label": "Interior Design & Décor",
+      "icon": "🛋️",
+      "description": "Interior design, décor, furniture styling",
+      "jobTypes": [
+        {
+          "id": "interior_design_work",
+          "slug": "interior_design_work",
+          "label": "Interior Design & Décor",
+          "description": "Tell us about the interior design you want",
+          "fields": [
+            {
+              "name": "areas_to_design",
+              "label": "Areas to be designed",
+              "type": "radio",
+              "options": ["Living room", "Bedrooms", "Kitchen", "Office", "Entire house"],
+              "required": true
+            },
+            {
+              "name": "scope",
+              "label": "Scope",
+              "type": "select",
+              "options": ["Full design concept", "Furniture layout only", "Colour & finishes only", "Styling & accessories"],
+              "required": false
+            },
+            {
+              "name": "style_preference",
+              "label": "Style preference",
+              "type": "textarea",
+              "placeholder": "Modern, boho, minimalist, African contemporary, etc.",
+              "required": false
+            },
+            {
+              "name": "furniture_status",
+              "label": "Furniture status",
+              "type": "select",
+              "options": ["No furniture yet", "Some existing", "Fully furnished, needs refresh"],
+              "required": false
+            },
+            {
+              "name": "budget_level",
+              "label": "Budget level for furnishings",
+              "type": "select",
+              "options": ["Budget", "Mid-range", "Premium"],
+              "required": false
+            },
+            {
+              "name": "inspiration_links",
+              "label": "If you have inspiration links or photos, describe",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "project_management",
+      "slug": "project_management",
+      "label": "Project Management & QS",
+      "icon": "📋",
+      "description": "Project management, supervision, costing",
+      "jobTypes": [
+        {
+          "id": "pm_work",
+          "slug": "pm_work",
+          "label": "Project Management & QS",
+          "description": "Describe the project you want managed or costed",
+          "fields": [
+            {
+              "name": "type_of_service",
+              "label": "Type of service",
+              "type": "radio",
+              "options": ["Full project management", "Site supervision", "Cost estimation", "Bills of quantities", "Contract administration"],
+              "required": true
+            },
+            {
+              "name": "project_type",
+              "label": "Project type",
+              "type": "select",
+              "options": ["Residential", "Commercial", "Mixed-use", "Other"],
+              "required": false
+            },
+            {
+              "name": "project_stage",
+              "label": "Project stage",
+              "type": "select",
+              "options": ["Concept", "Design", "Approval", "Construction started", "Near completion"],
+              "required": false
+            },
+            {
+              "name": "project_size_budget",
+              "label": "Approx project size or budget",
+              "type": "text",
+              "required": false
+            },
+            {
+              "name": "existing_contractor",
+              "label": "Do you already have a contractor?",
+              "type": "select",
+              "options": ["Yes", "Shortlisted", "No, need recommendations"],
+              "required": false
+            },
+            {
+              "name": "main_challenges",
+              "label": "Main challenges or concerns",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equipment_hire",
+      "slug": "equipment_hire",
+      "label": "Equipment Hire & Scaffolding",
+      "icon": "🏗️",
+      "description": "Equipment rental, scaffolding, machinery",
+      "jobTypes": [
+        {
+          "id": "equipment_hire_work",
+          "slug": "equipment_hire_work",
+          "label": "Equipment Hire & Scaffolding",
+          "description": "Tell us what equipment or scaffolding you need",
+          "fields": [
+            {
+              "name": "type_of_equipment",
+              "label": "Type of equipment",
+              "type": "radio",
+              "options": ["Excavator", "Backhoe", "Roller", "Mixer", "Scaffolding", "Hoist", "Others"],
+              "required": true
+            },
+            {
+              "name": "duration",
+              "label": "Duration",
+              "type": "select",
+              "options": ["1 day", "2–7 days", "1–4 weeks", "1+ month"],
+              "required": false
+            },
+            {
+              "name": "operator_needed",
+              "label": "With operator or without?",
+              "type": "select",
+              "options": ["With operator", "Without operator"],
+              "required": false
+            },
+            {
+              "name": "site_access",
+              "label": "Site access conditions",
+              "type": "select",
+              "options": ["Easy", "Tight", "Steep", "Muddy"],
+              "required": false
+            },
+            {
+              "name": "required_dates",
+              "label": "Required dates",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "safety_requirements",
+              "label": "Any special safety or permit requirements?",
+              "type": "textarea",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "waste_management",
+      "slug": "waste_management",
+      "label": "Waste Management & Site Cleaning",
+      "icon": "🗑️",
+      "description": "Waste removal, skip hire, site cleaning",
+      "jobTypes": [
+        {
+          "id": "waste_work",
+          "slug": "waste_work",
+          "label": "Waste Management & Site Cleaning",
+          "description": "Describe your waste or site cleaning needs",
+          "fields": [
+            {
+              "name": "type_of_service",
+              "label": "Type of service",
+              "type": "radio",
+              "options": ["Construction debris removal", "Regular skip collection", "Final cleaning", "Deep cleaning"],
+              "required": true
+            },
+            {
+              "name": "property_type",
+              "label": "Property type",
+              "type": "select",
+              "options": ["Residential", "Commercial", "Estate", "Site"],
+              "required": false
+            },
+            {
+              "name": "estimated_volume",
+              "label": "Estimated volume or frequency",
+              "type": "text",
+              "placeholder": "e.g. 1–2 lorry loads / weekly collection / one-off",
+              "required": false
+            },
+            {
+              "name": "waste_type",
+              "label": "Waste type",
+              "type": "select",
+              "options": ["Mixed construction waste", "Rubble", "Wood", "General rubbish"],
+              "required": false
+            },
+            {
+              "name": "truck_access",
+              "label": "Access for trucks",
+              "type": "select",
+              "options": ["Easy", "Moderate", "Difficult"],
+              "required": false
+            },
+            {
+              "name": "special_requirements",
+              "label": "Any special requirements?",
+              "type": "textarea",
+              "placeholder": "Hazardous materials, night collection, etc.",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "special_structures",
+      "slug": "special_structures",
+      "label": "Special Structures",
+      "icon": "🏢",
+      "description": "Water tanks, steel structures, staircases, conversions",
+      "jobTypes": [
+        {
+          "id": "special_structure_work",
+          "slug": "special_structure_work",
+          "label": "Special Structures",
+          "description": "Tell us about the special structure you need",
+          "fields": [
+            {
+              "name": "type_of_structure",
+              "label": "Type of structure",
+              "type": "select",
+              "options": ["Water tank tower", "Steel structure", "Staircase", "Mezzanine", "Container conversion", "Other"],
+              "required": true
+            },
+            {
+              "name": "purpose_use",
+              "label": "Purpose/use",
+              "type": "textarea",
+              "placeholder": "e.g. 10,000L water tank tower, small mezzanine for storage",
+              "required": false
+            },
+            {
+              "name": "approx_dimensions",
+              "label": "Approximate dimensions/capacity",
+              "type": "text",
+              "required": false
+            },
+            {
+              "name": "existing_or_new",
+              "label": "Existing structure or new build?",
+              "type": "select",
+              "options": ["New", "Modification", "Repair"],
+              "required": false
+            },
+            {
+              "name": "materials_preferred",
+              "label": "Materials preferred",
+              "type": "select",
+              "options": ["Steel", "Concrete", "Timber", "Mixed", "Not sure"],
+              "required": false
+            },
+            {
+              "name": "structural_drawings",
+              "label": "Any structural drawings available?",
+              "type": "select",
+              "options": ["Yes", "No", "Partial"],
+              "required": false
+            },
+            {
+              "name": "safety_requirements",
+              "label": "Special safety or loading requirements?",
+              "type": "textarea",
               "required": false
             }
           ]
         }
       ]
     }
-  ],
-  "sharedGeneralFields": [
-    {
-      "name": "project_title",
-      "label": "Project title (optional)",
-      "type": "text",
-      "placeholder": "e.g. Ruiru Residential, Extension Project 2025",
-      "required": false,
-      "helpText": "A name to help you identify this project later"
-    },
-    {
-      "name": "location",
-      "label": "Location / Area",
-      "type": "text",
-      "placeholder": "e.g. Ruiru, Membley, Kiambu Road, Nairobi",
-      "required": true,
-      "helpText": "Town, estate, or specific area. This helps vendors assess travel time."
-    },
-    {
-      "name": "property_status",
-      "label": "Property status",
-      "type": "select",
-      "options": [
-        "Empty plot",
-        "Existing structure on site",
-        "Ongoing construction"
-      ],
-      "required": false,
-      "helpText": "Helps contractors understand the starting point"
-    },
-    {
-      "name": "budget_range",
-      "label": "Budget range (optional)",
-      "type": "select",
-      "options": [
-        "Budget-conscious (minimal spend)",
-        "Mid-range (balanced)",
-        "Premium/flexible (quality over cost)"
-      ],
-      "required": false,
-      "helpText": "Helps vendors propose appropriate solutions"
-    },
-    {
-      "name": "start_date",
-      "label": "When would you like to start?",
-      "type": "date",
-      "required": false,
-      "helpText": "Approximate start date (leave blank if flexible)"
-    },
-    {
-      "name": "additional_notes",
-      "label": "Anything else vendors should know?",
-      "type": "textarea",
-      "placeholder": "e.g. tight timeline, urgent, specific requirements, budget constraints",
-      "required": false,
-      "helpText": "Any additional context that helps vendors provide better quotes"
-    }
-  ],
-  "sessionPersistence": {
-    "storageMethod": "localStorage",
-    "keyPrefix": "rfq_guest_",
-    "expiryHours": 48,
-    "preserveOnLogin": true,
-    "clearOnSubmit": true,
-    "description": "Form data persists across browser sessions until submission or expiry. Login preserves data so guest users can submit after authenticating."
-  }
+  ]
 }
