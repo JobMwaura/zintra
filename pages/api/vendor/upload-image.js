@@ -6,7 +6,7 @@
 // This is more efficient and secure.
 
 import { generatePresignedUploadUrl, validateFile, sanitizeFileName } from '@/lib/aws-s3';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -15,18 +15,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get authenticated user
-    const supabase = createServerSupabaseClient({ req, res });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    // Check if user is authenticated
-    if (!session) {
+    // Get authenticated user from Authorization header
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = session.user.id;
+    // Create Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Get user from token
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userId = user.id;
     const { fileName, contentType, vendorId } = req.body;
 
     // Validate required fields

@@ -81,13 +81,52 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 
 // Load templates (Tweak 1: source of truth)
-const templatesPath = path.join(process.cwd(), 'public/data/rfq-templates-v2-hierarchical.json');
-const templates = JSON.parse(fs.readFileSync(templatesPath, 'utf-8'));
+let templates = null;
+
+function loadTemplates() {
+  if (!templates) {
+    try {
+      const templatesPath = path.join(process.cwd(), 'public/data/rfq-templates-v2-hierarchical.json');
+      templates = JSON.parse(fs.readFileSync(templatesPath, 'utf-8'));
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+      templates = { majorCategories: [] };
+    }
+  }
+  return templates;
+}
+
+// Simple rate limiter for Vercel serverless environment
+const rateLimitStore = {};
+
+function checkRateLimit(key, maxAttempts = 10, windowMs = 60 * 60 * 1000) {
+  const now = Date.now();
+  
+  if (!rateLimitStore[key]) {
+    rateLimitStore[key] = { count: 1, firstAttempt: now };
+    return true;
+  }
+  
+  const entry = rateLimitStore[key];
+  
+  // Reset if window has passed
+  if (now - entry.firstAttempt > windowMs) {
+    rateLimitStore[key] = { count: 1, firstAttempt: now };
+    return true;
+  }
+  
+  // Check if within limit
+  if (entry.count < maxAttempts) {
+    entry.count++;
+    return true;
+  }
+  
+  return false;
+}
 
 // Constants
 const TIER_LIMITS = {
@@ -101,17 +140,6 @@ const TIER_PRICES = {
   standard: 500, // KES
   premium: 1000, // KES
 };
-
-// Rate limiter: max 10 RFQs per hour per IP
-const limiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // 10 RFQs per hour per IP
-  message: 'Too many RFQs created from this IP, please try again later',
-  skip: (req) => {
-    // Don't rate limit authenticated users (allow 20/hour)
-    return req.headers['authorization'] !== undefined;
-  },
-});
 
 /**
  * Sanitize user input to prevent XSS
@@ -140,11 +168,11 @@ function sanitizeInput(data) {
 /**
  * Validate form data against template spec
  */
-function validateFormData(categorySlug, jobTypeSlug, formData) {
+function validateFormData(categorySlug, jobTypeSlug, formData, templatesRef) {
   const errors = {};
 
   // Find the template
-  const category = templates.majorCategories.find(
+  const category = templatesRef.majorCategories.find(
     (c) => c.slug === categorySlug
   );
   if (!category) {
@@ -159,7 +187,7 @@ function validateFormData(categorySlug, jobTypeSlug, formData) {
   // Get all field specs (template + shared)
   const allFieldSpecs = [
     ...jobType.fields,
-    ...templates.sharedGeneralFields,
+    ...templatesRef.sharedGeneralFields,
   ];
 
   // Validate each field
@@ -359,13 +387,20 @@ async function notifyVendors(vendors, rfq) {
  * Main API handler
  */
 export default async function handler(req, res) {
-  // Apply rate limiting
-  await new Promise((resolve, reject) => {
-    limiter(req, res, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
+  // Load templates at runtime
+  const templates = loadTemplates();
+
+  // Apply rate limiting (skip for authenticated users)
+  const isAuthenticated = req.headers['authorization'] !== undefined;
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  
+  if (process.env.NODE_ENV === 'production' && !isAuthenticated) {
+    if (!checkRateLimit(`rfq-create:${clientIp}`, 10, 60 * 60 * 1000)) {
+      return res.status(429).json({
+        error: 'Too many RFQs created from this IP, please try again later'
+      });
+    }
+  }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -440,7 +475,8 @@ export default async function handler(req, res) {
     const validation = validateFormData(
       categorySlug,
       jobTypeSlug,
-      formData
+      formData,
+      templates
     );
 
     if (validation.error) {

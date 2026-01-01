@@ -16,29 +16,45 @@
  * 429: { success: false, message: "Too many attempts" }
  */
 
-import rateLimit from 'express-rate-limit';
+// Simple rate limiter for Vercel serverless environment
+const rateLimitStore = {};
 
-// Rate limiting: Max 5 verification attempts per phone per 15 minutes
-const verifyLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: 'Too many verification attempts. Please try again later.',
-  skip: () => process.env.NODE_ENV === 'development'
-});
+function checkRateLimit(key, maxAttempts = 5, windowMs = 15 * 60 * 1000) {
+  const now = Date.now();
+  
+  if (!rateLimitStore[key]) {
+    rateLimitStore[key] = { count: 1, firstAttempt: now };
+    return true;
+  }
+  
+  const entry = rateLimitStore[key];
+  
+  // Reset if window has passed
+  if (now - entry.firstAttempt > windowMs) {
+    rateLimitStore[key] = { count: 1, firstAttempt: now };
+    return true;
+  }
+  
+  // Check if within limit
+  if (entry.count < maxAttempts) {
+    entry.count++;
+    return true;
+  }
+  
+  return false;
+}
 
 export default async function handler(req, res) {
-  // Apply rate limiting
-  await new Promise((resolve, reject) => {
-    verifyLimiter(req, res, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  }).catch(() => {
-    return res.status(429).json({
-      success: false,
-      message: 'Too many verification attempts. Please try again later.'
-    });
-  });
+  // Apply rate limiting (skip in development)
+  if (process.env.NODE_ENV === 'production') {
+    const { phoneNumber } = req.body || {};
+    if (phoneNumber && !checkRateLimit(`sms-verify:${phoneNumber}`, 5, 15 * 60 * 1000)) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many verification attempts. Please try again later.'
+      });
+    }
+  }
 
   // Only allow POST
   if (req.method !== 'POST') {

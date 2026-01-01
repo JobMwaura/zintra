@@ -16,29 +16,45 @@
  * 500: { success: false, message: "SMS service error" }
  */
 
-import rateLimit from 'express-rate-limit';
+// Simple rate limiter for Vercel serverless environment
+const rateLimitStore = {};
 
-// Rate limiting: Max 3 OTP sends per phone per 15 minutes
-const otpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 3,
-  message: 'Too many OTP requests. Please try again later.',
-  skip: () => process.env.NODE_ENV === 'development'
-});
+function checkRateLimit(key, maxAttempts = 3, windowMs = 15 * 60 * 1000) {
+  const now = Date.now();
+  
+  if (!rateLimitStore[key]) {
+    rateLimitStore[key] = { count: 1, firstAttempt: now };
+    return true;
+  }
+  
+  const entry = rateLimitStore[key];
+  
+  // Reset if window has passed
+  if (now - entry.firstAttempt > windowMs) {
+    rateLimitStore[key] = { count: 1, firstAttempt: now };
+    return true;
+  }
+  
+  // Check if within limit
+  if (entry.count < maxAttempts) {
+    entry.count++;
+    return true;
+  }
+  
+  return false;
+}
 
 export default async function handler(req, res) {
-  // Apply rate limiting
-  await new Promise((resolve, reject) => {
-    otpLimiter(req, res, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  }).catch(() => {
-    return res.status(429).json({
-      success: false,
-      message: 'Too many OTP requests. Please try again later.'
-    });
-  });
+  // Apply rate limiting (skip in development)
+  if (process.env.NODE_ENV === 'production') {
+    const { phoneNumber } = req.body || {};
+    if (phoneNumber && !checkRateLimit(`sms-otp:${phoneNumber}`, 3, 15 * 60 * 1000)) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many OTP requests. Please try again later.'
+      });
+    }
+  }
 
   // Only allow POST
   if (req.method !== 'POST') {
