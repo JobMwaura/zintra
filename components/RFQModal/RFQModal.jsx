@@ -260,12 +260,19 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
       }
 
       const payload = {
-        category_slug: formData.selectedCategory,
-        job_type_slug: formData.selectedJobType || 'general',
-        rfq_type: rfqType,
-        selected_vendor_ids: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
-        // Store all additional data in the JSONB form_data column
-        form_data: {
+        // Map to actual database columns from RFQ_SYSTEM_COMPLETE.sql
+        title: formData.projectTitle || formData.selectedCategory,
+        description: formData.projectSummary,
+        category: formData.selectedCategory,
+        location: formData.town,
+        county: formData.county,
+        budget_estimate: formData.budgetMin && formData.budgetMax 
+          ? `KES ${formData.budgetMin} - KES ${formData.budgetMax}` 
+          : null,
+        type: rfqType === 'direct' ? 'direct' : rfqType === 'wizard' ? 'matched' : 'public',
+        urgency: 'normal',
+        // Store all additional form data as JSON in attachments JSONB column
+        attachments: {
           projectTitle: formData.projectTitle || formData.selectedCategory,
           projectSummary: formData.projectSummary,
           selectedCategory: formData.selectedCategory,
@@ -274,11 +281,11 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
           county: formData.county,
           budgetMin: parseInt(formData.budgetMin) || null,
           budgetMax: parseInt(formData.budgetMax) || null,
-          templateFields: Object.keys(formData.templateFields).length > 0 ? formData.templateFields : null,
-          referenceImages: formData.referenceImages.length > 0 ? formData.referenceImages : [],
           directions: formData.directions || null,
           desiredStartDate: formData.desiredStartDate || null,
           budgetLevel: formData.budgetLevel || null,
+          templateFields: Object.keys(formData.templateFields).length > 0 ? formData.templateFields : null,
+          referenceImages: formData.referenceImages.length > 0 ? formData.referenceImages : [],
           selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
           allowOtherVendors: rfqType === 'wizard' ? formData.allowOtherVendors : false,
           visibilityScope: rfqType === 'public' ? formData.visibilityScope : null,
