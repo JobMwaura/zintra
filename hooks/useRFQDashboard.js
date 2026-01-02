@@ -57,7 +57,7 @@ export function useRFQDashboard() {
           budget_range,
           location,
           county,
-          deadline,
+          expires_at,
           status,
           created_at,
           updated_at
@@ -128,7 +128,7 @@ export function useRFQDashboard() {
               budget_range,
               location,
               county,
-              deadline,
+              expires_at,
               status,
               created_at,
               updated_at
@@ -259,9 +259,9 @@ export function useRFQDashboard() {
         case 'oldest':
           return new Date(a.created_at) - new Date(b.created_at);
         case 'deadline-soon':
-          return new Date(a.deadline) - new Date(b.deadline);
+          return new Date(a.expires_at) - new Date(b.expires_at);
         case 'deadline-late':
-          return new Date(b.deadline) - new Date(a.deadline);
+          return new Date(b.expires_at) - new Date(a.expires_at);
         case 'quotes-most':
           return b.rfq_responses.length - a.rfq_responses.length;
         case 'quotes-least':

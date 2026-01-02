@@ -153,6 +153,29 @@ CREATE TRIGGER set_timestamp
   EXECUTE FUNCTION public.trg_set_timestamp();
 
 -- ============================================================================
+-- RFQ EXPIRATION TRIGGER (21 days)
+-- ============================================================================
+-- Automatically sets expires_at to NOW + 21 days when a new RFQ is created
+-- This enables automatic countdown and expiration notifications
+
+CREATE OR REPLACE FUNCTION public.set_rfq_expiration_21_days()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only set expires_at if it's not already set
+  IF NEW.expires_at IS NULL THEN
+    NEW.expires_at := NOW() + INTERVAL '21 days';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_set_rfq_expiration_21_days ON public.rfqs;
+CREATE TRIGGER trg_set_rfq_expiration_21_days
+  BEFORE INSERT ON public.rfqs
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_rfq_expiration_21_days();
+
+-- ============================================================================
 -- OPTIONAL: CHECK CONSTRAINT FOR URGENCY VALUES
 -- ============================================================================
 -- Enforces consistent urgency values at the database level
@@ -211,6 +234,13 @@ CREATE TRIGGER set_timestamp
 --
 -- New triggers:
 --   - set_timestamp: Automatically updates updated_at on every UPDATE
+--   - set_rfq_expiration_21_days: Automatically sets expires_at to NOW + 21 days on INSERT
+--
+-- Expiration Logic:
+--   - All new RFQs are set to expire 21 days after creation
+--   - After 21 days, RFQs become inactive and no longer accept responses
+--   - Users are notified of RFQs closing in 3 days or less
+--   - Users are notified if an RFQ expires with 0 responses
 --
 -- Optional features (commented out):
 --   - Expression indexes for specific JSONB keys (enable as needed)

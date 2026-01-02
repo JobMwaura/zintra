@@ -27,7 +27,7 @@ export default function RFQCard({
 
   const statusStyles = getStatusStyles(rfq);
   const priceStats = getPriceStats(rfq);
-  const daysLeft = getDaysUntilDeadline(rfq.deadline);
+  const daysLeft = getDaysUntilDeadline(rfq.expires_at);
 
   const isClosingSoon = daysLeft >= 0 && daysLeft <= 3;
   const isOverdue = daysLeft < 0;
@@ -140,7 +140,7 @@ export default function RFQCard({
           <div>
             <p className="text-xs text-slate-600 font-medium">Deadline</p>
             <p className="text-sm font-semibold text-slate-900">
-              {formatDate(rfq.deadline)}
+              {formatDate(rfq.expires_at)}
             </p>
           </div>
           <div className="text-right">

@@ -101,7 +101,7 @@ export default function PendingTab({
           <p className="text-sm font-medium text-slate-600">Closing Soon (≤3 days)</p>
           <p className="text-2xl font-bold text-orange-600">
             {rfqs.filter(r => {
-              const daysLeft = getDaysUntilDeadline(r.deadline);
+              const daysLeft = getDaysUntilDeadline(r.expires_at);
               return daysLeft >= 0 && daysLeft <= 3;
             }).length}
           </p>
