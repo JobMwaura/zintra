@@ -1,5 +1,7 @@
 'use client';
 
+import LocationSelector from '@/components/LocationSelector';
+
 export default function StepGeneral({
   formData,
   onFieldChange,
@@ -73,47 +75,19 @@ export default function StepGeneral({
         </div>
 
         {/* Location Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-900">
-              County <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.county || ''}
-              onChange={(e) => onFieldChange('county', e.target.value)}
-              className={`w-full px-4 py-2.5 text-base border-2 rounded-xl transition-all focus:outline-none ${
-                errors.county
-                  ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-200'
-                  : 'border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100'
-              }`}
-              placeholder="County"
-            />
-            {errors.county && (
-              <p className="text-sm text-red-600 font-medium">{errors.county}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-900">
-              Town/City <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.town || ''}
-              onChange={(e) => onFieldChange('town', e.target.value)}
-              className={`w-full px-4 py-2.5 text-base border-2 rounded-xl transition-all focus:outline-none ${
-                errors.town
-                  ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-200'
-                  : 'border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100'
-              }`}
-              placeholder="Town/City"
-            />
-            {errors.town && (
-              <p className="text-sm text-red-600 font-medium">{errors.town}</p>
-            )}
-          </div>
-        </div>
+        <LocationSelector
+          county={formData.county}
+          town={formData.town}
+          onCountyChange={(e) => onFieldChange('county', e.target.value)}
+          onTownChange={(e) => onFieldChange('town', e.target.value)}
+          countyError={errors.county}
+          townError={errors.town}
+          countyLabel="County"
+          townLabel="Town/City"
+          required={true}
+          layout="row"
+          size="default"
+        />
 
         {/* Directions */}
         <div className="space-y-2">
