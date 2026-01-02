@@ -136,6 +136,29 @@ export default function StepTemplate({
               />
             )}
 
+            {/* Radio Buttons */}
+            {field.type === 'radio' && (
+              <div className="space-y-3">
+                {field.options?.map(option => (
+                  <label key={option.value || option} className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="radio"
+                        name={field.name}
+                        value={option.value || option}
+                        checked={templateFields[field.name] === (option.value || option)}
+                        onChange={(e) => onFieldChange(field.name, e.target.value)}
+                        className="w-4 h-4 accent-orange-600 cursor-pointer"
+                      />
+                    </div>
+                    <span className="text-base text-gray-700 group-hover:text-gray-900 transition-colors">
+                      {option.label || option}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+
             {/* Error Message */}
             {errors[field.name] && (
               <p className="text-sm text-red-600 font-medium">{errors[field.name]}</p>
