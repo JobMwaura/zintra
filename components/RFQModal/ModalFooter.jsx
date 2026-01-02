@@ -11,7 +11,7 @@ export default function ModalFooter({
   loading,
   isValid 
 }) {
-  const stepIndex = steps.findIndex(s => s.name.toLowerCase() === currentStep);
+  const stepIndex = steps.findIndex(s => s.name === currentStep);
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === steps.length - 1;
   const isReviewStep = currentStep === 'review';

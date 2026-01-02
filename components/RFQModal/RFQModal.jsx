@@ -61,13 +61,13 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
   const [rfqId, setRfqId] = useState(null);
 
   const steps = [
-    { number: 1, name: 'Category' },
-    { number: 2, name: 'Details' },
-    { number: 3, name: 'Project' },
-    { number: 4, name: 'Recipients' },
-    { number: 5, name: 'Auth' },
-    { number: 6, name: 'Review' },
-    { number: 7, name: 'Success' }
+    { number: 1, name: 'category' },
+    { number: 2, name: 'details' },
+    { number: 3, name: 'project' },
+    { number: 4, name: 'recipients' },
+    { number: 5, name: 'auth' },
+    { number: 6, name: 'review' },
+    { number: 7, name: 'success' }
   ];
 
   // Load user and templates on mount
@@ -177,7 +177,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
       if (categoryNeedsJobType && !formData.selectedJobType) newErrors.selectedJobType = 'Required';
     }
 
-    if (currentStep === 'template') {
+    if (currentStep === 'details') {
       templateFieldsMetadata.forEach(field => {
         const value = formData.templateFields[field.name];
         if (field.required && (value === '' || value === undefined || value === null)) {
@@ -186,7 +186,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
       });
     }
 
-    if (currentStep === 'general') {
+    if (currentStep === 'project') {
       if (!formData.county) newErrors.county = 'Required';
       if (!formData.town) newErrors.town = 'Required';
       if (!formData.budgetMin) newErrors.budgetMin = 'Required';
@@ -222,17 +222,17 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
   const nextStep = () => {
     if (!validateStep()) return;
 
-    const stepIndex = steps.findIndex(s => s.name.toLowerCase() === currentStep);
+    const stepIndex = steps.findIndex(s => s.name === currentStep);
     if (stepIndex < steps.length - 1) {
-      setCurrentStep(steps[stepIndex + 1].name.toLowerCase());
+      setCurrentStep(steps[stepIndex + 1].name);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const prevStep = () => {
-    const stepIndex = steps.findIndex(s => s.name.toLowerCase() === currentStep);
+    const stepIndex = steps.findIndex(s => s.name === currentStep);
     if (stepIndex > 0) {
-      setCurrentStep(steps[stepIndex - 1].name.toLowerCase());
+      setCurrentStep(steps[stepIndex - 1].name);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
