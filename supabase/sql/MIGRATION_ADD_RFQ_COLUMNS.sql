@@ -33,7 +33,10 @@ ALTER TABLE IF EXISTS public.rfqs
 ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 
 ALTER TABLE IF EXISTS public.rfqs
-ADD COLUMN IF NOT EXISTS budget_estimate DECIMAL(12, 2);
+ADD COLUMN IF NOT EXISTS budget_min DECIMAL(12, 2);
+
+ALTER TABLE IF EXISTS public.rfqs
+ADD COLUMN IF NOT EXISTS budget_max DECIMAL(12, 2);
 
 ALTER TABLE IF EXISTS public.rfqs
 ADD COLUMN IF NOT EXISTS location TEXT;
@@ -60,9 +63,10 @@ CREATE INDEX IF NOT EXISTS idx_rfqs_status ON public.rfqs(status);
 --   - tags: TEXT[], array of tags
 --   - expires_at: TIMESTAMPTZ, RFQ expiration date
 --   - completed_at: TIMESTAMPTZ, completion timestamp
---   - budget_estimate: DECIMAL, estimated project budget
---   - location: TEXT, project location
---   - county: TEXT, county of the project
+--   - budget_min: DECIMAL, minimum project budget (in KES)
+--   - budget_max: DECIMAL, maximum project budget (in KES)
+--   - location: TEXT, project location/town
+--   - county: TEXT, county/region of the project
 --
 -- Indexes added:
 --   - idx_rfqs_type: On type column for filtering by RFQ type

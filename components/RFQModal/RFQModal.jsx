@@ -266,9 +266,8 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
         category: formData.selectedCategory,
         location: formData.town,
         county: formData.county,
-        budget_estimate: formData.budgetMin && formData.budgetMax 
-          ? `KES ${formData.budgetMin} - KES ${formData.budgetMax}` 
-          : null,
+        budget_min: formData.budgetMin ? parseInt(formData.budgetMin.replace(/,/g, ''), 10) : null,
+        budget_max: formData.budgetMax ? parseInt(formData.budgetMax.replace(/,/g, ''), 10) : null,
         type: rfqType === 'direct' ? 'direct' : rfqType === 'wizard' ? 'matched' : 'public',
         urgency: 'normal',
         // Store all additional form data as JSON in attachments JSONB column
