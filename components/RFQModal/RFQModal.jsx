@@ -261,6 +261,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
 
       const payload = {
         // Map to actual database columns from RFQ_SYSTEM_COMPLETE.sql
+        user_id: user?.id, // CRITICAL: Required by RLS policy rfqs_insert
         title: formData.projectTitle || formData.selectedCategory,
         description: formData.projectSummary,
         category: formData.selectedCategory,
