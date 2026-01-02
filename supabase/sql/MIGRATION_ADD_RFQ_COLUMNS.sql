@@ -10,6 +10,12 @@
 --    - Does NOT drop existing columns
 --    - Safe to run multiple times without errors
 --
+-- 📌 CRITICAL FIX: Backfills existing RFQs with 21-day expiration dates
+--    - BEFORE: Existing RFQs showed "1 Jan 1970" (NULL → epoch issue)
+--    - AFTER: All RFQs get expires_at = created_at + 21 days
+--    - NEW RFQs: Automatically assigned 21-day expiration via trigger
+--    - Expired RFQs: Status changes to 'expired', no new responses allowed
+--
 -- 📌 DO NOT RUN: RFQ_SYSTEM_COMPLETE.sql (it creates policies that already exist)
 --    ONLY RUN: This migration file (MIGRATION_ADD_RFQ_COLUMNS.sql)
 --
@@ -176,6 +182,30 @@ CREATE TRIGGER trg_set_rfq_expiration_21_days
   EXECUTE FUNCTION public.set_rfq_expiration_21_days();
 
 -- ============================================================================
+-- BACKFILL EXISTING RFQS WITH 21-DAY EXPIRATION
+-- ============================================================================
+-- For all existing RFQs where expires_at is NULL, set it to 21 days from creation
+-- This ensures all RFQs have a valid expiration date, not Unix epoch
+
+UPDATE public.rfqs
+SET expires_at = created_at + INTERVAL '21 days'
+WHERE expires_at IS NULL
+AND status != 'closed'
+AND created_at IS NOT NULL;
+
+-- For closed RFQs, set expires_at to their completion date or a reasonable past date
+UPDATE public.rfqs
+SET expires_at = COALESCE(completed_at, updated_at, created_at) + INTERVAL '21 days'
+WHERE expires_at IS NULL
+AND status = 'closed';
+
+-- Log backfill completion (optional - helps with debugging)
+-- This updates any remaining NULLs just in case
+UPDATE public.rfqs
+SET expires_at = NOW() + INTERVAL '21 days'
+WHERE expires_at IS NULL;
+
+-- ============================================================================
 -- OPTIONAL: CHECK CONSTRAINT FOR URGENCY VALUES
 -- ============================================================================
 -- Enforces consistent urgency values at the database level
@@ -236,8 +266,10 @@ CREATE TRIGGER trg_set_rfq_expiration_21_days
 --   - set_timestamp: Automatically updates updated_at on every UPDATE
 --   - set_rfq_expiration_21_days: Automatically sets expires_at to NOW + 21 days on INSERT
 --
--- Expiration Logic:
---   - All new RFQs are set to expire 21 days after creation
+-- Expiration Logic & Backfill:
+--   - All NEW RFQs get expires_at = NOW + 21 days automatically via trigger
+--   - All EXISTING RFQs are backfilled: expires_at = created_at + 21 days
+--   - Closed RFQs backfilled to completion_date + 21 days (already expired)
 --   - After 21 days, RFQs become inactive and no longer accept responses
 --   - Users are notified of RFQs closing in 3 days or less
 --   - Users are notified if an RFQ expires with 0 responses
