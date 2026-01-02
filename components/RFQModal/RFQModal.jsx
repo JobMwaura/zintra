@@ -220,7 +220,15 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
   };
 
   const nextStep = () => {
-    if (!validateStep()) return;
+    if (!validateStep()) {
+      // Show error feedback
+      const errorMessages = Object.values(errors).filter(Boolean);
+      if (errorMessages.length > 0) {
+        setError(`Please fix: ${errorMessages.join(', ')}`);
+        setTimeout(() => setError(null), 5000); // Clear after 5 seconds
+      }
+      return;
+    }
 
     const stepIndex = steps.findIndex(s => s.name === currentStep);
     if (stepIndex < steps.length - 1) {
@@ -339,6 +347,16 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
 
         {/* Step Indicator */}
         <StepIndicator currentStep={currentStep} steps={steps} />
+
+        {/* Error Banner */}
+        {error && (
+          <div className="bg-red-50 border-b border-red-200 px-6 sm:px-8 py-3">
+            <p className="text-sm text-red-700 font-medium flex items-center gap-2">
+              <span className="text-base">⚠️</span>
+              {error}
+            </p>
+          </div>
+        )}
 
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8">
