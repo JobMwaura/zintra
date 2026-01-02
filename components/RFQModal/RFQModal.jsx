@@ -241,6 +241,8 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
     const stepIndex = steps.findIndex(s => s.name === currentStep);
     if (stepIndex > 0) {
       setCurrentStep(steps[stepIndex - 1].name);
+      setErrors({});
+      setError(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
