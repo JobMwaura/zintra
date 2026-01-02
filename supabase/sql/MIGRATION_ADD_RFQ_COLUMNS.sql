@@ -3,6 +3,17 @@
 -- ============================================================================
 -- This migration adds the missing columns that should exist in the rfqs table
 -- to make the RFQ modal functional
+--
+-- ⚠️  IMPORTANT: This migration is SAFE and IDEMPOTENT
+--    - Uses IF NOT EXISTS for all columns and indexes
+--    - Does NOT recreate policies (they already exist)
+--    - Does NOT drop existing columns
+--    - Safe to run multiple times without errors
+--
+-- 📌 DO NOT RUN: RFQ_SYSTEM_COMPLETE.sql (it creates policies that already exist)
+--    ONLY RUN: This migration file (MIGRATION_ADD_RFQ_COLUMNS.sql)
+--
+-- ============================================================================
 
 -- Check current columns and add missing ones
 ALTER TABLE IF EXISTS public.rfqs
