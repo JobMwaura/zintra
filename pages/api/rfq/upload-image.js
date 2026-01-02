@@ -78,9 +78,15 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('RFQ upload-image error:', error);
+    
+    // Check if AWS credentials are missing
+    const awsMissing = !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_S3_BUCKET;
+    
     return res.status(500).json({
       error: 'Failed to generate upload URL',
       details: error.message,
+      missingAWSConfig: awsMissing ? 'AWS credentials not configured' : null,
+      bucket: process.env.AWS_S3_BUCKET ? 'Configured' : 'Missing',
     });
   }
 }
