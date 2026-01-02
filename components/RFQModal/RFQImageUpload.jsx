@@ -180,33 +180,40 @@ export default function RFQImageUpload({
           <div
             onClick={() => fileInputRef.current?.click()}
             className={`
-              relative w-full border-2 border-dashed rounded-lg p-6
+              relative w-full border-2 border-dashed rounded-xl p-8 md:p-10
               transition-all cursor-pointer
-              ${uploading ? 'border-gray-300 bg-gray-50' : 'border-orange-300 hover:border-orange-500 hover:bg-orange-50'}
-              ${error ? 'border-red-300 bg-red-50' : ''}
+              ${uploading 
+                ? 'border-gray-300 bg-gray-50' 
+                : error
+                  ? 'border-red-300 bg-red-50 hover:border-red-400'
+                  : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50/50'
+              }
             `}
           >
-            <div className="flex flex-col items-center justify-center space-y-2">
+            <div className="flex flex-col items-center justify-center space-y-3">
               {uploading ? (
                 <>
                   <Loader className="w-8 h-8 text-orange-500 animate-spin" />
-                  <p className="text-sm font-medium text-gray-700">Uploading...</p>
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <p className="text-sm font-semibold text-gray-900">Uploading...</p>
+                  <div className="w-40 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-orange-500 transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
+                  <p className="text-xs text-gray-600">{uploadProgress}%</p>
                 </>
               ) : (
                 <>
-                  <Upload className="w-8 h-8 text-orange-500" />
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100">
+                    <Upload className="w-6 h-6 text-orange-600" />
+                  </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-gray-900">
-                      Click to upload or drag and drop
+                    <p className="text-sm font-semibold text-gray-900">
+                      Click to upload
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      PNG, JPG, WebP, GIF up to {maxSize}MB
+                    <p className="text-xs text-gray-600 mt-1">
+                      or drag and drop • PNG, JPG, WebP, GIF • Max {maxSize}MB
                     </p>
                   </div>
                 </>
@@ -218,75 +225,82 @@ export default function RFQImageUpload({
 
       {/* Error message */}
       {error && (
-        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-900 font-medium">{error}</p>
         </div>
       )}
 
       {/* Uploaded images */}
       {images.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4 pt-2">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-gray-900">
-              Reference Images ({images.length}/{maxImages})
+              {images.length} image{images.length !== 1 ? 's' : ''} uploaded
             </h4>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+              {images.length}/{maxImages}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {images.map((image, idx) => (
               <div
                 key={image.key || idx}
-                className="relative group"
+                className="group relative rounded-xl overflow-hidden bg-gray-100 aspect-square"
               >
                 {/* Image thumbnail */}
-                <div className="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <img
-                    src={image.fileUrl}
-                    alt={image.fileName}
-                    className="w-full h-full object-cover"
-                  />
+                <img
+                  src={image.fileUrl}
+                  alt={image.fileName}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+
+                {/* Success badge */}
+                <div className="absolute top-2 right-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500 text-white">
+                  <Check className="w-4 h-4" />
                 </div>
 
                 {/* Overlay with remove button */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <button
                     onClick={() => handleRemoveImage(image.key)}
-                    className="p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors"
+                    className="p-2.5 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all hover:scale-110"
                     title="Remove image"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 {/* File info tooltip */}
-                <div className="absolute -bottom-12 left-0 right-0 hidden group-hover:block">
-                  <div className="bg-gray-900 text-white text-xs rounded p-2 whitespace-nowrap">
-                    <p className="truncate">{image.fileName}</p>
-                    <p className="text-gray-300">{formatFileSize(image.size)}</p>
+                <div className="absolute -bottom-16 left-0 right-0 hidden group-hover:block z-10">
+                  <div className="bg-gray-900 text-white text-xs rounded-lg p-2.5 shadow-lg">
+                    <p className="truncate font-medium">{image.fileName}</p>
+                    <p className="text-gray-400">{formatFileSize(image.size)}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Image metadata */}
-          {images.length > 0 && (
-            <div className="text-xs text-gray-600 space-y-1">
-              <p>📦 All images stored in AWS S3</p>
-              <p>✅ Images will be included in your RFQ submission</p>
-            </div>
-          )}
+          {/* Info message */}
+          <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <span className="text-xs text-blue-700 leading-relaxed">
+              ✅ Images will be sent to vendors with your RFQ
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Info message */}
-      {images.length === 0 && !uploading && (
-        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <ImageIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium">Reference Images (Optional)</p>
-            <p>Upload photos, plans, or documents to help vendors better understand your project.</p>
+      {/* Empty state message */}
+      {images.length === 0 && !uploading && !error && (
+        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <ImageIcon className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-gray-700 leading-relaxed">
+            <p className="font-medium text-gray-900">Add reference images (optional)</p>
+            <p className="text-xs mt-1 text-gray-600">
+              Photos, plans, or sketches help vendors understand your project better
+            </p>
           </div>
         </div>
       )}
