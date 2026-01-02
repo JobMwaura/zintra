@@ -260,22 +260,30 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
       }
 
       const payload = {
-        title: formData.projectTitle || formData.selectedCategory,
-        description: formData.projectSummary,
-        category: formData.selectedCategory,
-        job_type: formData.selectedJobType || null,
-        location: formData.town,
-        county: formData.county,
-        budget_min: parseInt(formData.budgetMin) || null,
-        budget_max: parseInt(formData.budgetMax) || null,
-        details: Object.keys(formData.templateFields).length > 0 ? formData.templateFields : null,
-        reference_images: formData.referenceImages.length > 0 ? formData.referenceImages : [],
+        category_slug: formData.selectedCategory,
+        job_type_slug: formData.selectedJobType || 'general',
         rfq_type: rfqType,
-        visibility: rfqType === 'direct' ? 'private' : rfqType === 'wizard' ? 'matching' : 'public',
-        selected_vendors: rfqType === 'direct' ? formData.selectedVendors : rfqType === 'wizard' ? formData.selectedVendors : [],
-        allow_other_vendors: rfqType === 'wizard' ? formData.allowOtherVendors : false,
-        visibility_scope: rfqType === 'public' ? formData.visibilityScope : null,
-        response_limit: rfqType === 'public' ? formData.responseLimit : null,
+        selected_vendor_ids: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
+        // Store all additional data in the JSONB form_data column
+        form_data: {
+          projectTitle: formData.projectTitle || formData.selectedCategory,
+          projectSummary: formData.projectSummary,
+          selectedCategory: formData.selectedCategory,
+          selectedJobType: formData.selectedJobType || null,
+          town: formData.town,
+          county: formData.county,
+          budgetMin: parseInt(formData.budgetMin) || null,
+          budgetMax: parseInt(formData.budgetMax) || null,
+          templateFields: Object.keys(formData.templateFields).length > 0 ? formData.templateFields : null,
+          referenceImages: formData.referenceImages.length > 0 ? formData.referenceImages : [],
+          directions: formData.directions || null,
+          desiredStartDate: formData.desiredStartDate || null,
+          budgetLevel: formData.budgetLevel || null,
+          selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
+          allowOtherVendors: rfqType === 'wizard' ? formData.allowOtherVendors : false,
+          visibilityScope: rfqType === 'public' ? formData.visibilityScope : null,
+          responseLimit: rfqType === 'public' ? formData.responseLimit : 5,
+        }
       };
 
       const { data, error: rfqError } = await supabase
