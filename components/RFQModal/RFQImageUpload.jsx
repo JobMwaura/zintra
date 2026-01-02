@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, X, Check, AlertCircle, Image as ImageIcon, Loader } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * RFQImageUpload Component
@@ -77,10 +78,19 @@ export default function RFQImageUpload({
     setUploadProgress(0);
 
     try {
+      // Get the user's session token for authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('Not authenticated. Please log in to upload images.');
+      }
+
       // Step 1: Get presigned URL from our API
       const presignedResponse = await fetch('/api/rfq/upload-image', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           fileName: file.name,
           fileType: file.type,
