@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     }
 
     // Validate file
-    const validation = validateFile(fileSize, fileType);
+    const validation = validateFile({ size: fileSize, type: fileType });
     if (!validation.valid) {
       return res.status(400).json({ error: validation.error });
     }
