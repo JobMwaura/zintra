@@ -8,22 +8,12 @@
  * const { rfqs, stats, loading, search, filter, sort } = useRFQDashboard();
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 
 export function useRFQDashboard() {
   const { user } = useAuth();
-  
-  // Create supabase client once and reuse it
-  const supabaseRef = useRef(null);
-  if (!supabaseRef.current) {
-    supabaseRef.current = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
-  }
-  const supabase = supabaseRef.current;
 
   // State management
   const [allRFQs, setAllRFQs] = useState([]);
@@ -54,13 +44,15 @@ export function useRFQDashboard() {
           title,
           description,
           category,
-          budget_range,
+          budget_min,
+          budget_max,
           location,
           county,
           expires_at,
           status,
           created_at,
-          updated_at
+          updated_at,
+          is_favorite
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -125,13 +117,15 @@ export function useRFQDashboard() {
               title,
               description,
               category,
-              budget_range,
+              budget_min,
+              budget_max,
               location,
               county,
               expires_at,
               status,
               created_at,
-              updated_at
+              updated_at,
+              is_favorite
             `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
@@ -359,12 +353,34 @@ export function useRFQDashboard() {
   }, []);
 
   /**
-   * Toggle favorite RFQ (store in local state for now)
+   * Toggle favorite RFQ
    */
-  const toggleFavorite = useCallback((rfqId) => {
-    // TODO: Implement favorite functionality with database
-    console.log('Toggle favorite for RFQ:', rfqId);
-  }, []);
+  const toggleFavorite = useCallback(async (rfqId) => {
+    try {
+      // Find current favorite state
+      const rfq = allRFQs.find(r => r.id === rfqId);
+      if (!rfq) return;
+
+      const newFavoriteState = !rfq.is_favorite;
+
+      // Update database
+      const { error } = await supabase
+        .from('rfqs')
+        .update({ is_favorite: newFavoriteState })
+        .eq('id', rfqId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update local state immediately for instant UI feedback
+      setAllRFQs(prev => prev.map(r =>
+        r.id === rfqId ? { ...r, is_favorite: newFavoriteState } : r
+      ));
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      setError(err.message);
+    }
+  }, [allRFQs, user?.id, supabase]);
 
   /**
    * Update RFQ status

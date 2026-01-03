@@ -23,7 +23,6 @@ export default function RFQCard({
   getPriceStats
 }) {
   const [showMenu, setShowMenu] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
 
   const statusStyles = getStatusStyles(rfq);
   const priceStats = getPriceStats(rfq);
@@ -31,6 +30,9 @@ export default function RFQCard({
 
   const isClosingSoon = daysLeft >= 0 && daysLeft <= 3;
   const isOverdue = daysLeft < 0;
+
+  // Use is_favorite from rfq object (from parent state)
+  const isFavorite = rfq.is_favorite || false;
 
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow border border-slate-200">
@@ -69,7 +71,6 @@ export default function RFQCard({
                 </button>
                 <button
                   onClick={() => {
-                    setIsFavorite(!isFavorite);
                     onFavorite?.(rfq.id);
                     setShowMenu(false);
                   }}
@@ -198,7 +199,6 @@ export default function RFQCard({
 
           <button
             onClick={() => {
-              setIsFavorite(!isFavorite);
               onFavorite?.(rfq.id);
             }}
             className={`flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition ${
