@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import {
   ArrowLeft,
   AlertCircle,
@@ -16,11 +16,6 @@ import {
   CheckCircle,
   X
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 export default function VendorRFQDetails() {
   const router = useRouter();

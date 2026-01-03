@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Clock, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
 
@@ -164,7 +165,16 @@ function StatCard({ title, value, icon, bgColor, textColor }) {
 }
 
 function RFQCard({ rfq }) {
+  const router = useRouter();
   const rfqTypeConfig = RFQ_TYPE_COLORS[rfq.rfq_type] || RFQ_TYPE_COLORS.public;
+
+  const handleViewDetails = () => {
+    router.push(`/vendor/rfq/${rfq.id}`);
+  };
+
+  const handleSubmitQuote = () => {
+    router.push(`/vendor/rfq/${rfq.id}/respond`);
+  };
 
   return (
     <div className={`${rfqTypeConfig.bg} border ${rfqTypeConfig.border} rounded-lg p-4 hover:shadow-md transition`}>
@@ -212,11 +222,17 @@ function RFQCard({ rfq }) {
 
       {/* Actions */}
       <div className="mt-3 pt-3 border-t border-current border-opacity-10 flex gap-2">
-        <button className="flex-1 px-3 py-2 bg-white hover:bg-slate-100 rounded text-slate-700 font-semibold text-sm transition">
+        <button 
+          onClick={handleViewDetails}
+          className="flex-1 px-3 py-2 bg-white hover:bg-slate-100 rounded text-slate-700 font-semibold text-sm transition"
+        >
           View Details
         </button>
         {rfq.quote_count === 0 && (
-          <button className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded font-semibold text-sm transition">
+          <button 
+            onClick={handleSubmitQuote}
+            className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded font-semibold text-sm transition"
+          >
             Submit Quote
           </button>
         )}
