@@ -232,6 +232,9 @@ export async function POST(request, { params }) {
     // Use vendor profile ID if available, otherwise use user ID as vendor identifier
     const vendorId = vendorProfile?.id || user.id;
 
+    // Determine vendor name early (before using in insert statement)
+    const vendorName = vendorProfile?.business_name || vendorProfile?.company_name || 'Vendor';
+
     // Check if RFQ exists and is eligible for response
     const { data: rfq, error: rfqError } = await supabase
       .from('rfqs')
@@ -407,9 +410,6 @@ export async function POST(request, { params }) {
       .eq('id', rfq.user_id)
       .single();
 
-    // Determine vendor name for notifications
-    const vendorName = vendorProfile?.business_name || vendorProfile?.company_name || 'Vendor';
-
     // Create notification (can be enhanced with actual email/SMS)
     const { error: notifError } = await supabase
       .from('notifications')
@@ -423,7 +423,7 @@ export async function POST(request, { params }) {
           resource_id: response.id,
           data: {
             rfq_id: rfq_id,
-            vendor_name: vendorProfile.business_name,
+            vendor_name: vendorName,
             quoted_price: quoted_price,
             currency: currency
           }
@@ -441,7 +441,7 @@ export async function POST(request, { params }) {
           user_id: user.id,
           details: {
             rfq_id: rfq_id,
-            vendor_id: vendorProfile.id,
+            vendor_id: vendorId,
             quoted_price: quoted_price,
             timestamp: new Date().toISOString()
           }
