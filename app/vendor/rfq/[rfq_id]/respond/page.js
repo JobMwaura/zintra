@@ -93,18 +93,20 @@ export default function RFQRespond() {
 
       setUser(session.user);
 
-      // Fetch vendor profile
-      const { data: vendor } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
+      // Fetch vendor profile from API endpoint (uses service role to bypass RLS)
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const vendorResponse = await fetch('/api/vendor/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-      if (!vendor) {
+      if (!vendorResponse.ok) {
         setError('Vendor profile not found');
         return;
       }
 
+      const { vendor } = await vendorResponse.json();
       setVendorProfile(vendor);
 
       // Fetch RFQ details
