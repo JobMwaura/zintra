@@ -135,7 +135,7 @@ export default function Login() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <img src="/zintra-svg-logo.svg" alt="Zintra" className="h-8 w-auto" />
+              <img src="/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
             </Link>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/" className="text-gray-700 hover:text-gray-900 font-medium">Home</Link>

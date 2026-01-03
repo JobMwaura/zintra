@@ -243,7 +243,7 @@ export default function VendorProfilePage() {
     fetchProfileStats();
   }, [vendor?.id, currentUser?.id]);
 
-  // Track profile view
+  // Track profile view (non-critical, errors are silently ignored)
   useEffect(() => {
     if (!vendor?.id) return;
 
@@ -258,15 +258,15 @@ export default function VendorProfilePage() {
           body: JSON.stringify({ vendorId: vendor.id }),
         });
 
-        if (!response.ok) {
-          const error = await response.json();
-          console.warn('⚠️ Failed to track profile view:', error);
-          return;
+        const data = await response.json();
+        if (data.tracked) {
+          console.log('✅ Profile view tracked successfully');
+        } else {
+          console.log('ℹ️ Profile view tracking skipped (not critical)');
         }
-
-        console.log('✅ Profile view tracked successfully');
       } catch (err) {
-        console.error('❌ Error tracking profile view:', err);
+        // Silently ignore tracking errors - not critical to app functionality
+        console.log('ℹ️ Profile view tracking unavailable');
       }
     };
 
@@ -434,7 +434,7 @@ export default function VendorProfilePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link href="/" className="flex items-center">
-                <img src="/zintra-svg-logo.svg" alt="Zintra" className="h-8 w-auto" />
+                <img src="/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
               </Link>
               <button
                 onClick={handleLogout}

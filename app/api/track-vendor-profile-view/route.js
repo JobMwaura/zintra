@@ -46,19 +46,16 @@ export async function POST(request) {
       });
 
     if (error) {
-      console.error('Error tracking vendor profile view:', error);
-      return Response.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      // Log the error but don't fail the request - tracking is not critical
+      console.warn('Warning: Could not track vendor profile view:', error.message);
+      // Return success anyway so client doesn't error
+      return Response.json({ success: true, tracked: false });
     }
 
-    return Response.json({ success: true });
+    return Response.json({ success: true, tracked: true });
   } catch (error) {
-    console.error('Error in track-vendor-profile-view:', error);
-    return Response.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    // Log the error but return success - tracking is not critical to the app
+    console.warn('Warning in track-vendor-profile-view:', error.message);
+    return Response.json({ success: true, tracked: false });
   }
 }
