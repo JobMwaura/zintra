@@ -94,7 +94,7 @@ export default function RFQRespond() {
       setUser(session.user);
 
       // Fetch vendor profile from API endpoint (uses service role to bypass RLS)
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const token = session.access_token;
       const vendorResponse = await fetch('/api/vendor/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
