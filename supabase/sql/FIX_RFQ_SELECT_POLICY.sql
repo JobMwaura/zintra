@@ -10,26 +10,33 @@
 --   3. Service role (backend) to view all RFQs
 -- ============================================================================
 
--- Drop the restrictive policy
+-- ============================================================================
+-- REVERT: Restore the original rfqs_select_own policy
+-- ============================================================================
+-- The issue is not the rfqs policy, but recursive policies between
+-- rfqs and rfq_recipients tables.
+--
+-- SOLUTION: Use simple, non-recursive policies:
+-- - RFQ creators can view their own RFQs (simple comparison, no joins)
+-- - Do NOT use joins to other tables in policies to avoid recursion
+-- ============================================================================
+
+-- Drop any problematic policies
 DROP POLICY IF EXISTS "rfqs_select_own" ON public.rfqs;
+DROP POLICY IF EXISTS "rfqs_select" ON public.rfqs;
+DROP POLICY IF EXISTS "rfqs_select_as_recipient" ON public.rfqs;
 
--- Create a new policy that allows:
--- 1. Users to view their own RFQs (auth.uid() = user_id)
--- 2. Vendors to view RFQs they've responded to
-CREATE POLICY "rfqs_select" ON public.rfqs
+-- Restore simple, non-recursive policy: only RFQ creators can view
+CREATE POLICY "rfqs_select_own" ON public.rfqs
   FOR SELECT
-  USING (
-    auth.uid() = user_id  -- RFQ creator can view their own RFQs
-    OR
-    -- Vendors can view RFQs they've submitted a response to
-    EXISTS (
-      SELECT 1 FROM public.rfq_responses
-      WHERE rfq_responses.rfq_id = rfqs.id
-        AND rfq_responses.vendor_id IN (
-          SELECT id FROM public.vendors WHERE user_id = auth.uid()
-        )
-    )
-  );
+  USING (auth.uid() = user_id);
 
--- Keep the service_role policy for backend operations
--- (It's already in RFQ_SYSTEM_COMPLETE.sql)
+-- Also allow service_role to view all (for backend operations)
+-- This should already exist but making sure
+CREATE POLICY IF NOT EXISTS "rfqs_service_role" ON public.rfqs
+  FOR ALL
+  USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- ⚠️  NOTE: For vendors to view RFQs they've responded to, we need to handle
+--     this at the APPLICATION level, not in the database policy layer.
+--     The frontend should query based on the current user's vendor ID.
