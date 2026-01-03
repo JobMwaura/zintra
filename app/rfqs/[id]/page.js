@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, MessageSquare, DollarSign, Clock, MapPin, User, AlertCircle, Check, X } from 'lucide-react';
 import Link from 'next/link';
 
@@ -17,8 +17,20 @@ import Link from 'next/link';
 export default function RFQDetailsPage({ params }) {
   const router = useRouter();
   const { user } = useAuth();
-  const supabase = createClient();
-  const { id: rfqId } = params;
+  
+  // Handle async params (Next.js 15+)
+  const [rfqId, setRfqId] = useState(null);
+  
+  useEffect(() => {
+    // Unwrap params promise if needed
+    if (params && typeof params === 'object') {
+      if (params instanceof Promise) {
+        params.then(p => setRfqId(p.id));
+      } else {
+        setRfqId(params.id);
+      }
+    }
+  }, [params]);
 
   const [rfq, setRfq] = useState(null);
   const [responses, setResponses] = useState([]);
@@ -30,13 +42,19 @@ export default function RFQDetailsPage({ params }) {
   const [actingQuoteId, setActingQuoteId] = useState(null);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && rfqId) {
       fetchRFQDetails();
     }
   }, [rfqId, user?.id]);
 
   const fetchRFQDetails = async () => {
     try {
+      if (!rfqId) {
+        setError('RFQ ID is missing');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       setError(null);
 
