@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
@@ -121,21 +122,8 @@ export default function BrowseVendors() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top nav */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8 text-sm font-medium">
-            <Link href="/" className="text-gray-700 hover:text-gray-900">Home</Link>
-            <Link href="/browse" className="text-gray-700 hover:text-gray-900">Browse</Link>
-            <Link href="/post-rfq" className="text-gray-700 hover:text-gray-900">Post RFQ</Link>
-          </div>
-          {vendorProfileLink && (
-            <Link href={vendorProfileLink} className="text-sm font-semibold text-amber-700 hover:underline">
-              Back to Profile
-            </Link>
-          )}
-        </div>
-      </nav>
+      {/* Navigation */}
+      <Navbar />
 
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white py-12">

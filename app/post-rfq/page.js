@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock, MessageSquare, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import AuthGuard from '../../components/AuthGuard';
@@ -97,21 +98,7 @@ function PostRFQContent() {
   // Show three RFQ type options
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center">
-              <img src="/zintrass-new-logo.png" alt="Zintra" className="h-32 w-auto" />
-            </Link>
-            <Link href="/">
-              <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors flex items-center gap-2">
-                <ArrowRight className="w-4 h-4 rotate-180" />
-                Back to Home
-              </button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
