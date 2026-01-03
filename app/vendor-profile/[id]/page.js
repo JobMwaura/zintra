@@ -932,7 +932,7 @@ export default function VendorProfilePage() {
         <div className="space-y-4">
           {/* RFQ Inbox Widget - Top Right */}
           {canEdit && (
-            <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 shadow-sm sticky top-20">
+            <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Bell className="w-5 h-5 text-blue-600" />
