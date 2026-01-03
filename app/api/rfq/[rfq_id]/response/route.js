@@ -359,12 +359,23 @@ export async function POST(request, { params }) {
       .single();
 
     if (responseError) {
-      console.error('Error creating response:', responseError);
+      console.error('❌ [VENDOR_RESPONSE] Error creating response:', {
+        code: responseError.code,
+        message: responseError.message,
+        details: responseError.details,
+        hint: responseError.hint
+      });
       return NextResponse.json(
-        { error: 'Failed to submit response' },
+        { 
+          error: 'Failed to submit response',
+          details: responseError.message,
+          code: responseError.code
+        },
         { status: 500 }
       );
     }
+
+    console.log('✅ [VENDOR_RESPONSE] Response created:', response.id);
 
     // Update RFQ status if first response
     const { data: responseCount } = await supabase
@@ -459,9 +470,35 @@ export async function POST(request, { params }) {
     );
 
   } catch (error) {
-    console.error('RFQ response error:', error);
+    console.error('❌ [VENDOR_RESPONSE] RFQ response error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    });
+    
+    // Provide more specific error messages
+    let userMessage = 'Internal server error';
+    
+    if (error.code === '42P01') {
+      userMessage = 'Database table not found. Contact administrator.';
+    } else if (error.code === '42703') {
+      userMessage = 'A required database column is missing. Please contact support.';
+    } else if (error.code === '23505') {
+      userMessage = 'You have already submitted a response to this RFQ.';
+    } else if (error.code === '23502') {
+      userMessage = 'Missing required information in request.';
+    } else if (error.code === '23503') {
+      userMessage = 'RFQ or vendor reference not found.';
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { 
+        error: userMessage,
+        details: error.message,
+        code: error.code
+      },
       { status: 500 }
     );
   }
