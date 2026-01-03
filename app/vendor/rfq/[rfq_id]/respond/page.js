@@ -15,7 +15,8 @@ import {
   Upload,
   Info,
   MapPin,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 
 export default function RFQRespond() {
