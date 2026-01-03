@@ -695,10 +695,11 @@ export default function RFQRespond() {
             {/* Action Buttons */}
             <div className="flex gap-4 mt-8">
               <button
-                onClick={() => router.push('/vendor/rfq-dashboard')}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                onClick={() => router.push('/vendor-profile')}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition flex items-center justify-center gap-2"
               >
-                Cancel
+                <ArrowLeft size={20} />
+                Back to Vendor Profile
               </button>
               <button
                 onClick={handleNext}
