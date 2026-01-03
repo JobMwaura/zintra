@@ -79,19 +79,16 @@ export default function VendorRFQDashboard() {
 
       setUser(session.user);
 
-      // Fetch vendor profile
+      // Fetch vendor profile (optional - continue even if not found)
       const { data: vendor } = await supabase
         .from('vendor_profiles')
         .select('*')
         .eq('user_id', session.user.id)
         .single();
 
-      if (!vendor) {
-        setError('Vendor profile not found. Please complete your vendor profile first.');
-        return;
+      if (vendor) {
+        setVendorProfile(vendor);
       }
-
-      setVendorProfile(vendor);
 
       // Fetch eligible RFQs
       const token = session.access_token;
@@ -179,28 +176,7 @@ export default function VendorRFQDashboard() {
     );
   }
 
-  if (!vendorProfile) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Vendor Profile Required</h2>
-            <p className="text-gray-600 mb-6">
-              {error || 'You need to complete your vendor profile to view RFQ opportunities.'}
-            </p>
-            <button
-              onClick={() => router.push('/vendor-profile')}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition"
-            >
-              Complete Your Profile
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Main dashboard content
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
