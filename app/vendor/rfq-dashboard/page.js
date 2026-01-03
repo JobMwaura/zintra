@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import {
   ChevronRight,
   Filter,
@@ -19,11 +19,6 @@ import {
   DollarSign,
   Calendar
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 const urgencyColors = {
   low: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
@@ -98,19 +93,20 @@ export default function VendorRFQDashboard() {
 
       if (rfqRes.ok) {
         const rfqData = await rfqRes.json();
-        setRfqs(rfqData.rfqs || []);
+        const rfqsList = rfqData.rfqs || [];
+        setRfqs(rfqsList);
 
-        // Extract unique categories
-        const uniqueCategories = [...new Set(rfqData.rfqs?.map(r => r.category))].filter(Boolean);
+        // Extract unique categories (safely handle null rfqs)
+        const uniqueCategories = [...new Set(rfqsList?.map(r => r?.category)?.filter(Boolean))].filter(Boolean);
         setCategories(uniqueCategories);
 
         // Calculate stats
-        const submitted = rfqData.rfqs?.filter(r => r.vendor_response?.status === 'submitted').length || 0;
-        const accepted = rfqData.rfqs?.filter(r => r.vendor_response?.status === 'accepted').length || 0;
-        const pending = rfqData.rfqs?.filter(r => !r.vendor_response).length || 0;
+        const submitted = rfqsList?.filter(r => r?.vendor_response?.status === 'submitted')?.length || 0;
+        const accepted = rfqsList?.filter(r => r?.vendor_response?.status === 'accepted')?.length || 0;
+        const pending = rfqsList?.filter(r => !r?.vendor_response)?.length || 0;
 
         setStats({
-          total_eligible: rfqData.rfqs?.length || 0,
+          total_eligible: rfqsList?.length || 0,
           pending_response: pending,
           submitted_quotes: submitted,
           accepted_quotes: accepted
