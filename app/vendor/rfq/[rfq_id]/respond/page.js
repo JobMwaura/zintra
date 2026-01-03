@@ -95,7 +95,7 @@ export default function RFQRespond() {
 
       // Fetch vendor profile
       const { data: vendor } = await supabase
-        .from('vendor_profiles')
+        .from('vendors')
         .select('*')
         .eq('user_id', session.user.id)
         .single();
