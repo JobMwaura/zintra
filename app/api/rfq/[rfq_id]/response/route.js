@@ -12,16 +12,48 @@ const supabase = createClient(
  * POST /api/rfq/:rfq_id/response
  * 
  * Vendor submits a quote/response to an RFQ
+ * Supports comprehensive quote form with 3 sections:
+ * - Section 1: Quote Overview
+ * - Section 2: Pricing & Breakdown
+ * - Section 3: Inclusions/Exclusions
  * 
- * Request body:
+ * Request body includes:
  * {
- *   quoted_price: number (in KES),
+ *   // SECTION 1: Quote Overview
+ *   quote_title: string (required),
+ *   intro_text: string (required),
+ *   validity_days: number (7, 14, 30, or custom date),
+ *   validity_custom_date: string (optional, ISO date),
+ *   earliest_start_date: string (optional, ISO date),
+ *   
+ *   // SECTION 2: Pricing & Breakdown
+ *   pricing_model: 'fixed' | 'range' | 'per_unit' | 'per_day' (required),
+ *   price_min: number (for range model),
+ *   price_max: number (for range model),
+ *   unit_type: string (for per_unit model),
+ *   unit_price: number (for per_unit/per_day models),
+ *   estimated_units: number (for per_unit/per_day models),
+ *   vat_included: boolean,
+ *   line_items: array of objects (optional breakdown),
+ *   transport_cost: number (optional),
+ *   labour_cost: number (optional),
+ *   other_charges: number (optional),
+ *   vat_amount: number (calculated),
+ *   total_price_calculated: number (calculated grand total),
+ *   
+ *   // SECTION 3: Inclusions/Exclusions
+ *   inclusions: string (required),
+ *   exclusions: string (required),
+ *   client_responsibilities: string (optional),
+ *   
+ *   // OLD FIELDS (backward compatibility)
+ *   quoted_price: number (optional, for legacy),
  *   currency: string (default 'KES'),
- *   delivery_timeline: string (e.g., '3-5 days', '1 week'),
- *   description: string (vendor's proposal/notes),
- *   attachments?: string[] (URLs to files/images),
- *   warranty?: string (optional warranty offered),
- *   payment_terms?: string (optional payment terms)
+ *   delivery_timeline: string (required),
+ *   description: string (required, min 20 chars),
+ *   warranty: string (optional),
+ *   payment_terms: string (optional),
+ *   attachments: array of strings (optional)
  * }
  * 
  * Response: {
@@ -30,9 +62,12 @@ const supabase = createClient(
  *     id: uuid,
  *     rfq_id: uuid,
  *     vendor_id: uuid,
- *     quoted_price: number,
+ *     quote_title: string,
+ *     pricing_model: string,
+ *     total_price_calculated: number,
  *     status: 'submitted',
- *     created_at: timestamp
+ *     created_at: timestamp,
+ *     ... all other fields
  *   },
  *   message: 'Quote submitted successfully',
  *   rfq_info: {
@@ -74,6 +109,39 @@ export async function POST(request, { params }) {
 
     // Parse request body
     const {
+      // SECTION 1: Quote Overview
+      quote_title,
+      intro_text,
+      validity_days,
+      validity_custom_date,
+      earliest_start_date,
+      
+      // SECTION 2: Pricing & Breakdown
+      pricing_model,
+      price_min,
+      price_max,
+      unit_type,
+      unit_price,
+      estimated_units,
+      vat_included,
+      line_items,
+      transport_cost,
+      labour_cost,
+      other_charges,
+      vat_amount,
+      total_price_calculated,
+      
+      // SECTION 3: Inclusions/Exclusions
+      inclusions,
+      exclusions,
+      client_responsibilities,
+      
+      // Metadata
+      quote_status,
+      submitted_at,
+      expires_at,
+      
+      // OLD FIELDS (backward compatibility)
       quoted_price,
       currency = 'KES',
       delivery_timeline,
@@ -83,14 +151,45 @@ export async function POST(request, { params }) {
       payment_terms
     } = await request.json();
 
-    // Validation
-    if (!quoted_price || typeof quoted_price !== 'number' || quoted_price <= 0) {
+    // Validation - SECTION 1
+    if (!quote_title || typeof quote_title !== 'string' || quote_title.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Valid quoted price required' },
+        { error: 'Quote title is required' },
         { status: 400 }
       );
     }
 
+    if (!intro_text || typeof intro_text !== 'string' || intro_text.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Brief introduction is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validation - SECTION 2
+    if (!pricing_model || !['fixed', 'range', 'per_unit', 'per_day'].includes(pricing_model)) {
+      return NextResponse.json(
+        { error: 'Valid pricing model is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validation - SECTION 3
+    if (!inclusions || typeof inclusions !== 'string' || inclusions.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Inclusions are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!exclusions || typeof exclusions !== 'string' || exclusions.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Exclusions are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validation - OLD FIELDS (still needed for backward compatibility)
     if (!delivery_timeline || typeof delivery_timeline !== 'string' || delivery_timeline.trim().length === 0) {
       return NextResponse.json(
         { error: 'Delivery timeline is required' },
@@ -193,7 +292,41 @@ export async function POST(request, { params }) {
         {
           rfq_id: rfq_id,
           vendor_id: vendorProfile.id,
-          quoted_price: quoted_price,
+          
+          // SECTION 1: Quote Overview
+          quote_title: quote_title,
+          intro_text: intro_text,
+          validity_days: validity_days || 7,
+          validity_custom_date: validity_custom_date || null,
+          earliest_start_date: earliest_start_date || null,
+          
+          // SECTION 2: Pricing & Breakdown
+          pricing_model: pricing_model,
+          price_min: price_min || null,
+          price_max: price_max || null,
+          unit_type: unit_type || null,
+          unit_price: unit_price || null,
+          estimated_units: estimated_units || null,
+          vat_included: vat_included || false,
+          line_items: line_items || null,
+          transport_cost: transport_cost || 0,
+          labour_cost: labour_cost || 0,
+          other_charges: other_charges || 0,
+          vat_amount: vat_amount || 0,
+          total_price_calculated: total_price_calculated || null,
+          
+          // SECTION 3: Inclusions/Exclusions
+          inclusions: inclusions,
+          exclusions: exclusions,
+          client_responsibilities: client_responsibilities || null,
+          
+          // Metadata
+          quote_status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          
+          // OLD FIELDS (backward compatibility)
+          quoted_price: quoted_price || null,
           currency: currency,
           delivery_timeline: delivery_timeline,
           description: description,

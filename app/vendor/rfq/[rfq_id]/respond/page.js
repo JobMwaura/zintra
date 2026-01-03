@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import QuoteFormSections from '@/components/vendor/QuoteFormSections';
 import {
   ArrowLeft,
   AlertCircle,
@@ -32,13 +33,46 @@ export default function RFQRespond() {
   const [step, setStep] = useState(1); // 1: Details, 2: Preview
 
   const [formData, setFormData] = useState({
+    // Old fields (still used)
     quoted_price: '',
     currency: 'KES',
     delivery_timeline: '',
     description: '',
     warranty: '',
     payment_terms: '',
-    attachments: []
+    attachments: [],
+    
+    // SECTION 1: Quote Overview
+    quote_title: '',
+    intro_text: '',
+    validity_days: '7',
+    validity_custom_date: '',
+    earliest_start_date: '',
+    
+    // SECTION 2: Pricing & Breakdown
+    pricing_model: 'fixed',
+    price_min: '',
+    price_max: '',
+    unit_type: '',
+    unit_price: '',
+    estimated_units: '',
+    vat_included: false,
+    line_items: [],
+    transport_cost: '',
+    labour_cost: '',
+    other_charges: '',
+    vat_amount: '',
+    total_price_calculated: '',
+    
+    // SECTION 3: Inclusions/Exclusions
+    inclusions: '',
+    exclusions: '',
+    client_responsibilities: '',
+    
+    // Metadata
+    quote_status: 'draft',
+    submitted_at: null,
+    expires_at: null
   });
 
   const [attachmentErrors, setAttachmentErrors] = useState([]);
@@ -161,19 +195,101 @@ export default function RFQRespond() {
   };
 
   const handleNext = () => {
-    // Validate step 1
-    if (!formData.quoted_price || isNaN(parseFloat(formData.quoted_price)) || parseFloat(formData.quoted_price) <= 0) {
-      setError('Please enter a valid quoted price');
+    // Validate Section 1: Quote Overview
+    if (!formData.quote_title || !formData.quote_title.trim()) {
+      setError('Please enter a quote title');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    if (!formData.intro_text || !formData.intro_text.trim()) {
+      setError('Please provide a brief introduction');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Validate Section 2: Pricing & Breakdown
+    if (!formData.pricing_model) {
+      setError('Please select a pricing model');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Validate pricing based on model
+    if (formData.pricing_model === 'fixed') {
+      if (!formData.quoted_price || isNaN(parseFloat(formData.quoted_price)) || parseFloat(formData.quoted_price) <= 0) {
+        setError('Please enter a valid total price');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    } else if (formData.pricing_model === 'range') {
+      if (!formData.price_min || isNaN(parseFloat(formData.price_min)) || parseFloat(formData.price_min) <= 0) {
+        setError('Please enter a valid minimum price');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (!formData.price_max || isNaN(parseFloat(formData.price_max)) || parseFloat(formData.price_max) <= 0) {
+        setError('Please enter a valid maximum price');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (parseFloat(formData.price_min) >= parseFloat(formData.price_max)) {
+        setError('Minimum price must be less than maximum price');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    } else if (formData.pricing_model === 'per_unit') {
+      if (!formData.unit_type || !formData.unit_type.trim()) {
+        setError('Please specify the unit type');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (!formData.unit_price || isNaN(parseFloat(formData.unit_price)) || parseFloat(formData.unit_price) <= 0) {
+        setError('Please enter a valid unit price');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (!formData.estimated_units || isNaN(parseFloat(formData.estimated_units)) || parseFloat(formData.estimated_units) <= 0) {
+        setError('Please enter valid estimated units');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    } else if (formData.pricing_model === 'per_day') {
+      if (!formData.unit_price || isNaN(parseFloat(formData.unit_price)) || parseFloat(formData.unit_price) <= 0) {
+        setError('Please enter a valid daily/hourly rate');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (!formData.estimated_units || isNaN(parseFloat(formData.estimated_units)) || parseFloat(formData.estimated_units) <= 0) {
+        setError('Please enter valid estimated days/hours');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
+
+    // Validate Section 3: Inclusions/Exclusions
+    if (!formData.inclusions || !formData.inclusions.trim()) {
+      setError('Please describe what is included in your quote');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!formData.exclusions || !formData.exclusions.trim()) {
+      setError('Please specify what is NOT included in your quote');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Validate old required fields (still needed)
     if (!formData.delivery_timeline.trim()) {
       setError('Please specify a delivery timeline');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (!formData.description.trim() || formData.description.trim().length < 30) {
       setError('Proposal must be at least 30 characters');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -193,6 +309,19 @@ export default function RFQRespond() {
         return;
       }
 
+      // Calculate totals for Section 2
+      const subtotal = formData.line_items.reduce((sum, item) => {
+        return sum + (parseFloat(item.lineTotal) || 0);
+      }, 0);
+      
+      const additionalCosts = 
+        (parseFloat(formData.transport_cost) || 0) +
+        (parseFloat(formData.labour_cost) || 0) +
+        (parseFloat(formData.other_charges) || 0);
+      
+      const vatAmount = formData.vat_included ? ((subtotal + additionalCosts) * 0.16) : 0;
+      const grandTotal = subtotal + additionalCosts + vatAmount;
+
       // Call response submission endpoint
       const response = await fetch(`/api/rfq/${rfqId}/response`, {
         method: 'POST',
@@ -201,7 +330,40 @@ export default function RFQRespond() {
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          quoted_price: parseFloat(formData.quoted_price),
+          // SECTION 1: Quote Overview
+          quote_title: formData.quote_title,
+          intro_text: formData.intro_text,
+          validity_days: parseInt(formData.validity_days) || 7,
+          validity_custom_date: formData.validity_custom_date || null,
+          earliest_start_date: formData.earliest_start_date || null,
+          
+          // SECTION 2: Pricing & Breakdown
+          pricing_model: formData.pricing_model,
+          price_min: formData.price_min ? parseFloat(formData.price_min) : null,
+          price_max: formData.price_max ? parseFloat(formData.price_max) : null,
+          unit_type: formData.unit_type || null,
+          unit_price: formData.unit_price ? parseFloat(formData.unit_price) : null,
+          estimated_units: formData.estimated_units ? parseFloat(formData.estimated_units) : null,
+          vat_included: formData.vat_included,
+          line_items: formData.line_items.length > 0 ? formData.line_items : null,
+          transport_cost: formData.transport_cost ? parseFloat(formData.transport_cost) : 0,
+          labour_cost: formData.labour_cost ? parseFloat(formData.labour_cost) : 0,
+          other_charges: formData.other_charges ? parseFloat(formData.other_charges) : 0,
+          vat_amount: vatAmount,
+          total_price_calculated: grandTotal,
+          
+          // SECTION 3: Inclusions/Exclusions
+          inclusions: formData.inclusions,
+          exclusions: formData.exclusions,
+          client_responsibilities: formData.client_responsibilities || null,
+          
+          // Metadata
+          quote_status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days validity
+          
+          // OLD FIELDS (for backward compatibility)
+          quoted_price: formData.quoted_price ? parseFloat(formData.quoted_price) : null,
           currency: formData.currency,
           delivery_timeline: formData.delivery_timeline,
           description: formData.description,
@@ -333,6 +495,18 @@ export default function RFQRespond() {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Submit Your Quote</h2>
 
             <div className="space-y-6">
+              {/* NEW: Quote Form Sections (Sections 1-3) */}
+              <QuoteFormSections
+                formData={formData}
+                setFormData={setFormData}
+                error={error}
+                setError={setError}
+              />
+
+              <hr className="my-8" />
+
+              {/* OLD FORM FIELDS (Still kept for backward compatibility) */}
+              <h3 className="text-lg font-semibold text-gray-900 mt-8">Additional Details (Legacy Fields)</h3>
               {/* Quoted Price */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
