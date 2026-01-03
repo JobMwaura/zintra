@@ -114,7 +114,7 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
   // SECTION 1: QUOTE OVERVIEW
   // ============================================================================
 
-  const Section1 = () => (
+  const Section1 = useMemo(() => () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-slate-900">Quote Overview</h3>
 
@@ -194,13 +194,13 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
         />
       </div>
     </div>
-  );
+  ), [formData, updateFormData]);
 
   // ============================================================================
   // SECTION 2: PRICING & BREAKDOWN
   // ============================================================================
 
-  const Section2 = () => (
+  const Section2 = useMemo(() => () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-slate-900">Pricing & Breakdown</h3>
 
@@ -581,13 +581,13 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
         </div>
       </div>
     </div>
-  );
+  ), [formData, updateFormData, updateLineItem, calculateSubtotal, calculateVAT, calculateGrandTotal]);
 
   // ============================================================================
   // SECTION 3: INCLUSIONS / EXCLUSIONS
   // ============================================================================
 
-  const Section3 = () => (
+  const Section3 = useMemo(() => () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-slate-900">What's Included & Excluded</h3>
 
@@ -636,7 +636,7 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
         <p className="text-xs text-slate-500 mt-1">Help the buyer understand what they need to provide or do</p>
       </div>
     </div>
-  );
+  ), [formData, updateFormData]);
 
   // ============================================================================
   // RENDER ALL SECTIONS
@@ -659,7 +659,7 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
         </button>
 
         <div style={{ display: expandedSections.overview ? 'block' : 'none' }}>
-          <Section1 />
+          {Section1()}
         </div>
       </div>
 
@@ -678,7 +678,7 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
         </button>
 
         <div style={{ display: expandedSections.pricing ? 'block' : 'none' }}>
-          <Section2 />
+          {Section2()}
         </div>
       </div>
 
@@ -697,7 +697,7 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
         </button>
 
         <div style={{ display: expandedSections.inclusions ? 'block' : 'none' }}>
-          <Section3 />
+          {Section3()}
         </div>
       </div>
     </div>
