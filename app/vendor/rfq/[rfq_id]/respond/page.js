@@ -430,7 +430,7 @@ export default function RFQRespond() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load RFQ</h2>
             <p className="text-gray-600 mb-6">{error || 'RFQ not found or has expired'}</p>
             <button
-              onClick={() => router.push('/vendor-profile')}
+              onClick={() => router.push(`/vendor-profile/${vendorProfile?.id}`)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
             >
               <ArrowLeft size={20} />
@@ -450,7 +450,7 @@ export default function RFQRespond() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <button
-          onClick={() => router.push('/vendor-profile')}
+          onClick={() => router.push(`/vendor-profile/${vendorProfile?.id}`)}
           className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-6 font-semibold transition"
         >
           <ArrowLeft size={20} />
@@ -700,7 +700,7 @@ export default function RFQRespond() {
             {/* Action Buttons */}
             <div className="flex gap-4 mt-8">
               <button
-                onClick={() => router.push('/vendor-profile')}
+                onClick={() => router.push(`/vendor-profile/${vendorProfile?.id}`)}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition flex items-center justify-center gap-2"
               >
                 <ArrowLeft size={20} />
