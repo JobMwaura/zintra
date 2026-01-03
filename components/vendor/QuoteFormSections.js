@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -658,7 +658,9 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
           />
         </button>
 
-        {expandedSections.overview && <Section1 />}
+        <div style={{ display: expandedSections.overview ? 'block' : 'none' }}>
+          <Section1 />
+        </div>
       </div>
 
       {/* Section 2: Pricing & Breakdown */}
@@ -675,7 +677,9 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
           />
         </button>
 
-        {expandedSections.pricing && <Section2 />}
+        <div style={{ display: expandedSections.pricing ? 'block' : 'none' }}>
+          <Section2 />
+        </div>
       </div>
 
       {/* Section 3: Inclusions/Exclusions */}
@@ -692,7 +696,9 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
           />
         </button>
 
-        {expandedSections.inclusions && <Section3 />}
+        <div style={{ display: expandedSections.inclusions ? 'block' : 'none' }}>
+          <Section3 />
+        </div>
       </div>
     </div>
   );
