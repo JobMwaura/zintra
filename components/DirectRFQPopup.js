@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileUp, Send, AlertCircle, Lock } from 'lucide-react';
+import { X, FileUp, Send, AlertCircle, Lock, CheckCircle, Clock, MessageSquare, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { CountySelect } from '@/components/LocationSelector';
@@ -38,6 +38,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [successData, setSuccessData] = useState(null);
 
   /** 🧩 Fetch user profile to check phone_verified status */
   useEffect(() => {
@@ -218,12 +219,26 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         }
       }
 
-      setStatus('✅ Request sent successfully! Redirecting...');
+      // ✅ Store success data to show confirmation modal
+      setSuccessData({
+        title: form.title,
+        vendorName: vendor?.company_name || 'Vendor',
+        submittedAt: new Date(),
+      });
+      
+      setStatus('✅ Request sent successfully!');
       setSubmitting(false);
-      setTimeout(() => {
-        onClose();
-        window.location.href = '/my-rfqs';
-      }, 800);
+      
+      // Reset form
+      setForm({
+        title: '',
+        description: '',
+        category: '',
+        budget: '',
+        location: '',
+        attachment: null,
+        confirmed: false,
+      });
     } catch (err) {
       console.error('RFQ submission error:', err);
       setStatus(`⚠️ Failed to send request: ${err.message}`);
@@ -232,6 +247,135 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   };
 
   if (!isOpen) return null;
+
+  // ✅ Show success confirmation if submission was successful
+  if (successData) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
+          {/* Success Header Background */}
+          <div className="h-32 bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-200 rounded-full blur-xl opacity-30"></div>
+              <CheckCircle className="relative h-16 w-16 text-green-600 animate-bounce" />
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="px-6 py-8 space-y-6">
+            {/* Title */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-slate-900">Quote Request Sent!</h2>
+              <p className="text-slate-600">Your request has been successfully submitted to {successData.vendorName}</p>
+            </div>
+
+            {/* Request Details */}
+            <div className="bg-slate-50 rounded-lg p-4 space-y-3 border border-slate-200">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-slate-500 uppercase">Project</p>
+                <p className="text-sm font-semibold text-slate-900">{successData.title}</p>
+              </div>
+              <div className="h-px bg-slate-200"></div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-slate-500 uppercase">Recipient</p>
+                <p className="text-sm font-semibold text-slate-900">{successData.vendorName}</p>
+              </div>
+              <div className="h-px bg-slate-200"></div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-slate-500 uppercase">Sent</p>
+                <p className="text-sm font-semibold text-slate-900">{successData.submittedAt.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* What Happens Next */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-900">What Happens Next</h3>
+              
+              <div className="space-y-3">
+                {/* Step 1 */}
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-orange-100 border border-orange-300">
+                      <span className="text-xs font-bold text-orange-600">1</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Vendor Notification</p>
+                    <p className="text-xs text-slate-600 mt-0.5">{successData.vendorName} will receive your request immediately and appear in their inbox</p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 border border-blue-300">
+                      <span className="text-xs font-bold text-blue-600">2</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Quote Preparation</p>
+                    <p className="text-xs text-slate-600 mt-0.5">The vendor has up to <span className="font-semibold">7 days</span> to review your requirements and submit a detailed quote</p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-purple-100 border border-purple-300">
+                      <span className="text-xs font-bold text-purple-600">3</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">You'll Be Notified</p>
+                    <p className="text-xs text-slate-600 mt-0.5">Once the vendor submits their quote, you'll receive a notification and can review it in your RFQ dashboard</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Important Tips */}
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 space-y-2">
+              <div className="flex gap-2">
+                <Clock className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-semibold mb-1">Quick Tips</p>
+                  <ul className="space-y-1 list-disc list-inside">
+                    <li>Check your email for confirmation and vendor updates</li>
+                    <li>You can view all your RFQs in your dashboard</li>
+                    <li>Compare quotes from multiple vendors before deciding</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 space-x-3">
+              <button
+                onClick={() => {
+                  setSuccessData(null);
+                  onClose();
+                }}
+                className="flex-1 rounded-lg py-2.5 text-sm font-medium text-slate-700 border border-slate-300 hover:bg-slate-50 transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setSuccessData(null);
+                  onClose();
+                  window.location.href = '/my-rfqs';
+                }}
+                className="flex-1 rounded-lg py-2.5 text-sm font-medium text-white shadow-md transition hover:opacity-90 flex items-center justify-center gap-2"
+                style={{ backgroundColor: BRAND.primary }}
+              >
+                View My RFQs <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ✅ NEW: Show login prompt if not authenticated
   if (!user || !user.id) {
