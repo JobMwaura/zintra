@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -26,17 +26,17 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
     }));
   };
 
-  // Update form data
-  const updateFormData = (field, value) => {
+  // Update form data (memoized to prevent recreation on every render)
+  const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     if (error) setError(null);
-  };
+  }, [error, setError]);
 
-  // Update nested line item
-  const updateLineItem = (index, field, value) => {
+  // Update nested line item (memoized)
+  const updateLineItem = useCallback((index, field, value) => {
     const newLineItems = [...formData.line_items];
     newLineItems[index] = {
       ...newLineItems[index],
@@ -54,7 +54,7 @@ export default function QuoteFormSections({ formData, setFormData, error, setErr
       ...prev,
       line_items: newLineItems
     }));
-  };
+  }, [formData.line_items]);
 
   // Add new line item
   const addLineItem = () => {
