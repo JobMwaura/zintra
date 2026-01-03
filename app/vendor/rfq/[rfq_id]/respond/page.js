@@ -430,11 +430,11 @@ export default function RFQRespond() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load RFQ</h2>
             <p className="text-gray-600 mb-6">{error || 'RFQ not found or has expired'}</p>
             <button
-              onClick={() => router.push('/vendor/rfq-dashboard')}
+              onClick={() => router.push('/vendor-profile')}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
             >
               <ArrowLeft size={20} />
-              Back to RFQ Dashboard
+              Back to Vendor Profile
             </button>
           </div>
         </div>
@@ -450,11 +450,11 @@ export default function RFQRespond() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <button
-          onClick={() => router.push('/vendor/rfq-dashboard')}
+          onClick={() => router.push('/vendor-profile')}
           className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-6 font-semibold transition"
         >
           <ArrowLeft size={20} />
-          Back to RFQ Dashboard
+          Back to Vendor Profile
         </button>
 
         {/* RFQ Summary Card */}
