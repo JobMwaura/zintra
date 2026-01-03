@@ -21,8 +21,7 @@ import {
 export default function RFQRespond() {
   const router = useRouter();
   const params = useParams();
-  const rfqId = params.rfq_id;
-
+  
   const [rfq, setRfq] = useState(null);
   const [vendorProfile, setVendorProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -78,12 +77,22 @@ export default function RFQRespond() {
   const [attachmentErrors, setAttachmentErrors] = useState([]);
 
   useEffect(() => {
-    fetchData();
-  }, [rfqId]);
+    if (params && params.rfq_id) {
+      fetchData();
+    }
+  }, [params]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      const rfqId = params.rfq_id;
+
+      if (!rfqId) {
+        setError('Invalid RFQ ID');
+        setLoading(false);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
