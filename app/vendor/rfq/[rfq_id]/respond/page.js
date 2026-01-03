@@ -81,7 +81,7 @@ export default function RFQRespond() {
     if (params && params.rfq_id) {
       fetchData();
     }
-  }, [params]);
+  }, []); // Only run once on mount
 
   const fetchData = async () => {
     try {
