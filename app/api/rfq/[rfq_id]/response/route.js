@@ -78,6 +78,9 @@ const supabase = createClient(
  */
 export async function POST(request, { params }) {
   try {
+    // Await params - in Next.js 15, params is a Promise
+    const { rfq_id } = await params;
+
     const authHeader = request.headers.get('authorization');
 
     if (!authHeader) {
@@ -96,8 +99,6 @@ export async function POST(request, { params }) {
         { status: 401 }
       );
     }
-
-    const { rfq_id } = params;
 
     // Validate RFQ ID format
     if (!rfq_id || rfq_id.length !== 36) {
