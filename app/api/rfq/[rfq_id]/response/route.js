@@ -223,11 +223,15 @@ export async function POST(request, { params }) {
     }
 
     // Get vendor profile (optional - use user ID if profile not found)
-    const { data: vendorProfile } = await supabase
+    const { data: vendorProfile, error: vendorError } = await supabase
       .from('vendors')
       .select('id, business_name, rating, company_name')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle(); // Use maybeSingle to avoid error if no row found
+
+    if (vendorError) {
+      console.error('⚠️ Vendor profile fetch error (non-critical):', vendorError.message);
+    }
 
     // Use vendor profile ID if available, otherwise use user ID as vendor identifier
     const vendorId = vendorProfile?.id || user.id;
@@ -480,6 +484,7 @@ export async function POST(request, { params }) {
     
     // Provide more specific error messages
     let userMessage = 'Internal server error';
+    let statusCode = 500;
     
     if (error.code === '42P01') {
       userMessage = 'Database table not found. Contact administrator.';
@@ -487,19 +492,26 @@ export async function POST(request, { params }) {
       userMessage = 'A required database column is missing. Please contact support.';
     } else if (error.code === '23505') {
       userMessage = 'You have already submitted a response to this RFQ.';
+      statusCode = 409;
     } else if (error.code === '23502') {
       userMessage = 'Missing required information in request.';
+      statusCode = 400;
     } else if (error.code === '23503') {
       userMessage = 'RFQ or vendor reference not found.';
+      statusCode = 404;
+    } else if (error.message?.includes('PGRST116')) {
+      userMessage = 'No vendor profile found. Please create one first.';
+      statusCode = 400;
     }
     
     return NextResponse.json(
       { 
         error: userMessage,
         details: error.message,
-        code: error.code
+        code: error.code,
+        type: error.constructor.name
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
