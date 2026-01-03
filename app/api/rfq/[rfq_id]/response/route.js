@@ -13,8 +13,25 @@ const supabase = createClient(
  * 
  * Vendor submits a quote/response to an RFQ
  * Supports comprehensive quote form with 3 sections:
- * - Section 1: Quote Overview
- * - Section 2: Pricing & Breakdown
+ * - Section 1    // Create notification (can be enhanced with actual email/SMS)
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert([
+        {
+          user_id: rfq.user_id,
+          type: 'rfq_response',
+          title: 'New Quote Received',
+          message: `${vendorName} submitted a quote for "${rfq.title}"`,
+          resource_type: 'rfq_response',
+          resource_id: response.id,
+          data: {
+            rfq_id: rfq_id,
+            vendor_name: vendorName,
+            quoted_price: quoted_price,
+            currency: currency
+          }
+        }
+      ]); - Section 2: Pricing & Breakdown
  * - Section 3: Inclusions/Exclusions
  * 
  * Request body includes:
@@ -207,8 +224,8 @@ export async function POST(request, { params }) {
 
     // Get vendor profile (optional - use user ID if profile not found)
     const { data: vendorProfile } = await supabase
-      .from('vendor_profiles')
-      .select('id, business_name, rating')
+      .from('vendors')
+      .select('id, business_name, rating, company_name')
       .eq('user_id', user.id)
       .single();
 
@@ -254,7 +271,7 @@ export async function POST(request, { params }) {
       .from('rfq_responses')
       .select('id, status')
       .eq('rfq_id', rfq_id)
-      .eq('vendor_id', vendorProfile.id)
+      .eq('vendor_id', vendorId)
       .maybeSingle();
 
     if (existingResponse) {
@@ -274,7 +291,7 @@ export async function POST(request, { params }) {
         .from('rfq_recipients')
         .select('id, vendor_id')
         .eq('rfq_id', rfq_id)
-        .eq('vendor_id', vendorProfile.id)
+        .eq('vendor_id', vendorId)
         .maybeSingle();
 
       if (!recipient) {
@@ -334,7 +351,7 @@ export async function POST(request, { params }) {
           warranty: warranty || null,
           payment_terms: payment_terms || null,
           status: 'submitted',
-          vendor_name: vendorProfile?.business_name || 'Vendor',
+          vendor_name: vendorName,
           vendor_rating: vendorProfile?.rating || 0
         }
       ])
@@ -369,7 +386,7 @@ export async function POST(request, { params }) {
         .from('rfq_recipients')
         .update({ status: 'responded' })
         .eq('rfq_id', rfq_id)
-        .eq('vendor_id', vendorProfile.id);
+        .eq('vendor_id', vendorId);
     }
 
     // Fetch requester info for notification
@@ -379,6 +396,9 @@ export async function POST(request, { params }) {
       .eq('id', rfq.user_id)
       .single();
 
+    // Determine vendor name for notifications
+    const vendorName = vendorProfile?.business_name || vendorProfile?.company_name || 'Vendor';
+
     // Create notification (can be enhanced with actual email/SMS)
     const { error: notifError } = await supabase
       .from('notifications')
@@ -387,7 +407,7 @@ export async function POST(request, { params }) {
           user_id: rfq.user_id,
           type: 'rfq_response',
           title: 'New Quote Received',
-          message: `${vendorProfile.business_name} submitted a quote for "${rfq.title}"`,
+          message: `${vendorName} submitted a quote for "${rfq.title}"`,
           resource_type: 'rfq_response',
           resource_id: response.id,
           data: {
