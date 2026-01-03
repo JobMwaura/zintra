@@ -47,7 +47,15 @@ export default function RFQDetailsPage({ params }) {
         .eq('id', rfqId)
         .single();
 
-      if (rfqError || !rfqData) {
+      if (rfqError) {
+        console.error('RFQ fetch error:', rfqError);
+        if (rfqError.code === 'PGRST116') {
+          throw new Error('RFQ not found or you do not have permission to view it');
+        }
+        throw rfqError;
+      }
+
+      if (!rfqData) {
         throw new Error('RFQ not found');
       }
 
@@ -64,7 +72,10 @@ export default function RFQDetailsPage({ params }) {
         .eq('rfq_id', rfqId)
         .order('created_at', { ascending: false });
 
-      if (responsesError) throw responsesError;
+      if (responsesError) {
+        console.error('Responses fetch error:', responsesError);
+        throw responsesError;
+      }
 
       setResponses(responsesData || []);
 
