@@ -335,7 +335,7 @@ export default function RFQRespond() {
       const grandTotal = subtotal + additionalCosts + vatAmount;
 
       // Call response submission endpoint
-      const response = await fetch(`/api/rfq/${rfqId}/response`, {
+      const response = await fetch(`/api/rfq/${params.rfq_id}/response`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -717,18 +717,176 @@ export default function RFQRespond() {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Review Your Quote</h2>
 
             <div className="space-y-6 mb-8">
-              {/* Quote Summary */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <div className="grid grid-cols-2 gap-6">
+              {/* SECTION 1: Quote Overview Summary */}
+              <div className="border-l-4 border-amber-500 bg-amber-50 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Section 1: Quote Overview</h3>
+                <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Quoted Price</p>
-                    <p className="text-3xl font-bold text-emerald-600">
-                      {formData.currency} {parseFloat(formData.quoted_price).toLocaleString()}
+                    <p className="text-xs text-gray-500 mb-1">Quote Title</p>
+                    <p className="font-semibold text-gray-900">{formData.quote_title}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Introduction</p>
+                    <p className="text-gray-900 whitespace-pre-wrap">{formData.intro_text}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Valid Until</p>
+                      <p className="font-semibold text-gray-900">
+                        {formData.validity_days === 'custom' ? formData.validity_custom_date : `${formData.validity_days} days`}
+                      </p>
+                    </div>
+                    {formData.earliest_start_date && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Earliest Start Date</p>
+                        <p className="font-semibold text-gray-900">{formData.earliest_start_date}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: Pricing & Breakdown Summary */}
+              <div className="border-l-4 border-blue-500 bg-blue-50 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Section 2: Pricing & Breakdown</h3>
+                <div className="space-y-4">
+                  {/* Pricing Model */}
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Pricing Model</p>
+                    <p className="font-semibold text-gray-900 capitalize">
+                      {formData.pricing_model === 'fixed' && 'Fixed total price'}
+                      {formData.pricing_model === 'range' && 'Price range (minimum to maximum)'}
+                      {formData.pricing_model === 'per_unit' && 'Per unit / per item'}
+                      {formData.pricing_model === 'per_day' && 'Per day / hourly'}
+                    </p>
+                  </div>
+
+                  {/* Price Display Based on Model */}
+                  {formData.pricing_model === 'fixed' && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Total Price</p>
+                      <p className="text-2xl font-bold text-emerald-600">
+                        KES {parseFloat(formData.quoted_price).toLocaleString()}
+                      </p>
+                      {formData.vat_included && <p className="text-xs text-gray-600">VAT Included</p>}
+                    </div>
+                  )}
+
+                  {formData.pricing_model === 'range' && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Price Range</p>
+                      <p className="text-2xl font-bold text-emerald-600">
+                        KES {parseFloat(formData.price_min).toLocaleString()} - {parseFloat(formData.price_max).toLocaleString()}
+                      </p>
+                      {formData.vat_included && <p className="text-xs text-gray-600">VAT Included</p>}
+                    </div>
+                  )}
+
+                  {(formData.pricing_model === 'per_unit' || formData.pricing_model === 'per_day') && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{formData.pricing_model === 'per_unit' ? 'Unit Type' : 'Rate Type'}</p>
+                        <p className="font-semibold text-gray-900">{formData.unit_type || formData.pricing_model}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Unit Price</p>
+                        <p className="font-semibold text-gray-900">KES {parseFloat(formData.unit_price).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Estimated Quantity</p>
+                        <p className="font-semibold text-gray-900">{parseFloat(formData.estimated_units)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Estimated Total</p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          KES {(parseFloat(formData.unit_price) * parseFloat(formData.estimated_units)).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Line Items Breakdown */}
+                  {formData.line_items.length > 0 && (
+                    <div className="border-t pt-4">
+                      <p className="text-xs text-gray-500 mb-2 font-semibold">Item Breakdown</p>
+                      <div className="space-y-2">
+                        {formData.line_items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm bg-white p-2 rounded border border-blue-200">
+                            <span className="text-gray-700">{item.description}</span>
+                            <span className="font-semibold text-gray-900">KES {parseFloat(item.lineTotal).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional Costs */}
+                  {((parseFloat(formData.transport_cost) || 0) > 0 || (parseFloat(formData.labour_cost) || 0) > 0 || (parseFloat(formData.other_charges) || 0) > 0) && (
+                    <div className="border-t pt-4 space-y-2">
+                      <p className="text-xs text-gray-500 mb-2 font-semibold">Additional Costs</p>
+                      {parseFloat(formData.transport_cost) > 0 && (
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>Transport/Delivery:</span>
+                          <span>KES {parseFloat(formData.transport_cost).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {parseFloat(formData.labour_cost) > 0 && (
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>Labour Cost:</span>
+                          <span>KES {parseFloat(formData.labour_cost).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {parseFloat(formData.other_charges) > 0 && (
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>Other Charges:</span>
+                          <span>KES {parseFloat(formData.other_charges).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 3: Inclusions & Exclusions */}
+              <div className="border-l-4 border-green-500 bg-green-50 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Section 3: What's Included & Excluded</h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2 font-semibold">What is Included</p>
+                    <p className="text-gray-900 whitespace-pre-wrap bg-white p-3 rounded border border-green-200">
+                      {formData.inclusions}
                     </p>
                   </div>
                   <div>
+                    <p className="text-xs text-gray-500 mb-2 font-semibold">What is NOT Included</p>
+                    <p className="text-gray-900 whitespace-pre-wrap bg-white p-3 rounded border border-red-200">
+                      {formData.exclusions}
+                    </p>
+                  </div>
+                  {formData.client_responsibilities && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2 font-semibold">Client Responsibilities</p>
+                      <p className="text-gray-900 whitespace-pre-wrap bg-white p-3 rounded border border-blue-200">
+                        {formData.client_responsibilities}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Legacy Fields Summary */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Additional Details</h3>
+                <div className="space-y-3">
+                  <div>
                     <p className="text-xs text-gray-500 mb-1">Delivery Timeline</p>
-                    <p className="text-xl font-semibold text-gray-900">{formData.delivery_timeline}</p>
+                    <p className="font-semibold text-gray-900">{formData.delivery_timeline}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2">Your Proposal</p>
+                    <p className="text-gray-900 bg-white p-3 rounded whitespace-pre-wrap border border-gray-200">
+                      {formData.description}
+                    </p>
                   </div>
                   {formData.warranty && (
                     <div>
@@ -743,14 +901,6 @@ export default function RFQRespond() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Proposal */}
-              <div>
-                <p className="text-xs text-gray-500 mb-2">Your Proposal</p>
-                <p className="text-gray-900 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
-                  {formData.description}
-                </p>
               </div>
 
               {/* Attachments Summary */}
