@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS public.rfq_requests (
   rfq_id uuid not null references public.rfqs(id) on delete cascade,
   vendor_id uuid not null,
   user_id uuid,
+  project_title text,
+  project_description text,
   status text default 'pending',
   created_at timestamptz default now()
 );

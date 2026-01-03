@@ -203,6 +203,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           vendor_id: vendorRecipientId,
           user_id: user?.id || null,
           project_title: form.title || 'Untitled Project',
+          project_description: form.description || '',
           status: 'pending',
           created_at: new Date().toISOString(),
         }]);

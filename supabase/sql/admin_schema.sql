@@ -97,6 +97,8 @@ create table if not exists public.rfq_requests (
   rfq_id uuid not null references public.rfqs(id) on delete cascade,
   vendor_id uuid not null, -- points to vendor.user_id (or vendor id if aligned)
   user_id uuid, -- buyer
+  project_title text,
+  project_description text,
   status text default 'pending', -- pending|accepted|declined|expired
   created_at timestamptz default now()
 );
