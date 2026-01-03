@@ -205,19 +205,15 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Get vendor profile
-    const { data: vendorProfile, error: vendorError } = await supabase
+    // Get vendor profile (optional - use user ID if profile not found)
+    const { data: vendorProfile } = await supabase
       .from('vendor_profiles')
       .select('id, business_name, rating')
       .eq('user_id', user.id)
       .single();
 
-    if (vendorError || !vendorProfile) {
-      return NextResponse.json(
-        { error: 'Vendor profile not found' },
-        { status: 403 }
-      );
-    }
+    // Use vendor profile ID if available, otherwise use user ID as vendor identifier
+    const vendorId = vendorProfile?.id || user.id;
 
     // Check if RFQ exists and is eligible for response
     const { data: rfq, error: rfqError } = await supabase
@@ -292,7 +288,7 @@ export async function POST(request, { params }) {
       .insert([
         {
           rfq_id: rfq_id,
-          vendor_id: vendorProfile.id,
+          vendor_id: vendorId,
           
           // SECTION 1: Quote Overview
           quote_title: quote_title,
@@ -335,8 +331,8 @@ export async function POST(request, { params }) {
           warranty: warranty || null,
           payment_terms: payment_terms || null,
           status: 'submitted',
-          vendor_name: vendorProfile.business_name,
-          vendor_rating: vendorProfile.rating || 0
+          vendor_name: vendorProfile?.business_name || 'Vendor',
+          vendor_rating: vendorProfile?.rating || 0
         }
       ])
       .select()
