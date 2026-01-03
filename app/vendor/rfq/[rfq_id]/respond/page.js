@@ -31,6 +31,7 @@ export default function RFQRespond() {
   const [success, setSuccess] = useState(false);
   const [user, setUser] = useState(null);
   const [step, setStep] = useState(1); // 1: Details, 2: Preview
+  const [rfqId, setRfqId] = useState(null); // Store rfq_id in state
 
   const [formData, setFormData] = useState({
     // Old fields (still used)
@@ -93,6 +94,9 @@ export default function RFQRespond() {
         setLoading(false);
         return;
       }
+
+      // Store rfqId in state for use in handleSubmit
+      setRfqId(rfqId);
 
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -335,7 +339,7 @@ export default function RFQRespond() {
       const grandTotal = subtotal + additionalCosts + vatAmount;
 
       // Call response submission endpoint
-      const response = await fetch(`/api/rfq/${params.rfq_id}/response`, {
+      const response = await fetch(`/api/rfq/${rfqId}/response`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
