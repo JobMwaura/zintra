@@ -229,8 +229,11 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if RFQ is still open
-    if (!['submitted', 'assigned', 'in_review'].includes(rfq.status)) {
+    // Check if RFQ is still open for responses
+    // Allows: submitted (default), open (user can quote), pending (awaiting approval)
+    // Prevents: closed, completed, cancelled, archived
+    const acceptableStatuses = ['submitted', 'open', 'pending', 'assigned', 'in_review'];
+    if (!acceptableStatuses.includes(rfq.status)) {
       return NextResponse.json(
         { error: `RFQ is ${rfq.status} and cannot accept responses` },
         { status: 410 }

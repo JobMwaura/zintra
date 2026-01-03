@@ -188,7 +188,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           location: form.location,
           buyer_id: user?.id || null,
           user_id: user?.id || null,
-          status: 'open',
+          status: 'submitted',
         }])
         .select()
         .maybeSingle();
