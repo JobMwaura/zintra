@@ -101,45 +101,87 @@ CREATE INDEX IF NOT EXISTS idx_rfq_responses_amount ON public.rfq_responses(amou
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can see projects they created or are assigned to
-CREATE POLICY IF NOT EXISTS "users_can_view_own_projects" ON public.projects
-  FOR SELECT
-  USING (
-    auth.uid()::UUID = assigned_by_user_id 
-    OR auth.uid()::UUID = assigned_vendor_id
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'users_can_view_own_projects' AND tablename = 'projects'
+  ) THEN
+    CREATE POLICY "users_can_view_own_projects" ON public.projects
+      FOR SELECT
+      USING (
+        auth.uid()::UUID = assigned_by_user_id 
+        OR auth.uid()::UUID = assigned_vendor_id
+      );
+  END IF;
+END $$;
 
 -- Policy: Only RFQ creator can create project assignments
-CREATE POLICY IF NOT EXISTS "only_rfq_creator_can_assign" ON public.projects
-  FOR INSERT
-  WITH CHECK (
-    auth.uid()::UUID = (SELECT user_id FROM public.rfqs WHERE id = rfq_id)
-    AND auth.uid()::UUID = assigned_by_user_id
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'only_rfq_creator_can_assign' AND tablename = 'projects'
+  ) THEN
+    CREATE POLICY "only_rfq_creator_can_assign" ON public.projects
+      FOR INSERT
+      WITH CHECK (
+        auth.uid()::UUID = (SELECT user_id FROM public.rfqs WHERE id = rfq_id)
+        AND auth.uid()::UUID = assigned_by_user_id
+      );
+  END IF;
+END $$;
 
 -- Policy: Only assigned vendor can update their project status
-CREATE POLICY IF NOT EXISTS "assigned_vendor_can_update_status" ON public.projects
-  FOR UPDATE
-  USING (auth.uid()::UUID = assigned_vendor_id)
-  WITH CHECK (auth.uid()::UUID = assigned_vendor_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'assigned_vendor_can_update_status' AND tablename = 'projects'
+  ) THEN
+    CREATE POLICY "assigned_vendor_can_update_status" ON public.projects
+      FOR UPDATE
+      USING (auth.uid()::UUID = assigned_vendor_id)
+      WITH CHECK (auth.uid()::UUID = assigned_vendor_id);
+  END IF;
+END $$;
 
 -- Enable RLS on notifications table
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see their own notifications
-CREATE POLICY IF NOT EXISTS "users_can_view_own_notifications" ON public.notifications
-  FOR SELECT
-  USING (auth.uid()::UUID = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'users_can_view_own_notifications' AND tablename = 'notifications'
+  ) THEN
+    CREATE POLICY "users_can_view_own_notifications" ON public.notifications
+      FOR SELECT
+      USING (auth.uid()::UUID = user_id);
+  END IF;
+END $$;
 
 -- Policy: System can insert notifications for users
-CREATE POLICY IF NOT EXISTS "anyone_can_create_notifications" ON public.notifications
-  FOR INSERT
-  WITH CHECK (TRUE);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'anyone_can_create_notifications' AND tablename = 'notifications'
+  ) THEN
+    CREATE POLICY "anyone_can_create_notifications" ON public.notifications
+      FOR INSERT
+      WITH CHECK (TRUE);
+  END IF;
+END $$;
 
 -- Policy: Users can update their own notifications (mark as read)
-CREATE POLICY IF NOT EXISTS "users_can_update_own_notifications" ON public.notifications
-  FOR UPDATE
-  USING (auth.uid()::UUID = user_id)
-  WITH CHECK (auth.uid()::UUID = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'users_can_update_own_notifications' AND tablename = 'notifications'
+  ) THEN
+    CREATE POLICY "users_can_update_own_notifications" ON public.notifications
+      FOR UPDATE
+      USING (auth.uid()::UUID = user_id)
+      WITH CHECK (auth.uid()::UUID = user_id);
+  END IF;
+END $$;
 
 -- =============================================================================
 -- 6. CREATE TRIGGER FOR UPDATED_AT (projects table)
