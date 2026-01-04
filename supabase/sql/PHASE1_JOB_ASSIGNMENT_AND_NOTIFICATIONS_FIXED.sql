@@ -63,7 +63,23 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Add is_read column if it doesn't exist (for existing tables)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'notifications' AND column_name = 'is_read'
+  ) THEN
+    ALTER TABLE public.notifications ADD COLUMN is_read BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
+
 -- Create indexes for faster queries
+DROP INDEX IF EXISTS public.idx_notifications_user;
+DROP INDEX IF EXISTS public.idx_notifications_is_read;
+DROP INDEX IF EXISTS public.idx_notifications_created;
+DROP INDEX IF EXISTS public.idx_notifications_user_read;
+
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON public.notifications(created_at DESC);
