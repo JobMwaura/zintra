@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { initiatePesaPalPayment } from '@/lib/paymentService';
 import { Check, AlertCircle, Loader } from 'lucide-react';
+
+// Utility function to call payment API safely
+async function initiatePayment(paymentDetails) {
+  return initiatePesaPalPayment(paymentDetails);
+}
 
 export default function SubscriptionPlans() {
   const [plans, setPlans] = useState([]);
