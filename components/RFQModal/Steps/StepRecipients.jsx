@@ -1,6 +1,7 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, AlertCircle, TrendingUp } from 'lucide-react';
+import { matchVendorsToRFQ, filterVendorsByCategory, getMatchReason } from '@/lib/matching/categoryMatcher';
 
 export default function StepRecipients({
   rfqType,
@@ -17,12 +18,55 @@ export default function StepRecipients({
   onResponseLimitChange,
   errors
 }) {
-  // Filter vendors by category and county
-  const filteredVendors = vendors.filter(v => {
-    const matchesCounty = !county || v.county === county;
-    const matchesCategory = !category || (v.categories && v.categories.includes(category));
-    return matchesCounty && matchesCategory && v.verified;
-  });
+  // Phase 3: Enhanced vendor matching
+  let filteredVendors = [];
+  let matchedVendors = [];
+  let otherVendors = [];
+  
+  if (rfqType === 'wizard') {
+    // Wizard RFQ: Use smart matching (category + location + rating)
+    matchedVendors = matchVendorsToRFQ(
+      vendors.filter(v => v.verified),
+      {
+        categorySlug: category,
+        county: county,
+        town: undefined,
+      },
+      {
+        minScore: 50,
+        maxResults: 15,
+        sortBy: 'score'
+      }
+    );
+    
+    // Get vendors that didn't match for potential fallback
+    otherVendors = vendors.filter(v => 
+      v.verified && 
+      !matchedVendors.find(m => m.id === v.id)
+    ).slice(0, 5);
+    
+    filteredVendors = matchedVendors;
+  } else if (rfqType === 'direct') {
+    // Direct RFQ: Show category-matched vendors first, then others
+    const categoryMatched = filterVendorsByCategory(
+      vendors.filter(v => v.verified),
+      category
+    );
+    
+    otherVendors = vendors.filter(v => 
+      v.verified && 
+      !categoryMatched.find(c => c.id === v.id)
+    );
+    
+    filteredVendors = categoryMatched;
+  } else {
+    // Public RFQ: Basic filter
+    filteredVendors = vendors.filter(v => {
+      const matchesCounty = !county || v.county === county;
+      const matchesCategory = !category || (v.categories && v.categories.includes(category));
+      return matchesCounty && matchesCategory && v.verified;
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -41,44 +85,103 @@ export default function StepRecipients({
             </div>
           )}
 
-          <div className="space-y-3">
-            {filteredVendors.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                No verified vendors found for this category and county.
-              </p>
-            ) : (
-              filteredVendors.map(vendor => (
-                <div
-                  key={vendor.id}
-                  onClick={() => onVendorToggle(vendor.id)}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedVendors.includes(vendor.id)
-                      ? 'border-orange-500 bg-orange-50'
-                      : 'border-gray-200 hover:border-orange-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{vendor.company_name}</p>
-                      <p className="text-sm text-gray-600">{vendor.location}</p>
-                      {vendor.rating && (
-                        <p className="text-sm text-gray-500">⭐ {vendor.rating}/5</p>
-                      )}
-                    </div>
-                    <div
-                      className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center ${
-                        selectedVendors.includes(vendor.id)
-                          ? 'border-orange-600 bg-orange-600'
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      {selectedVendors.includes(vendor.id) && (
-                        <Check className="w-4 h-4 text-white" />
-                      )}
-                    </div>
+          <div className="space-y-4">
+            {/* Phase 3: Category-matched vendors */}
+            {filteredVendors.length > 0 && (
+              <div>
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+                  <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-green-800">
+                    <p className="font-medium">Category Specialists</p>
+                    <p className="text-xs mt-1">{filteredVendors.length} vendors specialize in {category}</p>
                   </div>
                 </div>
-              ))
+                <div className="space-y-3">
+                  {filteredVendors.map(vendor => (
+                    <div
+                      key={vendor.id}
+                      onClick={() => onVendorToggle(vendor.id)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedVendors.includes(vendor.id)
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-green-200 hover:border-green-400 bg-green-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{vendor.company_name}</p>
+                          <p className="text-sm text-gray-600">{vendor.location}</p>
+                          {vendor.rating && (
+                            <p className="text-sm text-gray-500">⭐ {vendor.rating}/5</p>
+                          )}
+                          <p className="text-xs text-green-700 mt-1 font-medium">✓ Specializes in {category}</p>
+                        </div>
+                        <div
+                          className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center ${
+                            selectedVendors.includes(vendor.id)
+                              ? 'border-green-600 bg-green-600'
+                              : 'border-green-400'
+                          }`}
+                        >
+                          {selectedVendors.includes(vendor.id) && (
+                            <Check className="w-4 h-4 text-white" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Phase 3: Other vendors section */}
+            {otherVendors.length > 0 && (
+              <div className="border-t pt-4">
+                <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium">Other Vendors</p>
+                    <p className="text-xs mt-1">{otherVendors.length} vendors available in other categories</p>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {otherVendors.map(vendor => (
+                    <div
+                      key={vendor.id}
+                      onClick={() => onVendorToggle(vendor.id)}
+                      className={`p-3 border rounded-lg cursor-pointer transition-all text-sm ${
+                        selectedVendors.includes(vendor.id)
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-300 hover:border-orange-300 opacity-75'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-800">{vendor.company_name}</p>
+                          <p className="text-xs text-gray-500">{vendor.location}</p>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                            selectedVendors.includes(vendor.id)
+                              ? 'border-orange-600 bg-orange-600'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {selectedVendors.includes(vendor.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredVendors.length === 0 && otherVendors.length === 0 && (
+              <p className="text-gray-500 text-sm p-4 bg-gray-50 rounded-lg">
+                No verified vendors found. Please check your category and county selections.
+              </p>
             )}
           </div>
         </div>
@@ -87,47 +190,112 @@ export default function StepRecipients({
       {rfqType === 'wizard' && (
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Suggest Vendors (Optional)
+            Matched Vendors
           </h3>
           <p className="text-sm text-gray-600 mb-4">
-            You can suggest vendors or allow anyone to respond.
+            We've found vendors that match your project needs. Select the ones you'd like to suggest.
           </p>
 
-          <div className="space-y-4">
-            {/* Vendor Selection */}
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-3">
-                Pre-suggest vendors
-              </p>
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {filteredVendors.map(vendor => (
-                  <div
-                    key={vendor.id}
-                    onClick={() => onVendorToggle(vendor.id)}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors text-sm ${
-                      selectedVendors.includes(vendor.id)
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-orange-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{vendor.company_name}</span>
-                      <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          selectedVendors.includes(vendor.id)
-                            ? 'border-orange-600 bg-orange-600'
-                            : 'border-gray-300'
-                        }`}
-                      >
-                        {selectedVendors.includes(vendor.id) && (
-                          <Check className="w-3 h-3 text-white" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          {/* Phase 3: Show matching info */}
+          {matchedVendors.length > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium">Smart matching active</p>
+                <p className="text-xs mt-1">Vendors are ranked by category expertise, location, and ratings</p>
               </div>
             </div>
+          )}
+
+          <div className="space-y-4">
+            {/* Phase 3: Matched Vendors */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                {matchedVendors.length > 0 ? `${matchedVendors.length} Matched Vendors` : 'No vendors matched'}
+              </p>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {matchedVendors.length === 0 ? (
+                  <p className="text-sm text-gray-500">No vendors found matching your criteria</p>
+                ) : (
+                  matchedVendors.map(vendor => (
+                    <div
+                      key={vendor.id}
+                      onClick={() => onVendorToggle(vendor.id)}
+                      className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                        selectedVendors.includes(vendor.id)
+                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-300'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm">{vendor.company_name || vendor.name}</p>
+                          {vendor.matchScore && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              ✓ {vendor.matchScore}% match
+                            </p>
+                          )}
+                          {vendor.location && (
+                            <p className="text-xs text-gray-500 mt-1">{vendor.location}</p>
+                          )}
+                          {vendor.rating && (
+                            <p className="text-xs text-gray-500">⭐ {vendor.rating.toFixed(1)}/5</p>
+                          )}
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                            selectedVendors.includes(vendor.id)
+                              ? 'border-blue-600 bg-blue-600'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {selectedVendors.includes(vendor.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Phase 3: Show other vendors if available */}
+            {otherVendors.length > 0 && (
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">
+                  Other vendors ({otherVendors.length})
+                </p>
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {otherVendors.map(vendor => (
+                    <div
+                      key={vendor.id}
+                      onClick={() => onVendorToggle(vendor.id)}
+                      className={`p-3 border rounded-lg cursor-pointer transition-all text-sm opacity-75 ${
+                        selectedVendors.includes(vendor.id)
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 hover:border-orange-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{vendor.company_name || vendor.name}</span>
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                            selectedVendors.includes(vendor.id)
+                              ? 'border-orange-600 bg-orange-600'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {selectedVendors.includes(vendor.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Allow Others Checkbox */}
             <div className="border-t pt-4">
