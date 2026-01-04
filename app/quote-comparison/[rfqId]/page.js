@@ -15,7 +15,8 @@ import {
   AlertCircle,
   TrendingDown,
   Clock,
-  User
+  User,
+  Gift
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
@@ -39,6 +40,14 @@ export default function QuoteComparisonPage({ params }) {
   const [error, setError] = useState(null);
   const [acting, setActing] = useState(null);
   const [actionMessage, setActionMessage] = useState('');
+  
+  // Job assignment modal state
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignmentData, setAssignmentData] = useState({
+    startDate: '',
+    notes: ''
+  });
+  const [isAssigning, setIsAssigning] = useState(false);
 
   // Fetch RFQ details and associated quotes
   useEffect(() => {
@@ -171,6 +180,58 @@ export default function QuoteComparisonPage({ params }) {
       setActionMessage(`❌ Error: ${err.message}`);
     } finally {
       setActing(null);
+    }
+  };
+
+  const handleAssignJob = async () => {
+    if (!assignmentData.startDate) {
+      setActionMessage('❌ Please select a start date');
+      return;
+    }
+
+    try {
+      setIsAssigning(true);
+      setActionMessage('');
+
+      const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
+      if (!selectedQuote) {
+        throw new Error('Quote not found');
+      }
+
+      const res = await fetch('/api/rfq/assign-job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rfqId,
+          vendorId: selectedQuote.vendor_id,
+          startDate: assignmentData.startDate,
+          notes: assignmentData.notes
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to assign job');
+      }
+
+      setActionMessage('✅ Job assigned successfully! Vendor has been notified.');
+      setShowAssignModal(false);
+      setAssignmentData({ startDate: '', notes: '' });
+      
+      setTimeout(() => {
+        fetchRFQDetails();
+        setActionMessage('');
+        // Optionally redirect to project page
+        router.push(`/projects/${data.project.id}`);
+      }, 2000);
+    } catch (err) {
+      console.error('Error assigning job:', err);
+      setActionMessage(`❌ Error: ${err.message}`);
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -478,6 +539,20 @@ export default function QuoteComparisonPage({ params }) {
               </button>
 
               <button
+                onClick={() => {
+                  const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
+                  if (selectedQuote?.status === 'accepted') {
+                    setShowAssignModal(true);
+                  } else {
+                    setActionMessage('❌ You must accept the quote first before assigning the job');
+                  }
+                }}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+              >
+                <Gift className="w-4 h-4" /> Assign Job
+              </button>
+
+              <button
                 onClick={() => handleRejectQuote(selectedQuoteId)}
                 disabled={acting === selectedQuoteId}
                 className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-600 text-white font-semibold disabled:opacity-60 hover:bg-red-700 transition"
@@ -507,6 +582,77 @@ export default function QuoteComparisonPage({ params }) {
             <p className="text-sm text-blue-900">
               ℹ️ <span className="font-semibold">Vendor View:</span> You can only see your own quote in the table above. The RFQ creator can see all submitted quotes.
             </p>
+          </div>
+        )}
+
+        {/* Job Assignment Modal */}
+        {showAssignModal && selectedQuoteId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-lg">
+                <h2 className="text-xl font-bold text-white">Assign This Job</h2>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {(() => {
+                  const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
+                  const vendor = vendors[selectedQuote?.vendor_id];
+                  return (
+                    <>
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <p className="text-xs text-slate-600 font-semibold uppercase">Vendor</p>
+                        <p className="text-lg font-bold text-slate-900 mt-1">{vendor?.company_name || 'Unknown'}</p>
+                        <p className="text-sm text-slate-600 mt-2">Quote: KSh {parseFloat(selectedQuote?.amount).toLocaleString()}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-2">
+                          Project Start Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={assignmentData.startDate}
+                          onChange={(e) => setAssignmentData({...assignmentData, startDate: e.target.value})}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-2">
+                          Project Notes (Optional)
+                        </label>
+                        <textarea
+                          value={assignmentData.notes}
+                          onChange={(e) => setAssignmentData({...assignmentData, notes: e.target.value})}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-24"
+                          placeholder="Any additional instructions or details for this project..."
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowAssignModal(false);
+                      setAssignmentData({ startDate: '', notes: '' });
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition font-semibold text-slate-900"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAssignJob}
+                    disabled={isAssigning || !assignmentData.startDate}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAssigning ? 'Assigning...' : 'Confirm Assignment'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

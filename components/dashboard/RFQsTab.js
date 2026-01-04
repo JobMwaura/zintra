@@ -117,8 +117,10 @@ export default function RFQsTab() {
   const handleSubmitResponse = async (e) => {
     e.preventDefault();
 
-    if (!responseData.amount.trim()) {
-      setMessage('❌ Please enter a quote amount');
+    // Validate amount (must be a positive number)
+    const amount = parseFloat(responseData.amount);
+    if (!responseData.amount || isNaN(amount) || amount <= 0) {
+      setMessage('❌ Please enter a valid quote amount (must be greater than 0)');
       return;
     }
 
@@ -136,7 +138,7 @@ export default function RFQsTab() {
         .insert([{
           rfq_id: selectedRFQ.rfq_id || selectedRFQ.id,
           vendor_id: user.id,
-          amount: parseFloat(responseData.amount),
+          amount: amount,
           message: responseData.message,
           attachment_url: responseData.attachment_url || null,
         }]);
