@@ -1,5 +1,18 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+
+// Initialize Supabase client for server-side use
+function createSupabaseClient() {
+  const cookieStore = cookies()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false
+    }
+  })
+}
 
 /**
  * POST /api/rfq/assign-job
@@ -28,7 +41,7 @@ export async function POST(req) {
       )
     }
 
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createSupabaseClient()
 
     // [1] Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -203,7 +216,7 @@ export async function GET(req) {
   }
 
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createSupabaseClient()
 
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
