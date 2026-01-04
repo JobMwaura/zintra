@@ -8,22 +8,37 @@
 
 import crypto from 'crypto';
 
-// Server-side only credentials
-const PESAPAL_API_URL = process.env.NEXT_PUBLIC_PESAPAL_API_URL || 'https://sandbox.pesapal.com/api/v3';
-const CONSUMER_KEY = process.env.NEXT_PUBLIC_PESAPAL_CONSUMER_KEY;
-const CONSUMER_SECRET = process.env.PESAPAL_CONSUMER_SECRET;
+// Server-side only credentials - these must be set in production
+function getCredentials() {
+  const url = process.env.NEXT_PUBLIC_PESAPAL_API_URL || 'https://sandbox.pesapal.com/api/v3';
+  const key = process.env.NEXT_PUBLIC_PESAPAL_CONSUMER_KEY;
+  const secret = process.env.PESAPAL_CONSUMER_SECRET;
+  
+  console.log('🔐 PesaPal Credentials Check:');
+  console.log('  - API URL:', url ? '✓ Set' : '❌ Not set');
+  console.log('  - Consumer Key:', key ? '✓ Set' : '❌ Not set');
+  console.log('  - Consumer Secret:', secret ? '✓ Set' : '❌ Not set');
+  
+  return { url, key, secret };
+}
 
 /**
  * Generate OAuth signature for PesaPal
  */
 function generateSignature(params, method = 'GET') {
+  const { secret } = getCredentials();
+  
+  if (!secret) {
+    throw new Error('PESAPAL_CONSUMER_SECRET is not configured');
+  }
+  
   const signatureString = Object.keys(params)
     .sort()
     .map(key => `${key}=${encodeURIComponent(params[key])}`)
     .join('&');
   
   const signature = crypto
-    .createHmac('sha256', CONSUMER_SECRET)
+    .createHmac('sha256', secret)
     .update(signatureString)
     .digest('base64');
   
@@ -34,19 +49,25 @@ function generateSignature(params, method = 'GET') {
  * Get OAuth Bearer Token
  */
 async function getAccessToken() {
+  const { url, key, secret } = getCredentials();
+  
+  if (!key || !secret) {
+    throw new Error('PesaPal credentials not configured');
+  }
+  
   const timestamp = new Date().toISOString();
   const signatureParams = {
-    consumer_key: CONSUMER_KEY,
+    consumer_key: key,
     timestamp: timestamp,
   };
 
   const signature = generateSignature(signatureParams, 'GET');
 
-  const response = await fetch(`${PESAPAL_API_URL}/api/auth/request/token`, {
+  const response = await fetch(`${url}/api/auth/request/token`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${CONSUMER_KEY}:${signature}:${timestamp}`,
+      Authorization: `Bearer ${key}:${signature}:${timestamp}`,
     },
   });
 
@@ -62,6 +83,7 @@ async function getAccessToken() {
  * Initiate payment with PesaPal
  */
 async function initiatePayment(paymentData) {
+  const { url } = getCredentials();
   const token = await getAccessToken();
 
   const orderData = {
@@ -84,7 +106,7 @@ async function initiatePayment(paymentData) {
     },
   };
 
-  const response = await fetch(`${PESAPAL_API_URL}/orders`, {
+  const response = await fetch(`${url}/orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -104,6 +126,19 @@ async function initiatePayment(paymentData) {
 
 export async function POST(req) {
   try {
+    // Check credentials first
+    const creds = getCredentials();
+    if (!creds.key || !creds.secret) {
+      console.error('❌ PesaPal credentials not configured');
+      return Response.json(
+        { 
+          success: false, 
+          error: 'Server not configured: PesaPal credentials missing' 
+        },
+        { status: 500 }
+      );
+    }
+
     // Parse request body
     const {
       vendor_id,
