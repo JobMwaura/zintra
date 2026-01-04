@@ -6,7 +6,101 @@
  * Returns the payment page URL to redirect user to
  */
 
-import { pesapalClient } from '@/lib/pesapal/pesapalClient';
+import crypto from 'crypto';
+
+// Server-side only credentials
+const PESAPAL_API_URL = process.env.NEXT_PUBLIC_PESAPAL_API_URL || 'https://sandbox.pesapal.com/api/v3';
+const CONSUMER_KEY = process.env.NEXT_PUBLIC_PESAPAL_CONSUMER_KEY;
+const CONSUMER_SECRET = process.env.PESAPAL_CONSUMER_SECRET;
+
+/**
+ * Generate OAuth signature for PesaPal
+ */
+function generateSignature(params, method = 'GET') {
+  const signatureString = Object.keys(params)
+    .sort()
+    .map(key => `${key}=${encodeURIComponent(params[key])}`)
+    .join('&');
+  
+  const signature = crypto
+    .createHmac('sha256', CONSUMER_SECRET)
+    .update(signatureString)
+    .digest('base64');
+  
+  return signature;
+}
+
+/**
+ * Get OAuth Bearer Token
+ */
+async function getAccessToken() {
+  const timestamp = new Date().toISOString();
+  const signatureParams = {
+    consumer_key: CONSUMER_KEY,
+    timestamp: timestamp,
+  };
+
+  const signature = generateSignature(signatureParams, 'GET');
+
+  const response = await fetch(`${PESAPAL_API_URL}/api/auth/request/token`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${CONSUMER_KEY}:${signature}:${timestamp}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get token: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.token;
+}
+
+/**
+ * Initiate payment with PesaPal
+ */
+async function initiatePayment(paymentData) {
+  const token = await getAccessToken();
+
+  const orderData = {
+    id: paymentData.order_id,
+    currency: 'KES',
+    amount: paymentData.amount,
+    description: paymentData.description,
+    callback_url: process.env.PESAPAL_WEBHOOK_URL,
+    notification_id: '4e4af0b6-3758-40d8-8e22-0c1f21847e15',
+    billing_address: {
+      email_address: paymentData.email,
+      phone_number: paymentData.phone_number,
+      first_name: 'Vendor',
+      last_name: 'User',
+      line_1: 'Kenya',
+      postal_code: '00100',
+      city: 'Nairobi',
+      state: 'Nairobi',
+      country_code: 'KE',
+    },
+  };
+
+  const response = await fetch(`${PESAPAL_API_URL}/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(orderData),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`PesaPal API error: ${error}`);
+  }
+
+  const result = await response.json();
+  return result;
+}
 
 export async function POST(req) {
   try {
@@ -72,8 +166,12 @@ export async function POST(req) {
       email,
     });
 
+    // Generate unique order ID
+    const orderId = `order_${vendor_id}_${Date.now()}`;
+
     // Initiate payment with PesaPal
-    const result = await pesapalClient.initiatePayment({
+    const result = await initiatePayment({
+      order_id: orderId,
       vendor_id,
       user_id,
       plan_id,
@@ -84,25 +182,14 @@ export async function POST(req) {
       description: description || `${plan_name} Subscription`,
     });
 
-    if (!result.success) {
-      console.error('❌ PesaPal initiation failed:', result.error);
-      return Response.json(
-        { 
-          success: false, 
-          error: result.error || 'Failed to initiate payment' 
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log('✅ Payment initiated successfully:', result.order_id);
+    console.log('✅ PesaPal order created:', result);
 
     return Response.json(
       {
         success: true,
-        order_id: result.order_id,
-        iframe_url: result.iframe_url,
-        redirect_url: result.redirect_url,
+        order_id: result.id,
+        iframe_url: result.payment_link,
+        redirect_url: result.redirect_url || result.payment_link,
       },
       { status: 200 }
     );
