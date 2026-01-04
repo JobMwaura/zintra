@@ -91,48 +91,84 @@ export default function SubscriptionPlans() {
         return;
       }
 
-      // Calculate end date (30 days from now)
-      const startDate = new Date();
-      const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      // Get the selected plan details
+      const selectedPlan = plans.find(p => p.id === planId);
+      if (!selectedPlan) {
+        setMessage('Error: Plan not found');
+        setPurchasing(null);
+        return;
+      }
 
-      console.log('Creating subscription:', {
-        vendor_id: vendorData.id,
-        user_id: user.id,
-        plan_id: planId,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-      });
+      console.log('🔄 Initiating PesaPal payment for plan:', selectedPlan.name);
 
-      const { data, error } = await supabase
+      // Step 1: Create pending subscription before payment
+      const { data: pendingSubscription, error: subError } = await supabase
         .from('vendor_subscriptions')
         .insert([
           {
             vendor_id: vendorData.id,
             user_id: user.id,
             plan_id: planId,
-            start_date: startDate.toISOString(),
-            end_date: endDate.toISOString(),
-            status: 'active',
+            status: 'pending_payment',
             auto_renew: true,
           }
         ])
-        .select();
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error creating subscription:', error);
-        setMessage(`Error: ${error.message}`);
+      if (subError) {
+        console.error('❌ Error creating pending subscription:', subError);
+        setMessage(`Error: ${subError.message}`);
         setPurchasing(null);
         return;
       }
 
-      console.log('Subscription created successfully:', data);
-      setMessage('✓ Subscription activated successfully!');
-      setTimeout(() => {
-        fetchPlansAndSubscription();
+      console.log('✓ Pending subscription created:', pendingSubscription.id);
+
+      // Step 2: Call payment API to initiate PesaPal order
+      const paymentResponse = await fetch('/api/payments/pesapal/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendor_id: vendorData.id,
+          user_id: user.id,
+          plan_id: planId,
+          plan_name: selectedPlan.name,
+          amount: selectedPlan.price,
+          email: user.email,
+          phone_number: user.phone || '254700000000',
+          description: `${selectedPlan.name} Subscription - Zintra Platform`,
+          subscription_id: pendingSubscription.id,
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentData.success) {
+        console.error('❌ Payment initiation failed:', paymentData.error);
+        setMessage(`Payment Error: ${paymentData.error}`);
+        
+        // Delete the pending subscription if payment fails
+        await supabase
+          .from('vendor_subscriptions')
+          .delete()
+          .eq('id', pendingSubscription.id);
+        
         setPurchasing(null);
-      }, 2000);
+        return;
+      }
+
+      console.log('✓ PesaPal order created:', paymentData.order_id);
+      console.log('🔗 Redirecting to checkout...');
+      setMessage('Redirecting to PesaPal checkout...');
+
+      // Step 3: Redirect to PesaPal checkout
+      setTimeout(() => {
+        window.location.href = paymentData.redirect_url || paymentData.iframe_url;
+      }, 1000);
+
     } catch (err) {
-      console.error('Exception:', err);
+      console.error('❌ Exception:', err);
       setMessage(`Error: ${err.message}`);
       setPurchasing(null);
     }
