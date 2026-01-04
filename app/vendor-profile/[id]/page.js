@@ -38,6 +38,7 @@ import StatusUpdateCard from '@/components/vendor-profile/StatusUpdateCard';
 import RFQInboxTab from '@/components/vendor-profile/RFQInboxTab';
 import ReviewRatingSystem from '@/components/vendor-profile/ReviewRatingSystem';
 import ReviewsList from '@/components/vendor-profile/ReviewsList';
+import CategoryBadges from '@/components/VendorCard/CategoryBadges';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -487,6 +488,20 @@ export default function VendorProfilePage() {
                     <ShieldCheck className="w-4 h-4" /> Verified
                   </span>
                 </div>
+                
+                {/* Phase 3: Category Badges */}
+                {(vendor.primaryCategorySlug || vendor.secondaryCategories?.length > 0) && (
+                  <div className="mt-2 mb-3">
+                    <CategoryBadges 
+                      primaryCategorySlug={vendor.primaryCategorySlug}
+                      secondaryCategories={vendor.secondaryCategories || []}
+                      size="sm"
+                      showLabel={false}
+                      maxVisible={5}
+                    />
+                  </div>
+                )}
+                
                 <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 mt-1">
                   {vendor.location && (
                     <span className="flex items-center gap-1">
@@ -630,7 +645,7 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
-          {['overview', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'updates', 'rfqs'] : [])].map((tab) => (
+          {['overview', 'expertise', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'updates', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -646,6 +661,8 @@ export default function VendorProfilePage() {
                 ? 'RFQ Inbox'
                 : tab === 'categories'
                 ? 'Categories'
+                : tab === 'expertise'
+                ? 'Services & Expertise'
                 : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -770,6 +787,63 @@ export default function VendorProfilePage() {
               )}
             </section>
           )}
+              </>
+            )}
+
+            {/* Phase 3: Services & Expertise Tab */}
+            {activeTab === 'expertise' && (
+              <>
+                <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Services & Expertise</h3>
+                  
+                  {/* Primary Category */}
+                  {vendor.primaryCategorySlug && (
+                    <div className="mb-6 pb-6 border-b border-slate-200">
+                      <h4 className="text-sm font-semibold text-slate-700 mb-3">Primary Specialization</h4>
+                      <div>
+                        <CategoryBadges 
+                          primaryCategorySlug={vendor.primaryCategorySlug}
+                          secondaryCategories={[]}
+                          size="md"
+                          showLabel={false}
+                        />
+                        <p className="text-sm text-slate-600 mt-3">
+                          We specialize in {vendor.primaryCategorySlug.replace(/-/g, ' ')} and have extensive experience in this field.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Secondary Categories */}
+                  {vendor.secondaryCategories && vendor.secondaryCategories.length > 0 && (
+                    <div className="mb-6 pb-6 border-b border-slate-200">
+                      <h4 className="text-sm font-semibold text-slate-700 mb-3">Additional Services</h4>
+                      <div>
+                        <CategoryBadges 
+                          primaryCategorySlug={null}
+                          secondaryCategories={vendor.secondaryCategories}
+                          size="md"
+                          showLabel={false}
+                        />
+                        <p className="text-sm text-slate-600 mt-3">
+                          We also offer expertise and services in these related areas.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Edit for vendor */}
+                  {canEdit && (
+                    <div className="pt-4">
+                      <button
+                        onClick={() => setActiveTab('categories')}
+                        className="text-amber-700 hover:text-amber-800 font-semibold text-sm"
+                      >
+                        Manage Categories & Expertise →
+                      </button>
+                    </div>
+                  )}
+                </section>
               </>
             )}
 
