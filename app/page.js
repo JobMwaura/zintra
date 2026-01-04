@@ -73,61 +73,147 @@ function HowItWorksCarousel() {
   );
 }
 
-// Category cards for homepage display
+// Category cards for homepage display - All 20 RFQ template categories
 const CATEGORY_CARDS = [
   {
-    name: 'Design & Planning',
+    name: 'Architectural Design',
     icon: Building2,
+    slug: 'architectural_design',
     type: 'services',
-    description: 'Professional architects and design consultants for your project planning'
+    description: 'Professional architects and design services'
   },
   {
-    name: 'Building & Construction',
+    name: 'Building & Masonry',
+    icon: Building2,
+    slug: 'building_masonry',
+    type: 'services',
+    description: 'Masonry, concrete, and structural builders'
+  },
+  {
+    name: 'Carpentry & Joinery',
     icon: Home,
+    slug: 'carpentry_joinery',
     type: 'services',
-    description: 'General contractors and specialized construction professionals'
+    description: 'Custom carpentry and woodwork specialists'
   },
   {
-    name: 'Electrical',
+    name: 'Doors, Windows & Glass',
+    icon: DoorOpen,
+    slug: 'doors_windows_glass',
+    type: 'services',
+    description: 'Door and window installation and finishing'
+  },
+  {
+    name: 'Electrical & Solar',
     icon: Zap,
+    slug: 'electrical_solar',
     type: 'services',
-    description: 'Licensed electricians and electrical system specialists'
+    description: 'Electrical systems and solar solutions'
   },
   {
-    name: 'Plumbing',
-    icon: Droplet,
+    name: 'Equipment Hire',
+    icon: Layers,
+    slug: 'equipment_hire',
     type: 'services',
-    description: 'Professional plumbers and water system experts'
+    description: 'Equipment and machinery rental services'
   },
   {
-    name: 'Finishing & Interior',
-    icon: ChefHat,
+    name: 'Fencing & Gates',
+    icon: DoorOpen,
+    slug: 'fencing_gates',
     type: 'services',
-    description: 'Painters, tilers, and interior finishing specialists'
+    description: 'Fencing, gates, and boundary solutions'
   },
   {
-    name: 'HVAC & Mechanical',
+    name: 'Flooring & Wall Finishes',
+    icon: Home,
+    slug: 'flooring_wall_finishes',
+    type: 'services',
+    description: 'Flooring, tiling, and wall finishing'
+  },
+  {
+    name: 'HVAC & Climate Control',
     icon: Wind,
+    slug: 'hvac_climate',
     type: 'services',
-    description: 'Climate control and mechanical system professionals'
+    description: 'Heating, cooling, and ventilation systems'
+  },
+  {
+    name: 'Interior Decoration',
+    icon: ChefHat,
+    slug: 'interior_decor',
+    type: 'services',
+    description: 'Interior design and decoration services'
+  },
+  {
+    name: 'Kitchens & Wardrobes',
+    icon: ChefHat,
+    slug: 'kitchens_wardrobes',
+    type: 'services',
+    description: 'Kitchen and wardrobe installation specialists'
   },
   {
     name: 'Landscaping & Outdoor',
     icon: Trees,
+    slug: 'landscaping_outdoor',
     type: 'services',
-    description: 'Landscaping designers and outdoor construction experts'
+    description: 'Landscaping design and outdoor construction'
   },
   {
-    name: 'Structural Materials',
-    icon: Layers,
-    type: 'materials',
-    description: 'Cement, blocks, steel reinforcement and structural supplies'
-  },
-  {
-    name: 'Roofing Materials',
+    name: 'Painting & Decorating',
     icon: DoorOpen,
-    type: 'materials',
-    description: 'Mabati, tiles, and complete roofing solutions'
+    slug: 'painting_decorating',
+    type: 'services',
+    description: 'Painting, wallpaper, and decoration services'
+  },
+  {
+    name: 'Plumbing & Drainage',
+    icon: Droplet,
+    slug: 'plumbing_drainage',
+    type: 'services',
+    description: 'Plumbing systems and water drainage'
+  },
+  {
+    name: 'Pools & Water Features',
+    icon: Droplet,
+    slug: 'pools_water_features',
+    type: 'services',
+    description: 'Pool construction and water feature design'
+  },
+  {
+    name: 'Project Management',
+    icon: Layers,
+    slug: 'project_management_qs',
+    type: 'services',
+    description: 'Project management and quantity surveying'
+  },
+  {
+    name: 'Roofing & Waterproofing',
+    icon: Home,
+    slug: 'roofing_waterproofing',
+    type: 'services',
+    description: 'Roofing materials and waterproofing solutions'
+  },
+  {
+    name: 'Security & Smart Systems',
+    icon: Shield,
+    slug: 'security_smart',
+    type: 'services',
+    description: 'Security systems and smart building tech'
+  },
+  {
+    name: 'Special Structures',
+    icon: Layers,
+    slug: 'special_structures',
+    type: 'services',
+    description: 'Specialized structural construction'
+  },
+  {
+    name: 'Waste Management & Cleaning',
+    icon: Trees,
+    slug: 'waste_cleaning',
+    type: 'services',
+    description: 'Construction waste removal and site cleaning'
   },
 ];
 
