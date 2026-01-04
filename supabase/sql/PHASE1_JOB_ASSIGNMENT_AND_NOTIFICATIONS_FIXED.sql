@@ -58,16 +58,16 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   related_project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
   related_user_id UUID,
   -- Note: related_user_id is UUID directly (can be removed if notification is deleted)
-  read BOOLEAN DEFAULT FALSE,
+  is_read BOOLEAN DEFAULT FALSE,
   action_url VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON public.notifications(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON public.notifications(user_id, read);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON public.notifications(user_id, is_read);
 
 -- =============================================================================
 -- 4. VERIFY RFQ_RESPONSES TABLE HAS NUMERIC AMOUNT
