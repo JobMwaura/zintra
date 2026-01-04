@@ -61,6 +61,11 @@ model VendorProfile {
   facebookPage      String?
   websiteUrl        String?
   
+  // Category system - Phase 2 implementation
+  primaryCategorySlug String?           // e.g., "architectural_design"
+  secondaryCategories Json?             // Array of category slugs: ["doors_windows_glass", "flooring_wall_finishes"]
+  otherServices     String?             @db.Text  // Free-text description of additional services
+  
   categories        VendorCategory[]
   priceRangeMin     Int?
   priceRangeMax     Int?
@@ -85,6 +90,7 @@ model VendorProfile {
   @@index([county])
   @@index([verificationStatus])
   @@index([subscriptionTier])
+  @@index([primaryCategorySlug])
 }
 
 model Category {

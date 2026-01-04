@@ -1,0 +1,227 @@
+{
+  "categorySlug": "electrical_solar",
+  "categoryLabel": "Electrical & Solar",
+  "templateVersion": "1.0",
+  "description": "RFQ template for electrical and solar projects",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Project Overview",
+      "description": "Tell us about your electrical or solar project",
+      "fields": [
+        {
+          "id": "work_type",
+          "label": "Type of Work",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "electrical_installation", "label": "Electrical Installation" },
+            { "value": "electrical_maintenance", "label": "Electrical Repair/Maintenance" },
+            { "value": "solar_installation", "label": "Solar Installation" },
+            { "value": "electrical_upgrade", "label": "Electrical System Upgrade" },
+            { "value": "combined", "label": "Combined Electrical & Solar" }
+          ],
+          "placeholder": "Select type of work"
+        },
+        {
+          "id": "property_type",
+          "label": "Property Type",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "residential", "label": "Residential" },
+            { "value": "commercial", "label": "Commercial" },
+            { "value": "industrial", "label": "Industrial" }
+          ],
+          "placeholder": "Select property type"
+        },
+        {
+          "id": "building_size",
+          "label": "Building Size (m²)",
+          "type": "number",
+          "required": true,
+          "placeholder": "e.g., 300"
+        }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "title": "Electrical Specifications",
+      "description": "Electrical requirements and specifications",
+      "fields": [
+        {
+          "id": "current_capacity",
+          "label": "Current Electrical Capacity",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "single_phase", "label": "Single Phase (230V)" },
+            { "value": "three_phase", "label": "Three Phase (415V)" },
+            { "value": "unknown", "label": "Unknown" }
+          ],
+          "placeholder": "Select current capacity"
+        },
+        {
+          "id": "estimated_load",
+          "label": "Estimated Electrical Load (kW)",
+          "type": "number",
+          "required": false,
+          "placeholder": "e.g., 10"
+        },
+        {
+          "id": "new_circuits",
+          "label": "Number of New Circuits Needed",
+          "type": "number",
+          "required": false,
+          "placeholder": "e.g., 5"
+        },
+        {
+          "id": "existing_installation",
+          "label": "Condition of Existing Installation",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "excellent", "label": "Excellent" },
+            { "value": "good", "label": "Good" },
+            { "value": "fair", "label": "Fair" },
+            { "value": "poor", "label": "Poor/Needs Upgrade" }
+          ],
+          "placeholder": "Rate existing installation"
+        }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "title": "Solar Requirements",
+      "description": "Solar system details if applicable",
+      "fields": [
+        {
+          "id": "solar_interest",
+          "label": "Interested in Solar?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" }
+          ]
+        },
+        {
+          "id": "solar_capacity",
+          "label": "Preferred Solar Capacity (kW)",
+          "type": "number",
+          "required": false,
+          "placeholder": "e.g., 5 kW"
+        },
+        {
+          "id": "backup_power",
+          "label": "Backup Power System Needed?",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "battery", "label": "Battery Storage" },
+            { "value": "generator", "label": "Diesel Generator" },
+            { "value": "both", "label": "Both Battery & Generator" },
+            { "value": "no", "label": "No Backup Needed" }
+          ],
+          "placeholder": "Select backup power option"
+        },
+        {
+          "id": "roof_condition",
+          "label": "Roof Condition (for solar)",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "excellent", "label": "Excellent" },
+            { "value": "good", "label": "Good" },
+            { "value": "fair", "label": "Fair (May need repairs)" },
+            { "value": "poor", "label": "Poor (Will need new roof)" }
+          ],
+          "placeholder": "Rate roof condition"
+        }
+      ]
+    },
+    {
+      "stepNumber": 4,
+      "title": "Location & Timeline",
+      "description": "Where and when do you need this?",
+      "fields": [
+        {
+          "id": "county",
+          "label": "County",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "nairobi", "label": "Nairobi" },
+            { "value": "mombasa", "label": "Mombasa" },
+            { "value": "kisumu", "label": "Kisumu" },
+            { "value": "nakuru", "label": "Nakuru" },
+            { "value": "other", "label": "Other" }
+          ],
+          "placeholder": "Select your county"
+        },
+        {
+          "id": "timeline",
+          "label": "Project Timeline",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "urgent", "label": "Urgent (1 week)" },
+            { "value": "soon", "label": "Soon (2-4 weeks)" },
+            { "value": "flexible", "label": "Flexible (1-2 months)" },
+            { "value": "planned", "label": "Planned (2+ months)" }
+          ],
+          "placeholder": "When do you need completion?"
+        }
+      ]
+    },
+    {
+      "stepNumber": 5,
+      "title": "Budget & Details",
+      "description": "Budget and supporting documents",
+      "fields": [
+        {
+          "id": "budget_range",
+          "label": "Budget Range",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "under_100k", "label": "Under 100,000 KES" },
+            { "value": "100k_500k", "label": "100,000 - 500,000 KES" },
+            { "value": "500k_2m", "label": "500,000 - 2,000,000 KES" },
+            { "value": "2m_plus", "label": "Over 2,000,000 KES" }
+          ],
+          "placeholder": "Select your budget range"
+        },
+        {
+          "id": "site_photos",
+          "label": "Site Photos/Blueprints",
+          "type": "file-upload",
+          "required": false,
+          "accept": "image/*,.pdf",
+          "multiple": true,
+          "placeholder": "Upload photos and plans"
+        }
+      ]
+    },
+    {
+      "stepNumber": 6,
+      "title": "Review & Submit",
+      "description": "Review before submitting",
+      "fields": [
+        {
+          "id": "additional_notes",
+          "label": "Additional Notes",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Any special requirements?"
+        },
+        {
+          "id": "accept_terms",
+          "label": "I accept the terms and conditions",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

@@ -28,6 +28,8 @@ export async function POST(request) {
       county: body.county || null,
       location: body.location || null,
       category: body.category || null,
+      primary_category_slug: body.primaryCategorySlug || null,
+      secondary_categories: body.secondaryCategories || null,
       services: body.services || null,
       price_range:
         body.price_min && body.price_max

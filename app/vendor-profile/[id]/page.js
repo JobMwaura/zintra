@@ -30,6 +30,7 @@ import BusinessHoursEditor from '@/components/vendor-profile/BusinessHoursEditor
 import LocationManager from '@/components/vendor-profile/LocationManager';
 import CertificationManager from '@/components/vendor-profile/CertificationManager';
 import HighlightsManager from '@/components/vendor-profile/HighlightsManager';
+import CategoryManagement from '@/components/vendor-profile/CategoryManagement';
 import SubscriptionPanel from '@/components/vendor-profile/SubscriptionPanel';
 import ReviewResponses from '@/components/vendor-profile/ReviewResponses';
 import StatusUpdateModal from '@/components/vendor-profile/StatusUpdateModal';
@@ -629,7 +630,7 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
-          {['overview', 'products', 'services', 'reviews', ...(canEdit ? ['updates', 'rfqs'] : [])].map((tab) => (
+          {['overview', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'updates', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -643,6 +644,8 @@ export default function VendorProfilePage() {
                 ? 'Updates'
                 : tab === 'rfqs'
                 ? 'RFQ Inbox'
+                : tab === 'categories'
+                ? 'Categories'
                 : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -878,6 +881,29 @@ export default function VendorProfilePage() {
                   averageRating={averageRating}
                 />
               </div>
+              </>
+            )}
+
+            {/* Categories Tab */}
+            {activeTab === 'categories' && canEdit && (
+              <>
+              <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Service Categories</h3>
+                <CategoryManagement
+                  vendorId={vendorId}
+                  initialPrimary={vendor?.primary_category_slug}
+                  initialSecondary={vendor?.secondary_categories || []}
+                  onSave={async () => {
+                    // Refresh vendor data after saving
+                    const { data } = await supabase
+                      .from('vendor_profiles')
+                      .select('*')
+                      .eq('id', vendorId)
+                      .single();
+                    if (data) setVendor(data);
+                  }}
+                />
+              </section>
               </>
             )}
 

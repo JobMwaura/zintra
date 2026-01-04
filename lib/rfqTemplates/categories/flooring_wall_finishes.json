@@ -1,0 +1,226 @@
+{
+  "categorySlug": "flooring_wall_finishes",
+  "categoryLabel": "Flooring & Wall Finishes",
+  "templateVersion": "1.0",
+  "description": "RFQ template for flooring and wall finishing projects",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Project Overview",
+      "description": "Tell us about your flooring or wall finishing project",
+      "fields": [
+        {
+          "id": "work_type",
+          "label": "Type of Work",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "flooring_installation", "label": "Flooring Installation" },
+            { "value": "wall_finish", "label": "Wall Finishing (Paint/Wallpaper)" },
+            { "value": "tiling", "label": "Tiling (Walls/Floors)" },
+            { "value": "polishing", "label": "Floor Polishing" },
+            { "value": "combined", "label": "Combined Flooring & Wall Work" }
+          ],
+          "placeholder": "Select type of work"
+        },
+        {
+          "id": "area_size",
+          "label": "Approximate Area (m²)",
+          "type": "number",
+          "required": true,
+          "placeholder": "e.g., 150"
+        },
+        {
+          "id": "room_count",
+          "label": "Number of Rooms/Areas",
+          "type": "number",
+          "required": true,
+          "placeholder": "e.g., 4"
+        }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "title": "Material Specifications",
+      "description": "What materials do you prefer?",
+      "fields": [
+        {
+          "id": "flooring_material",
+          "label": "Preferred Flooring Material",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "ceramic_tile", "label": "Ceramic Tile" },
+            { "value": "porcelain", "label": "Porcelain" },
+            { "value": "marble", "label": "Marble/Stone" },
+            { "value": "wooden", "label": "Wooden Flooring" },
+            { "value": "laminate", "label": "Laminate" },
+            { "value": "vinyl", "label": "Vinyl/LVT" },
+            { "value": "concrete", "label": "Polished Concrete" },
+            { "value": "no_preference", "label": "No Preference" }
+          ],
+          "placeholder": "Select preferred flooring material"
+        },
+        {
+          "id": "wall_finish_type",
+          "label": "Wall Finish Type",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "paint", "label": "Paint" },
+            { "value": "wallpaper", "label": "Wallpaper" },
+            { "value": "wall_tiles", "label": "Wall Tiles" },
+            { "value": "textured", "label": "Textured Finish" },
+            { "value": "cladding", "label": "Wall Cladding" }
+          ],
+          "placeholder": "Select wall finish type"
+        },
+        {
+          "id": "color_style",
+          "label": "Color/Style Preference",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe colors, patterns, or aesthetic preferences"
+        }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "title": "Current Condition & Preparation",
+      "description": "What's the current state of the space?",
+      "fields": [
+        {
+          "id": "existing_flooring",
+          "label": "What's the current flooring?",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "concrete", "label": "Concrete" },
+            { "value": "tile", "label": "Existing Tile" },
+            { "value": "wood", "label": "Wood" },
+            { "value": "carpet", "label": "Carpet" },
+            { "value": "unknown", "label": "Unknown" }
+          ],
+          "placeholder": "Select current flooring"
+        },
+        {
+          "id": "removal_needed",
+          "label": "Will existing flooring need to be removed?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" },
+            { "value": "partial", "label": "Partial Removal Only" }
+          ]
+        },
+        {
+          "id": "surface_condition",
+          "label": "Surface Condition",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "excellent", "label": "Excellent (No prep needed)" },
+            { "value": "good", "label": "Good (Minor prep)" },
+            { "value": "fair", "label": "Fair (Some leveling needed)" },
+            { "value": "poor", "label": "Poor (Significant prep needed)" }
+          ],
+          "placeholder": "Rate surface condition"
+        }
+      ]
+    },
+    {
+      "stepNumber": 4,
+      "title": "Location & Timeline",
+      "description": "Where and when do you need this?",
+      "fields": [
+        {
+          "id": "county",
+          "label": "County",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "nairobi", "label": "Nairobi" },
+            { "value": "mombasa", "label": "Mombasa" },
+            { "value": "kisumu", "label": "Kisumu" },
+            { "value": "nakuru", "label": "Nakuru" },
+            { "value": "other", "label": "Other" }
+          ],
+          "placeholder": "Select your county"
+        },
+        {
+          "id": "timeline",
+          "label": "Project Timeline",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "urgent", "label": "Urgent (1-2 weeks)" },
+            { "value": "soon", "label": "Soon (2-4 weeks)" },
+            { "value": "flexible", "label": "Flexible (1-2 months)" },
+            { "value": "planned", "label": "Planned (2+ months)" }
+          ],
+          "placeholder": "When do you need this completed?"
+        },
+        {
+          "id": "occupancy",
+          "label": "Property Status",
+          "type": "radio",
+          "required": false,
+          "options": [
+            { "value": "occupied", "label": "Occupied (Minimal disruption needed)" },
+            { "value": "vacant", "label": "Vacant (Can close for work)" }
+          ]
+        }
+      ]
+    },
+    {
+      "stepNumber": 5,
+      "title": "Budget & References",
+      "description": "Budget and any design references",
+      "fields": [
+        {
+          "id": "budget_range",
+          "label": "Budget Range",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "under_150k", "label": "Under 150,000 KES" },
+            { "value": "150k_500k", "label": "150,000 - 500,000 KES" },
+            { "value": "500k_1m", "label": "500,000 - 1,000,000 KES" },
+            { "value": "1m_plus", "label": "Over 1,000,000 KES" }
+          ],
+          "placeholder": "Select your budget range"
+        },
+        {
+          "id": "room_photos",
+          "label": "Room Photos/Design References",
+          "type": "file-upload",
+          "required": false,
+          "accept": "image/*",
+          "multiple": true,
+          "placeholder": "Upload photos and design inspiration"
+        }
+      ]
+    },
+    {
+      "stepNumber": 6,
+      "title": "Review & Submit",
+      "description": "Review before submitting",
+      "fields": [
+        {
+          "id": "additional_notes",
+          "label": "Additional Notes",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Any special requirements or notes?"
+        },
+        {
+          "id": "accept_terms",
+          "label": "I accept the terms and conditions",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

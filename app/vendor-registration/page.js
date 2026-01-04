@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle, Plus, X } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
 import PhoneInput from '@/components/PhoneInput';
+import CategorySelector from '@/components/vendor-profile/CategorySelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import useOTP from '@/components/hooks/useOTP';
 
@@ -108,7 +109,9 @@ export default function VendorRegistration() {
     whatsappNumber: '',
     county: '',
     location: '',
-    selectedCategories: [],
+    primaryCategorySlug: null, // NEW: Primary category (required)
+    secondaryCategories: [],   // NEW: Secondary categories (0-5, optional)
+    selectedCategories: [],    // Keep for backward compatibility with other steps
     websiteUrl: '',
     facebookPage: '',
     instagramHandle: '',
@@ -356,8 +359,8 @@ export default function VendorRegistration() {
     }
 
     if (currentStep === 3) {
-      if (formData.selectedCategories.length === 0) {
-        newErrors.selectedCategories = 'Select at least 1 category';
+      if (!formData.primaryCategorySlug) {
+        newErrors.primaryCategorySlug = 'Select a primary category';
       }
     }
 
@@ -433,6 +436,10 @@ export default function VendorRegistration() {
           plan: formData.selectedPlan || 'free',
           whatsapp: formData.whatsappNumber || null,
           website: formData.websiteUrl || null,
+          // NEW: Category fields (replacing old selectedCategories)
+          primaryCategorySlug: formData.primaryCategorySlug || null,
+          secondaryCategories: formData.secondaryCategories.length ? formData.secondaryCategories : null,
+          // Keep for backward compatibility
           category: formData.selectedCategories.length ? formData.selectedCategories.join(', ') : null,
           services: formData.services.length ? formData.services.join(', ') : null,
           products: formData.products.length ? formData.products : null,
@@ -762,49 +769,45 @@ export default function VendorRegistration() {
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">What do you offer?</h3>
-            <p className="text-sm text-slate-500 mt-2">Select all categories that apply to your business</p>
+            <p className="text-sm text-slate-500 mt-2">Select your primary category and any secondary categories that apply</p>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-slate-800">Categories (up to 5)*</label>
-              <span className="text-xs text-slate-500">{formData.selectedCategories.length}/5</span>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat.name}
-                  type="button"
-                  onClick={() => toggleCategory(cat.name)}
-                  className={`flex items-start gap-3 rounded-lg border p-3 text-left transition ${
-                    formData.selectedCategories.includes(cat.name)
-                      ? 'border-[#c28a3a] bg-amber-50'
-                      : 'border-slate-300 hover:border-slate-400'
-                  }`}
-                >
-                  <div className={`mt-1 h-5 w-5 rounded border flex items-center justify-center ${
-                    formData.selectedCategories.includes(cat.name)
-                      ? 'bg-[#c28a3a] border-[#c28a3a]'
-                      : 'border-slate-300'
-                  }`}>
-                    {formData.selectedCategories.includes(cat.name) && (
-                      <Check className="h-3 w-3 text-white" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">{cat.name}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {errors.selectedCategories && <p className="text-xs text-red-500">{errors.selectedCategories}</p>}
-          </div>
+          <CategorySelector
+            primaryCategory={formData.primaryCategorySlug}
+            secondaryCategories={formData.secondaryCategories}
+            onPrimaryChange={(slug) => {
+              setFormData({
+                ...formData,
+                primaryCategorySlug: slug,
+              });
+              if (errors.primaryCategorySlug) {
+                setErrors({ ...errors, primaryCategorySlug: '' });
+              }
+            }}
+            onSecondaryChange={(slugs) => {
+              setFormData({
+                ...formData,
+                secondaryCategories: slugs,
+              });
+            }}
+            maxSecondaryCategories={5}
+            showDescription={true}
+          />
 
-          {formData.selectedCategories.length > 0 && (
+          {errors.primaryCategorySlug && (
+            <p className="text-xs text-red-500">{errors.primaryCategorySlug}</p>
+          )}
+
+          {formData.primaryCategorySlug && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
                 <AlertCircle className="w-4 h-4 inline mr-2" />
-                Based on your selection, we'll ask you to {needsServices && 'list your services'}{needsServices && needsPortfolio && ', '}{needsPortfolio && 'showcase your portfolio'}{needsProducts && needsServices && ', and'}{needsProducts && 'list your products'} in the next step.
+                Your primary category is <strong>{formData.primaryCategorySlug.replace(/_/g, ' ')}</strong>
+                {formData.secondaryCategories.length > 0 && (
+                  <>
+                    , and you also serve <strong>{formData.secondaryCategories.map(s => s.replace(/_/g, ' ')).join(', ')}</strong>
+                  </>
+                )}
               </p>
             </div>
           )}

@@ -1,0 +1,188 @@
+{
+  "categorySlug": "architectural_design",
+  "categoryLabel": "Architectural & Design",
+  "templateVersion": 1,
+  "description": "RFQ template for architectural design and planning services",
+  "steps": {
+    "overview": {
+      "stepNumber": 1,
+      "title": "Project Overview",
+      "description": "Tell us about your architectural project",
+      "fields": [
+        {
+          "id": "project_type",
+          "label": "Type of project",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "new_build", "label": "New Build" },
+            { "value": "extension", "label": "Extension" },
+            { "value": "renovation", "label": "Renovation" },
+            { "value": "approval_only", "label": "Approval Only" }
+          ]
+        },
+        {
+          "id": "estimated_plot_size",
+          "label": "Estimated plot size (sqm)",
+          "type": "number",
+          "required": false,
+          "placeholder": "e.g., 500"
+        },
+        {
+          "id": "number_of_floors",
+          "label": "Number of floors",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 50,
+          "placeholder": "e.g., 3"
+        },
+        {
+          "id": "intended_use",
+          "label": "Intended use",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "residential", "label": "Residential" },
+            { "value": "commercial", "label": "Commercial" },
+            { "value": "mixed", "label": "Mixed Use" }
+          ]
+        }
+      ]
+    },
+    "details": {
+      "stepNumber": 2,
+      "title": "Technical Details",
+      "description": "Provide technical specifications",
+      "fields": [
+        {
+          "id": "council_approvals_needed",
+          "label": "Do you need council approvals?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" },
+            { "value": "unsure", "label": "Unsure" }
+          ]
+        },
+        {
+          "id": "existing_drawings",
+          "label": "Do you have existing drawings or sketches?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label": "Yes, I have drawings" },
+            { "value": "preliminary", "label": "Yes, preliminary sketches" },
+            { "value": "no", "label": "No, need design from scratch" }
+          ]
+        },
+        {
+          "id": "design_style",
+          "label": "Preferred design style/aesthetic",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe your preferred style (modern, traditional, minimalist, etc.)"
+        }
+      ]
+    },
+    "materials": {
+      "stepNumber": 3,
+      "title": "Materials & Preferences",
+      "description": "Specify material preferences",
+      "fields": [
+        {
+          "id": "material_preferences",
+          "label": "Material preferences",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "e.g., local materials, eco-friendly, premium finishes"
+        },
+        {
+          "id": "budget_constraints",
+          "label": "Any budget constraints we should know about?",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe any budget limitations"
+        }
+      ]
+    },
+    "location": {
+      "stepNumber": 4,
+      "title": "Location & Timeline",
+      "description": "Location and project timeline",
+      "fields": [
+        {
+          "id": "county",
+          "label": "Project county",
+          "type": "select",
+          "required": true,
+          "options": [],
+          "dataSource": "counties"
+        },
+        {
+          "id": "project_timeline",
+          "label": "When do you need this completed?",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "urgent", "label": "Urgent (within 1 month)" },
+            { "value": "2_3_months", "label": "2-3 months" },
+            { "value": "3_6_months", "label": "3-6 months" },
+            { "value": "6_plus_months", "label": "6+ months" },
+            { "value": "flexible", "label": "Flexible" }
+          ]
+        }
+      ]
+    },
+    "budget": {
+      "stepNumber": 5,
+      "title": "Budget & Attachments",
+      "description": "Budget and supporting documents",
+      "fields": [
+        {
+          "id": "budget_range",
+          "label": "Budget range (KES)",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "0_50k", "label": "Below 50,000 KES" },
+            { "value": "50k_200k", "label": "50,000 - 200,000 KES" },
+            { "value": "200k_500k", "label": "200,000 - 500,000 KES" },
+            { "value": "500k_1m", "label": "500,000 - 1,000,000 KES" },
+            { "value": "1m_plus", "label": "1,000,000+ KES" }
+          ]
+        },
+        {
+          "id": "site_photos",
+          "label": "Site photos or sketches",
+          "type": "file-upload",
+          "required": false,
+          "accepts": [".jpg", ".png", ".pdf"],
+          "maxSize": 10485760,
+          "maxFiles": 5,
+          "hint": "Upload reference photos or preliminary sketches"
+        }
+      ]
+    },
+    "review": {
+      "stepNumber": 6,
+      "title": "Review & Submit",
+      "description": "Review your RFQ before submitting",
+      "fields": [
+        {
+          "id": "additional_notes",
+          "label": "Any additional notes or requirements?",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Add any final details or special requirements"
+        }
+      ]
+    }
+  },
+  "sharedSteps": {
+    "location": true,
+    "budget": true,
+    "review": true
+  }
+}

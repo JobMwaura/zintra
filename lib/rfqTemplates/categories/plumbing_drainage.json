@@ -1,0 +1,227 @@
+{
+  "categorySlug": "plumbing_drainage",
+  "categoryLabel": "Plumbing & Drainage",
+  "templateVersion": "1.0",
+  "description": "RFQ template for plumbing and drainage projects",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Project Overview",
+      "description": "Tell us about your plumbing or drainage project",
+      "fields": [
+        {
+          "id": "work_type",
+          "label": "Type of Work",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "new_installation", "label": "New Plumbing Installation" },
+            { "value": "repair", "label": "Repair/Maintenance" },
+            { "value": "replacement", "label": "Replacement" },
+            { "value": "drainage_system", "label": "Drainage System" },
+            { "value": "renovation", "label": "Bathroom/Kitchen Renovation" }
+          ],
+          "placeholder": "Select type of work"
+        },
+        {
+          "id": "scope",
+          "label": "Project Scope",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "single_fixture", "label": "Single Fixture/Area" },
+            { "value": "multiple_fixtures", "label": "Multiple Fixtures" },
+            { "value": "whole_building", "label": "Whole Building System" }
+          ],
+          "placeholder": "Select scope"
+        },
+        {
+          "id": "fixtures_count",
+          "label": "Number of Fixtures (Sinks, Toilets, Showers, etc.)",
+          "type": "number",
+          "required": true,
+          "placeholder": "e.g., 5"
+        }
+      ]
+    },
+    {
+      "stepNumber": 2,
+      "title": "Technical Details",
+      "description": "Provide technical specifications",
+      "fields": [
+        {
+          "id": "pipe_material",
+          "label": "Preferred Pipe Material",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "pvc", "label": "PVC" },
+            { "value": "copper", "label": "Copper" },
+            { "value": "galvanized", "label": "Galvanized Steel" },
+            { "value": "hdpe", "label": "HDPE" },
+            { "value": "no_preference", "label": "No Preference" }
+          ],
+          "placeholder": "Select pipe material"
+        },
+        {
+          "id": "fixture_quality",
+          "label": "Fixture Quality Level",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "budget", "label": "Budget/Basic" },
+            { "value": "standard", "label": "Standard" },
+            { "value": "premium", "label": "Premium/Luxury" }
+          ],
+          "placeholder": "Select fixture quality"
+        },
+        {
+          "id": "water_pressure",
+          "label": "Current Water Pressure Issues?",
+          "type": "radio",
+          "required": false,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" }
+          ]
+        },
+        {
+          "id": "drainage_issues",
+          "label": "Current Drainage Issues?",
+          "type": "checkbox",
+          "required": false,
+          "options": [
+            { "value": "slow_drains", "label": "Slow Drains" },
+            { "value": "blockages", "label": "Blockages" },
+            { "value": "odors", "label": "Odors" },
+            { "value": "leaks", "label": "Leaks" }
+          ]
+        }
+      ]
+    },
+    {
+      "stepNumber": 3,
+      "title": "System Requirements",
+      "description": "Additional system requirements",
+      "fields": [
+        {
+          "id": "hot_water_system",
+          "label": "Hot Water System",
+          "type": "select",
+          "required": false,
+          "options": [
+            { "value": "geyser", "label": "Geyser" },
+            { "value": "instant", "label": "Instant Water Heater" },
+            { "value": "solar", "label": "Solar Water Heater" },
+            { "value": "no_changes", "label": "No Changes" }
+          ],
+          "placeholder": "Select hot water system type"
+        },
+        {
+          "id": "water_treatment",
+          "label": "Water Treatment/Filtering Needed?",
+          "type": "radio",
+          "required": false,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" }
+          ]
+        },
+        {
+          "id": "septic_system",
+          "label": "Septic/Soak Pit System?",
+          "type": "radio",
+          "required": false,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" },
+            { "value": "municipal", "label": "Municipal Sewerage" }
+          ]
+        }
+      ]
+    },
+    {
+      "stepNumber": 4,
+      "title": "Location & Timeline",
+      "description": "Where and when do you need this?",
+      "fields": [
+        {
+          "id": "county",
+          "label": "County",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "nairobi", "label": "Nairobi" },
+            { "value": "mombasa", "label": "Mombasa" },
+            { "value": "kisumu", "label": "Kisumu" },
+            { "value": "nakuru", "label": "Nakuru" },
+            { "value": "other", "label": "Other" }
+          ],
+          "placeholder": "Select your county"
+        },
+        {
+          "id": "timeline",
+          "label": "Project Timeline",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "emergency", "label": "Emergency (Same day)" },
+            { "value": "urgent", "label": "Urgent (1-2 weeks)" },
+            { "value": "flexible", "label": "Flexible (1 month)" },
+            { "value": "planned", "label": "Planned (2+ months)" }
+          ],
+          "placeholder": "When do you need completion?"
+        }
+      ]
+    },
+    {
+      "stepNumber": 5,
+      "title": "Budget & Details",
+      "description": "Budget and any supporting documents",
+      "fields": [
+        {
+          "id": "budget_range",
+          "label": "Budget Range",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "under_100k", "label": "Under 100,000 KES" },
+            { "value": "100k_300k", "label": "100,000 - 300,000 KES" },
+            { "value": "300k_700k", "label": "300,000 - 700,000 KES" },
+            { "value": "700k_plus", "label": "Over 700,000 KES" }
+          ],
+          "placeholder": "Select your budget range"
+        },
+        {
+          "id": "site_photos",
+          "label": "Site Photos/Blueprints",
+          "type": "file-upload",
+          "required": false,
+          "accept": "image/*,.pdf",
+          "multiple": true,
+          "placeholder": "Upload site photos and plans"
+        }
+      ]
+    },
+    {
+      "stepNumber": 6,
+      "title": "Review & Submit",
+      "description": "Review before submitting",
+      "fields": [
+        {
+          "id": "additional_notes",
+          "label": "Additional Notes",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Any special requirements?"
+        },
+        {
+          "id": "accept_terms",
+          "label": "I accept the terms and conditions",
+          "type": "checkbox",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

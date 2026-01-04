@@ -1,0 +1,153 @@
+{
+  "categorySlug": "building_masonry",
+  "categoryLabel": "Building & Masonry",
+  "templateVersion": 1,
+  "description": "RFQ template for building and masonry services",
+  "steps": {
+    "overview": {
+      "stepNumber": 1,
+      "title": "Project Overview",
+      "description": "Tell us about your building/masonry project",
+      "fields": [
+        {
+          "id": "work_type",
+          "label": "Type of work",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "full_construction", "label": "Full Construction" },
+            { "value": "walling", "label": "Walling" },
+            { "value": "concrete_works", "label": "Concrete Works" }
+          ]
+        },
+        {
+          "id": "approximate_size",
+          "label": "Approximate size (sqm)",
+          "type": "number",
+          "required": true,
+          "placeholder": "e.g., 500"
+        },
+        {
+          "id": "existing_structure",
+          "label": "Is this for an existing structure?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "yes", "label": "Yes" },
+            { "value": "no", "label": "No" }
+          ]
+        }
+      ]
+    },
+    "details": {
+      "stepNumber": 2,
+      "title": "Technical Details",
+      "description": "Specify technical requirements",
+      "fields": [
+        {
+          "id": "material_preference",
+          "label": "Materials preference",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "blocks", "label": "Blocks" },
+            { "value": "stones", "label": "Stones" },
+            { "value": "concrete", "label": "Concrete" },
+            { "value": "open", "label": "Open to suggestions" }
+          ]
+        },
+        {
+          "id": "special_requirements",
+          "label": "Any special requirements?",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "e.g., earthquake-resistant, waterproofing needs"
+        }
+      ]
+    },
+    "materials": {
+      "stepNumber": 3,
+      "title": "Materials & Preferences",
+      "description": "Material supply and preferences",
+      "fields": [
+        {
+          "id": "materials_supplied",
+          "label": "Who supplies the materials?",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "contractor", "label": "Contractor supplies" },
+            { "value": "owner", "label": "Owner supplies" },
+            { "value": "flexible", "label": "Flexible" }
+          ]
+        }
+      ]
+    },
+    "location": {
+      "stepNumber": 4,
+      "title": "Location & Timeline",
+      "description": "Location and project timeline",
+      "fields": [
+        {
+          "id": "county",
+          "label": "Project county",
+          "type": "select",
+          "required": true,
+          "options": [],
+          "dataSource": "counties"
+        },
+        {
+          "id": "start_timeframe",
+          "label": "When do you want to start?",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "immediate", "label": "Immediately" },
+            { "value": "1_month", "label": "Within 1 month" },
+            { "value": "2_3_months", "label": "2-3 months" },
+            { "value": "flexible", "label": "Flexible" }
+          ]
+        }
+      ]
+    },
+    "budget": {
+      "stepNumber": 5,
+      "title": "Budget & Attachments",
+      "description": "Budget and supporting documents",
+      "fields": [
+        {
+          "id": "budget_range",
+          "label": "Budget range (KES)",
+          "type": "select",
+          "required": true,
+          "options": [
+            { "value": "0_100k", "label": "Below 100,000 KES" },
+            { "value": "100k_500k", "label": "100,000 - 500,000 KES" },
+            { "value": "500k_1m", "label": "500,000 - 1,000,000 KES" },
+            { "value": "1m_plus", "label": "1,000,000+ KES" }
+          ]
+        },
+        {
+          "id": "site_plans",
+          "label": "Site plans or sketches",
+          "type": "file-upload",
+          "required": false,
+          "accepts": [".pdf", ".jpg", ".png"],
+          "maxSize": 10485760,
+          "maxFiles": 3
+        }
+      ]
+    },
+    "review": {
+      "stepNumber": 6,
+      "title": "Review & Submit",
+      "description": "Review your RFQ before submitting",
+      "fields": []
+    }
+  },
+  "sharedSteps": {
+    "location": true,
+    "budget": true,
+    "review": true
+  }
+}

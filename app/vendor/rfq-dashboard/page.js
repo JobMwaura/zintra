@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import RFQModalDispatcher from '@/components/modals/RFQModalDispatcher';
 import {
   ChevronRight,
   Filter,
@@ -53,6 +54,9 @@ export default function VendorRFQDashboard() {
     submitted_quotes: 0,
     accepted_quotes: 0
   });
+  const [showRFQModal, setShowRFQModal] = useState(false);
+  const [selectedRfq, setSelectedRfq] = useState(null);
+  const [modalError, setModalError] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -153,8 +157,30 @@ export default function VendorRFQDashboard() {
     setFilteredRfqs(filtered);
   };
 
-  const handleRespondClick = (rfqId) => {
-    router.push(`/vendor/rfq/${rfqId}/respond`);
+  const handleRespondClick = (rfq) => {
+    // Store the RFQ data and open modal
+    setSelectedRfq(rfq);
+    setShowRFQModal(true);
+    setModalError(null);
+  };
+
+  const handleModalClose = () => {
+    setShowRFQModal(false);
+    setSelectedRfq(null);
+    setModalError(null);
+  };
+
+  const handleModalSubmit = async (responseData) => {
+    try {
+      // The submission will be handled by the modal
+      // Just close it and refresh the RFQ list
+      handleModalClose();
+      // Refresh RFQ data to show updated status
+      await fetchData();
+    } catch (error) {
+      console.error('Error in modal submission:', error);
+      setModalError(error.message);
+    }
   };
 
   const handleViewDetails = (rfqId) => {
@@ -406,7 +432,7 @@ export default function VendorRFQDashboard() {
                     </button>
                     {!hasResponded && daysUntilExpiry > 0 && (
                       <button
-                        onClick={() => handleRespondClick(rfq.id)}
+                        onClick={() => handleRespondClick(rfq)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition"
                       >
                         <TrendingUp size={18} />
@@ -439,6 +465,27 @@ export default function VendorRFQDashboard() {
               Showing <span className="font-semibold">{filteredRfqs.length}</span> of{' '}
               <span className="font-semibold">{stats.total_eligible}</span> available RFQs
             </p>
+          </div>
+        )}
+
+        {/* RFQ Modal for quote submission */}
+        {selectedRfq && (
+          <RFQModalDispatcher
+            isOpen={showRFQModal}
+            rfqId={selectedRfq.id}
+            categorySlug={selectedRfq.category_slug}
+            vendorId={user?.id}
+            onClose={handleModalClose}
+            onSubmit={handleModalSubmit}
+          />
+        )}
+
+        {/* Modal Error Display */}
+        {modalError && (
+          <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex items-center gap-2 z-50">
+            <AlertCircle size={20} />
+            <span>{modalError}</span>
+            <button onClick={() => setModalError(null)} className="ml-4 font-bold">×</button>
           </div>
         )}
       </div>
