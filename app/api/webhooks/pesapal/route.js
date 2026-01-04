@@ -6,14 +6,105 @@
  * Updates subscription status based on payment outcome
  */
 
-import { pesapalClient } from '@/lib/pesapal/pesapalClient';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+
+// Server-side only credentials
+const PESAPAL_API_URL = process.env.NEXT_PUBLIC_PESAPAL_API_URL || 'https://sandbox.pesapal.com/api/v3';
+const CONSUMER_KEY = process.env.NEXT_PUBLIC_PESAPAL_CONSUMER_KEY;
+const CONSUMER_SECRET = process.env.PESAPAL_CONSUMER_SECRET;
 
 // Initialize Supabase with service role (server-side only)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+/**
+ * Validate webhook signature using HMAC-SHA256
+ */
+function validateWebhookSignature(signature, body) {
+  if (!CONSUMER_SECRET) {
+    console.error('❌ CONSUMER_SECRET not configured');
+    return false;
+  }
+
+  // Create hash of the body
+  const bodyString = JSON.stringify(body);
+  const hash = crypto
+    .createHmac('sha256', CONSUMER_SECRET)
+    .update(bodyString)
+    .digest('hex');
+
+  return hash === signature;
+}
+
+/**
+ * Get OAuth Bearer Token
+ */
+async function getAccessToken() {
+  const timestamp = new Date().toISOString();
+  const signatureParams = {
+    consumer_key: CONSUMER_KEY,
+    timestamp: timestamp,
+  };
+
+  const signatureString = Object.keys(signatureParams)
+    .sort()
+    .map(key => `${key}=${encodeURIComponent(signatureParams[key])}`)
+    .join('&');
+  
+  const signature = crypto
+    .createHmac('sha256', CONSUMER_SECRET)
+    .update(signatureString)
+    .digest('base64');
+
+  const response = await fetch(`${PESAPAL_API_URL}/api/auth/request/token`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${CONSUMER_KEY}:${signature}:${timestamp}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get token: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.token;
+}
+
+/**
+ * Get payment status from PesaPal
+ */
+async function getPaymentStatus(orderId) {
+  try {
+    const token = await getAccessToken();
+    
+    const response = await fetch(`${PESAPAL_API_URL}/orders/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`PesaPal API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      status: data.payment_status,
+      amount: data.amount,
+    };
+  } catch (error) {
+    console.error('❌ Error getting payment status:', error.message);
+    return { success: false, error: error.message };
+  }
+}
 
 /**
  * Process webhook from PesaPal
@@ -37,7 +128,7 @@ export async function POST(req) {
       );
     }
 
-    const isValid = pesapalClient.validateWebhookSignature(signature, body);
+    const isValid = validateWebhookSignature(signature, body);
     if (!isValid) {
       console.error('❌ Invalid webhook signature - rejecting');
       return Response.json(
@@ -51,7 +142,7 @@ export async function POST(req) {
 
     // Verify payment status with PesaPal (for extra security)
     console.log('🔍 Verifying payment status with PesaPal...');
-    const statusResult = await pesapalClient.getPaymentStatus(orderId);
+    const statusResult = await getPaymentStatus(orderId);
 
     if (!statusResult.success) {
       console.error('❌ Could not verify payment status:', statusResult.error);
