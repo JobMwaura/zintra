@@ -60,7 +60,7 @@ export async function PUT(request) {
 
     // Update vendor profile in Supabase
     const { data, error } = await supabase
-      .from('vendor_profiles')
+      .from('vendors')
       .update({
         primary_category_slug: primaryCategorySlug,
         secondary_categories: filteredSecondary.length > 0 ? filteredSecondary : null,

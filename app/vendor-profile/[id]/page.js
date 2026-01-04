@@ -970,7 +970,7 @@ export default function VendorProfilePage() {
                   onSave={async () => {
                     // Refresh vendor data after saving
                     const { data } = await supabase
-                      .from('vendor_profiles')
+                      .from('vendors')
                       .select('*')
                       .eq('id', vendorId)
                       .single();
