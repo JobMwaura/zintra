@@ -15,9 +15,12 @@ function getCredentials() {
   const secret = process.env.PESAPAL_CONSUMER_SECRET;
   
   console.log('🔐 PesaPal Credentials Check:');
-  console.log('  - API URL:', url ? '✓ Set' : '❌ Not set');
-  console.log('  - Consumer Key:', key ? '✓ Set' : '❌ Not set');
-  console.log('  - Consumer Secret:', secret ? '✓ Set' : '❌ Not set');
+  console.log('  - API URL:', url ? `✓ Set (${url.substring(0, 30)}...)` : '❌ Not set');
+  console.log('  - Consumer Key:', key ? `✓ Set (${key.substring(0, 10)}...)` : '❌ Not set');
+  console.log('  - Consumer Secret:', secret ? `✓ Set (length: ${secret.length})` : '❌ Not set');
+  
+  // Debug: List all env vars that contain PESAPAL
+  console.log('🔍 All PESAPAL env vars:', Object.keys(process.env).filter(k => k.includes('PESAPAL')));
   
   return { url, key, secret };
 }
@@ -126,18 +129,30 @@ async function initiatePayment(paymentData) {
 
 export async function POST(req) {
   try {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📍 POST /api/payments/pesapal/initiate');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     // Check credentials first
     const creds = getCredentials();
+    console.log('📊 Credentials loaded:', creds);
+    
     if (!creds.key || !creds.secret) {
       console.error('❌ PesaPal credentials not configured');
+      console.error('   - Key present:', !!creds.key);
+      console.error('   - Secret present:', !!creds.secret);
+      console.error('   - URL:', creds.url);
+      
       return Response.json(
         { 
           success: false, 
-          error: 'Server not configured: PesaPal credentials missing' 
+          error: 'Server not configured: PesaPal credentials missing. Check Vercel environment variables.' 
         },
         { status: 500 }
       );
     }
+
+    console.log('✅ Credentials verified');
 
     // Parse request body
     const {
