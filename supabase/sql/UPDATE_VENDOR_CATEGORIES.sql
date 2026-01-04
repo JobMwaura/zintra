@@ -4,148 +4,146 @@
 
 BEGIN;
 
+-- FIRST: Add category columns if they don't exist
+ALTER TABLE public.vendors 
+ADD COLUMN IF NOT EXISTS primary_category_slug VARCHAR(50),
+ADD COLUMN IF NOT EXISTS secondary_categories JSONB DEFAULT '[]'::jsonb;
+
 -- 1. AquaTech Borehole Services
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'plumbing_drainage',
   secondary_categories = '["pools_water_features"]'::jsonb
 WHERE id = '8e2a0a93-1fa1-4d7b-9a7a-64e4fa0e6d11';
 
 -- 2. BrightBuild Contractors
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'building_masonry',
   secondary_categories = '["project_management_qs"]'::jsonb
 WHERE id = 'f3a72a11-91b8-4a90-8b82-24b35bfc9801';
 
 -- 3. EcoSmart Landscapes
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'landscaping_outdoor',
   secondary_categories = '["pools_water_features"]'::jsonb
 WHERE id = '2cb95bde-4e5a-4b7c-baa4-7d50978b7a33';
 
 -- 4. PaintPro Interiors
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'painting_decorating',
   secondary_categories = '["interior_decor", "flooring_wall_finishes"]'::jsonb
 WHERE id = 'cde341ad-55a1-45a5-bbc4-0a8c8d2c4f11';
 
 -- 5. Royal Glass & Aluminum Works
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'doors_windows_glass',
   secondary_categories = '["security_smart"]'::jsonb
 WHERE id = 'aa64bff8-7e1b-4a9f-9b09-775b9d78e201';
 
 -- 6. SolarOne Energy Solutions
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'electrical_solar',
   secondary_categories = '["security_smart", "hvac_climate"]'::jsonb
 WHERE id = '3b72d211-3a11-4b45-b7a5-3212c4219e08';
 
 -- 7. SteelPro Fabricators Ltd
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'special_structures',
   secondary_categories = '["building_masonry"]'::jsonb
 WHERE id = 'b4f2c6ef-81b3-45d7-b42b-8036cbf210d4';
 
 -- 8. Timber Masters Kenya
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'carpentry_joinery',
   secondary_categories = '["kitchens_wardrobes", "interior_decor"]'::jsonb
 WHERE id = '3688f0ab-4c1d-4a5e-9345-2df1da846544';
 
 -- 9. Building & Structural Materials vendor
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'building_masonry',
-  secondary_categories = '[]'::jsonb,
-  business_name = 'Building Materials Supplier'
+  secondary_categories = '[]'::jsonb
 WHERE id = 'ed3e73f7-358d-49da-a2a3-847c84dfe360'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 10. Plumbing & Sanitation vendor
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'plumbing_drainage',
-  secondary_categories = '[]'::jsonb,
-  business_name = 'Plumbing Services'
+  secondary_categories = '[]'::jsonb
 WHERE id = '61b12f52-9f79-49e0-a1f2-d145b52fa25d'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 11. Electrical & Lighting vendor
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'electrical_solar',
-  secondary_categories = '[]'::jsonb,
-  business_name = 'Electrical Solutions'
+  secondary_categories = '[]'::jsonb
 WHERE id = 'd4695f1a-498d-4a47-8861-dffabe176426'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 12. Plumbing & Sanitation vendor variant 1
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'plumbing_drainage',
-  secondary_categories = '[]'::jsonb,
-  business_name = 'Plumbing & Drainage Services'
+  secondary_categories = '[]'::jsonb
 WHERE id = '759a761e-b5f5-4d4c-9b02-1174df11ead8'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 13. Roofing & Waterproofing vendor
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'roofing_waterproofing',
-  secondary_categories = '["building_masonry"]'::jsonb,
-  business_name = 'Roofing Solutions'
+  secondary_categories = '["building_masonry"]'::jsonb
 WHERE id = 'fa0f326d-9463-499d-b13e-980762267c12'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 14. Plumbing vendor
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'plumbing_drainage',
-  secondary_categories = '[]'::jsonb,
-  business_name = 'Plumbing Experts'
+  secondary_categories = '[]'::jsonb
 WHERE id = 'f089b49d-77e3-4549-b76d-4568d6cc4f94'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 15. general-contractor vendor
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'building_masonry',
-  secondary_categories = '["project_management_qs"]'::jsonb,
-  business_name = 'General Construction Services'
+  secondary_categories = '["project_management_qs"]'::jsonb
 WHERE id = '24c2cba6-f16c-4d44-ad08-53af20ca471c'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 16. Unknown vendor 1
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'building_masonry',
   secondary_categories = '[]'::jsonb
 WHERE id = '52c837c7-e0e0-4315-b5ea-5c4fda5064b8'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 17. Unknown vendor 2
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'building_masonry',
   secondary_categories = '[]'::jsonb
 WHERE id = 'ba1c65ad-cb98-4c55-9442-89b44c71403e'
-AND (business_name IS NULL OR business_name = '');
+AND (company_name IS NULL OR company_name = '');
 
 -- 18. Kitchen & Interior Fittings vendor (using specific ID if available)
 -- If you have the correct UUID for this vendor, replace the id below
-UPDATE public.vendor_profiles 
+UPDATE public.vendors 
 SET 
   primary_category_slug = 'kitchens_wardrobes',
   secondary_categories = '["interior_decor"]'::jsonb
-WHERE business_name IS NULL OR business_name = ''
+WHERE company_name IS NULL OR company_name = ''
   AND id NOT IN ('8e2a0a93-1fa1-4d7b-9a7a-64e4fa0e6d11', 'f3a72a11-91b8-4a90-8b82-24b35bfc9801', 
                  '2cb95bde-4e5a-4b7c-baa4-7d50978b7a33', 'cde341ad-55a1-45a5-bbc4-0a8c8d2c4f11',
                  'aa64bff8-7e1b-4a9f-9b09-775b9d78e201', '3b72d211-3a11-4b45-b7a5-3212c4219e08',
