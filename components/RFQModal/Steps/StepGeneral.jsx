@@ -1,12 +1,34 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
 import LocationSelector from '@/components/LocationSelector';
+import { suggestCategories } from '@/lib/matching/categorySuggester';
+import { Lightbulb, X } from 'lucide-react';
 
 export default function StepGeneral({
   formData,
   onFieldChange,
   errors
 }) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [categorySuggestions, setCategorySuggestions] = useState([]);
+
+  // Phase 3: Smart category suggestions based on project title
+  useEffect(() => {
+    if (formData.projectTitle && formData.projectTitle.trim().length > 2) {
+      try {
+        const suggestions = suggestCategories(formData.projectTitle, 4);
+        setCategorySuggestions(suggestions || []);
+        setShowSuggestions(suggestions && suggestions.length > 0);
+      } catch (error) {
+        console.error('Error getting category suggestions:', error);
+        setCategorySuggestions([]);
+      }
+    } else {
+      setCategorySuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [formData.projectTitle]);
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,6 +72,45 @@ export default function StepGeneral({
           />
           {errors.projectTitle && (
             <p className="text-sm text-red-600 font-medium">{errors.projectTitle}</p>
+          )}
+
+          {/* Phase 3: Category Suggestions */}
+          {showSuggestions && categorySuggestions.length > 0 && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">Suggested Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {categorySuggestions.map((suggestion, index) => (
+                      <button
+                        key={suggestion.slug || index}
+                        type="button"
+                        onClick={() => {
+                          // Note: This passes the category slug - parent component should handle setting category
+                          console.log('Suggested category:', suggestion.slug);
+                          setShowSuggestions(false);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200 transition-colors"
+                      >
+                        <span>{suggestion.name}</span>
+                        <span className="text-blue-500 text-xs">({suggestion.relevance}%)</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-blue-700 mt-2">
+                    💡 These categories match your project. Selected category is set in Step 1.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(false)}
+                  className="flex-shrink-0 text-blue-400 hover:text-blue-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
