@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
@@ -101,10 +100,14 @@ export default function BrowseVendors() {
     const matchesSearch =
       vendor.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vendor.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Match against primary_category_slug or legacy category field
     const matchesCategory =
       selectedCategory === 'All Categories' || 
+      vendor.primary_category_slug === selectedCategory ||
       vendor.category === selectedCategory ||
       (selectedCategory && vendor.category?.toLowerCase().includes(selectedCategory.toLowerCase()));
+    
     const matchesCounty =
       !selectedCounty || vendor.county === selectedCounty;
     const matchesTown =
@@ -122,9 +125,6 @@ export default function BrowseVendors() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <Navbar />
-
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
