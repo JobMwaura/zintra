@@ -59,7 +59,7 @@ async function getAccessToken() {
     .update(signatureString)
     .digest('base64');
 
-  const response = await fetch(`${PESAPAL_API_URL}/api/auth/request/token`, {
+  const response = await fetch(`${PESAPAL_API_URL}/api/Auth/RequestToken`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ async function getPaymentStatus(orderId) {
   try {
     const token = await getAccessToken();
     
-    const response = await fetch(`${PESAPAL_API_URL}/orders/${orderId}`, {
+    const response = await fetch(`${PESAPAL_API_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

@@ -66,7 +66,7 @@ async function getAccessToken() {
 
   const signature = generateSignature(signatureParams, 'GET');
 
-  const response = await fetch(`${url}/api/auth/request/token`, {
+  const response = await fetch(`${url}/api/Auth/RequestToken`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ async function initiatePayment(paymentData) {
     },
   };
 
-  const response = await fetch(`${url}/orders`, {
+  const response = await fetch(`${url}/api/Transactions/SubmitOrderRequest`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
