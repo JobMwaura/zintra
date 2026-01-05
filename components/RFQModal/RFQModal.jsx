@@ -24,8 +24,9 @@ export default function RFQModal({
   vendorName = null,
   preSelectedCategory = null 
 }) {
-  // Determine if we should skip category selection
-  const shouldSkipCategorySelection = vendorCategories.length === 1;
+  // IMPORTANT: Always skip category selection when called from vendor profile
+  // Use the PRIMARY category (first in vendorCategories array)
+  const shouldSkipCategorySelection = vendorCategories && vendorCategories.length > 0;
   const preSelectedCat = shouldSkipCategorySelection ? vendorCategories[0] : preSelectedCategory;
   
   const [currentStep, setCurrentStep] = useState(preSelectedCat ? 'details' : 'category');
