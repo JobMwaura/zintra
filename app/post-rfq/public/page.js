@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { RfqProvider } from '@/context/RfqContext';
@@ -8,6 +8,12 @@ import PublicRFQModalWrapper from '@/components/PublicRFQModalWrapper';
 
 export default function PublicRFQPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering interactive content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <RfqProvider>
@@ -33,7 +39,7 @@ export default function PublicRFQPage() {
 
         {/* Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {!submitted ? (
+          {mounted && !submitted ? (
             <>
               {/* Info section */}
               <div className="mb-12 bg-green-50 border border-green-200 rounded-lg p-6">
@@ -68,7 +74,7 @@ export default function PublicRFQPage() {
               {/* Modal */}
               <PublicRFQModalWrapper onSuccess={() => setSubmitted(true)} />
             </>
-          ) : (
+          ) : mounted ? (
             <div className="bg-white rounded-lg shadow-md p-12 text-center">
               <div className="mb-6">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
@@ -88,7 +94,7 @@ export default function PublicRFQPage() {
                 Create Another RFQ
               </Link>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </RfqProvider>

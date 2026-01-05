@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { RfqProvider } from '@/context/RfqContext';
@@ -8,6 +8,12 @@ import RFQModal from '@/components/RFQModal/RFQModal';
 
 export default function WizardRFQPage() {
   const [showModal, setShowModal] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering interactive content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClose = () => {
     setShowModal(false);
@@ -68,7 +74,7 @@ export default function WizardRFQPage() {
         </div>
 
         {/* Modal */}
-        {showModal && (
+        {mounted && showModal && (
           <RFQModal
             rfqType="wizard"
             isOpen={true}
@@ -77,7 +83,7 @@ export default function WizardRFQPage() {
         )}
 
         {/* No modal state */}
-        {!showModal && (
+        {mounted && !showModal && (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">Wizard RFQ form closed</p>
             <Link

@@ -36,6 +36,12 @@ export default function RFQModal({
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch - only render dynamic content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -377,6 +383,11 @@ export default function RFQModal({
   };
 
   if (!isOpen) return null;
+
+  // Don't render anything until client-side hydration is complete
+  if (!mounted) {
+    return null;
+  }
 
   if (loadingTemplates) {
     return (
