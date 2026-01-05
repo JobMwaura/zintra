@@ -20,23 +20,19 @@ INSERT INTO public.rfqs (
   title,
   description,
   category,
-  category_slug,
   rfq_type,
   visibility,
   status,
   budget_range,
-  budget_estimate,
   location,
   county,
   urgency,
   deadline,
   expires_at,
-  response_limit,
   created_at,
-  created_by,
-  project_scope,
-  project_timeline,
-  specifications
+  user_id,
+  timeline,
+  material_requirements
 ) VALUES
 
 -- 1. Residential Electrical Installation (Nairobi)
@@ -45,29 +41,19 @@ INSERT INTO public.rfqs (
   'Residential Electrical Rewiring - Westlands Estate',
   'Complete electrical system rewiring for a 5-bedroom residential property. Current system is outdated and needs full replacement with modern wiring, circuit breaker installation, and safety compliance. Property area is approximately 500 sqm. Works include installation of new distribution board, wiring to all rooms, kitchen appliances connection, and safety testing.',
   'electrician',
-  'electrician',
   'public',
   'public',
   'open',
   '150000-250000',
-  '200000',
   'Westlands, Nairobi',
   'Nairobi',
   'high',
   NOW() + INTERVAL '14 days',
   NOW() + INTERVAL '14 days',
-  5,
   NOW(),
   (SELECT id FROM auth.users LIMIT 1),
-  'Full property rewiring with modern safety standards',
   '7-10 days',
-  jsonb_build_object(
-    'property_type', 'Residential',
-    'room_count', 5,
-    'area_sqm', 500,
-    'work_type', 'Complete rewiring',
-    'timeline', '7-10 days'
-  )
+  'Modern wiring, circuit breaker, distribution board'
 ),
 
 -- 2. Plumbing Installation - Hotel Water System
