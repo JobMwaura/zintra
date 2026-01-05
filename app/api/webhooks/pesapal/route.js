@@ -44,30 +44,49 @@ function validateWebhookSignature(signature, body) {
  */
 async function getAccessToken() {
   // PesaPal RequestToken is a POST request with consumer credentials in body
+  console.log('🔑 Webhook: Attempting token request');
+  console.log('   - Key (first 10 chars):', CONSUMER_KEY?.substring(0, 10));
+  console.log('   - Key length:', CONSUMER_KEY?.length);
+  console.log('   - Secret length:', CONSUMER_SECRET?.length);
+  
+  const requestBody = {
+    consumer_key: CONSUMER_KEY,
+    consumer_secret: CONSUMER_SECRET,
+  };
+  
+  console.log('📝 Request body:', JSON.stringify(requestBody).substring(0, 100) + '...');
+  
   const response = await fetch(`${PESAPAL_API_URL}/api/Auth/RequestToken`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    body: JSON.stringify({
-      consumer_key: CONSUMER_KEY,
-      consumer_secret: CONSUMER_SECRET,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
+  console.log('📥 Webhook token response status:', response.status, response.statusText);
+
+  const responseText = await response.text();
+  console.log('📥 Response body (raw):', responseText);
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('🔴 PesaPal token request failed:', {
-      status: response.status,
-      statusText: response.statusText,
-      error: errorText,
-    });
+    console.error('🔴 Webhook: PesaPal token request failed!');
+    console.error('   Status:', response.status);
+    console.error('   Response Body:', responseText);
     throw new Error(`Failed to get token: ${response.statusText}`);
   }
 
-  const data = await response.json();
-  console.log('✅ PesaPal token received in webhook handler');
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (e) {
+    console.error('❌ Webhook: Failed to parse token response as JSON');
+    console.error('   Response was:', responseText);
+    throw new Error(`Failed to parse token response: ${e.message}`);
+  }
+
+  console.log('✅ Webhook: PesaPal token received successfully');
   return data.token;
 }
 

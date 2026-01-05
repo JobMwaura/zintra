@@ -59,30 +59,57 @@ async function getAccessToken() {
   }
 
   // PesaPal RequestToken is a POST request with consumer credentials in body
+  console.log('🔑 Attempting token request with:');
+  console.log('   - URL:', `${url}/api/Auth/RequestToken`);
+  console.log('   - Key (first 10 chars):', key?.substring(0, 10));
+  console.log('   - Key length:', key?.length);
+  console.log('   - Secret length:', secret?.length);
+  
+  const requestBody = {
+    consumer_key: key,
+    consumer_secret: secret,
+  };
+  
+  console.log('📝 Request body:', JSON.stringify(requestBody).substring(0, 100) + '...');
+  
   const response = await fetch(`${url}/api/Auth/RequestToken`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    body: JSON.stringify({
-      consumer_key: key,
-      consumer_secret: secret,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
+  console.log('📥 Token response status:', response.status, response.statusText);
+  console.log('📥 Response headers:', {
+    contentType: response.headers.get('content-type'),
+  });
+
+  const responseText = await response.text();
+  console.log('📥 Response body (raw):', responseText);
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('🔴 PesaPal token request failed:', {
-      status: response.status,
-      statusText: response.statusText,
-      error: errorText,
-    });
-    throw new Error(`Failed to get token: ${response.statusText}`);
+    console.error('🔴 PesaPal token request failed!');
+    console.error('   Status:', response.status);
+    console.error('   Status Text:', response.statusText);
+    console.error('   Response Body:', responseText);
+    throw new Error(`Failed to get token: ${response.statusText} - ${responseText}`);
   }
 
-  const data = await response.json();
-  console.log('✅ PesaPal token received');
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (e) {
+    console.error('❌ Failed to parse response as JSON');
+    console.error('   Response was:', responseText);
+    throw new Error(`Failed to parse token response: ${e.message}`);
+  }
+
+  console.log('✅ PesaPal token received successfully');
+  console.log('   Token (first 20 chars):', data.token?.substring(0, 20));
+  console.log('   Expiry:', data.expiryDate);
+  
   return data.token;
 }
 
