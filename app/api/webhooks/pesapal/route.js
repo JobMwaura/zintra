@@ -43,35 +43,31 @@ function validateWebhookSignature(signature, body) {
  * Get OAuth Bearer Token
  */
 async function getAccessToken() {
-  const timestamp = new Date().toISOString();
-  const signatureParams = {
-    consumer_key: CONSUMER_KEY,
-    timestamp: timestamp,
-  };
-
-  const signatureString = Object.keys(signatureParams)
-    .sort()
-    .map(key => `${key}=${encodeURIComponent(signatureParams[key])}`)
-    .join('&');
-  
-  const signature = crypto
-    .createHmac('sha256', CONSUMER_SECRET)
-    .update(signatureString)
-    .digest('base64');
-
+  // PesaPal RequestToken is a POST request with consumer credentials in body
   const response = await fetch(`${PESAPAL_API_URL}/api/Auth/RequestToken`, {
-    method: 'GET',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${CONSUMER_KEY}:${signature}:${timestamp}`,
+      'Accept': 'application/json',
     },
+    body: JSON.stringify({
+      consumer_key: CONSUMER_KEY,
+      consumer_secret: CONSUMER_SECRET,
+    }),
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('🔴 PesaPal token request failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+    });
     throw new Error(`Failed to get token: ${response.statusText}`);
   }
 
   const data = await response.json();
+  console.log('✅ PesaPal token received in webhook handler');
   return data.token;
 }
 

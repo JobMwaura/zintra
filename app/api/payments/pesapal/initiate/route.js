@@ -57,28 +57,32 @@ async function getAccessToken() {
   if (!key || !secret) {
     throw new Error('PesaPal credentials not configured');
   }
-  
-  const timestamp = new Date().toISOString();
-  const signatureParams = {
-    consumer_key: key,
-    timestamp: timestamp,
-  };
 
-  const signature = generateSignature(signatureParams, 'GET');
-
+  // PesaPal RequestToken is a POST request with consumer credentials in body
   const response = await fetch(`${url}/api/Auth/RequestToken`, {
-    method: 'GET',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}:${signature}:${timestamp}`,
+      'Accept': 'application/json',
     },
+    body: JSON.stringify({
+      consumer_key: key,
+      consumer_secret: secret,
+    }),
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('🔴 PesaPal token request failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+    });
     throw new Error(`Failed to get token: ${response.statusText}`);
   }
 
   const data = await response.json();
+  console.log('✅ PesaPal token received');
   return data.token;
 }
 
