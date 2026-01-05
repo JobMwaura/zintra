@@ -120,13 +120,23 @@ async function initiatePayment(paymentData) {
   const { url } = getCredentials();
   const token = await getAccessToken();
 
+  // Use Events Gear IPN ID since webhook is already set up and working
+  // This IPN is registered in PesaPal and linked to: https://app.eventsgear.co.ke/api/pesapal/ipn
+  const notificationId = process.env.NEXT_PUBLIC_PESAPAL_NOTIFICATION_ID;
+  
+  if (!notificationId) {
+    console.error('❌ PESAPAL_NOTIFICATION_ID not configured');
+    console.error('   Add NEXT_PUBLIC_PESAPAL_NOTIFICATION_ID to Vercel environment variables');
+    throw new Error('PesaPal notification_id (IPN) not configured.');
+  }
+
   const orderData = {
     id: paymentData.order_id,
     currency: 'KES',
     amount: paymentData.amount,
     description: paymentData.description,
     callback_url: process.env.PESAPAL_WEBHOOK_URL,
-    notification_id: '4e4af0b6-3758-40d8-8e22-0c1f21847e15',
+    notification_id: notificationId,
     billing_address: {
       email_address: paymentData.email,
       phone_number: paymentData.phone_number,
@@ -140,21 +150,31 @@ async function initiatePayment(paymentData) {
     },
   };
 
+  console.log('📋 Order data:', {
+    id: orderData.id,
+    amount: orderData.amount,
+    notification_id: orderData.notification_id,
+  });
+
   const response = await fetch(`${url}/api/Transactions/SubmitOrderRequest`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify(orderData),
   });
 
+  console.log('📥 Order submission response status:', response.status);
+
   if (!response.ok) {
     const error = await response.text();
+    console.error('❌ Order submission failed:', error);
     throw new Error(`PesaPal API error: ${error}`);
   }
 
   const result = await response.json();
+  console.log('✅ Order created successfully');
   return result;
 }
 
