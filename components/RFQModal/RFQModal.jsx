@@ -98,6 +98,15 @@ export default function RFQModal({
     const loadInitialData = async () => {
       setLoadingTemplates(true);
       
+      // Set timeout for loading (15 seconds max)
+      const timeoutId = setTimeout(() => {
+        if (loadingTemplates) {
+          console.error('Modal loading timeout - took too long');
+          setError('Form took too long to load. Please refresh the page.');
+          setLoadingTemplates(false);
+        }
+      }, 15000);
+      
       try {
         // Load user
         const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -127,6 +136,7 @@ export default function RFQModal({
         console.error('Error loading initial data:', err);
         setError('Failed to load form data. Please refresh the page.');
       } finally {
+        clearTimeout(timeoutId);
         setLoadingTemplates(false);
       }
     };
