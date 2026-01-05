@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -65,12 +67,41 @@ export async function POST(request) {
       );
     }
 
-    // Validate category and job type
-    if (!categorySlug || !jobTypeSlug) {
+    // Validate category (required)
+    if (!categorySlug) {
       return NextResponse.json(
-        { error: 'Missing required fields: categorySlug, jobTypeSlug' },
+        { error: 'Missing required field: categorySlug' },
         { status: 400 }
       );
+    }
+
+    // If jobTypeSlug is empty, we'll auto-select the first job type for this category
+    let finalJobTypeSlug = jobTypeSlug;
+    if (!jobTypeSlug) {
+      try {
+        // Load template JSON from file system
+        const templatePath = join(process.cwd(), 'public/data/rfq-templates-v2-hierarchical.json');
+        const templateContent = readFileSync(templatePath, 'utf-8');
+        const templates = JSON.parse(templateContent);
+        const category = templates.majorCategories?.find(cat => cat.slug === categorySlug);
+        
+        if (!category || !category.jobTypes || category.jobTypes.length === 0) {
+          return NextResponse.json(
+            { error: `No job types found for category: ${categorySlug}` },
+            { status: 400 }
+          );
+        }
+        
+        // Auto-select first job type
+        finalJobTypeSlug = category.jobTypes[0].slug;
+        console.log(`[RFQ CREATE] Auto-selected jobType: ${finalJobTypeSlug} for category: ${categorySlug}`);
+      } catch (err) {
+        console.error('[RFQ CREATE] Error loading templates:', err);
+        return NextResponse.json(
+          { error: 'Failed to load category templates' },
+          { status: 500 }
+        );
+      }
     }
 
     // Validate shared fields
