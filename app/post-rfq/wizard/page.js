@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { RfqProvider } from '@/context/RfqContext';
 import RFQModal from '@/components/RFQModal/RFQModal';
 
 export default function WizardRFQPage() {
@@ -13,7 +14,8 @@ export default function WizardRFQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <RfqProvider>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -88,5 +90,6 @@ export default function WizardRFQPage() {
         )}
       </div>
     </div>
+    </RfqProvider>
   );
 }
