@@ -77,13 +77,10 @@ function PostRFQContent() {
   }, []);
 
   useEffect(() => {
-    // Handle RFQ type routing
-    if (type === 'direct') {
-      router.push('/post-rfq/direct');
-    } else if (type === 'matched') {
-      router.push('/post-rfq/wizard');
-    } else if (type === 'public') {
-      router.push('/post-rfq/public');
+    // RFQ pages are being rebuilt - redirect to dashboard for now
+    if (type === 'direct' || type === 'matched' || type === 'public') {
+      // Show message instead of crashing
+      console.log('RFQ pages are being rebuilt. Coming soon!');
     }
   }, [type, router]);
 
@@ -135,11 +132,12 @@ function PostRFQContent() {
                 </li>
               </ul>
               <button
-                onClick={() => router.push('/post-rfq/direct')}
-                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all"
+                onClick={() => alert('Direct RFQ is being rebuilt. Coming soon!')}
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all opacity-60 cursor-not-allowed"
                 style={{ backgroundColor: '#ca8637' }}
+                disabled
               >
-                Get Started
+                Coming Soon (Rebuilding)
               </button>
             </div>
           </div>
@@ -172,11 +170,12 @@ function PostRFQContent() {
                 </li>
               </ul>
               <button
-                onClick={() => router.push('/post-rfq/wizard')}
-                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all"
+                onClick={() => alert('Wizard RFQ is being rebuilt. Coming soon!')}
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all opacity-60 cursor-not-allowed"
                 style={{ backgroundColor: '#2563eb' }}
+                disabled
               >
-                Get Started
+                Coming Soon (Rebuilding)
               </button>
             </div>
           </div>
@@ -209,11 +208,12 @@ function PostRFQContent() {
                 </li>
               </ul>
               <button
-                onClick={() => router.push('/post-rfq/public')}
-                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all"
+                onClick={() => alert('Public RFQ is being rebuilt. Coming soon!')}
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all opacity-60 cursor-not-allowed"
                 style={{ backgroundColor: '#9333ea' }}
+                disabled
               >
-                Get Started
+                Coming Soon (Rebuilding)
               </button>
             </div>
           </div>
