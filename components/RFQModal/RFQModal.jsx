@@ -36,12 +36,6 @@ export default function RFQModal({
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration mismatch - only render dynamic content after mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -99,54 +93,62 @@ export default function RFQModal({
         { number: 7, name: 'success' }
       ];
 
-  // Load user and templates on mount
+  // Utility: guard async calls with a timeout to avoid infinite spinner
+  const withTimeout = (promise, ms, label) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms))
+    ]);
+
+  // Load user and templates on mount (with timeouts and soft-fail fallbacks)
   useEffect(() => {
     const loadInitialData = async () => {
       setLoadingTemplates(true);
-      
-      // Set timeout for loading (15 seconds max)
-      const timeoutId = setTimeout(() => {
-        if (loadingTemplates) {
-          console.error('Modal loading timeout - took too long');
-          setError('Form took too long to load. Please refresh the page.');
-          setLoadingTemplates(false);
-        }
-      }, 15000);
-      
       try {
-        // Load user
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        setUser(authUser);
-        
-        // Load categories
-        let cats = await getAllCategories();
-        
-        if (!cats || cats.length === 0) {
-          console.warn('No categories loaded');
-          setCategories([]);
-        } else {
-          // Filter categories if vendor has specific categories
-          if (vendorCategories && vendorCategories.length > 0) {
-            cats = cats.filter(cat => vendorCategories.includes(cat.slug));
+        // Load user (soft-fail)
+        try {
+          const { data: { user: authUser } } = await withTimeout(supabase.auth.getUser(), 6000, 'auth.getUser');
+          setUser(authUser);
+        } catch (authErr) {
+          console.warn('Auth load skipped:', authErr?.message || authErr);
+        }
+
+        // Load categories (fallback to empty)
+        let cats = [];
+        try {
+          const loaded = await withTimeout(getAllCategories(), 6000, 'getAllCategories');
+          cats = loaded || [];
+        } catch (catErr) {
+          console.warn('Categories load failed:', catErr?.message || catErr);
+        }
+
+        if (vendorCategories && vendorCategories.length > 0) {
+          cats = cats.filter(cat => vendorCategories.includes(cat.slug));
+        }
+        setCategories(cats);
+
+        // Load vendors (soft-fail)
+        try {
+          const { data: vendorData, error: vendorError } = await withTimeout(
+            supabase.from('vendors').select('id, company_name, location, county, categories, rating, verified'),
+            6000,
+            'vendors'
+          );
+          if (vendorError) {
+            console.warn('Error loading vendors:', vendorError);
           }
-          setCategories(cats);
+          if (vendorData) setVendors(vendorData);
+        } catch (vendorErr) {
+          console.warn('Vendor load skipped:', vendorErr?.message || vendorErr);
         }
-        
-        // Load vendors
-        const { data: vendorData, error: vendorError } = await supabase.from('vendors').select('id, company_name, location, county, categories, rating, verified');
-        if (vendorError) {
-          console.warn('Error loading vendors:', vendorError);
-        }
-        if (vendorData) setVendors(vendorData);
       } catch (err) {
         console.error('Error loading initial data:', err);
         setError('Failed to load form data. Please refresh the page.');
       } finally {
-        clearTimeout(timeoutId);
         setLoadingTemplates(false);
       }
     };
-    
+
     loadInitialData();
   }, [vendorCategories]);
 
@@ -383,11 +385,6 @@ export default function RFQModal({
   };
 
   if (!isOpen) return null;
-
-  // Don't render anything until client-side hydration is complete
-  if (!mounted) {
-    return null;
-  }
 
   if (loadingTemplates) {
     return (
