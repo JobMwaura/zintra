@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import RFQModalDispatcher from '@/components/modals/RFQModalDispatcher';
@@ -35,12 +35,74 @@ const responseStatusColors = {
   rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Quote Rejected' }
 };
 
+// Debounce hook for search optimization
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Skeleton loader component
+function RFQSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 animate-pulse">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-full mb-1"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+        </div>
+        <div className="h-8 bg-gray-200 rounded-full w-32"></div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-200">
+        {[...Array(4)].map((_, i) => (
+          <div key={i}>
+            <div className="h-4 bg-gray-200 rounded w-16 mb-2"></div>
+            <div className="h-5 bg-gray-200 rounded w-20"></div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-3">
+        <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+        <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+      </div>
+    </div>
+  );
+}
+
+// Stats skeleton
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse border-l-4 border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+              <div className="h-8 bg-gray-200 rounded w-16"></div>
+            </div>
+            <div className="h-8 w-8 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function VendorRFQDashboard() {
   const router = useRouter();
   const [rfqs, setRfqs] = useState([]);
-  const [filteredRfqs, setFilteredRfqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(searchTerm, 300);
   const [filterUrgency, setFilterUrgency] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all'); // all, not_responded, responded
@@ -62,9 +124,37 @@ export default function VendorRFQDashboard() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [searchTerm, filterUrgency, filterCategory, filterStatus, rfqs]);
+  // Memoized filtered RFQs based on debounced search and filters
+  const filteredRfqs = useMemo(() => {
+    let filtered = rfqs;
+
+    // Search filter (using debounced term)
+    if (debouncedSearchTerm) {
+      filtered = filtered.filter(rfq =>
+        rfq.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        rfq.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      );
+    }
+
+    // Urgency filter
+    if (filterUrgency !== 'all') {
+      filtered = filtered.filter(rfq => rfq.urgency === filterUrgency);
+    }
+
+    // Category filter
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(rfq => rfq.category === filterCategory);
+    }
+
+    // Response status filter
+    if (filterStatus === 'not_responded') {
+      filtered = filtered.filter(rfq => !rfq.vendor_response);
+    } else if (filterStatus === 'responded') {
+      filtered = filtered.filter(rfq => rfq.vendor_response);
+    }
+
+    return filtered;
+  }, [rfqs, debouncedSearchTerm, filterUrgency, filterCategory, filterStatus]);
 
   const fetchData = async () => {
     try {
@@ -78,16 +168,20 @@ export default function VendorRFQDashboard() {
 
       setUser(session.user);
 
-      // Fetch vendor profile (optional - continue even if not found)
-      const { data: vendor } = await supabase
+      // Fetch vendor profile (required for dashboard)
+      const { data: vendor, error: vendorError } = await supabase
         .from('vendor_profiles')
         .select('*')
         .eq('user_id', session.user.id)
         .single();
 
-      if (vendor) {
-        setVendorProfile(vendor);
+      if (vendorError || !vendor) {
+        setError('Vendor profile not found. Please complete your vendor setup.');
+        setLoading(false);
+        return;
       }
+
+      setVendorProfile(vendor);
 
       // Fetch eligible RFQs
       const token = session.access_token;
@@ -126,73 +220,86 @@ export default function VendorRFQDashboard() {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = rfqs;
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(rfq =>
-        rfq.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        rfq.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Urgency filter
-    if (filterUrgency !== 'all') {
-      filtered = filtered.filter(rfq => rfq.urgency === filterUrgency);
-    }
-
-    // Category filter
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(rfq => rfq.category === filterCategory);
-    }
-
-    // Response status filter
-    if (filterStatus === 'not_responded') {
-      filtered = filtered.filter(rfq => !rfq.vendor_response);
-    } else if (filterStatus === 'responded') {
-      filtered = filtered.filter(rfq => rfq.vendor_response);
-    }
-
-    setFilteredRfqs(filtered);
-  };
-
-  const handleRespondClick = (rfq) => {
-    // Store the RFQ data and open modal
+  const handleRespondClick = useCallback((rfq) => {
     setSelectedRfq(rfq);
     setShowRFQModal(true);
     setModalError(null);
-  };
+  }, []);
 
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setShowRFQModal(false);
     setSelectedRfq(null);
     setModalError(null);
-  };
+  }, []);
 
-  const handleModalSubmit = async (responseData) => {
+  const handleModalSubmit = useCallback(async (responseData) => {
     try {
-      // The submission will be handled by the modal
-      // Just close it and refresh the RFQ list
       handleModalClose();
-      // Refresh RFQ data to show updated status
       await fetchData();
     } catch (error) {
       console.error('Error in modal submission:', error);
       setModalError(error.message);
     }
-  };
+  }, [handleModalClose]);
 
-  const handleViewDetails = (rfqId) => {
+  const handleViewDetails = useCallback((rfqId) => {
     router.push(`/vendor/rfq/${rfqId}`);
-  };
+  }, [router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading RFQ opportunities...</p>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header skeleton */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="animate-pulse">
+                <div className="h-10 bg-gray-200 rounded w-64 mb-2"></div>
+                <div className="h-6 bg-gray-200 rounded w-96 mt-2"></div>
+              </div>
+              <div className="text-right animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-32 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-48"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats skeleton */}
+          <StatsSkeleton />
+
+          {/* Filters skeleton */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-10 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+
+          {/* RFQ list skeleton */}
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <RFQSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !vendorProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-6 text-center">
+            <AlertCircle size={48} className="mx-auto text-red-400 mb-4" />
+            <h2 className="text-xl font-semibold mb-2">{error}</h2>
+            <p className="text-red-600 mb-4">Please complete your vendor profile setup to continue.</p>
+            <a href="/vendor/onboarding" className="inline-block px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+              Complete Setup
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -207,11 +314,11 @@ export default function VendorRFQDashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900">RFQ Opportunities</h1>
-              <p className="text-gray-600 mt-2">Find and bid on construction projects in {vendorProfile.category}</p>
+              <p className="text-gray-600 mt-2">Find and bid on construction projects{vendorProfile?.primary_category_slug ? ` in ${vendorProfile.primary_category_slug}` : ''}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Welcome back</p>
-              <p className="text-xl font-semibold text-gray-900">{vendorProfile.business_name}</p>
+              <p className="text-xl font-semibold text-gray-900">{vendorProfile?.company_name || 'Vendor'}</p>
             </div>
           </div>
 
