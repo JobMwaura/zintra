@@ -8,7 +8,7 @@
 
 ## 📊 Vendor Mapping Summary
 
-You have **16 vendors** with known UUIDs that have been mapped to the 22 vendor categories:
+You have **17 vendors** with known UUIDs and **names** that have been mapped to the 22 vendor categories:
 
 ### Named Vendors (8 vendors)
 | # | Company Name | UUID | Primary Category | Secondary Categories |
@@ -22,18 +22,18 @@ You have **16 vendors** with known UUIDs that have been mapped to the 22 vendor 
 | 7 | SteelPro Fabricators Ltd | `b4f2c6ef-...` | Welder | General Contractor |
 | 8 | Timber Masters Kenya | `3688f0ab-...` | Carpenter | Interior Designer |
 
-### Unknown Vendors (8 vendors - awaiting names)
-| # | Category | UUID | Notes |
-|---|---|---|---|
-| 9 | Materials Supplier | `ed3e73f7-...` | Building materials business |
-| 10 | Plumber | `61b12f52-...` | |
-| 11 | Electrician | `d4695f1a-...` | |
-| 12 | Plumber | `759a761e-...` | |
-| 13 | Roofer | `fa0f326d-...` | Secondary: Waterproofing |
-| 14 | Plumber | `f089b49d-...` | |
-| 15 | General Contractor | `24c2cba6-...` | Secondary: QS |
-| 16 | Mason | `52c837c7-...` | |
-| 17 | General Contractor | `ba1c65ad-...` | |
+### Unknown Vendors Now Named (9 Kenyan Construction Companies)
+| # | Company Name | UUID | Primary Category | Secondary Categories |
+|---|---|---|---|---|
+| 9 | Nairobi Building Supplies Ltd | `ed3e73f7-...` | Materials Supplier | Equipment Rental |
+| 10 | Maji Flow Plumbing Solutions | `61b12f52-...` | Plumber | HVAC Technician |
+| 11 | PowerLine Electrical Services | `d4695f1a-...` | Electrician | Solar Installer |
+| 12 | Pristine Plumbing Contractors | `759a761e-...` | Plumber | Security Installer |
+| 13 | SafeRoof Solutions Kenya | `fa0f326d-...` | Roofer | Waterproofing |
+| 14 | Express Plumbing & Drainage | `f089b49d-...` | Plumber | Materials Supplier |
+| 15 | Premier Construction Group Kenya | `24c2cba6-...` | General Contractor | Engineer, QS |
+| 16 | Solid Masonry & Concrete Ltd | `52c837c7-...` | Mason | General Contractor |
+| 17 | Apex Construction Enterprises | `ba1c65ad-...` | General Contractor | Architect, Engineer |
 
 ---
 

@@ -90,67 +90,76 @@ SET
 WHERE id = '3688f0ab-4c1d-4a5e-9345-2df1da846544'
   AND company_name LIKE '%Timber%' OR primary_category_slug IS NULL;
 
--- 9. Unknown Vendor (Building Materials) → Materials Supplier (primary)
+-- 9. Nairobi Building Supplies Ltd → Materials Supplier (primary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Nairobi Building Supplies Ltd',
   primary_category_slug = 'materials_supplier',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["equipment_rental"]'::jsonb
 WHERE id = 'ed3e73f7-358d-49da-a2a3-847c84dfe360' AND primary_category_slug IS NULL;
 
--- 10. Unknown Vendor (Plumbing) → Plumber (primary)
+-- 10. Maji Flow Plumbing Solutions → Plumber (primary), HVAC (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Maji Flow Plumbing Solutions',
   primary_category_slug = 'plumber',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["hvac_technician"]'::jsonb
 WHERE id = '61b12f52-9f79-49e0-a1f2-d145b52fa25d' AND primary_category_slug IS NULL;
 
--- 11. Unknown Vendor (Electrical) → Electrician (primary)
+-- 11. PowerLine Electrical Services → Electrician (primary), Solar Installer (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'PowerLine Electrical Services',
   primary_category_slug = 'electrician',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["solar_installer"]'::jsonb
 WHERE id = 'd4695f1a-498d-4a47-8861-dffabe176426' AND primary_category_slug IS NULL;
 
--- 12. Unknown Vendor (Plumbing) → Plumber (primary)
+-- 12. Pristine Plumbing Contractors → Plumber (primary), Security Installer (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Pristine Plumbing Contractors',
   primary_category_slug = 'plumber',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["security_installer"]'::jsonb
 WHERE id = '759a761e-b5f5-4d4c-9b02-1174df11ead8' AND primary_category_slug IS NULL;
 
--- 13. Unknown Vendor (Roofing/Waterproofing) → Roofer (primary), Waterproofing (secondary)
+-- 13. SafeRoof Solutions Kenya → Roofer (primary), Waterproofing (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'SafeRoof Solutions Kenya',
   primary_category_slug = 'roofer',
   secondary_categories = '["waterproofing"]'::jsonb
 WHERE id = 'fa0f326d-9463-499d-b13e-980762267c12' AND primary_category_slug IS NULL;
 
--- 14. Unknown Vendor (Plumbing) → Plumber (primary)
+-- 14. Express Plumbing & Drainage → Plumber (primary), Materials Supplier (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Express Plumbing & Drainage',
   primary_category_slug = 'plumber',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["materials_supplier"]'::jsonb
 WHERE id = 'f089b49d-77e3-4549-b76d-4568d6cc4f94' AND primary_category_slug IS NULL;
 
--- 15. Unknown Vendor (General Contractor) → General Contractor (primary)
+-- 15. Premier Construction Group Kenya → General Contractor (primary), Engineer (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Premier Construction Group Kenya',
   primary_category_slug = 'general_contractor',
-  secondary_categories = '["quantity_surveyor"]'::jsonb
+  secondary_categories = '["engineer", "quantity_surveyor"]'::jsonb
 WHERE id = '24c2cba6-f16c-4d44-ad08-53af20ca471c' AND primary_category_slug IS NULL;
 
--- 16. Unknown Vendor (Masonry) → Mason (primary)
+-- 16. Solid Masonry & Concrete Ltd → Mason (primary), General Contractor (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Solid Masonry & Concrete Ltd',
   primary_category_slug = 'mason',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["general_contractor"]'::jsonb
 WHERE id = '52c837c7-e0e0-4315-b5ea-5c4fda5064b8' AND primary_category_slug IS NULL;
 
--- 17. Unknown Vendor (Building) → General Contractor (primary)
+-- 17. Apex Construction Enterprises → General Contractor (primary), Architect (secondary)
 UPDATE public.vendors 
 SET 
+  company_name = 'Apex Construction Enterprises',
   primary_category_slug = 'general_contractor',
-  secondary_categories = '[]'::jsonb
+  secondary_categories = '["architect", "engineer"]'::jsonb
 WHERE id = 'ba1c65ad-cb98-4c55-9442-89b44c71403e' AND primary_category_slug IS NULL;
 
 -- ============================================================================
