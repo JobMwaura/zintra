@@ -132,12 +132,11 @@ function PostRFQContent() {
                 </li>
               </ul>
               <button
-                onClick={() => alert('Direct RFQ is being rebuilt. Coming soon!')}
-                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all opacity-60 cursor-not-allowed"
+                onClick={() => router.push('/post-rfq/direct')}
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all"
                 style={{ backgroundColor: '#ca8637' }}
-                disabled
               >
-                Coming Soon (Rebuilding)
+                Start Direct RFQ
               </button>
             </div>
           </div>
@@ -170,12 +169,11 @@ function PostRFQContent() {
                 </li>
               </ul>
               <button
-                onClick={() => alert('Wizard RFQ is being rebuilt. Coming soon!')}
-                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all opacity-60 cursor-not-allowed"
+                onClick={() => router.push('/post-rfq/wizard')}
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all"
                 style={{ backgroundColor: '#2563eb' }}
-                disabled
               >
-                Coming Soon (Rebuilding)
+                Start Guided Wizard
               </button>
             </div>
           </div>
@@ -208,12 +206,11 @@ function PostRFQContent() {
                 </li>
               </ul>
               <button
-                onClick={() => alert('Public RFQ is being rebuilt. Coming soon!')}
-                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all opacity-60 cursor-not-allowed"
+                onClick={() => router.push('/post-rfq/public')}
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all"
                 style={{ backgroundColor: '#9333ea' }}
-                disabled
               >
-                Coming Soon (Rebuilding)
+                Post Public RFQ
               </button>
             </div>
           </div>
