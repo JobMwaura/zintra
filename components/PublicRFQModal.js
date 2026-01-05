@@ -479,12 +479,4 @@ export default function PublicRFQModal({ isOpen = false, onClose = () => {}, onS
       />
     </div>
   );
-
-  // Helper Functions
-  function getProgressPercentage() {
-    const steps = ['category', 'jobtype', 'template', 'shared'];
-    const currentIndex = steps.indexOf(currentStep);
-    return Math.round(((currentIndex + 1) / steps.length) * 100);
-  }
-
 }
