@@ -1,170 +1,186 @@
-# ✅ RFQ Modal Fix - Category-Specific Forms Now Active
+# ✅ RFQ Modal Fix - Smart Category Selection
 
 ## Problem
-When clicking "Request Quote" on a vendor profile, users were seeing a generic RFQ modal instead of the category-specific form that was dependent on the vendor's primary category.
+When clicking "Request Quote" on a vendor profile, users were seeing a **generic RFQ modal** instead of the **category-specific modal** that displays different form fields based on the vendor's category.
 
-**Symptoms:**
-- All RFQ modals looked identical
-- No category-specific form fields
-- Generic form with basic inputs (title, description, budget, location)
-- Did NOT use the 20 different category templates with custom questions
+**Expected Behavior:**
+- If vendor has **1 category** → auto-select it, skip category picker, show form immediately
+- If vendor has **multiple categories** → show category picker so user can choose which service they need
+
+**Actual Behavior:**
+- Users always saw category picker (even for single-category vendors)
+- No category pre-selection based on vendor
 
 ## Root Cause
-The vendor profile page (`app/vendor-profile/[id]/page.js`) was using the old `DirectRFQPopup` component, which is a generic, non-templated RFQ form.
-
-Meanwhile, a new `RFQModal` component was built with:
-- Category-specific templates
-- Dynamic form fields based on vendor category
-- Multi-step wizard with proper validation
-- Supports all 20 construction industry categories
-
-The system had both components available, but the vendor profile was still using the old one.
+The vendor profile page was using the old `DirectRFQPopup` component (generic form), but even after switching to `RFQModal` (category-specific), the smart category selection logic wasn't implemented.
 
 ## Solution
-Updated vendor profile page to use the new `RFQModal` component instead of `DirectRFQPopup`.
 
-### Changes Made
-
+### 1. Updated Vendor Profile Page
 **File:** `app/vendor-profile/[id]/page.js`
 
-**Before:**
+Now passes vendor's categories to RFQModal:
 ```javascript
-import DirectRFQPopup from '@/components/DirectRFQPopup';
-
-// Later in render:
-{showDirectRFQ && (
-  <DirectRFQPopup
-    isOpen={showDirectRFQ}
-    vendor={vendor}
-    user={currentUser}
-    onClose={() => setShowDirectRFQ(false)}
-  />
-)}
+<RFQModal
+  rfqType="direct"
+  isOpen={showDirectRFQ}
+  onClose={() => setShowDirectRFQ(false)}
+  vendorCategories={[
+    vendor.primaryCategorySlug,
+    ...(vendor.secondaryCategories || [])
+  ].filter(Boolean)}
+  vendorName={vendor.company_name}
+/>
 ```
 
-**After:**
-```javascript
-import RFQModal from '@/components/RFQModal/RFQModal';
+### 2. Updated RFQModal Component
+**File:** `components/RFQModal/RFQModal.jsx`
 
-// Later in render:
-{showDirectRFQ && (
-  <RFQModal
-    rfqType="direct"
-    isOpen={showDirectRFQ}
-    onClose={() => setShowDirectRFQ(false)}
-  />
-)}
+Added smart category logic:
+```javascript
+export default function RFQModal({ 
+  rfqType = 'direct', 
+  isOpen = false, 
+  onClose = () => {}, 
+  vendorCategories = [],      // NEW: Array of vendor's categories
+  vendorName = null,          // NEW: Vendor name for header
+  preSelectedCategory = null  // EXISTING: For backward compatibility
+}) {
+  // Determine if we should skip category selection
+  const shouldSkipCategorySelection = vendorCategories.length === 1;
+  const preSelectedCat = shouldSkipCategorySelection ? vendorCategories[0] : preSelectedCategory;
+  
+  // Start at details step if category is pre-selected
+  const [currentStep, setCurrentStep] = useState(preSelectedCat ? 'details' : 'category');
+  
+  // Filter categories to only show vendor's categories
+  if (vendorCategories && vendorCategories.length > 0) {
+    cats = cats.filter(cat => vendorCategories.includes(cat.slug));
+  }
+}
 ```
 
-## What Users Now See
+### 3. Updated ModalHeader Component
+**File:** `components/RFQModal/ModalHeader.jsx`
 
-### Step 1: Category Selection
-- 20 vendor categories with icons (🏗️ Construction, 🔨 Repairs, 🎨 Design, etc.)
-- Category description when selected
-- Job type selection (if category requires it)
+Shows vendor name in header:
+```javascript
+<h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+  {vendorName ? `Request Quote from ${vendorName}` : 'Create Direct RFQ'}
+</h2>
+<p className="text-xs sm:text-sm text-gray-500 mt-1">
+  {vendorName ? 'Provide project details for this vendor' : 'Send directly to specific vendors'}
+</p>
+```
 
-### Step 2: Category-Specific Details
-- Dynamic form fields based on selected category
-- Examples:
-  - **Architecture**: Floor size, design style, timeline, budget
-  - **Electrical**: Voltage requirements, safety standards, installation type
-  - **Painting**: Surface type, paint type, area size, finish preference
-  - **Plumbing**: Pipe type, fixture types, water pressure needs
-  - etc. (different for all 20 categories)
+## User Experience
 
-### Step 3: Project Details
-- County and town selection
-- Budget range (min/max)
-- Directions to site
-- Start date preference
+### Scenario 1: Single-Category Vendor (e.g., Electrician)
+1. ✅ User clicks "Request Quote"
+2. ✅ Modal header shows: "Request Quote from ABC Electricians"
+3. ✅ **Category is pre-selected** (Electrical)
+4. ✅ **Category picker is SKIPPED** → Goes directly to Step 1: Details
+5. ✅ User sees electrical-specific form fields
+6. ✅ Fills out form and submits
 
-### Step 4: Vendor Selection (for Direct RFQ)
-- Select specific vendors to contact
-- Option to allow other vendors to respond
+### Scenario 2: Multi-Category Vendor (e.g., Construction Company)
+1. ✅ User clicks "Request Quote"
+2. ✅ Modal header shows: "Request Quote from XYZ Construction"
+3. ✅ **Shows category picker** with vendor's categories only:
+   - 🏗️ Building Construction
+   - 🔨 Repairs & Maintenance
+   - 🎨 Interior Design
+4. ✅ User selects which service they need
+5. ✅ Form updates to show category-specific fields
+6. ✅ Fills out form and submits
 
-### Step 5: Authentication
-- Sign in or continue as guest
-- Phone verification for guests
+## Technical Details
 
-### Step 6: Review & Submit
-- Summary of all entered information
-- Shows category-specific details separately
-- Confirm before submission
+### Data Structure
+Vendors now have:
+- `primaryCategorySlug` (string) - Main service category
+- `secondaryCategories` (array) - Additional service categories
+
+### Props
+```javascript
+<RFQModal
+  rfqType="direct" | "wizard" | "public"
+  isOpen={boolean}
+  onClose={() => {}}
+  vendorCategories={[...strings]}    // NEW
+  vendorName={string}                 // NEW
+  preSelectedCategory={string}        // EXISTING (backward compat)
+/>
+```
+
+### Smart Selection Logic
+```javascript
+const shouldSkipCategorySelection = vendorCategories.length === 1;
+const preSelectedCat = shouldSkipCategorySelection 
+  ? vendorCategories[0] 
+  : preSelectedCategory;
+```
+
+## Git Commits
+
+### Commit 1: c23c5b5
+```
+fix: Use category-specific RFQModal in vendor profile
+- Replaced generic DirectRFQPopup with RFQModal component
+- RFQModal now displays category-specific form templates
+```
+
+### Commit 2: 504f3bb
+```
+feat: Smart category selection for RFQ modals
+- If vendor has 1 primary category: auto-select it, skip category picker
+- If vendor has multiple categories: show category picker for user choice
+- Update modal header to show vendor name
+- Filter available categories to only show vendor's categories
+```
 
 ## Impact
 
 ✅ **User Experience:**
-- Users now get relevant, category-specific questions
-- Forms match what the vendor actually does (category-wise)
-- Better data collection for more accurate quotes
-- Improved matching between buyer needs and vendor expertise
+- Faster quote requests (single-category vendors skip category picker)
+- Clearer intent (header shows which vendor they're contacting)
+- Relevant forms (only appropriate categories shown)
 
 ✅ **Data Quality:**
-- Category-specific fields ensure vendors get the right information
-- Consistent data collection across all 20 categories
-- Better RFQ-to-quote conversion
+- Users complete appropriate forms for vendor's services
+- No mismatched category-to-vendor requests
 
-✅ **Vendor Experience:**
-- Receive RFQs with relevant, detailed information
-- No generic "tell me about your project" questions
-- Better ability to provide accurate quotes
-
-## Technical Details
-
-### RFQModal Component Features
-- **Location:** `/components/RFQModal/RFQModal.jsx`
-- **Type:** Client component (`'use client'`)
-- **Props:**
-  - `rfqType`: "direct" | "wizard" | "public"
-  - `isOpen`: boolean to show/hide modal
-  - `onClose`: callback when modal closes
-  - `onSuccess`: callback on successful submission (optional)
-
-### Template System
-- **Templates:** `/lib/rfqTemplateUtils.js`
-- **Categories:** 20 major construction industry categories
-- **Job Types:** 3-7 job types per category
-- **Fields:** Dynamic fields based on category + job type
-
-## Git Commit
-```
-commit c23c5b5
-Author: Job LMU
-Date:   [timestamp]
-
-    fix: Use category-specific RFQModal in vendor profile
-    
-    - Replaced generic DirectRFQPopup with RFQModal component
-    - RFQModal now displays category-specific form templates
-    - Users will see relevant form fields based on vendor's primary category
-    - Maintains backward compatibility with 'direct' RFQ type
-```
+✅ **Business:**
+- Vendors receive better-quality leads
+- Improved conversion rate (simpler flow for single-service vendors)
 
 ## Testing Checklist
 
-- [ ] Click "Request Quote" on any vendor profile
-- [ ] Confirm RFQ Modal opens with Step 1: Category Selection
-- [ ] Select a category from the 20 available
-- [ ] If category requires job type, select one
-- [ ] Proceed to Step 2: Details
-- [ ] Verify category-specific form fields appear
-- [ ] Fill out some fields and verify next step works
-- [ ] Check all 20 categories have appropriate form fields
-- [ ] Test on different vendors with different primary categories
+### Single-Category Vendor Test
+- [ ] Find a vendor with only `primaryCategorySlug` set
+- [ ] Click "Request Quote"
+- [ ] Verify modal shows vendor name in header
+- [ ] Verify category picker is NOT shown (skipped)
+- [ ] Verify you land on details step (template fields for that category)
+- [ ] Fill out fields and verify they're category-specific
 
-## Files Affected
-- `app/vendor-profile/[id]/page.js` (import + render)
+### Multi-Category Vendor Test
+- [ ] Find a vendor with `secondaryCategories` populated
+- [ ] Click "Request Quote"
+- [ ] Verify modal shows vendor name in header
+- [ ] Verify Step 1 shows category picker
+- [ ] Verify only vendor's categories are shown
+- [ ] Select a category
+- [ ] Verify details step shows correct category-specific fields
+- [ ] Fill out and submit
 
-## Backward Compatibility
-✅ Fully compatible - RFQModal accepts same `isOpen` and `onClose` props as DirectRFQPopup, just doesn't need vendor/user props (handles internally)
-
-## Future Improvements
-- Could also update other RFQ entry points (Browse page, etc.) if they still use DirectRFQPopup
-- Could add category pre-selection if vendor's category is known
-- Could add vendor-specific custom fields if needed
+## Files Modified
+- `app/vendor-profile/[id]/page.js` - Pass vendor categories and name
+- `components/RFQModal/RFQModal.jsx` - Smart category selection logic
+- `components/RFQModal/ModalHeader.jsx` - Show vendor name in title
 
 ---
 
 **Status:** ✅ COMPLETE & DEPLOYED
-**Deployed:** Commit c23c5b5 pushed to main branch
-**Impact:** All vendor profile RFQ modals now show category-specific forms
+**Deployed:** Commit 504f3bb pushed to main
+**Vercel:** Will auto-deploy after commit

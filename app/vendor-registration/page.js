@@ -8,6 +8,7 @@ import LocationSelector from '@/components/LocationSelector';
 import PhoneInput from '@/components/PhoneInput';
 import CategorySelector from '@/components/vendor-profile/CategorySelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
+import { isValidCategorySlug } from '@/lib/vendors/vendorCategoryValidation';
 import useOTP from '@/components/hooks/useOTP';
 
 const brand = {
@@ -361,6 +362,8 @@ export default function VendorRegistration() {
     if (currentStep === 3) {
       if (!formData.primaryCategorySlug) {
         newErrors.primaryCategorySlug = 'Select a primary category';
+      } else if (!isValidCategorySlug(formData.primaryCategorySlug)) {
+        newErrors.primaryCategorySlug = 'Selected category is not available. Please choose from the provided list.';
       }
     }
 

@@ -19,7 +19,7 @@
  */
 
 import { supabase } from '@/lib/supabaseClient';
-import { isValidCategorySlug } from '@/lib/categories';
+import { isValidCategorySlug, validateSecondaryCategories } from '@/lib/vendors/vendorCategoryValidation';
 
 export async function PUT(request) {
   try {
