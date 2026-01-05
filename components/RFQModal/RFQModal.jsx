@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import ModalHeader from './ModalHeader';
@@ -31,6 +31,7 @@ export default function RFQModal({
   
   const [currentStep, setCurrentStep] = useState(preSelectedCat ? 'details' : 'category');
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -287,83 +288,69 @@ export default function RFQModal({
   const handleSubmit = async () => {
     if (!validateStep()) return;
 
-    setLoading(true);
+    setIsSubmitting(true);
+    setError('');
+
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
-        setErrors({ auth: 'Please log in first' });
-        setLoading(false);
+
+      const submissionData = {
+        rfqType: rfqType,
+        categorySlug: formData.selectedCategory,
+        jobTypeSlug: formData.selectedJobType || '',
+        templateFields: formData.templateFields || {},
+        sharedFields: {
+          projectTitle: formData.projectTitle || formData.selectedCategory,
+          projectSummary: formData.projectSummary,
+          county: formData.county,
+          town: formData.town || null,
+          budgetMin: formData.budgetMin ? parseInt(formData.budgetMin.replace(/,/g, '')) : null,
+          budgetMax: formData.budgetMax ? parseInt(formData.budgetMax.replace(/,/g, '')) : null,
+          desiredStartDate: formData.desiredStartDate || null,
+          directions: formData.directions || null,
+        },
+        selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
+        userId: currentUser?.id || null,
+        guestEmail: null,
+        guestPhone: null,
+        guestPhoneVerified: false,
+      };
+
+      const response = await fetch('/api/rfq/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 402) {
+          setError("You've reached your monthly RFQ limit. Please upgrade your plan.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (response.status === 429) {
+          setError('Too many requests. Please wait a moment and try again.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        setError(result.error || 'Failed to submit RFQ. Please try again.');
+        setIsSubmitting(false);
         return;
       }
 
-      const payload = {
-        // Map to actual database columns from RFQ_SYSTEM_COMPLETE.sql
-        user_id: user?.id, // CRITICAL: Required by RLS policy rfqs_insert
-        title: formData.projectTitle || formData.selectedCategory,
-        description: formData.projectSummary,
-        category: formData.selectedCategory,
-        location: formData.town,
-        county: formData.county,
-        budget_min: formData.budgetMin ? parseInt(formData.budgetMin.replace(/,/g, ''), 10) : null,
-        budget_max: formData.budgetMax ? parseInt(formData.budgetMax.replace(/,/g, ''), 10) : null,
-        type: rfqType === 'direct' ? 'direct' : rfqType === 'wizard' ? 'matched' : 'public',
-        urgency: 'normal',
-        // Store all additional form data as JSON in attachments JSONB column
-        attachments: {
-          projectTitle: formData.projectTitle || formData.selectedCategory,
-          projectSummary: formData.projectSummary,
-          selectedCategory: formData.selectedCategory,
-          selectedJobType: formData.selectedJobType || null,
-          town: formData.town,
-          county: formData.county,
-          budgetMin: parseInt(formData.budgetMin) || null,
-          budgetMax: parseInt(formData.budgetMax) || null,
-          directions: formData.directions || null,
-          desiredStartDate: formData.desiredStartDate || null,
-          budgetLevel: formData.budgetLevel || null,
-          templateFields: Object.keys(formData.templateFields).length > 0 ? formData.templateFields : null,
-          referenceImages: formData.referenceImages.length > 0 ? formData.referenceImages : [],
-          selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
-          allowOtherVendors: rfqType === 'wizard' ? formData.allowOtherVendors : false,
-          visibilityScope: rfqType === 'public' ? formData.visibilityScope : null,
-          responseLimit: rfqType === 'public' ? formData.responseLimit : 5,
-        }
-      };
-
-      const { data, error: rfqError } = await supabase
-        .from('rfqs')
-        .insert([payload])
-        .select();
-
-      if (rfqError) throw rfqError;
-
-      if (data && data[0]) {
-        const newRfqId = data[0].id;
-        setRfqId(newRfqId);
-
-        // Create recipients for Direct and Wizard
-        if ((rfqType === 'direct' || rfqType === 'wizard') && formData.selectedVendors.length > 0) {
-          const recipients = formData.selectedVendors.map(vendorId => ({
-            rfq_id: newRfqId,
-            vendor_id: vendorId,
-            recipient_type: rfqType === 'direct' ? 'direct' : 'suggested',
-          }));
-          
-          const { error: recipientError } = await supabase
-            .from('rfq_recipients')
-            .insert(recipients);
-          
-          if (recipientError) console.error('Error creating recipients:', recipientError);
-        }
-
-        setSuccess(true);
-        setCurrentStep('success');
-      }
+      setRfqId(result.rfqId);
+      setSuccess(true);
+      setCurrentStep('success');
+      clearFormData(rfqType, formData.selectedCategory, formData.selectedJobType);
+      resetRfq();
     } catch (err) {
-      setError(err.message || 'Failed to create RFQ');
-      setErrors({ submit: err.message || 'Failed to create RFQ' });
-    } finally {
-      setLoading(false);
+      console.error('RFQ submission error:', err);
+      setError('Network error. Please try again.');
+      setIsSubmitting(false);
     }
   };
 
