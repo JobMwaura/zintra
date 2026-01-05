@@ -487,18 +487,4 @@ export default function PublicRFQModal({ isOpen = false, onClose = () => {}, onS
     return Math.round(((currentIndex + 1) / steps.length) * 100);
   }
 
-  function getCategoryObject() {
-    return templates.majorCategories.find((c) => c.slug === selectedCategory);
-  }
-
-  function getJobTypeObject() {
-    const category = getCategoryObject();
-    if (!category) return null;
-    return category.jobTypes.find((jt) => jt.slug === selectedJobType);
-  }
-
-  function getTemplateFields() {
-    const jobType = getJobTypeObject();
-    return jobType?.fields || [];
-  }
 }
