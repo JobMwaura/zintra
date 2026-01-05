@@ -246,6 +246,8 @@ export default function RFQModal({
     }
 
     if (currentStep === 'project') {
+      if (!formData.projectTitle) newErrors.projectTitle = 'Required';
+      if (!formData.projectSummary) newErrors.projectSummary = 'Required';
       if (!formData.county) newErrors.county = 'Required';
       if (!formData.town) newErrors.town = 'Required';
       if (!formData.budgetMin) newErrors.budgetMin = 'Required';
