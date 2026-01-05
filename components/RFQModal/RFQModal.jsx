@@ -98,25 +98,37 @@ export default function RFQModal({
     const loadInitialData = async () => {
       setLoadingTemplates(true);
       
-      // Load user
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      setUser(authUser);
-      
-      // Load categories
-      let cats = await getAllCategories();
-      
-      // Filter categories if vendor has specific categories
-      if (vendorCategories && vendorCategories.length > 0) {
-        cats = cats.filter(cat => vendorCategories.includes(cat.slug));
+      try {
+        // Load user
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        setUser(authUser);
+        
+        // Load categories
+        let cats = await getAllCategories();
+        
+        if (!cats || cats.length === 0) {
+          console.warn('No categories loaded');
+          setCategories([]);
+        } else {
+          // Filter categories if vendor has specific categories
+          if (vendorCategories && vendorCategories.length > 0) {
+            cats = cats.filter(cat => vendorCategories.includes(cat.slug));
+          }
+          setCategories(cats);
+        }
+        
+        // Load vendors
+        const { data: vendorData, error: vendorError } = await supabase.from('vendors').select('id, company_name, location, county, categories, rating, verified');
+        if (vendorError) {
+          console.warn('Error loading vendors:', vendorError);
+        }
+        if (vendorData) setVendors(vendorData);
+      } catch (err) {
+        console.error('Error loading initial data:', err);
+        setError('Failed to load form data. Please refresh the page.');
+      } finally {
+        setLoadingTemplates(false);
       }
-      
-      setCategories(cats);
-      
-      // Load vendors
-      const { data: vendorData } = await supabase.from('vendors').select('id, company_name, location, county, categories, rating, verified');
-      if (vendorData) setVendors(vendorData);
-      
-      setLoadingTemplates(false);
     };
     
     loadInitialData();
@@ -359,9 +371,27 @@ export default function RFQModal({
   if (loadingTemplates) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8 text-center">
-          <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+        <div className="bg-white rounded-lg p-8 text-center max-w-sm mx-4">
+          {error ? (
+            <>
+              <div className="w-12 h-12 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <p className="text-gray-800 font-semibold mb-2">Unable to Load Form</p>
+              <p className="text-sm text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Reload Page
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </>
+          )}
         </div>
       </div>
     );
