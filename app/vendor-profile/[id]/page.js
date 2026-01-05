@@ -1442,11 +1442,16 @@ export default function VendorProfilePage() {
       )}
 
       {/* Direct RFQ Modal - With Category-Specific Forms */}
-      {showDirectRFQ && (
+      {showDirectRFQ && vendor && (
         <RFQModal
           rfqType="direct"
           isOpen={showDirectRFQ}
           onClose={() => setShowDirectRFQ(false)}
+          vendorCategories={[
+            vendor.primaryCategorySlug,
+            ...(vendor.secondaryCategories || [])
+          ].filter(Boolean)}
+          vendorName={vendor.company_name}
         />
       )}
 

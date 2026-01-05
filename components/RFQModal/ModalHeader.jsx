@@ -2,9 +2,9 @@
 
 import { X } from 'lucide-react';
 
-export default function ModalHeader({ rfqType, onClose }) {
+export default function ModalHeader({ rfqType, vendorName, onClose }) {
   const titles = {
-    direct: 'Create Direct RFQ',
+    direct: vendorName ? `Request Quote from ${vendorName}` : 'Create Direct RFQ',
     wizard: 'Create Guided RFQ',
     public: 'Create Public RFQ'
   };
@@ -16,7 +16,7 @@ export default function ModalHeader({ rfqType, onClose }) {
           {titles[rfqType] || 'Create RFQ'}
         </h2>
         <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          {rfqType === 'direct' && 'Send directly to specific vendors'}
+          {rfqType === 'direct' && (vendorName ? 'Provide project details for this vendor' : 'Send directly to specific vendors')}
           {rfqType === 'wizard' && 'Suggest vendors but accept open responses'}
           {rfqType === 'public' && 'Open to all matching vendors'}
         </p>

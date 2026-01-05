@@ -16,8 +16,19 @@ import StepSuccess from './Steps/StepSuccess';
 import RFQImageUpload from './RFQImageUpload';
 import { getAllCategories, getJobTypesForCategory, getFieldsForJobType, categoryRequiresJobType } from '@/lib/rfqTemplateUtils';
 
-export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose = () => {} }) {
-  const [currentStep, setCurrentStep] = useState('category');
+export default function RFQModal({ 
+  rfqType = 'direct', 
+  isOpen = false, 
+  onClose = () => {}, 
+  vendorCategories = [],
+  vendorName = null,
+  preSelectedCategory = null 
+}) {
+  // Determine if we should skip category selection
+  const shouldSkipCategorySelection = vendorCategories.length === 1;
+  const preSelectedCat = shouldSkipCategorySelection ? vendorCategories[0] : preSelectedCategory;
+  
+  const [currentStep, setCurrentStep] = useState(preSelectedCat ? 'details' : 'category');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -27,7 +38,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
   // Form Data
   const [formData, setFormData] = useState({
     // Step 1
-    selectedCategory: '',
+    selectedCategory: preSelectedCat || '',
     selectedJobType: '',
     
     // Step 2
@@ -60,15 +71,25 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
   const [categoryNeedsJobType, setCategoryNeedsJobType] = useState(false);
   const [rfqId, setRfqId] = useState(null);
 
-  const steps = [
-    { number: 1, name: 'category' },
-    { number: 2, name: 'details' },
-    { number: 3, name: 'project' },
-    { number: 4, name: 'recipients' },
-    { number: 5, name: 'auth' },
-    { number: 6, name: 'review' },
-    { number: 7, name: 'success' }
-  ];
+  // Skip category step if pre-selected
+  const steps = preSelectedCat
+    ? [
+        { number: 1, name: 'details' },
+        { number: 2, name: 'project' },
+        { number: 3, name: 'recipients' },
+        { number: 4, name: 'auth' },
+        { number: 5, name: 'review' },
+        { number: 6, name: 'success' }
+      ]
+    : [
+        { number: 1, name: 'category' },
+        { number: 2, name: 'details' },
+        { number: 3, name: 'project' },
+        { number: 4, name: 'recipients' },
+        { number: 5, name: 'auth' },
+        { number: 6, name: 'review' },
+        { number: 7, name: 'success' }
+      ];
 
   // Load user and templates on mount
   useEffect(() => {
@@ -80,7 +101,13 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
       setUser(authUser);
       
       // Load categories
-      const cats = await getAllCategories();
+      let cats = await getAllCategories();
+      
+      // Filter categories if vendor has specific categories
+      if (vendorCategories && vendorCategories.length > 0) {
+        cats = cats.filter(cat => vendorCategories.includes(cat.slug));
+      }
+      
       setCategories(cats);
       
       // Load vendors
@@ -91,7 +118,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
     };
     
     loadInitialData();
-  }, []);
+  }, [vendorCategories]);
 
   // Load job types when category changes
   useEffect(() => {
@@ -240,10 +267,19 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
   const prevStep = () => {
     const stepIndex = steps.findIndex(s => s.name === currentStep);
     if (stepIndex > 0) {
-      setCurrentStep(steps[stepIndex - 1].name);
+      const newStep = steps[stepIndex - 1].name;
+      // If trying to go back to a skipped category step, close instead
+      if (preSelectedCategory && newStep === 'category') {
+        onClose();
+        return;
+      }
+      setCurrentStep(newStep);
       setErrors({});
       setError(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (stepIndex === 0) {
+      // If at first step, close modal
+      onClose();
     }
   };
 
@@ -360,7 +396,7 @@ export default function RFQModal({ rfqType = 'direct', isOpen = false, onClose =
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <ModalHeader rfqType={rfqType} onClose={onClose} />
+        <ModalHeader rfqType={rfqType} vendorName={vendorName} onClose={onClose} />
 
         {/* Step Indicator */}
         <StepIndicator currentStep={currentStep} steps={steps} />
