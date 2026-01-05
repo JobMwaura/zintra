@@ -22,7 +22,7 @@ import {
   Heart,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import DirectRFQPopup from '@/components/DirectRFQPopup';
+import RFQModal from '@/components/RFQModal/RFQModal';
 import VendorMessagingModal from '@/components/VendorMessagingModal';
 import ProductUploadModal from '@/components/vendor-profile/ProductUploadModal';
 import ServiceUploadModal from '@/components/vendor-profile/ServiceUploadModal';
@@ -1441,12 +1441,11 @@ export default function VendorProfilePage() {
         />
       )}
 
-      {/* Direct RFQ Popup */}
+      {/* Direct RFQ Modal - With Category-Specific Forms */}
       {showDirectRFQ && (
-        <DirectRFQPopup
+        <RFQModal
+          rfqType="direct"
           isOpen={showDirectRFQ}
-          vendor={vendor}
-          user={currentUser}
           onClose={() => setShowDirectRFQ(false)}
         />
       )}
