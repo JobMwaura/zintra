@@ -12,12 +12,12 @@ const supabase = createClient(
  * POST /api/rfq/create
  * 
  * Create a new RFQ (Request for Quote)
- * Handles all three RFQ types: direct, wizard, public
+ * Handles all RFQ types: direct, wizard, public, vendor-request
  * Supports both guest and authenticated submissions
  * 
  * Request body:
  * {
- *   rfqType: 'direct' | 'wizard' | 'public',
+ *   rfqType: 'direct' | 'wizard' | 'public' | 'vendor-request',
  *   categorySlug: string (required),
  *   jobTypeSlug: string (required),
  *   templateFields: object,
@@ -31,7 +31,7 @@ const supabase = createClient(
  *     desiredStartDate?: string,
  *     directions?: string
  *   },
- *   selectedVendors?: array (for 'direct' type),
+ *   selectedVendors?: array (for 'direct' or 'vendor-request' type),
  *   userId?: string (if authenticated),
  *   guestEmail?: string (if guest),
  *   guestPhone?: string (if guest),
@@ -60,9 +60,9 @@ export async function POST(request) {
     } = body;
 
     // Validate RFQ type
-    if (!rfqType || !['direct', 'wizard', 'public'].includes(rfqType)) {
+    if (!rfqType || !['direct', 'wizard', 'public', 'vendor-request'].includes(rfqType)) {
       return NextResponse.json(
-        { error: 'Invalid or missing rfqType. Must be: direct, wizard, or public' },
+        { error: 'Invalid or missing rfqType. Must be: direct, wizard, public, or vendor-request' },
         { status: 400 }
       );
     }

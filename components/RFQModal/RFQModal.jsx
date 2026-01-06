@@ -20,13 +20,14 @@ export default function RFQModal({
   rfqType = 'direct', 
   isOpen = false, 
   onClose = () => {}, 
+  vendorId = null,
   vendorCategories = [],
   vendorName = null,
   preSelectedCategory = null 
 }) {
-  // IMPORTANT: Always skip category selection when called from vendor profile
-  // Use the PRIMARY category (first in vendorCategories array)
-  const shouldSkipCategorySelection = vendorCategories && vendorCategories.length > 0;
+  // Determine if we should skip category selection
+  // Skip if: rfqType is 'vendor-request' OR vendorCategories are provided (backward compat)
+  const shouldSkipCategorySelection = rfqType === 'vendor-request' || (vendorCategories && vendorCategories.length > 0);
   const preSelectedCat = shouldSkipCategorySelection ? vendorCategories[0] : preSelectedCategory;
   
   const [currentStep, setCurrentStep] = useState(preSelectedCat ? 'details' : 'category');
@@ -73,17 +74,44 @@ export default function RFQModal({
   const [categoryNeedsJobType, setCategoryNeedsJobType] = useState(false);
   const [rfqId, setRfqId] = useState(null);
 
-  // Skip category step if pre-selected
-  const steps = preSelectedCat
-    ? [
+  // Determine which steps to show based on rfqType
+  // For vendor-request: skip both category selection AND vendor selection (vendor is pre-determined)
+  const getSteps = () => {
+    const hasPreSelectedCategory = preSelectedCat ? true : false;
+    const skipRecipientSelection = rfqType === 'vendor-request';
+    
+    if (hasPreSelectedCategory && skipRecipientSelection) {
+      // Vendor-request: skip category AND recipients
+      return [
+        { number: 1, name: 'details' },
+        { number: 2, name: 'project' },
+        { number: 3, name: 'auth' },
+        { number: 4, name: 'review' },
+        { number: 5, name: 'success' }
+      ];
+    } else if (hasPreSelectedCategory) {
+      // Direct with pre-selected category: skip category, keep recipients
+      return [
         { number: 1, name: 'details' },
         { number: 2, name: 'project' },
         { number: 3, name: 'recipients' },
         { number: 4, name: 'auth' },
         { number: 5, name: 'review' },
         { number: 6, name: 'success' }
-      ]
-    : [
+      ];
+    } else if (skipRecipientSelection) {
+      // Category not selected yet, but vendor-request
+      return [
+        { number: 1, name: 'category' },
+        { number: 2, name: 'details' },
+        { number: 3, name: 'project' },
+        { number: 4, name: 'auth' },
+        { number: 5, name: 'review' },
+        { number: 6, name: 'success' }
+      ];
+    } else {
+      // Full flow: category → details → project → recipients → auth → review → success
+      return [
         { number: 1, name: 'category' },
         { number: 2, name: 'details' },
         { number: 3, name: 'project' },
@@ -92,6 +120,10 @@ export default function RFQModal({
         { number: 6, name: 'review' },
         { number: 7, name: 'success' }
       ];
+    }
+  };
+
+  const steps = getSteps();
 
   // Utility: guard async calls with a timeout to avoid infinite spinner
   const withTimeout = (promise, ms, label) =>
@@ -266,6 +298,7 @@ export default function RFQModal({
           newErrors.recipients = 'Select vendors or allow others';
         }
       }
+      // vendor-request doesn't require vendor selection (vendor is pre-determined)
     }
 
     if (currentStep === 'auth') {
@@ -341,7 +374,7 @@ export default function RFQModal({
           desiredStartDate: formData.desiredStartDate || null,
           directions: formData.directions || null,
         },
-        selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : [],
+        selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : (rfqType === 'vendor-request' && vendorId ? [vendorId] : []),
         userId: currentUser?.id || null,
         guestEmail: null,
         guestPhone: null,
@@ -484,7 +517,7 @@ export default function RFQModal({
             />
           )}
 
-          {currentStep === 'recipients' && (
+          {currentStep === 'recipients' && rfqType !== 'vendor-request' && (
             <StepRecipients
               rfqType={rfqType}
               selectedVendors={formData.selectedVendors}

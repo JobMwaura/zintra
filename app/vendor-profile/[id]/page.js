@@ -564,7 +564,7 @@ export default function VendorProfilePage() {
                     <MessageSquare className="w-5 h-5" /> Contact Vendor
                   </button>
                   <button
-                    onClick={() => setShowDirectRFQ(true)}
+                    onClick={() => router.push(`/post-rfq/vendor-request?vendorId=${vendor.id}`)}
                     className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
                   >
                     Request Quote
