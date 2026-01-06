@@ -61,7 +61,7 @@ WHERE tablename = 'rfqs';
 -- ============================================================================
 SELECT 
   policyname,
-  CASE WHEN permissive THEN 'ALLOW ✅' ELSE 'DENY ❌' END as policy_type,
+  CASE WHEN permissive = true THEN 'ALLOW ✅' ELSE 'DENY ❌' END as policy_type,
   cmd as operation,
   qual as select_condition,
   with_check as insert_update_condition
