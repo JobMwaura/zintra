@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,13 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Debug: Check if Supabase is initialized
+  useEffect(() => {
+    console.log('🔹 Login page mounted');
+    console.log('🔹 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓ Set' : '✗ Missing');
+    console.log('🔹 Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing');
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -94,9 +101,18 @@ export default function Login() {
       setMessage('✅ Login successful! Redirecting...');
 
       // CRITICAL: Wait for Supabase to persist the session to localStorage
-      // The signIn completes, but onAuthStateChange needs a moment to fire
-      // and AuthContext needs to update with the new user
+      // and verify the session was actually created
       await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify session was persisted
+      const { data: { session: verifySession } } = await supabase.auth.getSession();
+      if (!verifySession) {
+        console.error('❌ Session not persisted after login');
+        setMessage('❌ Session error - please try logging in again');
+        setIsLoading(false);
+        return;
+      }
+      console.log('✅ Session verified:', verifySession.user.email);
 
       let redirectUrl = '/browse';
 

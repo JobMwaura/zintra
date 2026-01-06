@@ -88,6 +88,8 @@ export function AuthProvider({ children }) {
   const signIn = async (email, password) => {
     try {
       console.log('🔹 Signing in:', email);
+      console.log('🔹 Supabase instance:', supabase ? '✓ exists' : '✗ missing');
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -95,10 +97,25 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error('❌ Sign in error:', error);
+        console.error('❌ Error details:', { 
+          message: error.message, 
+          status: error.status,
+          code: error.code 
+        });
         return { data: null, error };
       }
 
-      console.log('✓ Sign in successful, user:', data.user?.email);
+      console.log('✓ Sign in successful');
+      console.log('✓ User data:', { 
+        id: data?.user?.id, 
+        email: data?.user?.email,
+        emailConfirmed: data?.user?.email_confirmed_at 
+      });
+      console.log('✓ Session data:', { 
+        accessToken: data?.session?.access_token ? '✓ present' : '✗ missing',
+        refreshToken: data?.session?.refresh_token ? '✓ present' : '✗ missing'
+      });
+      
       if (data?.user) {
         setUser(data.user);
         // CRITICAL: Ensure loading is false when user is set after sign in
@@ -109,6 +126,7 @@ export function AuthProvider({ children }) {
       return { data, error: null };
     } catch (err) {
       console.error('❌ Sign in exception:', err);
+      console.error('❌ Exception details:', err.message);
       return { data: null, error: err };
     }
   };
