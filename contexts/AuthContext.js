@@ -11,69 +11,77 @@ export function AuthProvider({ children }) {
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
-    console.log('🔹 AuthProvider mounted, checking initial session...');
-    
-    const checkUser = async () => {
+    console.log('🔹 AuthProvider: Initializing auth...');
+    let isMounted = true;
+
+    // Initialize auth state
+    const initializeAuth = async () => {
       try {
-        // Avoid crashing on browsers with no session; Supabase can throw AuthSessionMissingError
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          // Ignore the common missing-session error; log anything else
-          if (sessionError?.name !== 'AuthSessionMissingError') {
-            console.error('Auth session error:', sessionError);
-          }
-          console.log('✓ No active session');
-          setUser(null);
-          return;
-        }
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
+        );
 
-        if (!session?.user) {
-          console.log('✓ No active session');
-          setUser(null);
-          return;
-        }
-
-        console.log('✓ Found active session, user:', session.user.email);
-        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-        if (error) {
-          if (error?.name !== 'AuthSessionMissingError') {
-            console.error('Auth error:', error);
+        const sessionPromise = (async () => {
+          // Get initial session
+          const { data: { session } } = await supabase.auth.getSession();
+          console.log('🔹 AuthProvider: Session check complete', session?.user?.email || 'no user');
+          
+          if (isMounted) {
+            if (session?.user) {
+              setUser(session.user);
+              console.log('✅ AuthProvider: User restored from session:', session.user.email);
+            } else {
+              setUser(null);
+              console.log('✅ AuthProvider: No session found');
+            }
           }
+        })();
+
+        await Promise.race([sessionPromise, timeoutPromise]);
+      } catch (error) {
+        console.error('🔹 AuthProvider: Error during initialization:', error.message);
+        if (isMounted) {
           setUser(null);
-        } else {
-          console.log('✓ Auth user confirmed:', currentUser.email);
-          setUser(currentUser);
         }
-      } catch (err) {
-        if (err?.name !== 'AuthSessionMissingError') {
-          console.error('Error checking user:', err);
-        }
-        setUser(null);
       } finally {
+        if (isMounted) {
+          setLoading(false);
+          console.log('✅ AuthProvider: Loading complete');
+        }
+      }
+    };
+
+    // Start initialization
+    initializeAuth();
+
+    // Set up auth state listener
+    console.log('🔹 AuthProvider: Setting up auth listener...');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔹 AuthProvider: Auth state changed:', event, session?.user?.email || 'no user');
+      
+      if (isMounted) {
+        if (session?.user) {
+          setUser(session.user);
+          console.log('✅ AuthProvider: Auth listener - user set:', session.user.email);
+        } else {
+          setUser(null);
+          console.log('✅ AuthProvider: Auth listener - user cleared');
+        }
+        // Always ensure loading is false when auth state changes
         setLoading(false);
       }
-    };
+    });
 
-    checkUser();
-
-    // Subscribe to auth state changes (this handles session persistence across page loads)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('🔹 Auth state changed:', event);
-        if (session?.user) {
-          console.log('✓ Session restored/updated for:', session.user.email);
-          setUser(session.user);
-        } else {
-          console.log('✓ Session cleared');
-          setUser(null);
-        }
-      }
-    );
-
+    // Cleanup
     return () => {
-      subscription?.unsubscribe();
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+        console.log('🔹 AuthProvider: Cleanup - unsubscribed from auth listener');
+      }
     };
-  }, []);
+  }, [supabase]);
 
   const signIn = async (email, password) => {
     try {

@@ -16,10 +16,23 @@ export default function UserDashboard() {
   const [error, setError] = useState(null);
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [authTimeout, setAuthTimeout] = useState(false);
 
   useEffect(() => {
     fetchUserData();
   }, [user, supabase]);
+
+  // Timeout for auth loading (in case it hangs)
+  useEffect(() => {
+    if (authLoading) {
+      const timeout = setTimeout(() => {
+        console.error('⚠️ Auth loading timeout - likely not logged in');
+        setAuthTimeout(true);
+      }, 3000); // 3 second timeout
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [authLoading]);
 
   const fetchUserData = async () => {
     if (!user) {
@@ -55,7 +68,8 @@ export default function UserDashboard() {
   };
 
   // Wait for AuthContext to restore user from session before showing "Not Logged In"
-  if (authLoading) {
+  // If loading takes too long (>3 seconds), assume not logged in
+  if (authLoading && !authTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
