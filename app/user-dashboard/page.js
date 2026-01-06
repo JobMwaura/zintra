@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { isSafari } from '@/lib/safariCompat';
 import Link from 'next/link';
 import { LogOut, User, Phone, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import DashboardNotificationsPanel from '@/components/DashboardNotificationsPanel';
@@ -27,10 +28,12 @@ export default function UserDashboard() {
     console.log('🔹 UserDashboard: Auth state:', { authLoading, user: user?.email, authTimeout });
     
     if (authLoading) {
+      // Safari needs more time for auth to load
+      const timeoutMs = isSafari() ? 5000 : 3000;
       const timeout = setTimeout(() => {
         console.error('⚠️ Auth loading timeout - likely not logged in');
         setAuthTimeout(true);
-      }, 3000); // 3 second timeout
+      }, timeoutMs);
       
       return () => clearTimeout(timeout);
     } else {

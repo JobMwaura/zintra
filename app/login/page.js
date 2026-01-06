@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { isSafari } from '@/lib/safariCompat';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -102,7 +103,9 @@ export default function Login() {
 
       // CRITICAL: Wait for Supabase to persist the session to localStorage
       // and verify the session was actually created
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Safari needs more time for session persistence
+      const delayMs = isSafari() ? 1000 : 500;
+      await new Promise(resolve => setTimeout(resolve, delayMs));
 
       // Verify session was persisted
       const { data: { session: verifySession } } = await supabase.auth.getSession();
@@ -142,10 +145,11 @@ export default function Login() {
       }
 
       console.log('🔹 Redirecting to:', redirectUrl);
-      // Use a longer delay to ensure session is fully persisted and AuthContext updates
+      // Safari needs more time for session persistence and context updates
+      const redirectDelayMs = isSafari() ? 1200 : 800;
       setTimeout(() => {
         window.location.href = redirectUrl;
-      }, 800); // increased from 1200ms to give plenty of time for session persistence
+      }, redirectDelayMs);
 
     } catch (err) {
       console.error('❌ Unexpected login error:', err);

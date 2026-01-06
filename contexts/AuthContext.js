@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { isSafari, isSafariPrivateMode, retryOperation } from '@/lib/safariCompat';
 
 const AuthContext = createContext();
 
@@ -12,6 +13,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     console.log('🔹 AuthProvider: Initializing auth...');
+    console.log('🔹 Browser: Safari=' + isSafari() + ', PrivateMode=' + isSafariPrivateMode());
     let isMounted = true;
     let loadingStarted = false;
 
@@ -19,14 +21,31 @@ export function AuthProvider({ children }) {
     const initializeAuth = async () => {
       try {
         loadingStarted = true;
-        // Set a timeout to prevent hanging
+        
+        // Set a timeout to prevent hanging (longer for Safari)
+        const timeoutMs = isSafari() ? 8000 : 5000;
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
+          setTimeout(() => reject(new Error('Auth initialization timeout')), timeoutMs)
         );
 
         const sessionPromise = (async () => {
-          // Get initial session
-          const { data: { session } } = await supabase.auth.getSession();
+          // Get initial session - with retry for Safari
+          const getSessionWithRetry = async () => {
+            if (isSafari()) {
+              // Safari needs retry logic
+              return await retryOperation(
+                () => supabase.auth.getSession(),
+                2,
+                100
+              );
+            } else {
+              return await supabase.auth.getSession();
+            }
+          };
+
+          const result = await getSessionWithRetry();
+          const { data: { session } } = result;
+          
           console.log('🔹 AuthProvider: Session check complete', session?.user?.email || 'no user');
           
           if (isMounted) {
@@ -90,10 +109,17 @@ export function AuthProvider({ children }) {
       console.log('🔹 Signing in:', email);
       console.log('🔹 Supabase instance:', supabase ? '✓ exists' : '✗ missing');
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Use retry logic for Safari
+      const signInOperation = async () => {
+        return await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+      };
+
+      const { data, error } = isSafari()
+        ? await retryOperation(signInOperation, 2, 200)
+        : await signInOperation();
 
       if (error) {
         console.error('❌ Sign in error:', error);
