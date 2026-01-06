@@ -4,10 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Login() {
   const { signIn } = useAuth();
+  const supabase = createClient();
   const [activeTab, setActiveTab] = useState('user');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({

@@ -1,13 +1,14 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     console.log('🔹 AuthProvider mounted, checking initial session...');
