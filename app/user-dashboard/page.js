@@ -24,6 +24,8 @@ export default function UserDashboard() {
 
   // Timeout for auth loading (in case it hangs)
   useEffect(() => {
+    console.log('🔹 UserDashboard: Auth state:', { authLoading, user: user?.email, authTimeout });
+    
     if (authLoading) {
       const timeout = setTimeout(() => {
         console.error('⚠️ Auth loading timeout - likely not logged in');
@@ -31,32 +33,52 @@ export default function UserDashboard() {
       }, 3000); // 3 second timeout
       
       return () => clearTimeout(timeout);
+    } else {
+      // Auth loading is complete
+      console.log('✅ UserDashboard: Auth loading complete, user:', user?.email || 'no user');
+      setAuthTimeout(false);
     }
-  }, [authLoading]);
+  }, [authLoading, user]);
 
   const fetchUserData = async () => {
     if (!user) {
+      console.log('🔹 UserDashboard: No user, skipping fetchUserData');
       setError('No user logged in');
       setDataLoading(false);
       return;
     }
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      console.log('🔹 UserDashboard: Fetching user data for:', user.id);
+      
+      // Add 10-second timeout to user data fetch
+      await Promise.race([
+        (async () => {
+          const { data, error: fetchError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
 
-      if (fetchError) {
-        console.error('Error fetching user data:', fetchError);
-        setError('Failed to load user data');
-      } else {
-        setUserData(data);
-      }
+          if (fetchError) {
+            console.error('Error fetching user data:', fetchError);
+            setError('Failed to load user data');
+          } else {
+            console.log('✅ UserDashboard: User data fetched');
+            setUserData(data);
+          }
+        })(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('User data fetch timeout')), 10000)
+        )
+      ]);
     } catch (err) {
-      console.error('Unexpected error:', err);
-      setError('An unexpected error occurred');
+      console.error('Error in fetchUserData:', err);
+      if (err.message === 'User data fetch timeout') {
+        setError('User data loading timed out - some information may be unavailable');
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setDataLoading(false);
     }

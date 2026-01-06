@@ -1,18 +1,27 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 import { Loader } from 'lucide-react';
 
 export default function MyProfilePage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const supabase = createClient();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
+    // Wait for AuthContext to finish loading before checking user
+    if (authLoading) {
+      console.log('🔹 MyProfilePage: Waiting for auth to load...');
+      return;
+    }
+
     const redirectToCorrectProfile = async () => {
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
+        setIsProcessing(true);
 
         if (!user) {
           // Not logged in, redirect to login
@@ -46,11 +55,13 @@ export default function MyProfilePage() {
       } catch (error) {
         console.error('Error in profile redirect:', error);
         router.push('/user-dashboard');
+      } finally {
+        setIsProcessing(false);
       }
     };
 
     redirectToCorrectProfile();
-  }, [router]);
+  }, [user, authLoading, router, supabase]);
 
   // Show loading spinner while redirecting
   return (

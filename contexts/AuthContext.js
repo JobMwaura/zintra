@@ -13,10 +13,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     console.log('🔹 AuthProvider: Initializing auth...');
     let isMounted = true;
+    let loadingStarted = false;
 
     // Initialize auth state
     const initializeAuth = async () => {
       try {
+        loadingStarted = true;
         // Set a timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
@@ -45,7 +47,7 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && loadingStarted) {
           setLoading(false);
           console.log('✅ AuthProvider: Loading complete');
         }
@@ -99,6 +101,9 @@ export function AuthProvider({ children }) {
       console.log('✓ Sign in successful, user:', data.user?.email);
       if (data?.user) {
         setUser(data.user);
+        // CRITICAL: Ensure loading is false when user is set after sign in
+        setLoading(false);
+        console.log('✅ User set and loading set to false after sign in');
       }
 
       return { data, error: null };
