@@ -125,8 +125,8 @@ export async function POST(request) {
     // ============================================================================
     let user = null;
     const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('id, email, phone_verified, email_verified')
+      .from('users')
+      .select('id, email')
       .eq('id', userId)
       .single();
 
