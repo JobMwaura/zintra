@@ -127,11 +127,11 @@ export async function POST(request) {
     console.log('[RFQ CREATE] Verifying user:', userId);
 
     // ============================================================================
-    // 3. VERIFICATION CHECK (email + phone must be verified)
+    // 3. VERIFICATION CHECK (phone must be verified)
     // ============================================================================
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, phone_verified, email_verified')
+      .select('id, phone_verified')
       .eq('id', userId)
       .single();
 
@@ -143,18 +143,16 @@ export async function POST(request) {
       );
     }
 
-    if (!user.phone_verified || !user.email_verified) {
-      console.warn('[RFQ CREATE] User not verified:', {
+    if (!user.phone_verified) {
+      console.warn('[RFQ CREATE] User phone not verified:', {
         user_id: userId,
-        phone_verified: user.phone_verified,
-        email_verified: user.email_verified
+        phone_verified: user.phone_verified
       });
       return NextResponse.json(
         { 
-          error: 'You must verify your email and phone number before submitting an RFQ',
+          error: 'You must verify your phone number before submitting an RFQ',
           details: {
-            phone_verified: user.phone_verified,
-            email_verified: user.email_verified
+            phone_verified: user.phone_verified
           }
         },
         { status: 403 }

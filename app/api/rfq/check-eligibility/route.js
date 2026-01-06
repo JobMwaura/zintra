@@ -37,7 +37,7 @@ export async function POST(request) {
     // ============================================================================
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, phone_verified, email_verified')
+      .select('id, phone_verified')
       .eq('id', user_id)
       .single();
 
@@ -57,18 +57,16 @@ export async function POST(request) {
       );
     }
 
-    // Check if both email and phone are verified
-    if (!user.phone_verified || !user.email_verified) {
-      console.log('[CHECK-ELIGIBILITY] User not verified:', {
+    // Check if phone is verified
+    if (!user.phone_verified) {
+      console.log('[CHECK-ELIGIBILITY] User phone not verified:', {
         user_id,
-        phone_verified: user.phone_verified,
-        email_verified: user.email_verified
+        phone_verified: user.phone_verified
       });
       return NextResponse.json({
         eligible: false,
-        reason: 'Must verify phone and email before submitting RFQs',
-        phone_verified: user.phone_verified,
-        email_verified: user.email_verified
+        reason: 'Must verify phone before submitting RFQs',
+        phone_verified: user.phone_verified
       }, { status: 200 });
     }
 
