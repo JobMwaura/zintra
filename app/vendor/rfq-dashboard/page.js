@@ -296,7 +296,7 @@ export default function VendorRFQDashboard() {
             <AlertCircle size={48} className="mx-auto text-red-400 mb-4" />
             <h2 className="text-xl font-semibold mb-2">{error}</h2>
             <p className="text-red-600 mb-4">Please complete your vendor profile setup to continue.</p>
-            <a href="/vendor/onboarding" className="inline-block px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+            <a href="/vendor-registration" className="inline-block px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
               Complete Setup
             </a>
           </div>

@@ -297,23 +297,33 @@ export default function ZintraHomepage() {
         // Set current user
         setCurrentUser(user);
 
-        // Check if user is a vendor
-        const { data: vendor, error } = await supabase
-          .from('vendors')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+      // Check if user is a vendor
+        try {
+          const { data: vendor, error } = await Promise.race([
+            supabase
+              .from('vendors')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Vendor query timeout')), 5000)
+            )
+          ]);
 
-        if (error) {
-          console.error('Error fetching vendor:', error);
-          return;
-        }
+          if (error && error.status !== 406) {
+            // Only log non-406 errors as 406 might be RLS related
+            console.warn('Warning fetching vendor:', error.message);
+          }
 
-        if (vendor?.id) {
-          console.log('Vendor found, setting profile link:', vendor.id);
-          setVendorProfileLink(`/vendor-profile/${vendor.id}`);
-        } else {
-          console.log('No vendor found for user:', user.id);
+          if (vendor?.id) {
+            console.log('Vendor found, setting profile link:', vendor.id);
+            setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+          } else {
+            console.log('No vendor found for user:', user.id);
+            setVendorProfileLink('');
+          }
+        } catch (vendorErr) {
+          console.warn('Error in vendor check:', vendorErr.message);
           setVendorProfileLink('');
         }
       } catch (err) {
@@ -325,15 +335,19 @@ export default function ZintraHomepage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setCurrentUser(session.user);
+        // Fetch vendor profile when user authenticates
+        fetchVendorProfile();
       } else {
         setCurrentUser(null);
         setVendorProfileLink('');
       }
     });
 
-    fetchVendorProfile();
+    if (currentUser) {
+      fetchVendorProfile();
+    }
 
-    return () => subscription?.unsubscribe();;
+    return () => subscription?.unsubscribe();
     const fetchData = async () => {
       // Use comprehensive construction categories
       setCategories([
