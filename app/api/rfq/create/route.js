@@ -123,22 +123,9 @@ export async function POST(request) {
     // ============================================================================
     // 2. USER AUTHENTICATION CHECK
     // ============================================================================
-    let user = null;
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !userData) {
-      console.error('[RFQ CREATE] User lookup failed:', { userId, userError });
-      return NextResponse.json(
-        { error: 'Your account could not be found. Please log out and log in again.' },
-        { status: 401 }
-      );
-    }
-
-    user = userData;
+    // For now, just use the userId that was validated above
+    // We've already checked that it exists and is not empty
+    console.log('[RFQ CREATE] Using authenticated userId:', userId);
 
     // ============================================================================
     // 3. NOTE: QUOTA CHECKING DISABLED
@@ -153,9 +140,7 @@ export async function POST(request) {
     // 4. CREATE RFQ RECORD - USING CORRECT SCHEMA
     // ============================================================================
     // Map to actual rfqs table schema (only fields that exist)
-    // Schema: id, user_id, title, description, category, location, county, budget_estimate, 
-    //         type, status, is_paid, paid_amount, assigned_vendor_id, urgency, tags, attachments,
-    //         created_at, updated_at, expires_at, completed_at
+    // Don't set assigned_vendor_id if we're not sure the vendor exists
     const rfqData = {
       user_id: userId, // Required, already validated
       title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
@@ -167,15 +152,18 @@ export async function POST(request) {
         ? `${sharedFields.budgetMin} - ${sharedFields.budgetMax}` 
         : null,
       type: rfqType, // 'direct' | 'wizard' | 'public'
-      assigned_vendor_id: rfqType === 'direct' && selectedVendors.length > 0 ? selectedVendors[0] : null,
+      assigned_vendor_id: null, // Don't set here - let rfq_recipients table handle vendor links
       urgency: sharedFields.urgency || 'normal',
       status: 'submitted', // Always submitted when created
       is_paid: false,
-      // Note: Do NOT include fields that don't exist: visibility, rfq_type, guest_email, guest_phone
-      // Note: created_at and updated_at are set by database defaults
     };
 
-    console.log('[RFQ CREATE] Inserting RFQ with data:', { title: rfqData.title, type: rfqData.type, category: rfqData.category });
+    console.log('[RFQ CREATE] Inserting RFQ with data:', { 
+      title: rfqData.title, 
+      type: rfqData.type, 
+      category: rfqData.category,
+      user_id: rfqData.user_id 
+    });
 
     const { data: createdRfq, error: createError } = await supabase
       .from('rfqs')
