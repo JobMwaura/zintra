@@ -142,7 +142,10 @@ ALTER TABLE rfqs
 ALTER COLUMN title SET NOT NULL;
 
 ALTER TABLE rfqs 
-ALTER COLUMN status SET NOT NULL DEFAULT 'submitted';
+ALTER COLUMN status SET DEFAULT 'submitted';
+
+ALTER TABLE rfqs 
+ALTER COLUMN status SET NOT NULL;
 
 -- 3.3: Create auto-update timestamp function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
