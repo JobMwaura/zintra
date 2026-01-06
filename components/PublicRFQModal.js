@@ -110,7 +110,48 @@ export default function PublicRFQModal({ isOpen = false, onClose = () => {}, onS
     }
   };
 
+  const validateSharedFields = () => {
+    const validationErrors = {};
+    
+    if (!sharedFields.projectTitle) {
+      validationErrors.projectTitle = 'Project title is required';
+    }
+    if (!sharedFields.projectSummary) {
+      validationErrors.projectSummary = 'Project summary is required';
+    }
+    if (!sharedFields.county) {
+      validationErrors.county = 'County is required';
+    }
+    if (!sharedFields.town) {
+      validationErrors.town = 'Town/city is required';
+    }
+    if (!sharedFields.budgetMin) {
+      validationErrors.budgetMin = 'Minimum budget is required';
+    }
+    if (!sharedFields.budgetMax) {
+      validationErrors.budgetMax = 'Maximum budget is required';
+    }
+    if (sharedFields.budgetMin && sharedFields.budgetMax) {
+      const budgetMin = parseInt(sharedFields.budgetMin);
+      const budgetMax = parseInt(sharedFields.budgetMax);
+      if (budgetMin > budgetMax) {
+        validationErrors.budgetMin = 'Minimum budget must be less than maximum';
+      }
+    }
+    
+    return validationErrors;
+  };
+
   const handleProceedFromShared = () => {
+    const validationErrors = validateSharedFields();
+    
+    if (Object.keys(validationErrors).length > 0) {
+      const errorMessages = Object.values(validationErrors);
+      setError(`Please fix: ${errorMessages.join(', ')}`);
+      return;
+    }
+    
+    setError('');
     saveFormData('public', selectedCategory, selectedJobType, templateFields, sharedFields);
     setShowAuthModal(true);
   };
