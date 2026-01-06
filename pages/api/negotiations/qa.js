@@ -72,9 +72,9 @@ async function handleCreateQuestion(req, res) {
     // Verify negotiation exists
     const { data: negotiation, error: negotiationError } = await supabase
       .from('negotiation_threads')
-      .select('id, buyer_id, vendor_id')
+      .select('id, user_id, vendor_id')
       .eq('id', negotiationId)
-      .eq('quote_id', quoteId)
+      .eq('rfq_quote_id', quoteId)
       .single();
 
     if (negotiationError || !negotiation) {
@@ -84,7 +84,7 @@ async function handleCreateQuestion(req, res) {
     }
 
     // Verify user is participant
-    if (askedBy !== negotiation.buyer_id && askedBy !== negotiation.vendor_id) {
+    if (askedBy !== negotiation.user_id && askedBy !== negotiation.vendor_id) {
       return res.status(403).json({
         error: 'User is not a participant in this negotiation'
       });
@@ -95,7 +95,7 @@ async function handleCreateQuestion(req, res) {
       .from('negotiation_qa')
       .insert({
         negotiation_id: negotiationId,
-        quote_id: quoteId,
+        rfq_quote_id: quoteId,
         asked_by: askedBy,
         question: question.trim()
       })
@@ -108,7 +108,7 @@ async function handleCreateQuestion(req, res) {
     }
 
     // Send notification to other party
-    const notifiedUserId = askedBy === negotiation.buyer_id ? negotiation.vendor_id : negotiation.buyer_id;
+    const notifiedUserId = askedBy === negotiation.user_id ? negotiation.vendor_id : negotiation.user_id;
 
     const { error: notificationError } = await supabase
       .from('notifications')
@@ -189,7 +189,7 @@ async function handleAnswerQuestion(req, res) {
     // Verify negotiation and user permissions
     const { data: negotiation, error: negotiationError } = await supabase
       .from('negotiation_threads')
-      .select('buyer_id, vendor_id')
+      .select('user_id, vendor_id')
       .eq('id', qaItem.negotiation_id)
       .single();
 
@@ -206,7 +206,7 @@ async function handleAnswerQuestion(req, res) {
       });
     }
 
-    if (answeredBy !== negotiation.buyer_id && answeredBy !== negotiation.vendor_id) {
+    if (answeredBy !== negotiation.user_id && answeredBy !== negotiation.vendor_id) {
       return res.status(403).json({
         error: 'User is not a participant in this negotiation'
       });

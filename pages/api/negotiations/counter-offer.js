@@ -75,9 +75,9 @@ export default async function handler(req, res) {
     // Verify negotiation exists and user is participant
     const { data: negotiation, error: negotiationError } = await supabase
       .from('negotiation_threads')
-      .select('id, buyer_id, vendor_id, quote_id')
+      .select('id, user_id, vendor_id, rfq_quote_id')
       .eq('id', negotiationId)
-      .eq('quote_id', quoteId)
+      .eq('rfq_quote_id', quoteId)
       .single();
 
     if (negotiationError || !negotiation) {
@@ -86,8 +86,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Verify user is buyer or vendor
-    if (proposedBy !== negotiation.buyer_id && proposedBy !== negotiation.vendor_id) {
+    // Verify user is user or vendor
+    if (proposedBy !== negotiation.user_id && proposedBy !== negotiation.vendor_id) {
       return res.status(403).json({
         error: 'User is not a participant in this negotiation'
       });
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       .from('counter_offers')
       .insert({
         negotiation_id: negotiationId,
-        quote_id: quoteId,
+        rfq_quote_id: quoteId,
         proposed_by: proposedBy,
         proposed_price: proposedPrice,
         scope_changes: scopeChanges || null,
@@ -144,9 +144,8 @@ export default async function handler(req, res) {
     const { error: revisionError } = await supabase
       .from('quote_revisions')
       .insert({
-        quote_id: quoteId,
+        rfq_quote_id: quoteId,
         price: proposedPrice,
-        scope_summary: scopeChanges || null,
         delivery_date: deliveryDate || null,
         payment_terms: paymentTerms || null,
         changed_by: proposedBy,
@@ -160,7 +159,7 @@ export default async function handler(req, res) {
     }
 
     // Send notification to other party
-    const notifiedUserId = proposedBy === negotiation.buyer_id ? negotiation.vendor_id : negotiation.buyer_id;
+    const notifiedUserId = proposedBy === negotiation.user_id ? negotiation.vendor_id : negotiation.user_id;
     
     const { error: notificationError } = await supabase
       .from('notifications')

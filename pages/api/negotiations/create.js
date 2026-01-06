@@ -7,12 +7,12 @@ const supabase = createClient(
 
 /**
  * POST /api/negotiations/create
- * Creates a new negotiation thread for a quote
+ * Creates a new negotiation thread for an RFQ quote
  * 
  * Request body:
  * {
- *   quoteId: string (UUID),
- *   buyerId: string (UUID),
+ *   rfqQuoteId: string (UUID),
+ *   userId: string (UUID),
  *   vendorId: string (UUID),
  *   originalPrice: number
  * }
@@ -30,12 +30,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { quoteId, buyerId, vendorId, originalPrice } = req.body;
+    const { rfqQuoteId, userId, vendorId, originalPrice } = req.body;
 
     // Validate input
-    if (!quoteId || !buyerId || !vendorId || originalPrice === undefined) {
+    if (!rfqQuoteId || !userId || !vendorId || originalPrice === undefined) {
       return res.status(400).json({ 
-        error: 'Missing required fields: quoteId, buyerId, vendorId, originalPrice' 
+        error: 'Missing required fields: rfqQuoteId, userId, vendorId, originalPrice' 
       });
     }
 
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     const { data: existingThread } = await supabase
       .from('negotiation_threads')
       .select('id')
-      .eq('quote_id', quoteId)
+      .eq('rfq_quote_id', rfqQuoteId)
       .single();
 
     if (existingThread) {
@@ -64,8 +64,8 @@ export default async function handler(req, res) {
     const { data: thread, error: createError } = await supabase
       .from('negotiation_threads')
       .insert({
-        quote_id: quoteId,
-        buyer_id: buyerId,
+        rfq_quote_id: rfqQuoteId,
+        user_id: userId,
         vendor_id: vendorId,
         original_price: originalPrice,
         current_price: originalPrice,
