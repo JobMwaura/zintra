@@ -200,10 +200,8 @@ export async function POST(request) {
 
     console.log('[RFQ CREATE] Quota check passed:', { current_count, limit: FREE_RFQ_LIMIT });
 
-
-
     // ============================================================================
-    // 5. INPUT SANITIZATION
+    // 5. INPUT SANITIZATION (optional - for extra security)
     // ============================================================================
     const sanitizeInput = (str) => {
       if (typeof str !== 'string') return str;
@@ -218,11 +216,11 @@ export async function POST(request) {
     // Don't set assigned_vendor_id if we're not sure the vendor exists
     const rfqData = {
       user_id: userId, // Required, already validated
-      title: sanitizeInput(sharedFields.projectTitle) || 'Untitled RFQ',
-      description: sanitizeInput(sharedFields.projectSummary) || 'No description provided',
+      title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
+      description: sharedFields.projectSummary?.trim() || '',
       category: categorySlug,
-      location: sanitizeInput(sharedFields.town) || null,
-      county: sanitizeInput(sharedFields.county) || null,
+      location: sharedFields.town || null,
+      county: sharedFields.county || null,
       budget_estimate: sharedFields.budgetMin && sharedFields.budgetMax 
         ? `${sharedFields.budgetMin} - ${sharedFields.budgetMax}` 
         : null,
@@ -230,13 +228,15 @@ export async function POST(request) {
       assigned_vendor_id: null, // Don't set here - let rfq_recipients table handle vendor links
       urgency: sharedFields.urgency || 'normal',
       status: 'submitted', // Always submitted when created
-      is_paid: current_count >= (FREE_RFQ_LIMIT - 1), // Mark as paid if over free limit
-      visibility: rfqType === 'public' ? 'public' : 'private',
-      template_data: templateFields || {}, // Store category-specific data as JSON
-      shared_data: sharedFields || {}, // Store shared data as JSON
+      is_paid: false,
     };
 
-    console.log('[RFQ CREATE] Full RFQ data being inserted:', JSON.stringify(rfqData, null, 2));
+    console.log('[RFQ CREATE] Inserting RFQ with data:', { 
+      title: rfqData.title, 
+      type: rfqData.type, 
+      category: rfqData.category,
+      user_id: rfqData.user_id 
+    });
 
     const { data: createdRfq, error: createError } = await supabase
       .from('rfqs')
@@ -245,20 +245,9 @@ export async function POST(request) {
       .single();
 
     if (createError) {
-      console.error('[RFQ CREATE] Database insertion error:', {
-        message: createError.message,
-        code: createError.code,
-        details: createError.details,
-        hint: createError.hint,
-        context: createError.context,
-      });
+      console.error('[RFQ CREATE] Database insertion error:', createError);
       return NextResponse.json(
-        { 
-          error: 'Failed to create RFQ. Please try again.', 
-          details: createError.message,
-          code: createError.code,
-          hint: createError.hint,
-        },
+        { error: 'Failed to create RFQ. Please try again.', details: createError.message },
         { status: 500 }
       );
     }
@@ -288,7 +277,7 @@ export async function POST(request) {
           console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
           // Continue - vendor assignment is not critical to RFQ creation
         } else {
-          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors.length);
+          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors);
         }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
