@@ -112,34 +112,33 @@ export async function POST(request) {
       );
     }
 
-    // Validate user (authenticated or guest)
-    if (!userId && !guestEmail && !guestPhone) {
+    // Validate user (authenticated required for now)
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Either userId (authenticated) or guestEmail/guestPhone (guest) required' },
-        { status: 400 }
+        { error: 'You must be logged in to submit an RFQ. Please complete the authentication step and try again.' },
+        { status: 401 }
       );
     }
 
     // ============================================================================
-    // 2. USER AUTHENTICATION CHECK (if userId provided)
+    // 2. USER AUTHENTICATION CHECK
     // ============================================================================
     let user = null;
-    if (userId) {
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id, email, phone_verified, email_verified')
-        .eq('id', userId)
-        .single();
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id, email, phone_verified, email_verified')
+      .eq('id', userId)
+      .single();
 
-      if (userError || !userData) {
-        return NextResponse.json(
-          { error: 'User not found or invalid userId' },
-          { status: 401 }
-        );
-      }
-
-      user = userData;
+    if (userError || !userData) {
+      console.error('[RFQ CREATE] User lookup failed:', { userId, userError });
+      return NextResponse.json(
+        { error: 'Your account could not be found. Please log out and log in again.' },
+        { status: 401 }
+      );
     }
+
+    user = userData;
 
     // ============================================================================
     // 3. NOTE: QUOTA CHECKING DISABLED

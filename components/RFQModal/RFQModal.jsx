@@ -306,7 +306,8 @@ export default function RFQModal({
     }
 
     if (currentStep === 'review') {
-      // Data already validated
+      // Final safety check: ensure user is still authenticated before review
+      if (!user) newErrors.review = 'Session expired. Please go back to the auth step and log in again.';
     }
 
     setErrors(newErrors);
@@ -359,6 +360,13 @@ export default function RFQModal({
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
 
+      // Validate that user is authenticated (required for RFQ submission)
+      if (!currentUser || !currentUser.id) {
+        setError('You must be logged in to submit an RFQ. Please complete the authentication step.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const submissionData = {
         rfqType: rfqType,
         categorySlug: formData.selectedCategory,
@@ -375,7 +383,7 @@ export default function RFQModal({
           directions: formData.directions || null,
         },
         selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : (rfqType === 'vendor-request' && vendorId ? [vendorId] : []),
-        userId: currentUser?.id || null,
+        userId: currentUser.id,
         guestEmail: null,
         guestPhone: null,
         guestPhoneVerified: false,
