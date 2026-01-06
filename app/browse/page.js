@@ -22,65 +22,87 @@ export default function BrowseVendors() {
 
   // ✅ Fetch vendors and extract filters
   useEffect(() => {
+    let isMounted = true;
+
     const fetchVendorProfileLink = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: vendor } = await supabase
-        .from('vendors')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (vendor?.id) setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+      try {
+        // 2-second timeout for fetching vendor profile link
+        await Promise.race([
+          (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user || !isMounted) return;
+            const { data: vendor } = await supabase
+              .from('vendors')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (vendor?.id && isMounted) setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+          })(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+        ]);
+      } catch {
+        // Silently fail - not critical
+      }
     };
+    
     fetchVendorProfileLink();
 
     const fetchVendors = async () => {
       try {
+        if (!isMounted) return;
         setLoading(true);
         setError(null);
         
-        // Fetch vendors with their stats
-        const { data: vendorData, error: fetchError } = await supabase
-          .from('vendors')
-          .select(`
-            *,
-            vendor_profile_stats(views_count, likes_count)
-          `);
+        // 15-second timeout for vendor fetch
+        await Promise.race([
+          (async () => {
+            const { data: vendorData, error: fetchError } = await supabase
+              .from('vendors')
+              .select(`
+                *,
+                vendor_profile_stats(views_count, likes_count)
+              `);
 
-        if (fetchError) {
-          console.error('❌ Error fetching vendors:', fetchError.message);
-          setError(`Failed to load vendors: ${fetchError.message}`);
-          setVendors([]);
-          // Set comprehensive categories even on error
-          setCategories([
-            'All Categories',
-            ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-          ]);
-        } else if (!vendorData || vendorData.length === 0) {
-          console.warn('No vendors found in database');
-          setVendors([]);
-          // Set comprehensive categories for filtering even with no vendors
-          setCategories([
-            'All Categories',
-            ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-          ]);
-        } else {
-          // Flatten the stats into each vendor object for easier access
-          const vendorsWithStats = vendorData.map(vendor => ({
-            ...vendor,
-            views_count: vendor.vendor_profile_stats?.[0]?.views_count || 0,
-            likes_count: vendor.vendor_profile_stats?.[0]?.likes_count || 0,
-          }));
-          setVendors(vendorsWithStats);
-          // Use comprehensive construction categories
-          setCategories([
-            'All Categories',
-            ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-          ]);
-        }
+            if (!isMounted) return;
+
+            if (fetchError) {
+              console.error('❌ Error fetching vendors:', fetchError.message);
+              setError(`Failed to load vendors: ${fetchError.message}`);
+              setVendors([]);
+              // Set comprehensive categories even on error
+              setCategories([
+                'All Categories',
+                ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+              ]);
+            } else if (!vendorData || vendorData.length === 0) {
+              console.warn('No vendors found in database');
+              setVendors([]);
+              // Set comprehensive categories for filtering even with no vendors
+              setCategories([
+                'All Categories',
+                ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+              ]);
+            } else {
+              // Flatten the stats into each vendor object for easier access
+              const vendorsWithStats = vendorData.map(vendor => ({
+                ...vendor,
+                views_count: vendor.vendor_profile_stats?.[0]?.views_count || 0,
+                likes_count: vendor.vendor_profile_stats?.[0]?.likes_count || 0,
+              }));
+              setVendors(vendorsWithStats);
+              // Use comprehensive construction categories
+              setCategories([
+                'All Categories',
+                ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+              ]);
+            }
+          })(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Vendor fetch timeout')), 15000))
+        ]);
       } catch (err) {
-        console.error('Unexpected error fetching vendors:', err);
-        setError(`Error: ${err.message || 'Unknown error occurred'}`);
+        if (!isMounted) return;
+        console.error('Unexpected error fetching vendors:', err.message);
+        setError(`Error: ${err.message || 'Failed to load vendors'}`);
         setVendors([]);
         // Set comprehensive categories on error
         setCategories([
@@ -88,11 +110,15 @@ export default function BrowseVendors() {
           ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
         ]);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchVendors();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // ✅ Filtering logic with improved category matching

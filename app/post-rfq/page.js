@@ -18,62 +18,85 @@ function PostRFQContent() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchPublicRFQs = async () => {
       try {
+        if (!isMounted) return;
         setLoading(true);
         setError(null);
         
-        const { data, error: fetchError } = await supabase
-          .from('rfqs')
-          .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
-          .eq('rfq_type', 'public')
-          .eq('visibility', 'public')
-          .eq('status', 'open')
-          .order('created_at', { ascending: false });
+        // 15-second timeout for RFQ fetch
+        await Promise.race([
+          (async () => {
+            const { data, error: fetchError } = await supabase
+              .from('rfqs')
+              .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
+              .eq('rfq_type', 'public')
+              .eq('visibility', 'public')
+              .eq('status', 'open')
+              .order('created_at', { ascending: false });
 
-        if (fetchError) {
-          console.error('Error fetching RFQs:', fetchError);
-          setError(`Failed to load RFQs: ${fetchError.message}`);
-          setPublicRFQs([]);
-          return;
-        }
+            if (!isMounted) return;
 
-        setPublicRFQs(data || []);
-
-        // Fetch quote stats for all RFQs if any exist
-        if (data && data.length > 0) {
-          try {
-            const { data: stats, error: statsError } = await supabase
-              .from('rfq_quote_stats')
-              .select('rfq_id, total_quotes')
-              .in('rfq_id', data.map(r => r.id));
-
-            if (!statsError && stats) {
-              const statsMap = {};
-              stats.forEach(stat => {
-                statsMap[stat.rfq_id] = stat.total_quotes || 0;
-              });
-              setQuoteStats(statsMap);
-            } else if (statsError) {
-              console.warn('Warning: Could not fetch quote stats:', statsError.message);
-              // Don't fail the whole page if stats fail to load
-              setQuoteStats({});
+            if (fetchError) {
+              console.error('Error fetching RFQs:', fetchError);
+              setError(`Failed to load RFQs: ${fetchError.message}`);
+              setPublicRFQs([]);
+              return;
             }
-          } catch (statsErr) {
-            console.warn('Warning: Stats fetch error:', statsErr);
-            setQuoteStats({});
-          }
-        }
+
+            setPublicRFQs(data || []);
+
+            // Fetch quote stats for all RFQs if any exist
+            if (data && data.length > 0) {
+              try {
+                const { data: stats, error: statsError } = await supabase
+                  .from('rfq_quote_stats')
+                  .select('rfq_id, total_quotes')
+                  .in('rfq_id', data.map(r => r.id));
+
+                if (!statsError && stats) {
+                  const statsMap = {};
+                  stats.forEach(stat => {
+                    statsMap[stat.rfq_id] = stat.total_quotes || 0;
+                  });
+                  setQuoteStats(statsMap);
+                } else if (statsError) {
+                  console.warn('Warning: Could not fetch quote stats:', statsError.message);
+                  setQuoteStats({});
+                }
+              } catch (statsErr) {
+                console.warn('Warning: Stats fetch error:', statsErr);
+                setQuoteStats({});
+              }
+            }
+          })(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('RFQ fetch timeout')), 15000)
+          )
+        ]);
       } catch (err) {
-        console.error('Unexpected error fetching RFQs:', err);
-        setError(`Error: ${err.message || 'Unknown error'}`);
+        if (!isMounted) return;
+        console.error('Error fetching RFQs:', err);
+        if (err.message === 'RFQ fetch timeout') {
+          setError('Error: RFQ fetch timeout - please try again');
+        } else {
+          setError(`Error: ${err.message || 'Unknown error'}`);
+        }
         setPublicRFQs([]);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchPublicRFQs();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
