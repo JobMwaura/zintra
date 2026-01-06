@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 import {
   MapPin,
   Phone,
@@ -43,6 +44,8 @@ import CategoryBadges from '@/components/VendorCard/CategoryBadges';
 export default function VendorProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const supabase = createClient();
   const vendorId = params.id;
   const fileInputRef = useRef(null);
 
@@ -86,86 +89,119 @@ export default function VendorProfilePage() {
 
   // Fetch vendor and related data
   useEffect(() => {
+    // Don't fetch if we're still waiting for auth
+    if (authLoading) {
+      console.log('🔹 VendorProfile: Waiting for auth...');
+      return;
+    }
+
     const fetchData = async () => {
       try {
+        let isMounted = true;
         setLoading(true);
 
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        setCurrentUser(user || null);
+        setCurrentUser(authUser || null);
 
-        // Fetch vendor
-        console.log('🔹 Fetching vendor with ID:', vendorId);
-        const { data: vendorData, error: fetchError } = await supabase
-          .from('vendors')
-          .select('*')
-          .eq('id', vendorId)
-          .single();
+        // Fetch vendor and all related data with timeout
+        await Promise.race([
+          (async () => {
+            try {
+              // Fetch vendor
+              console.log('🔹 Fetching vendor with ID:', vendorId);
+              const { data: vendorData, error: fetchError } = await supabase
+                .from('vendors')
+                .select('*')
+                .eq('id', vendorId)
+                .single();
 
-        if (fetchError || !vendorData) {
-          console.error('Vendor fetch error:', fetchError?.message || 'No data');
-          setError('Vendor not found. The vendor may have been deleted or the ID is incorrect.');
-          setLoading(false);
-          return;
-        }
+              if (fetchError || !vendorData) {
+                console.error('Vendor fetch error:', fetchError?.message || 'No data');
+                if (isMounted) {
+                  setError('Vendor not found. The vendor may have been deleted or the ID is incorrect.');
+                }
+                return;
+              }
 
-        setVendor(vendorData);
+              if (isMounted) {
+                setVendor(vendorData);
+              }
 
-        // Fetch products
-        const { data: productData } = await supabase
-          .from('vendor_products')
-          .select('*')
-          .eq('vendor_id', vendorId)
-          .order('created_at', { ascending: false });
-        if (productData) setProducts(productData);
+              // Fetch products
+              const { data: productData } = await supabase
+                .from('vendor_products')
+                .select('*')
+                .eq('vendor_id', vendorId)
+                .order('created_at', { ascending: false });
+              if (isMounted && productData) setProducts(productData);
 
-        // Fetch services
-        const { data: serviceData } = await supabase
-          .from('vendor_services')
-          .select('*')
-          .eq('vendor_id', vendorId)
-          .order('created_at', { ascending: false });
-        if (serviceData) setServices(serviceData);
-        else setServices([]);
+              // Fetch services
+              const { data: serviceData } = await supabase
+                .from('vendor_services')
+                .select('*')
+                .eq('vendor_id', vendorId)
+                .order('created_at', { ascending: false });
+              if (isMounted) {
+                if (serviceData) setServices(serviceData);
+                else setServices([]);
+              }
 
-        // Fetch reviews
-        const { data: reviewData } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('vendor_id', vendorId)
-          .order('created_at', { ascending: false });
-        setReviews(reviewData || []);
+              // Fetch reviews
+              const { data: reviewData } = await supabase
+                .from('reviews')
+                .select('*')
+                .eq('vendor_id', vendorId)
+                .order('created_at', { ascending: false });
+              if (isMounted) {
+                setReviews(reviewData || []);
+              }
 
-        // Fetch subscription if user owns this vendor
-        if (user) {
-          const { data: activeSub } = await supabase
-            .from('vendor_subscriptions')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-            .maybeSingle();
+              // Fetch subscription if user owns this vendor
+              if (authUser) {
+                const { data: activeSub } = await supabase
+                  .from('vendor_subscriptions')
+                  .select('*')
+                  .eq('user_id', authUser.id)
+                  .eq('status', 'active')
+                  .maybeSingle();
 
-          if (activeSub) {
-            setSubscription(activeSub);
-            if (activeSub.end_date) {
-              const endDate = new Date(activeSub.end_date);
-              const today = new Date();
-              const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-              setDaysRemaining(Math.max(0, daysLeft));
+                if (isMounted && activeSub) {
+                  setSubscription(activeSub);
+                  if (activeSub.end_date) {
+                    const endDate = new Date(activeSub.end_date);
+                    const today = new Date();
+                    const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                    setDaysRemaining(Math.max(0, daysLeft));
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('Error in data fetch:', err);
+              if (isMounted) {
+                setError('Error loading vendor profile');
+              }
+            } finally {
+              if (isMounted) {
+                setLoading(false);
+              }
             }
-          }
-        }
-
-        setLoading(false);
+          })(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Vendor profile fetch timeout')), 20000)
+          )
+        ]);
       } catch (err) {
         console.error('Error loading vendor profile:', err);
-        setError('Error loading vendor profile');
+        if (err.message === 'Vendor profile fetch timeout') {
+          setError('Request timed out. Please try again.');
+        } else {
+          setError('Error loading vendor profile');
+        }
         setLoading(false);
       }
     };
 
     if (vendorId) fetchData();
-  }, [vendorId]);
+  }, [vendorId, authLoading, authUser]);
 
   const canEdit =
     !!currentUser &&
