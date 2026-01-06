@@ -10,6 +10,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🔹 AuthProvider mounted, checking initial session...');
+    
     const checkUser = async () => {
       try {
         // Avoid crashing on browsers with no session; Supabase can throw AuthSessionMissingError
@@ -19,15 +21,18 @@ export function AuthProvider({ children }) {
           if (sessionError?.name !== 'AuthSessionMissingError') {
             console.error('Auth session error:', sessionError);
           }
+          console.log('✓ No active session');
           setUser(null);
           return;
         }
 
         if (!session?.user) {
+          console.log('✓ No active session');
           setUser(null);
           return;
         }
 
+        console.log('✓ Found active session, user:', session.user.email);
         const { data: { user: currentUser }, error } = await supabase.auth.getUser();
         if (error) {
           if (error?.name !== 'AuthSessionMissingError') {
@@ -35,6 +40,7 @@ export function AuthProvider({ children }) {
           }
           setUser(null);
         } else {
+          console.log('✓ Auth user confirmed:', currentUser.email);
           setUser(currentUser);
         }
       } catch (err) {
@@ -49,11 +55,15 @@ export function AuthProvider({ children }) {
 
     checkUser();
 
+    // Subscribe to auth state changes (this handles session persistence across page loads)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('🔹 Auth state changed:', event);
         if (session?.user) {
+          console.log('✓ Session restored/updated for:', session.user.email);
           setUser(session.user);
         } else {
+          console.log('✓ Session cleared');
           setUser(null);
         }
       }
@@ -66,49 +76,59 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     try {
+      console.log('🔹 Signing in:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('❌ Sign in error:', error);
         return { data: null, error };
       }
 
+      console.log('✓ Sign in successful, user:', data.user?.email);
       if (data?.user) {
         setUser(data.user);
       }
 
       return { data, error: null };
     } catch (err) {
+      console.error('❌ Sign in exception:', err);
       return { data: null, error: err };
     }
   };
 
   const signUp = async (email, password) => {
     try {
+      console.log('🔹 Signing up:', email);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) {
+        console.error('❌ Sign up error:', error);
         return { data: null, error };
       }
 
+      console.log('✓ Sign up successful');
       return { data, error: null };
     } catch (err) {
+      console.error('❌ Sign up exception:', err);
       return { data: null, error: err };
     }
   };
 
   const logout = async () => {
     try {
+      console.log('🔹 Logging out...');
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Logout error:', error);
         return { error };
       }
+      console.log('✓ Logout successful');
       setUser(null);
       return { error: null };
     } catch (err) {

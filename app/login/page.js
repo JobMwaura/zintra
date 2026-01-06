@@ -86,7 +86,16 @@ export default function Login() {
       console.log('✅ Supabase login success:', data);
       console.log('🔹 User object:', data.user);
       console.log('🔹 Active tab:', activeTab);
+      console.log('🔹 Session tokens:', { 
+        accessToken: data.session?.access_token ? '✓ present' : '✗ missing',
+        refreshToken: data.session?.refresh_token ? '✓ present' : '✗ missing'
+      });
       setMessage('✅ Login successful! Redirecting...');
+
+      // CRITICAL: Wait for Supabase to persist the session to localStorage
+      // The signIn completes, but onAuthStateChange needs a moment to fire
+      // and AuthContext needs to update with the new user
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       let redirectUrl = '/browse';
 
@@ -116,9 +125,10 @@ export default function Login() {
       }
 
       console.log('🔹 Redirecting to:', redirectUrl);
+      // Use a longer delay to ensure session is fully persisted and AuthContext updates
       setTimeout(() => {
         window.location.href = redirectUrl;
-      }, 1200); // short delay to ensure Supabase session propagates
+      }, 800); // increased from 1200ms to give plenty of time for session persistence
 
     } catch (err) {
       console.error('❌ Unexpected login error:', err);
