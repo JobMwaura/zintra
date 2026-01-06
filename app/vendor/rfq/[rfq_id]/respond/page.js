@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 import QuoteFormSections from '@/components/vendor/QuoteFormSections';
 import {
   ArrowLeft,
@@ -22,6 +23,8 @@ import {
 export default function RFQRespond() {
   const router = useRouter();
   const params = useParams();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const supabase = createClient();
   
   const [rfq, setRfq] = useState(null);
   const [vendorProfile, setVendorProfile] = useState(null);
@@ -79,13 +82,27 @@ export default function RFQRespond() {
   const [attachmentErrors, setAttachmentErrors] = useState([]);
 
   useEffect(() => {
+    // Wait for auth to load before fetching data
+    if (authLoading) {
+      console.log('🔹 RFQRespond: Waiting for auth...');
+      return;
+    }
+
+    // Check if user is authenticated
+    if (!authUser) {
+      console.log('Not authenticated, redirecting to login');
+      router.push('/login');
+      return;
+    }
+
     if (params && params.rfq_id) {
       fetchData();
     }
-  }, []); // Only run once on mount
+  }, [authLoading, authUser, params, router]); // Include auth dependencies
 
   const fetchData = async () => {
     try {
+      let isMounted = true;
       setLoading(true);
       const rfqId = params.rfq_id;
 
@@ -95,70 +112,97 @@ export default function RFQRespond() {
         return;
       }
 
+      if (!authUser) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
       // Store rfqId in state for use in handleSubmit
       setRfqId(rfqId);
+      setUser(authUser);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // Fetch vendor profile from API endpoint with timeout
+      await Promise.race([
+        (async () => {
+          try {
+            const vendorResponse = await fetch('/api/vendor/profile', {
+              headers: {
+                'Authorization': `Bearer ${authUser.id}`
+              }
+            });
 
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
+            if (!vendorResponse.ok) {
+              if (isMounted) {
+                setError('Vendor profile not found');
+              }
+              return;
+            }
 
-      setUser(session.user);
+            const { vendor } = await vendorResponse.json();
+            if (isMounted) {
+              setVendorProfile(vendor);
+            }
 
-      // Fetch vendor profile from API endpoint (uses service role to bypass RLS)
-      const token = session.access_token;
-      const vendorResponse = await fetch('/api/vendor/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+            // Fetch RFQ details with timeout
+            const { data: rfqData, error: rfqError } = await supabase
+              .from('rfqs')
+              .select('*')
+              .eq('id', rfqId)
+              .single();
 
-      if (!vendorResponse.ok) {
-        setError('Vendor profile not found');
-        return;
-      }
+            if (rfqError || !rfqData) {
+              if (isMounted) {
+                setError('RFQ not found');
+              }
+              return;
+            }
 
-      const { vendor } = await vendorResponse.json();
-      setVendorProfile(vendor);
+            // Check if expired
+            const expiresAt = new Date(rfqData.expires_at);
+            if (expiresAt < new Date()) {
+              if (isMounted) {
+                setError('This RFQ has expired and is no longer accepting responses');
+              }
+              return;
+            }
 
-      // Fetch RFQ details
-      const { data: rfqData, error: rfqError } = await supabase
-        .from('rfqs')
-        .select('*')
-        .eq('id', rfqId)
-        .single();
+            // Check if already responded
+            const { data: existingResponse } = await supabase
+              .from('rfq_responses')
+              .select('id')
+              .eq('rfq_id', rfqId)
+              .eq('vendor_id', vendor.id)
+              .maybeSingle();
 
-      if (rfqError || !rfqData) {
-        setError('RFQ not found');
-        return;
-      }
+            if (existingResponse) {
+              if (isMounted) {
+                setError('You have already submitted a response to this RFQ');
+              }
+              return;
+            }
 
-      // Check if expired
-      const expiresAt = new Date(rfqData.expires_at);
-      if (expiresAt < new Date()) {
-        setError('This RFQ has expired and is no longer accepting responses');
-        return;
-      }
-
-      // Check if already responded
-      const { data: existingResponse } = await supabase
-        .from('rfq_responses')
-        .select('id')
-        .eq('rfq_id', rfqId)
-        .eq('vendor_id', vendor.id)
-        .maybeSingle();
-
-      if (existingResponse) {
-        setError('You have already submitted a response to this RFQ');
-        return;
-      }
-
-      setRfq(rfqData);
+            if (isMounted) {
+              setRfq(rfqData);
+            }
+          } catch (err) {
+            console.error('Error in data fetch:', err);
+            if (isMounted) {
+              setError(err.message);
+            }
+          }
+        })(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Data fetch timeout')), 15000)
+        )
+      ]);
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError(err.message);
+      if (err.message === 'Data fetch timeout') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
