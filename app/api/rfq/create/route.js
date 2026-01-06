@@ -152,27 +152,27 @@ export async function POST(request) {
     // ============================================================================
     // 4. CREATE RFQ RECORD - USING CORRECT SCHEMA
     // ============================================================================
-    // Map new field names to actual rfqs table schema
+    // Map to actual rfqs table schema (only fields that exist)
+    // Schema: id, user_id, title, description, category, location, county, budget_estimate, 
+    //         type, status, is_paid, paid_amount, assigned_vendor_id, urgency, tags, attachments,
+    //         created_at, updated_at, expires_at, completed_at
     const rfqData = {
-      user_id: userId || null,
-      title: sharedFields.projectTitle?.trim() || '',
+      user_id: userId, // Required, already validated
+      title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
       description: sharedFields.projectSummary?.trim() || '',
-      category: categorySlug, // Maps to 'category' column
-      location: sharedFields.town || null, // Maps to 'location' column
+      category: categorySlug,
+      location: sharedFields.town || null,
       county: sharedFields.county || null,
       budget_estimate: sharedFields.budgetMin && sharedFields.budgetMax 
         ? `${sharedFields.budgetMin} - ${sharedFields.budgetMax}` 
         : null,
-      type: rfqType, // 'direct' | 'wizard' | 'public' - maps to 'type' column
+      type: rfqType, // 'direct' | 'wizard' | 'public'
       assigned_vendor_id: rfqType === 'direct' && selectedVendors.length > 0 ? selectedVendors[0] : null,
-      urgency: 'normal',
+      urgency: sharedFields.urgency || 'normal',
       status: 'submitted', // Always submitted when created
       is_paid: false,
-      visibility: rfqType === 'public' ? 'public' : 'private',
-      rfq_type: rfqType, // Some queries use this field
-      guest_email: guestEmail || null,
-      guest_phone: guestPhone || null,
-      created_at: new Date().toISOString(),
+      // Note: Do NOT include fields that don't exist: visibility, rfq_type, guest_email, guest_phone
+      // Note: created_at and updated_at are set by database defaults
     };
 
     console.log('[RFQ CREATE] Inserting RFQ with data:', { title: rfqData.title, type: rfqData.type, category: rfqData.category });
@@ -198,15 +198,51 @@ export async function POST(request) {
     // 5. HANDLE VENDOR ASSIGNMENT
     // ============================================================================
 
-    // For DIRECT RFQ: Assign selected vendors
+    // For DIRECT RFQ: Add selected vendors to rfq_recipients table
     if (rfqType === 'direct' && selectedVendors.length > 0) {
       try {
-        // The first vendor is already set as assigned_vendor_id above
-        // If there are multiple vendors, we could add them to rfq_vendors table if it exists
-        console.log('[RFQ CREATE] Direct RFQ - Assigned to vendor:', selectedVendors[0]);
+        const recipientRecords = selectedVendors.map(vendorId => ({
+          rfq_id: rfqId,
+          vendor_id: vendorId,
+          recipient_type: 'direct',
+          status: 'sent',
+        }));
+
+        const { error: recipientError } = await supabase
+          .from('rfq_recipients')
+          .insert(recipientRecords);
+
+        if (recipientError) {
+          console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
+          // Continue - vendor assignment is not critical to RFQ creation
+        } else {
+          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors);
+        }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
         // Continue - vendor assignment is not critical
+      }
+    }
+
+    // For VENDOR-REQUEST RFQ: Add the single pre-selected vendor
+    if (rfqType === 'vendor-request' && selectedVendors.length > 0) {
+      try {
+        const { error: recipientError } = await supabase
+          .from('rfq_recipients')
+          .insert({
+            rfq_id: rfqId,
+            vendor_id: selectedVendors[0],
+            recipient_type: 'vendor-request',
+            status: 'sent',
+          });
+
+        if (recipientError) {
+          console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
+        } else {
+          console.log('[RFQ CREATE] Vendor-request RFQ - Added vendor:', selectedVendors[0]);
+        }
+      } catch (err) {
+        console.error('[RFQ CREATE] Vendor assignment error:', err.message);
       }
     }
 
@@ -235,8 +271,8 @@ export async function POST(request) {
       }
     }
 
-    // For PUBLIC RFQ: Visibility is already set to 'public' above
-    console.log('[RFQ CREATE] Public RFQ created with public visibility');
+    // For PUBLIC RFQ: No specific vendor assignment needed
+    console.log('[RFQ CREATE] RFQ created with type:', rfqType);
 
     // ============================================================================
     // 6. RETURN SUCCESS
