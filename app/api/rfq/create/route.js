@@ -144,7 +144,7 @@ export async function POST(request) {
     const rfqData = {
       user_id: userId, // Required, already validated
       title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
-      description: sharedFields.projectSummary?.trim() || '',
+      description: sharedFields.projectSummary?.trim() || 'No description provided',
       category: categorySlug,
       location: sharedFields.town || null,
       county: sharedFields.county || null,
@@ -158,12 +158,7 @@ export async function POST(request) {
       is_paid: false,
     };
 
-    console.log('[RFQ CREATE] Inserting RFQ with data:', { 
-      title: rfqData.title, 
-      type: rfqData.type, 
-      category: rfqData.category,
-      user_id: rfqData.user_id 
-    });
+    console.log('[RFQ CREATE] Full RFQ data being inserted:', JSON.stringify(rfqData, null, 2));
 
     const { data: createdRfq, error: createError } = await supabase
       .from('rfqs')
@@ -172,9 +167,20 @@ export async function POST(request) {
       .single();
 
     if (createError) {
-      console.error('[RFQ CREATE] Database insertion error:', createError);
+      console.error('[RFQ CREATE] Database insertion error:', {
+        message: createError.message,
+        code: createError.code,
+        details: createError.details,
+        hint: createError.hint,
+        context: createError.context,
+      });
       return NextResponse.json(
-        { error: 'Failed to create RFQ. Please try again.', details: createError.message },
+        { 
+          error: 'Failed to create RFQ. Please try again.', 
+          details: createError.message,
+          code: createError.code,
+          hint: createError.hint,
+        },
         { status: 500 }
       );
     }
