@@ -1,10 +1,11 @@
--- Task 9: Buyer Reputation System - Database Migration
+-- Task 9: User Reputation System - Database Migration
 -- Created: December 18, 2025
+-- Updated: January 6, 2026 - Changed buyer_id to user_id for consistency
 
 -- Create reputation_scores table
 CREATE TABLE IF NOT EXISTS reputation_scores (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  buyer_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   total_rfqs INTEGER DEFAULT 0,
   response_rate DECIMAL(5,2) DEFAULT 0,
   acceptance_rate DECIMAL(5,2) DEFAULT 0,
@@ -18,8 +19,8 @@ CREATE TABLE IF NOT EXISTS reputation_scores (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reputation_score INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS badge_tier TEXT DEFAULT 'bronze';
 
--- Create index on buyer_id for faster queries
-CREATE INDEX IF NOT EXISTS idx_reputation_buyer_id ON reputation_scores(buyer_id);
+-- Create index on user_id for faster queries
+CREATE INDEX IF NOT EXISTS idx_reputation_user_id ON reputation_scores(user_id);
 
 -- Create index on badge_tier for filtering
 CREATE INDEX IF NOT EXISTS idx_reputation_badge_tier ON reputation_scores(badge_tier);

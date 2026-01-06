@@ -4,11 +4,11 @@
  * ============================================================================
  * POST /api/reputation/calculate
  * 
- * Calculate and update buyer reputation based on RFQ activity
+ * Calculate and update user reputation based on RFQ activity
  * 
  * Request Body:
  * {
- *   "buyerId": "uuid"
+ *   "userId": "uuid"
  * }
  * 
  * Response (Success):
@@ -16,7 +16,7 @@
  *   "success": true,
  *   "reputation": {
  *     "id": "uuid",
- *     "buyer_id": "uuid",
+ *     "user_id": "uuid",
  *     "total_rfqs": 15,
  *     "response_rate": 85.5,
  *     "acceptance_rate": 72.3,
@@ -72,22 +72,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { buyerId } = req.body;
+    const { userId } = req.body;
 
     // Validate input
-    if (!buyerId) {
-      return res.status(400).json({ error: 'buyerId is required in request body' });
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required in request body' });
     }
 
-    if (typeof buyerId !== 'string' || buyerId.length < 36) {
-      return res.status(400).json({ error: 'Invalid buyerId format' });
+    if (typeof userId !== 'string' || userId.length < 36) {
+      return res.status(400).json({ error: 'Invalid userId format' });
     }
 
     // Get user's RFQs
     const { data: rfqs, error: rfqError } = await supabase
       .from('rfqs')
       .select('id, status, created_at')
-      .eq('buyer_id', buyerId);
+      .eq('user_id', userId);
 
     if (rfqError) {
       console.error('Error fetching RFQs:', rfqError);
@@ -105,8 +105,8 @@ export default async function handler(req, res) {
 
     // Get quote acceptance rate
     const { data: quotes, error: quotesError } = await supabase
-      .from('quotes')
-      .select('id, selected, rfq_id')
+      .from('rfq_quotes')
+      .select('id, status, rfq_id')
       .in('rfq_id', rfqs.map(r => r.id));
 
     if (quotesError) {
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       throw new Error(`Failed to fetch quotes: ${quotesError.message}`);
     }
 
-    const selectedQuotes = quotes.filter(q => q.selected).length;
+    const selectedQuotes = quotes.filter(q => q.status === 'accepted').length;
     const acceptanceRate = quotes.length > 0 ? (selectedQuotes / quotes.length) * 100 : 0;
 
     // Calculate final reputation score
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
       .from('reputation_scores')
       .upsert(
         {
-          buyer_id: buyerId,
+          user_id: userId,
           total_rfqs: totalRfqs,
           response_rate: parseFloat(responseRate.toFixed(2)),
           acceptance_rate: parseFloat(acceptanceRate.toFixed(2)),
@@ -140,7 +140,7 @@ export default async function handler(req, res) {
           badge_tier: badgeTier,
           updated_at: new Date().toISOString()
         },
-        { onConflict: 'buyer_id' }
+        { onConflict: 'user_id' }
       )
       .select()
       .single();

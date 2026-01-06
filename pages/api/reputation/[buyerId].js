@@ -2,17 +2,17 @@
  * ============================================================================
  * FETCH REPUTATION ENDPOINT
  * ============================================================================
- * GET /api/reputation/[buyerId]
+ * GET /api/reputation/[userId]
  * 
- * Fetch reputation data for a specific buyer
+ * Fetch reputation data for a specific user
  * 
  * Query Parameters:
- * - buyerId (required): UUID of the buyer
+ * - userId (required): UUID of the user
  * 
  * Response (Success):
  * {
  *   "id": "uuid",
- *   "buyer_id": "uuid",
+ *   "user_id": "uuid",
  *   "total_rfqs": 15,
  *   "response_rate": 85.5,
  *   "acceptance_rate": 72.3,
@@ -24,7 +24,7 @@
  * 
  * Response (Not Found - Returns Default):
  * {
- *   "buyer_id": "uuid",
+ *   "user_id": "uuid",
  *   "total_rfqs": 0,
  *   "response_rate": 0,
  *   "acceptance_rate": 0,
@@ -58,18 +58,18 @@ export default async function handler(req, res) {
 
     // Validate input
     if (!buyerId) {
-      return res.status(400).json({ error: 'buyerId is required in query parameters' });
+      return res.status(400).json({ error: 'userId is required in query parameters' });
     }
 
     if (typeof buyerId !== 'string' || buyerId.length < 36) {
-      return res.status(400).json({ error: 'Invalid buyerId format' });
+      return res.status(400).json({ error: 'Invalid userId format' });
     }
 
     // Fetch reputation data from database
     const { data: reputation, error } = await supabase
       .from('reputation_scores')
       .select('*')
-      .eq('buyer_id', buyerId)
+      .eq('user_id', buyerId)
       .single();
 
     // Handle "no rows" error (not found) gracefully
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
       // Return default reputation for new users
       const now = new Date().toISOString();
       return res.status(200).json({
-        buyer_id: buyerId,
+        user_id: buyerId,
         total_rfqs: 0,
         response_rate: 0,
         acceptance_rate: 0,
