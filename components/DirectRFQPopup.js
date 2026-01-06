@@ -186,7 +186,6 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           category: form.category,
           budget_range: form.budget,
           location: form.location,
-          buyer_id: user?.id || null,
           user_id: user?.id || null,
           status: 'submitted',
         }])

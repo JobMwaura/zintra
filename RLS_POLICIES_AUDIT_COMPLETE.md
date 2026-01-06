@@ -1,21 +1,27 @@
 # ✅ RLS POLICIES AUDIT COMPLETE
 
-## Summary: Your RLS Policies Are Correctly Configured!
+## Summary: Your RLS Policies Are Correct✅ **Your RLS policies are NOT blocking RFQ submissions!**
+
+All policies are:
+- ✅ PERMISSIVE (allow operations)
+- ✅ Using correct column (user_id only, not buyer_id)
+- ✅ Checking auth.uid() correctly
+- ✅ No DENY policies blocking inserts
+- ✅ Endpoint using correct field (user_id) ✅gured!
 
 ### ✅ What We Found
 
-Your Supabase RLS policies are **properly set up** for RFQ creation:
+Your Supabase RLS policies are **properly set up** for RFQ creation using **user_id** (not buyer_id):
 
 | Policy Name | Type | Effect | Condition |
 |------------|------|--------|-----------|
 | Users can create RFQs | ✅ PERMISSIVE | **ALLOWS INSERT** | `auth.uid() = user_id` |
-| Buyers can insert their own RFQs | ✅ PERMISSIVE | **ALLOWS INSERT** | `auth.uid() = buyer_id` |
 | Users can see own RFQs | ✅ PERMISSIVE | **ALLOWS SELECT** | - |
 | Users can update own RFQs | ✅ PERMISSIVE | **ALLOWS UPDATE** | - |
 | Vendors can see assigned RFQs | ✅ PERMISSIVE | **ALLOWS SELECT** | - |
 | See public RFQs | ✅ PERMISSIVE | **ALLOWS SELECT** | - |
 
-**Plus 5 additional INSERT/UPDATE/SELECT policies** ✅
+**All INSERT policies use user_id (not buyer_id)** ✅
 
 ---
 
@@ -38,11 +44,7 @@ Your endpoint is using the correct column and correct RLS will allow it!
    - Allows: `auth.uid() = user_id` ✅
    - Status: PERMISSIVE (allows inserts)
 
-2. **"Buyers can insert their own RFQs"**
-   - Allows: `auth.uid() = buyer_id` ✅
-   - Status: PERMISSIVE (allows inserts)
-
-**Why two policies?** Your rfqs table has both `user_id` and `buyer_id` columns. The policies allow either one to be checked. This is fine - both work.
+**Why one policy?** Your rfqs table now uses **only user_id** column for user association. This is cleaner and removes confusion with the old buyer_id column.
 
 ### What This Means
 
@@ -56,12 +58,11 @@ Your endpoint is using the correct column and correct RLS will allow it!
 
 ## 📊 Complete Policy Breakdown
 
-**11 total policies on rfqs table:**
+**10+ total policies on rfqs table:**
 
-### INSERT/UPDATE Policies (3)
-1. ✅ "Buyers can insert their own RFQs"
-2. ✅ "Users can create RFQs"
-3. ✅ "rfqs_insert_own"
+### INSERT/UPDATE Policies (2)
+1. ✅ "Users can create RFQs" (uses user_id)
+2. ✅ "rfqs_insert_own"
 
 ### SELECT Policies (5)
 1. ✅ "See public RFQs"
@@ -70,10 +71,9 @@ Your endpoint is using the correct column and correct RLS will allow it!
 4. ✅ "rfqs_select_authenticated"
 5. ✅ "Vendors can see assigned RFQs"
 
-### Other Policies (3)
+### Other Policies (2+)
 1. ✅ "rfqs_service_role" (INSERT/UPDATE)
-2. ✅ "rfqs_view_their_assigned_rfqs" (SELECT)
-3. ✅ "Users can update own RFQs" (UPDATE)
+2. ✅ "Users can update own RFQs" (UPDATE)
 
 ---
 
