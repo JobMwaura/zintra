@@ -8,11 +8,11 @@ import { LogOut, User, Phone, CheckCircle, AlertCircle, Loader } from 'lucide-re
 import DashboardNotificationsPanel from '@/components/DashboardNotificationsPanel';
 
 export default function UserDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const supabase = createClient();
 
   const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
@@ -24,7 +24,7 @@ export default function UserDashboard() {
   const fetchUserData = async () => {
     if (!user) {
       setError('No user logged in');
-      setLoading(false);
+      setDataLoading(false);
       return;
     }
 
@@ -45,7 +45,7 @@ export default function UserDashboard() {
       console.error('Unexpected error:', err);
       setError('An unexpected error occurred');
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
   };
 
@@ -53,6 +53,18 @@ export default function UserDashboard() {
     await signOut();
     window.location.href = '/login';
   };
+
+  // Wait for AuthContext to restore user from session before showing "Not Logged In"
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
