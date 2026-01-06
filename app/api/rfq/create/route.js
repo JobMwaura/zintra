@@ -221,9 +221,9 @@ export async function POST(request) {
       category_slug: categorySlug, // ✅ CORRECT FIELD NAME (was 'category')
       specific_location: sharedFields.town || null, // ✅ Use specific_location
       county: sharedFields.county || null,
-      budget_estimate: sharedFields.budgetMin && sharedFields.budgetMax 
-        ? `${sharedFields.budgetMin} - ${sharedFields.budgetMax}` 
-        : null,
+      // ✅ CORRECT: Use budget_min and budget_max as separate numeric columns (NOT budget_estimate as string)
+      budget_min: sharedFields.budgetMin || null,
+      budget_max: sharedFields.budgetMax || null,
       type: rfqType, // 'direct' | 'wizard' | 'public' | 'vendor-request'
       assigned_vendor_id: null, // Don't set here - let rfq_recipients table handle vendor links
       urgency: sharedFields.urgency || 'normal',
