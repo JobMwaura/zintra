@@ -174,7 +174,6 @@ export default function WizardRFQModal({ isOpen = false, onClose = () => {}, onS
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          selectedVendorIds: selectedVendors,
           guestPhone: guestPhone,
           guestPhoneVerified: guestPhoneVerified,
         }),

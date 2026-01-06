@@ -218,8 +218,8 @@ export async function POST(request) {
       user_id: userId, // Required, already validated
       title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
       description: sharedFields.projectSummary?.trim() || '',
-      category_slug: categorySlug, // ✅ CORRECT FIELD NAME (was 'category')
-      specific_location: sharedFields.town || null, // ✅ Use specific_location
+      category_slug: categorySlug, // ✅ CORRECT FIELD NAME (added in migration)
+      location: sharedFields.town || null, // ✅ Use 'location' field (not 'specific_location')
       county: sharedFields.county || null,
       // ✅ CORRECT: Use budget_min and budget_max as separate numeric columns (NOT budget_estimate as string)
       budget_min: sharedFields.budgetMin || null,
