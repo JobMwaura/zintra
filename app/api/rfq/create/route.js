@@ -218,8 +218,8 @@ export async function POST(request) {
       user_id: userId, // Required, already validated
       title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
       description: sharedFields.projectSummary?.trim() || '',
-      category: categorySlug,
-      location: sharedFields.town || null,
+      category_slug: categorySlug, // ✅ CORRECT FIELD NAME (was 'category')
+      specific_location: sharedFields.town || null, // ✅ Use specific_location
       county: sharedFields.county || null,
       budget_estimate: sharedFields.budgetMin && sharedFields.budgetMax 
         ? `${sharedFields.budgetMin} - ${sharedFields.budgetMax}` 
@@ -229,6 +229,7 @@ export async function POST(request) {
       urgency: sharedFields.urgency || 'normal',
       status: 'submitted', // Always submitted when created
       is_paid: false,
+      visibility: rfqType === 'public' ? 'public' : 'private', // Set visibility based on type
     };
 
     console.log('[RFQ CREATE] Inserting RFQ with data:', { 
