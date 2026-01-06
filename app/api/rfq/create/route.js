@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { autoMatchVendors, createPublicRFQRecipients, triggerNotifications } from '@/lib/vendorMatching';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -123,39 +124,118 @@ export async function POST(request) {
     // ============================================================================
     // 2. USER AUTHENTICATION CHECK
     // ============================================================================
-    // For now, just use the userId that was validated above
-    // We've already checked that it exists and is not empty
-    console.log('[RFQ CREATE] Using authenticated userId:', userId);
+    console.log('[RFQ CREATE] Verifying user:', userId);
 
     // ============================================================================
-    // 3. NOTE: QUOTA CHECKING DISABLED
+    // 3. VERIFICATION CHECK (email + phone must be verified)
     // ============================================================================
-    // Quota checking via RPC would go here, but we allow unlimited submissions
-    // for now to get the system working. Can be added back later via:
-    // - check_rfq_quota_available RPC function
-    // - or direct query to user quota tables
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, phone_verified, email_verified')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      console.error('[RFQ CREATE] User verification error:', userError);
+      return NextResponse.json(
+        { error: 'User not found or verification failed' },
+        { status: 404 }
+      );
+    }
+
+    if (!user.phone_verified || !user.email_verified) {
+      console.warn('[RFQ CREATE] User not verified:', {
+        user_id: userId,
+        phone_verified: user.phone_verified,
+        email_verified: user.email_verified
+      });
+      return NextResponse.json(
+        { 
+          error: 'You must verify your email and phone number before submitting an RFQ',
+          details: {
+            phone_verified: user.phone_verified,
+            email_verified: user.email_verified
+          }
+        },
+        { status: 403 }
+      );
+    }
+
+    console.log('[RFQ CREATE] User verified, proceeding');
+
+    // ============================================================================
+    // 4. RE-CHECK USAGE LIMIT (server-side, never trust frontend)
+    // ============================================================================
+    const FREE_RFQ_LIMIT = 3;
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    thisMonth.setHours(0, 0, 0, 0);
+
+    const { count: rfqCount, error: countError } = await supabase
+      .from('rfqs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'submitted')
+      .gte('created_at', thisMonth.toISOString());
+
+    if (countError) {
+      console.error('[RFQ CREATE] RFQ count error:', countError);
+      return NextResponse.json(
+        { error: 'Failed to check RFQ quota' },
+        { status: 500 }
+      );
+    }
+
+    const current_count = rfqCount || 0;
+    if (current_count >= FREE_RFQ_LIMIT) {
+      console.warn('[RFQ CREATE] User over quota:', { user_id: userId, count: current_count, limit: FREE_RFQ_LIMIT });
+      return NextResponse.json(
+        { 
+          error: 'You have reached your monthly RFQ limit. Please pay KES 300 to submit additional RFQs.',
+          code: 'QUOTA_EXCEEDED',
+          current_count,
+          limit: FREE_RFQ_LIMIT
+        },
+        { status: 402 } // 402 Payment Required
+      );
+    }
+
+    console.log('[RFQ CREATE] Quota check passed:', { current_count, limit: FREE_RFQ_LIMIT });
 
 
+
     // ============================================================================
-    // 4. CREATE RFQ RECORD - USING CORRECT SCHEMA
+    // 5. INPUT SANITIZATION
+    // ============================================================================
+    const sanitizeInput = (str) => {
+      if (typeof str !== 'string') return str;
+      // Remove HTML tags and trim
+      return str.replace(/<[^>]*>/g, '').trim();
+    };
+
+    // ============================================================================
+    // 6. CREATE RFQ RECORD - USING CORRECT SCHEMA
     // ============================================================================
     // Map to actual rfqs table schema (only fields that exist)
     // Don't set assigned_vendor_id if we're not sure the vendor exists
     const rfqData = {
       user_id: userId, // Required, already validated
-      title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
-      description: sharedFields.projectSummary?.trim() || 'No description provided',
+      title: sanitizeInput(sharedFields.projectTitle) || 'Untitled RFQ',
+      description: sanitizeInput(sharedFields.projectSummary) || 'No description provided',
       category: categorySlug,
-      location: sharedFields.town || null,
-      county: sharedFields.county || null,
+      location: sanitizeInput(sharedFields.town) || null,
+      county: sanitizeInput(sharedFields.county) || null,
       budget_estimate: sharedFields.budgetMin && sharedFields.budgetMax 
         ? `${sharedFields.budgetMin} - ${sharedFields.budgetMax}` 
         : null,
-      type: rfqType, // 'direct' | 'wizard' | 'public'
+      type: rfqType, // 'direct' | 'wizard' | 'public' | 'vendor-request'
       assigned_vendor_id: null, // Don't set here - let rfq_recipients table handle vendor links
       urgency: sharedFields.urgency || 'normal',
       status: 'submitted', // Always submitted when created
-      is_paid: false,
+      is_paid: current_count >= (FREE_RFQ_LIMIT - 1), // Mark as paid if over free limit
+      visibility: rfqType === 'public' ? 'public' : 'private',
+      template_data: templateFields || {}, // Store category-specific data as JSON
+      shared_data: sharedFields || {}, // Store shared data as JSON
     };
 
     console.log('[RFQ CREATE] Full RFQ data being inserted:', JSON.stringify(rfqData, null, 2));
@@ -189,7 +269,7 @@ export async function POST(request) {
     console.log('[RFQ CREATE] RFQ created successfully with ID:', rfqId);
 
     // ============================================================================
-    // 5. HANDLE VENDOR ASSIGNMENT
+    // 7. HANDLE VENDOR ASSIGNMENT (type-specific)
     // ============================================================================
 
     // For DIRECT RFQ: Add selected vendors to rfq_recipients table
@@ -210,10 +290,33 @@ export async function POST(request) {
           console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
           // Continue - vendor assignment is not critical to RFQ creation
         } else {
-          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors);
+          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors.length);
         }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
+        // Continue - vendor assignment is not critical
+      }
+    }
+
+    // For WIZARD RFQ: Auto-match vendors based on category and rating
+    if (rfqType === 'wizard') {
+      try {
+        console.log('[RFQ CREATE] Wizard RFQ - Auto-matching vendors for category:', categorySlug);
+        const matched = await autoMatchVendors(rfqId, categorySlug, sharedFields.county);
+        console.log('[RFQ CREATE] Wizard RFQ - Matched', matched.length, 'vendors');
+      } catch (err) {
+        console.error('[RFQ CREATE] Vendor auto-match error:', err.message);
+        // Continue - auto-match is not critical
+      }
+    }
+
+    // For PUBLIC RFQ: Create recipients with top vendors
+    if (rfqType === 'public') {
+      try {
+        console.log('[RFQ CREATE] Public RFQ - Finding top vendors for category:', categorySlug);
+        await createPublicRFQRecipients(rfqId, categorySlug, sharedFields.county);
+      } catch (err) {
+        console.error('[RFQ CREATE] Public RFQ recipient error:', err.message);
         // Continue - vendor assignment is not critical
       }
     }
@@ -240,36 +343,46 @@ export async function POST(request) {
       }
     }
 
-    // For WIZARD RFQ: Use the RPC function if available
-    if (rfqType === 'wizard') {
-      try {
-        console.log('[RFQ CREATE] Wizard RFQ - Auto-matching vendors for category:', categorySlug);
-        // Try to call auto-match RPC if it exists
-        const { data: matchData, error: matchError } = await supabase.rpc(
-          'auto_match_vendors_to_rfq',
-          { p_rfq_id: rfqId }
-        ).catch(() => {
-          // RPC doesn't exist or failed - that's OK, log and continue
-          console.log('[RFQ CREATE] Auto-match RPC not available, continuing...');
-          return { data: null, error: null };
-        });
+    // ============================================================================
+    // 8. TRIGGER NOTIFICATIONS (async, non-blocking)
+    // ============================================================================
+    // Send notifications to vendors in background (don't wait for response)
+    triggerNotifications(rfqId, rfqType, userId, createdRfq.title).catch(err => {
+      console.error('[RFQ CREATE] Notification error (non-critical):', err.message);
+    });
 
-        if (matchError) {
-          console.error('[RFQ CREATE] Vendor auto-match error:', matchError);
-        } else if (matchData) {
-          console.log('[RFQ CREATE] Auto-matched vendors');
-        }
-      } catch (err) {
-        console.error('[RFQ CREATE] Vendor auto-match error:', err.message);
-        // Continue - auto-match is not critical
-      }
-    }
+    console.log('[RFQ CREATE] Vendor assignment and notifications triggered');
+
+    // For old code reference - this is what was here before
+    // if (rfqType === 'wizard') {
+    //   try {
+    //     console.log('[RFQ CREATE] Wizard RFQ - Auto-matching vendors for category:', categorySlug);
+    //     // Try to call auto-match RPC if it exists
+    //     const { data: matchData, error: matchError } = await supabase.rpc(
+    //       'auto_match_vendors_to_rfq',
+    //       { p_rfq_id: rfqId }
+    //     ).catch(() => {
+    //       // RPC doesn't exist or failed - that's OK, log and continue
+    //       console.log('[RFQ CREATE] Auto-match RPC not available, continuing...');
+    //       return { data: null, error: null };
+    //     });
+    //
+    //     if (matchError) {
+    //       console.error('[RFQ CREATE] Vendor auto-match error:', matchError);
+    //     } else if (matchData) {
+    //       console.log('[RFQ CREATE] Auto-matched vendors');
+    //     }
+    //   } catch (err) {
+    //     console.error('[RFQ CREATE] Vendor auto-match error:', err.message);
+    //     // Continue - auto-match is not critical
+    //   }
+    // }
 
     // For PUBLIC RFQ: No specific vendor assignment needed
     console.log('[RFQ CREATE] RFQ created with type:', rfqType);
 
     // ============================================================================
-    // 6. RETURN SUCCESS
+    // 9. RETURN SUCCESS
     // ============================================================================
     console.log('[RFQ CREATE] Success - returning response');
     return NextResponse.json(
