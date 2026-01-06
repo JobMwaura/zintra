@@ -61,7 +61,7 @@ WHERE tablename = 'rfqs';
 -- ============================================================================
 SELECT 
   policyname,
-  CASE WHEN permissive = true THEN 'ALLOW ✅' ELSE 'DENY ❌' END as policy_type,
+  permissive as policy_type,
   cmd as operation,
   qual as select_condition,
   with_check as insert_update_condition
@@ -119,12 +119,14 @@ LIMIT 10;
 -- ============================================================================
 -- TEST 9: Test manual INSERT with wizard type (simulate what API does)
 -- ============================================================================
--- ⚠️  IMPORTANT: Replace YOUR_USER_ID with the actual UUID from your users table
--- Get your user ID first:
+-- 🚨 IMPORTANT: RUN THIS FIRST TO GET YOUR UUID:
+SELECT id as your_user_id, email FROM auth.users WHERE email IS NOT NULL LIMIT 1;
 
-SELECT id FROM auth.users LIMIT 1;
+-- ⬆️ Copy the UUID from above, then paste into the query below
+-- Replace the entire string 'your-uuid-here' with your actual UUID
+-- Example: if the UUID is 12345678-1234-1234-1234-123456789012, use that
 
--- Then run this INSERT test (replace 'YOUR_USER_ID' with actual UUID):
+-- Then run this INSERT test (only after getting your UUID from above):
 INSERT INTO public.rfqs (
   user_id,
   title,
@@ -137,7 +139,7 @@ INSERT INTO public.rfqs (
   budget_min,
   budget_max
 ) VALUES (
-  'YOUR_USER_ID'::uuid,
+  'your-uuid-here'::uuid,
   'Test Wizard RFQ',
   'This is a test to diagnose wizard RFQ issues',
   'wizard',
