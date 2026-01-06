@@ -205,15 +205,22 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Get vendor profile (optional - use user ID if profile not found)
+    // Get vendor profile - query vendors table (not vendor_profiles)
     const { data: vendorProfile } = await supabase
-      .from('vendor_profiles')
-      .select('id, business_name, rating')
+      .from('vendors')
+      .select('id, name, rating')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    // Use vendor profile ID if available, otherwise use user ID as vendor identifier
-    const vendorId = vendorProfile?.id || user.id;
+    // Use vendor profile ID - required for vendor to submit quotes
+    const vendorId = vendorProfile?.id;
+    
+    if (!vendorId) {
+      return NextResponse.json(
+        { error: 'Vendor profile not found. Please complete your vendor registration first.' },
+        { status: 403 }
+      );
+    }
 
     // Check if RFQ exists and is eligible for response
     const { data: rfq, error: rfqError } = await supabase
@@ -268,18 +275,50 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if vendor is eligible to respond (for direct RFQs)
-    if (rfq.type === 'direct') {
+    // Check if vendor is eligible to respond
+    // For DIRECT RFQs: vendor must be explicitly assigned
+    // For WIZARD/PUBLIC RFQs: vendor must have been auto-matched
+    if (rfq.type === 'direct' || rfq.type === 'wizard') {
       const { data: recipient } = await supabase
         .from('rfq_recipients')
-        .select('id, vendor_id')
+        .select('id, vendor_id, recipient_type')
         .eq('rfq_id', rfq_id)
-        .eq('vendor_id', vendorProfile.id)
+        .eq('vendor_id', vendorId)
         .maybeSingle();
 
       if (!recipient) {
+        const errorMsg = rfq.type === 'direct' 
+          ? 'You are not assigned to this direct RFQ' 
+          : 'You were not matched to this wizard RFQ. Only vendors matched by the system can submit quotes.';
         return NextResponse.json(
-          { error: 'You are not assigned to this direct RFQ' },
+          { error: errorMsg },
+          { status: 403 }
+        );
+      }
+    }
+
+    // For PUBLIC RFQs: any vendor in the same category can respond
+    if (rfq.type === 'public') {
+      const { data: vendorData } = await supabase
+        .from('vendors')
+        .select('id, primary_category, secondary_categories')
+        .eq('id', vendorId)
+        .single();
+
+      if (!vendorData) {
+        return NextResponse.json(
+          { error: 'Vendor information not found' },
+          { status: 404 }
+        );
+      }
+
+      // Check if vendor is in the RFQ category
+      const inCategory = vendorData.primary_category === rfq.category || 
+        (vendorData.secondary_categories && vendorData.secondary_categories.includes(rfq.category));
+      
+      if (!inCategory) {
+        return NextResponse.json(
+          { error: 'You are not in the required category for this public RFQ' },
           { status: 403 }
         );
       }
