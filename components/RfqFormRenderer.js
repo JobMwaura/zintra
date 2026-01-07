@@ -166,6 +166,10 @@ export const RfqFormRenderer = React.forwardRef(
           );
 
         case 'select':
+          const isOtherSelected = fieldValue === 'Other';
+          const customValueKey = `${field.name}_custom`;
+          const customFieldValue = formValues[customValueKey] || '';
+          
           return (
             <div key={field.name} className="mb-6">
               <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 mb-2">
@@ -186,6 +190,29 @@ export const RfqFormRenderer = React.forwardRef(
                   </option>
                 ))}
               </select>
+
+              {/* Conditional text input when "Other" is selected */}
+              {isOtherSelected && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <label htmlFor={customValueKey} className="block text-sm font-medium text-gray-700 mb-2">
+                    Please specify:
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    id={customValueKey}
+                    type="text"
+                    value={customFieldValue}
+                    onChange={(e) => handleFieldChange(customValueKey, e.target.value)}
+                    placeholder={`Please explain your choice for "${field.label.toLowerCase()}"`}
+                    disabled={disabled}
+                    className={`${baseClasses} bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  />
+                  <p className="text-xs text-blue-600 mt-2">
+                    💡 Help vendors understand your specific needs
+                  </p>
+                </div>
+              )}
+
               {fieldError && <p className="text-red-500 text-sm mt-1">{fieldError}</p>}
             </div>
           );

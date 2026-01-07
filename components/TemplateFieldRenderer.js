@@ -142,14 +142,19 @@ export default function TemplateFieldRenderer({
     );
   }
 
-  // SELECT DROPDOWN
+  // SELECT DROPDOWN (with conditional "Other" text input)
   if (type === 'select') {
+    const isOtherSelected = value === 'Other';
+    const customValueKey = `${name}_custom`;
+
     return (
       <div className={baseWrapperClasses}>
         <label className={labelClasses}>
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
+        
+        {/* Main select dropdown */}
         <select
           name={name}
           value={value || ''}
@@ -163,6 +168,28 @@ export default function TemplateFieldRenderer({
             </option>
           ))}
         </select>
+
+        {/* Conditional text input when "Other" is selected */}
+        {isOtherSelected && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <label htmlFor={customValueKey} className="block text-sm font-medium text-gray-700 mb-2">
+              Please specify:
+              <span className="text-red-500 ml-1">*</span>
+            </label>
+            <input
+              id={customValueKey}
+              type="text"
+              name={customValueKey}
+              placeholder={`Please explain your choice for "${label.toLowerCase()}"`}
+              onChange={(e) => onChange(customValueKey, e.target.value)}
+              className={`${commonInputClasses} bg-white`}
+            />
+            <p className="text-xs text-blue-600 mt-2">
+              💡 Help vendors understand your specific needs
+            </p>
+          </div>
+        )}
+
         {error && <p className={errorClasses}>{error}</p>}
       </div>
     );
