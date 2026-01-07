@@ -7,7 +7,7 @@
       "id": "architectural_design",
       "slug": "architectural_design",
       "label": "Architectural & Design",
-      "icon": "🏛️",
+      "icon": "\ud83c\udfdb\ufe0f",
       "description": "House designs, commercial plans, council approvals",
       "jobTypes": [
         {
@@ -20,35 +20,58 @@
               "name": "project_type",
               "label": "Type of project",
               "type": "select",
-              "options": ["New residential house", "Apartments & flats", "Commercial building", "Mixed-use", "Other"],
+              "options": [
+                "New residential house",
+                "Apartments & flats",
+                "Commercial building",
+                "Mixed-use",
+                "Other"
+              ],
               "required": true
             },
             {
               "name": "plot_details",
               "label": "Plot details",
               "type": "text",
-              "placeholder": "e.g. 50×100, corner plot, sloping ground",
+              "placeholder": "e.g. 50\u00d7100, corner plot, sloping ground",
               "required": false
             },
             {
               "name": "number_of_floors",
               "label": "Number of floors",
               "type": "select",
-              "options": ["Bungalow", "2 storeys", "3+ storeys", "Not sure yet"],
+              "options": [
+                "Bungalow",
+                "2 storeys",
+                "3+ storeys",
+                "Not sure yet",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "scope_of_design",
               "label": "Scope of design",
               "type": "radio",
-              "options": ["Floor plans", "Elevations & 3D views", "Structural drawings", "Council approval pack", "Interior layout"],
+              "options": [
+                "Floor plans",
+                "Elevations & 3D views",
+                "Structural drawings",
+                "Council approval pack",
+                "Interior layout"
+              ],
               "required": false
             },
             {
               "name": "project_stage",
               "label": "Stage of project",
               "type": "select",
-              "options": ["Just an idea", "I have rough sketches", "I have old plans that need updating"],
+              "options": [
+                "Just an idea",
+                "I have rough sketches",
+                "I have old plans that need updating",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -66,7 +89,7 @@
       "id": "building_masonry",
       "slug": "building_masonry",
       "label": "Building & Masonry",
-      "icon": "🏗️",
+      "icon": "\ud83c\udfd7\ufe0f",
       "description": "Construction, walls, foundations, slabs",
       "jobTypes": [
         {
@@ -86,28 +109,47 @@
               "name": "scope_of_work",
               "label": "Scope of work",
               "type": "select",
-              "options": ["Full house construction", "Extension", "Perimeter wall", "Slab only", "Foundation only"],
+              "options": [
+                "Full house construction",
+                "Extension",
+                "Perimeter wall",
+                "Slab only",
+                "Foundation only",
+                "Other"
+              ],
               "required": true
             },
             {
               "name": "site_status",
               "label": "Current status of site",
               "type": "select",
-              "options": ["Bare plot", "Foundation done", "Up to slab", "Structure up, needs finishes", "Ongoing build, need new contractor"],
+              "options": [
+                "Bare plot",
+                "Foundation done",
+                "Up to slab",
+                "Structure up, needs finishes",
+                "Ongoing build, need new contractor",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "materials_supply",
               "label": "Who supplies materials?",
               "type": "select",
-              "options": ["Contractor supplies all", "Client supplies, labour only", "Mixed"],
+              "options": [
+                "Contractor supplies all",
+                "Client supplies, labour only",
+                "Mixed",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "approximate_size",
               "label": "Approximate house or wall size",
               "type": "text",
-              "placeholder": "e.g. 150m² house, 50m perimeter wall",
+              "placeholder": "e.g. 150m\u00b2 house, 50m perimeter wall",
               "required": false
             },
             {
@@ -125,7 +167,7 @@
       "id": "roofing_waterproofing",
       "slug": "roofing_waterproofing",
       "label": "Roofing & Waterproofing",
-      "icon": "🏠",
+      "icon": "\ud83c\udfe0",
       "description": "Roof installation, repairs, waterproofing",
       "jobTypes": [
         {
@@ -138,28 +180,46 @@
               "name": "job_type",
               "label": "Type of job",
               "type": "select",
-              "options": ["New roof", "Re-roofing", "Leak repair", "Waterproofing only"],
+              "options": [
+                "New roof",
+                "Re-roofing",
+                "Leak repair",
+                "Waterproofing only",
+                "Other"
+              ],
               "required": true
             },
             {
               "name": "roof_type",
               "label": "Roof type",
               "type": "select",
-              "options": ["Tiles", "Mabati sheets", "Shingles", "Concrete slab", "Other"],
+              "options": [
+                "Tiles",
+                "Mabati sheets",
+                "Shingles",
+                "Concrete slab",
+                "Other"
+              ],
               "required": true
             },
             {
               "name": "roof_area",
               "label": "Approximate roof area or building size",
               "type": "text",
-              "placeholder": "e.g. 10m × 12m, 3-bedroom house",
+              "placeholder": "e.g. 10m \u00d7 12m, 3-bedroom house",
               "required": false
             },
             {
               "name": "existing_situation",
               "label": "Existing situation",
               "type": "select",
-              "options": ["No roof yet", "Old roof in place", "Leaking slab", "Damp walls"],
+              "options": [
+                "No roof yet",
+                "Old roof in place",
+                "Leaking slab",
+                "Damp walls",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -183,7 +243,7 @@
       "id": "doors_windows_glass",
       "slug": "doors_windows_glass",
       "label": "Doors, Windows & Glass",
-      "icon": "🪟",
+      "icon": "\ud83e\ude9f",
       "description": "Doors, windows, glass work, partitions",
       "jobTypes": [
         {
@@ -196,14 +256,28 @@
               "name": "type_of_work",
               "label": "Type of work",
               "type": "radio",
-              "options": ["New doors", "New windows", "Replacement", "Glass partitions", "Shower enclosures", "Security grills"],
+              "options": [
+                "New doors",
+                "New windows",
+                "Replacement",
+                "Glass partitions",
+                "Shower enclosures",
+                "Security grills"
+              ],
               "required": true
             },
             {
               "name": "material_preference",
               "label": "Material preference",
               "type": "select",
-              "options": ["Timber", "Aluminium", "uPVC", "Steel", "Not sure"],
+              "options": [
+                "Timber",
+                "Aluminium",
+                "uPVC",
+                "Steel",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -217,7 +291,12 @@
               "name": "measurements",
               "label": "Have measurements?",
               "type": "select",
-              "options": ["Yes, I have exact sizes", "I have rough sizes", "I need site measurements"],
+              "options": [
+                "Yes, I have exact sizes",
+                "I have rough sizes",
+                "I need site measurements",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -235,7 +314,7 @@
       "id": "flooring_wall_finishes",
       "slug": "flooring_wall_finishes",
       "label": "Flooring & Wall Finishes",
-      "icon": "🟫",
+      "icon": "\ud83d\udfeb",
       "description": "Tiles, wooden floors, wall finishes, plaster",
       "jobTypes": [
         {
@@ -248,28 +327,46 @@
               "name": "type_of_finish",
               "label": "Type of finish",
               "type": "radio",
-              "options": ["Floor tiles", "Wall tiles", "Wooden/laminate flooring", "Carpet", "Decorative plaster", "Gypsum wall/ceiling"],
+              "options": [
+                "Floor tiles",
+                "Wall tiles",
+                "Wooden/laminate flooring",
+                "Carpet",
+                "Decorative plaster",
+                "Gypsum wall/ceiling"
+              ],
               "required": true
             },
             {
               "name": "area_to_cover",
               "label": "Area to be covered",
               "type": "text",
-              "placeholder": "e.g. living room + bedrooms, approx. 80m²",
+              "placeholder": "e.g. living room + bedrooms, approx. 80m\u00b2",
               "required": false
             },
             {
               "name": "existing_condition",
               "label": "Existing condition",
               "type": "select",
-              "options": ["Bare screed", "Old tiles", "Old terrazzo", "Painted walls"],
+              "options": [
+                "Bare screed",
+                "Old tiles",
+                "Old terrazzo",
+                "Painted walls",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "quality_level",
               "label": "Preferred quality level",
               "type": "select",
-              "options": ["Budget", "Mid-range", "High-end"],
+              "options": [
+                "Budget",
+                "Mid-range",
+                "High-end",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -287,7 +384,7 @@
       "id": "plumbing_drainage",
       "slug": "plumbing_drainage",
       "label": "Plumbing & Drainage",
-      "icon": "🚿",
+      "icon": "\ud83d\udebf",
       "description": "Water supply, bathrooms, drainage systems",
       "jobTypes": [
         {
@@ -300,7 +397,14 @@
               "name": "type_of_job",
               "label": "Type of job",
               "type": "select",
-              "options": ["New house plumbing", "Renovation", "Bathroom upgrade", "Kitchen upgrade", "Drainage/sewer work"],
+              "options": [
+                "New house plumbing",
+                "Renovation",
+                "Bathroom upgrade",
+                "Kitchen upgrade",
+                "Drainage/sewer work",
+                "Other"
+              ],
               "required": true
             },
             {
@@ -313,21 +417,42 @@
               "name": "water_source",
               "label": "Water source",
               "type": "select",
-              "options": ["County water", "Borehole", "Trucked water", "Mixed", "Not sure"],
+              "options": [
+                "County water",
+                "Borehole",
+                "Trucked water",
+                "Mixed",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "waste_solution",
               "label": "Waste solution",
               "type": "select",
-              "options": ["Main sewer", "Existing septic", "Need new septic", "Need biodigester", "Not sure"],
+              "options": [
+                "Main sewer",
+                "Existing septic",
+                "Need new septic",
+                "Need biodigester",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "fixtures_needed",
               "label": "Fixtures needed",
               "type": "radio",
-              "options": ["Toilets", "Sinks", "Showers", "Bathtubs", "Water heaters", "Kitchen sinks"],
+              "options": [
+                "Toilets",
+                "Sinks",
+                "Showers",
+                "Bathtubs",
+                "Water heaters",
+                "Kitchen sinks"
+              ],
               "required": false
             },
             {
@@ -345,7 +470,7 @@
       "id": "electrical_solar",
       "slug": "electrical_solar",
       "label": "Electrical & Solar",
-      "icon": "⚡",
+      "icon": "\u26a1",
       "description": "Wiring, sockets, solar, backup power",
       "jobTypes": [
         {
@@ -358,14 +483,26 @@
               "name": "type_of_job",
               "label": "Type of job",
               "type": "radio",
-              "options": ["Full house wiring", "Rewiring", "Additional sockets/lights", "Solar backup", "Security lighting"],
+              "options": [
+                "Full house wiring",
+                "Rewiring",
+                "Additional sockets/lights",
+                "Solar backup",
+                "Security lighting"
+              ],
               "required": true
             },
             {
               "name": "property_type",
               "label": "Property type",
               "type": "select",
-              "options": ["New build", "Existing house", "Apartment", "Commercial"],
+              "options": [
+                "New build",
+                "Existing house",
+                "Apartment",
+                "Commercial",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -378,14 +515,19 @@
               "name": "main_priorities",
               "label": "Main priorities",
               "type": "radio",
-              "options": ["Safety/compliance", "Lower bills", "Backup during blackouts", "Extra sockets/lights"],
+              "options": [
+                "Safety/compliance",
+                "Lower bills",
+                "Backup during blackouts",
+                "Extra sockets/lights"
+              ],
               "required": false
             },
             {
               "name": "solar_backup_needs",
               "label": "If solar/backup: what should stay on?",
               "type": "textarea",
-              "placeholder": "Lights, Wi-Fi, TV, fridge, security system…",
+              "placeholder": "Lights, Wi-Fi, TV, fridge, security system\u2026",
               "required": false
             },
             {
@@ -402,7 +544,7 @@
       "id": "hvac_climate",
       "slug": "hvac_climate",
       "label": "HVAC & Climate Control",
-      "icon": "❄️",
+      "icon": "\u2744\ufe0f",
       "description": "Cooling, heating, ventilation, air conditioning",
       "jobTypes": [
         {
@@ -415,14 +557,27 @@
               "name": "type_of_work",
               "label": "Type of work",
               "type": "select",
-              "options": ["New AC install", "AC service & repair", "Ventilation system", "Heating system"],
+              "options": [
+                "New AC install",
+                "AC service & repair",
+                "Ventilation system",
+                "Heating system",
+                "Other"
+              ],
               "required": true
             },
             {
               "name": "space_type",
               "label": "Space type",
               "type": "select",
-              "options": ["Bedroom", "Entire house", "Office", "Shop", "Server room", "Other"],
+              "options": [
+                "Bedroom",
+                "Entire house",
+                "Office",
+                "Shop",
+                "Server room",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -435,14 +590,24 @@
               "name": "existing_system",
               "label": "Existing system?",
               "type": "select",
-              "options": ["No system yet", "Existing units need service", "Replacement of old system"],
+              "options": [
+                "No system yet",
+                "Existing units need service",
+                "Replacement of old system",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "main_concerns",
               "label": "Main concerns",
               "type": "radio",
-              "options": ["Heat", "Humidity", "Air quality", "Noise"],
+              "options": [
+                "Heat",
+                "Humidity",
+                "Air quality",
+                "Noise"
+              ],
               "required": false
             },
             {
@@ -459,7 +624,7 @@
       "id": "carpentry_joinery",
       "slug": "carpentry_joinery",
       "label": "Carpentry & Joinery",
-      "icon": "🪛",
+      "icon": "\ud83e\ude9b",
       "description": "Doors, wardrobes, shelving, furniture",
       "jobTypes": [
         {
@@ -472,14 +637,27 @@
               "name": "type_of_work",
               "label": "Type of work",
               "type": "radio",
-              "options": ["Doors", "Wardrobes", "Shelving", "Ceilings", "Custom furniture"],
+              "options": [
+                "Doors",
+                "Wardrobes",
+                "Shelving",
+                "Ceilings",
+                "Custom furniture"
+              ],
               "required": true
             },
             {
               "name": "material_preference",
               "label": "Material preference",
               "type": "select",
-              "options": ["Solid timber", "MDF", "Plywood", "Mixed", "Not sure"],
+              "options": [
+                "Solid timber",
+                "MDF",
+                "Plywood",
+                "Mixed",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -493,7 +671,13 @@
               "name": "finish_preference",
               "label": "Finish preference",
               "type": "select",
-              "options": ["Painted", "Varnished wood", "Laminate", "High gloss"],
+              "options": [
+                "Painted",
+                "Varnished wood",
+                "Laminate",
+                "High gloss",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -507,7 +691,11 @@
               "name": "service_type",
               "label": "Need design + build or build only?",
               "type": "select",
-              "options": ["Design + Build", "Build only"],
+              "options": [
+                "Design + Build",
+                "Build only",
+                "Other"
+              ],
               "required": false
             }
           ]
@@ -518,7 +706,7 @@
       "id": "kitchens_wardrobes",
       "slug": "kitchens_wardrobes",
       "label": "Kitchens & Wardrobes",
-      "icon": "🍳",
+      "icon": "\ud83c\udf73",
       "description": "Kitchen design and installation, wardrobes",
       "jobTypes": [
         {
@@ -531,7 +719,13 @@
               "name": "type_of_job",
               "label": "Type of job",
               "type": "select",
-              "options": ["New kitchen", "Kitchen remodel", "New wardrobes", "Wardrobe remodel"],
+              "options": [
+                "New kitchen",
+                "Kitchen remodel",
+                "New wardrobes",
+                "Wardrobe remodel",
+                "Other"
+              ],
               "required": true
             },
             {
@@ -545,28 +739,52 @@
               "name": "layout_status",
               "label": "Layout status",
               "type": "select",
-              "options": ["No design yet", "Rough sketch", "Have full design"],
+              "options": [
+                "No design yet",
+                "Rough sketch",
+                "Have full design",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "front_finish",
               "label": "Front finish preference",
               "type": "select",
-              "options": ["MDF laminate", "Solid wood", "Glass-front", "High-gloss", "Not sure"],
+              "options": [
+                "MDF laminate",
+                "Solid wood",
+                "Glass-front",
+                "High-gloss",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "countertop_preference",
               "label": "Countertop preference",
               "type": "select",
-              "options": ["Granite", "Quartz", "Laminate", "Solid surface", "Not sure"],
+              "options": [
+                "Granite",
+                "Quartz",
+                "Laminate",
+                "Solid surface",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "storage_priorities",
               "label": "Storage priorities",
               "type": "radio",
-              "options": ["Maximize storage", "Easy cleaning", "Display cabinets", "Hidden appliances"],
+              "options": [
+                "Maximize storage",
+                "Easy cleaning",
+                "Display cabinets",
+                "Hidden appliances"
+              ],
               "required": false
             }
           ]
@@ -577,7 +795,7 @@
       "id": "painting_decorating",
       "slug": "painting_decorating",
       "label": "Painting & Decorating",
-      "icon": "🎨",
+      "icon": "\ud83c\udfa8",
       "description": "Interior and exterior painting, decorative finishes",
       "jobTypes": [
         {
@@ -590,14 +808,26 @@
               "name": "type_of_project",
               "label": "Type of project",
               "type": "radio",
-              "options": ["Interior painting", "Exterior painting", "Repainting", "Decorative finishes", "Wallpaper"],
+              "options": [
+                "Interior painting",
+                "Exterior painting",
+                "Repainting",
+                "Decorative finishes",
+                "Wallpaper"
+              ],
               "required": true
             },
             {
               "name": "property_type",
               "label": "Property type",
               "type": "select",
-              "options": ["Apartment", "Bungalow", "Maisonette", "Commercial", "Other"],
+              "options": [
+                "Apartment",
+                "Bungalow",
+                "Maisonette",
+                "Commercial",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -611,14 +841,25 @@
               "name": "wall_condition",
               "label": "Current wall condition",
               "type": "select",
-              "options": ["New plaster", "Old paint", "Damp patches", "Cracks"],
+              "options": [
+                "New plaster",
+                "Old paint",
+                "Damp patches",
+                "Cracks",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "paint_quality",
               "label": "Paint quality level",
               "type": "select",
-              "options": ["Budget", "Standard", "Premium"],
+              "options": [
+                "Budget",
+                "Standard",
+                "Premium",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -635,7 +876,7 @@
       "id": "swimming_pools",
       "slug": "swimming_pools",
       "label": "Swimming Pools & Water Features",
-      "icon": "🏊",
+      "icon": "\ud83c\udfca",
       "description": "Pool construction, renovation, water features",
       "jobTypes": [
         {
@@ -648,42 +889,70 @@
               "name": "type_of_job",
               "label": "Type of job",
               "type": "select",
-              "options": ["New pool build", "Renovation", "Leak repair", "Water feature only"],
+              "options": [
+                "New pool build",
+                "Renovation",
+                "Leak repair",
+                "Water feature only",
+                "Other"
+              ],
               "required": true
             },
             {
               "name": "use_type",
               "label": "Use",
               "type": "select",
-              "options": ["Residential", "Hotel/Airbnb", "Public/commercial"],
+              "options": [
+                "Residential",
+                "Hotel/Airbnb",
+                "Public/commercial",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "approx_size",
               "label": "Approx size or shape",
               "type": "text",
-              "placeholder": "e.g. 8m × 4m rectangle, L-shaped",
+              "placeholder": "e.g. 8m \u00d7 4m rectangle, L-shaped",
               "required": false
             },
             {
               "name": "pool_type",
               "label": "Pool type",
               "type": "select",
-              "options": ["Skimmer", "Deck-level", "Infinity", "Not sure"],
+              "options": [
+                "Skimmer",
+                "Deck-level",
+                "Infinity",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "extra_features",
               "label": "Extra features",
               "type": "radio",
-              "options": ["Lighting", "Heating", "Fountain", "Waterfall", "Decking"],
+              "options": [
+                "Lighting",
+                "Heating",
+                "Fountain",
+                "Waterfall",
+                "Decking"
+              ],
               "required": false
             },
             {
               "name": "finishes_level",
               "label": "Finishes level",
               "type": "select",
-              "options": ["Basic", "Mid-range", "Luxury"],
+              "options": [
+                "Basic",
+                "Mid-range",
+                "Luxury",
+                "Other"
+              ],
               "required": false
             }
           ]
@@ -694,7 +963,7 @@
       "id": "landscaping_outdoor",
       "slug": "landscaping_outdoor",
       "label": "Landscaping & Outdoor Works",
-      "icon": "🌿",
+      "icon": "\ud83c\udf3f",
       "description": "Gardens, paving, irrigation, outdoor design",
       "jobTypes": [
         {
@@ -707,21 +976,34 @@
               "name": "type_of_work",
               "label": "Type of work",
               "type": "radio",
-              "options": ["Lawn", "Paving", "Planting", "Irrigation", "Outdoor lighting", "Garden design"],
+              "options": [
+                "Lawn",
+                "Paving",
+                "Planting",
+                "Irrigation",
+                "Outdoor lighting",
+                "Garden design"
+              ],
               "required": true
             },
             {
               "name": "area_size",
               "label": "Area size",
               "type": "text",
-              "placeholder": "e.g. front garden ~50m², backyard ~100m²",
+              "placeholder": "e.g. front garden ~50m\u00b2, backyard ~100m\u00b2",
               "required": false
             },
             {
               "name": "current_condition",
               "label": "Current condition",
               "type": "select",
-              "options": ["Bare soil", "Existing grass", "Overgrown", "Mixed"],
+              "options": [
+                "Bare soil",
+                "Existing grass",
+                "Overgrown",
+                "Mixed",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -735,7 +1017,11 @@
               "name": "service_type",
               "label": "Need design + installation or installation only?",
               "type": "select",
-              "options": ["Design + Installation", "Installation only"],
+              "options": [
+                "Design + Installation",
+                "Installation only",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -752,7 +1038,7 @@
       "id": "fencing_gates",
       "slug": "fencing_gates",
       "label": "Fencing & Gates",
-      "icon": "🚪",
+      "icon": "\ud83d\udeaa",
       "description": "Fences, gates, perimeter security",
       "jobTypes": [
         {
@@ -765,7 +1051,14 @@
               "name": "type_of_fencing",
               "label": "Type of fencing",
               "type": "select",
-              "options": ["Masonry wall", "Chain-link", "Electric fence", "Live fence", "Metal panel"],
+              "options": [
+                "Masonry wall",
+                "Chain-link",
+                "Electric fence",
+                "Live fence",
+                "Metal panel",
+                "Other"
+              ],
               "required": true
             },
             {
@@ -779,28 +1072,50 @@
               "name": "gate_requirements",
               "label": "Gate requirements",
               "type": "radio",
-              "options": ["Main gate", "Pedestrian gate", "Sliding", "Swing", "Motorized"],
+              "options": [
+                "Main gate",
+                "Pedestrian gate",
+                "Sliding",
+                "Swing",
+                "Motorized"
+              ],
               "required": false
             },
             {
               "name": "site_conditions",
               "label": "Site conditions",
               "type": "select",
-              "options": ["Flat", "Slight slope", "Steep", "Rocky"],
+              "options": [
+                "Flat",
+                "Slight slope",
+                "Steep",
+                "Rocky",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "security_priority",
               "label": "Security priority level",
               "type": "select",
-              "options": ["Standard", "High", "Very high"],
+              "options": [
+                "Standard",
+                "High",
+                "Very high",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "existing_fence",
               "label": "Any existing fence to remove?",
               "type": "select",
-              "options": ["Yes", "No", "Partial"],
+              "options": [
+                "Yes",
+                "No",
+                "Partial",
+                "Other"
+              ],
               "required": false
             }
           ]
@@ -811,7 +1126,7 @@
       "id": "security_smart",
       "slug": "security_smart",
       "label": "Security & Smart Systems",
-      "icon": "🔒",
+      "icon": "\ud83d\udd12",
       "description": "CCTV, alarms, access control, smart home",
       "jobTypes": [
         {
@@ -824,14 +1139,27 @@
               "name": "type_of_system",
               "label": "Type of system",
               "type": "radio",
-              "options": ["CCTV", "Intruder alarm", "Access control", "Intercom", "Smart locks", "Smart lighting"],
+              "options": [
+                "CCTV",
+                "Intruder alarm",
+                "Access control",
+                "Intercom",
+                "Smart locks",
+                "Smart lighting"
+              ],
               "required": true
             },
             {
               "name": "property_type",
               "label": "Property type",
               "type": "select",
-              "options": ["Home", "Apartment block", "Shop", "Office", "Other"],
+              "options": [
+                "Home",
+                "Apartment block",
+                "Shop",
+                "Office",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -845,14 +1173,24 @@
               "name": "existing_systems",
               "label": "Existing systems?",
               "type": "select",
-              "options": ["None", "Some equipment in place", "Full system needs upgrade"],
+              "options": [
+                "None",
+                "Some equipment in place",
+                "Full system needs upgrade",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "remote_access",
               "label": "Remote access needed?",
               "type": "select",
-              "options": ["Yes (phone app)", "No", "Not sure"],
+              "options": [
+                "Yes (phone app)",
+                "No",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -868,28 +1206,40 @@
     {
       "id": "interior_design",
       "slug": "interior_design",
-      "label": "Interior Design & Décor",
-      "icon": "🛋️",
-      "description": "Interior design, décor, furniture styling",
+      "label": "Interior Design & D\u00e9cor",
+      "icon": "\ud83d\udecb\ufe0f",
+      "description": "Interior design, d\u00e9cor, furniture styling",
       "jobTypes": [
         {
           "id": "interior_design_work",
           "slug": "interior_design_work",
-          "label": "Interior Design & Décor",
+          "label": "Interior Design & D\u00e9cor",
           "description": "Tell us about the interior design you want",
           "fields": [
             {
               "name": "areas_to_design",
               "label": "Areas to be designed",
               "type": "radio",
-              "options": ["Living room", "Bedrooms", "Kitchen", "Office", "Entire house"],
+              "options": [
+                "Living room",
+                "Bedrooms",
+                "Kitchen",
+                "Office",
+                "Entire house"
+              ],
               "required": true
             },
             {
               "name": "scope",
               "label": "Scope",
               "type": "select",
-              "options": ["Full design concept", "Furniture layout only", "Colour & finishes only", "Styling & accessories"],
+              "options": [
+                "Full design concept",
+                "Furniture layout only",
+                "Colour & finishes only",
+                "Styling & accessories",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -903,14 +1253,24 @@
               "name": "furniture_status",
               "label": "Furniture status",
               "type": "select",
-              "options": ["No furniture yet", "Some existing", "Fully furnished, needs refresh"],
+              "options": [
+                "No furniture yet",
+                "Some existing",
+                "Fully furnished, needs refresh",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "budget_level",
               "label": "Budget level for furnishings",
               "type": "select",
-              "options": ["Budget", "Mid-range", "Premium"],
+              "options": [
+                "Budget",
+                "Mid-range",
+                "Premium",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -927,7 +1287,7 @@
       "id": "project_management",
       "slug": "project_management",
       "label": "Project Management & QS",
-      "icon": "📋",
+      "icon": "\ud83d\udccb",
       "description": "Project management, supervision, costing",
       "jobTypes": [
         {
@@ -940,21 +1300,39 @@
               "name": "type_of_service",
               "label": "Type of service",
               "type": "radio",
-              "options": ["Full project management", "Site supervision", "Cost estimation", "Bills of quantities", "Contract administration"],
+              "options": [
+                "Full project management",
+                "Site supervision",
+                "Cost estimation",
+                "Bills of quantities",
+                "Contract administration"
+              ],
               "required": true
             },
             {
               "name": "project_type",
               "label": "Project type",
               "type": "select",
-              "options": ["Residential", "Commercial", "Mixed-use", "Other"],
+              "options": [
+                "Residential",
+                "Commercial",
+                "Mixed-use",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "project_stage",
               "label": "Project stage",
               "type": "select",
-              "options": ["Concept", "Design", "Approval", "Construction started", "Near completion"],
+              "options": [
+                "Concept",
+                "Design",
+                "Approval",
+                "Construction started",
+                "Near completion",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -967,7 +1345,12 @@
               "name": "existing_contractor",
               "label": "Do you already have a contractor?",
               "type": "select",
-              "options": ["Yes", "Shortlisted", "No, need recommendations"],
+              "options": [
+                "Yes",
+                "Shortlisted",
+                "No, need recommendations",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -984,7 +1367,7 @@
       "id": "equipment_hire",
       "slug": "equipment_hire",
       "label": "Equipment Hire & Scaffolding",
-      "icon": "🏗️",
+      "icon": "\ud83c\udfd7\ufe0f",
       "description": "Equipment rental, scaffolding, machinery",
       "jobTypes": [
         {
@@ -997,28 +1380,52 @@
               "name": "type_of_equipment",
               "label": "Type of equipment",
               "type": "radio",
-              "options": ["Excavator", "Backhoe", "Roller", "Mixer", "Scaffolding", "Hoist", "Others"],
+              "options": [
+                "Excavator",
+                "Backhoe",
+                "Roller",
+                "Mixer",
+                "Scaffolding",
+                "Hoist",
+                "Others"
+              ],
               "required": true
             },
             {
               "name": "duration",
               "label": "Duration",
               "type": "select",
-              "options": ["1 day", "2–7 days", "1–4 weeks", "1+ month"],
+              "options": [
+                "1 day",
+                "2\u20137 days",
+                "1\u20134 weeks",
+                "1+ month",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "operator_needed",
               "label": "With operator or without?",
               "type": "select",
-              "options": ["With operator", "Without operator"],
+              "options": [
+                "With operator",
+                "Without operator",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "site_access",
               "label": "Site access conditions",
               "type": "select",
-              "options": ["Easy", "Tight", "Steep", "Muddy"],
+              "options": [
+                "Easy",
+                "Tight",
+                "Steep",
+                "Muddy",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -1041,7 +1448,7 @@
       "id": "waste_management",
       "slug": "waste_management",
       "label": "Waste Management & Site Cleaning",
-      "icon": "🗑️",
+      "icon": "\ud83d\uddd1\ufe0f",
       "description": "Waste removal, skip hire, site cleaning",
       "jobTypes": [
         {
@@ -1054,35 +1461,57 @@
               "name": "type_of_service",
               "label": "Type of service",
               "type": "radio",
-              "options": ["Construction debris removal", "Regular skip collection", "Final cleaning", "Deep cleaning"],
+              "options": [
+                "Construction debris removal",
+                "Regular skip collection",
+                "Final cleaning",
+                "Deep cleaning"
+              ],
               "required": true
             },
             {
               "name": "property_type",
               "label": "Property type",
               "type": "select",
-              "options": ["Residential", "Commercial", "Estate", "Site"],
+              "options": [
+                "Residential",
+                "Commercial",
+                "Estate",
+                "Site",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "estimated_volume",
               "label": "Estimated volume or frequency",
               "type": "text",
-              "placeholder": "e.g. 1–2 lorry loads / weekly collection / one-off",
+              "placeholder": "e.g. 1\u20132 lorry loads / weekly collection / one-off",
               "required": false
             },
             {
               "name": "waste_type",
               "label": "Waste type",
               "type": "select",
-              "options": ["Mixed construction waste", "Rubble", "Wood", "General rubbish"],
+              "options": [
+                "Mixed construction waste",
+                "Rubble",
+                "Wood",
+                "General rubbish",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "truck_access",
               "label": "Access for trucks",
               "type": "select",
-              "options": ["Easy", "Moderate", "Difficult"],
+              "options": [
+                "Easy",
+                "Moderate",
+                "Difficult",
+                "Other"
+              ],
               "required": false
             },
             {
@@ -1100,7 +1529,7 @@
       "id": "special_structures",
       "slug": "special_structures",
       "label": "Special Structures",
-      "icon": "🏢",
+      "icon": "\ud83c\udfe2",
       "description": "Water tanks, steel structures, staircases, conversions",
       "jobTypes": [
         {
@@ -1113,7 +1542,14 @@
               "name": "type_of_structure",
               "label": "Type of structure",
               "type": "select",
-              "options": ["Water tank tower", "Steel structure", "Staircase", "Mezzanine", "Container conversion", "Other"],
+              "options": [
+                "Water tank tower",
+                "Steel structure",
+                "Staircase",
+                "Mezzanine",
+                "Container conversion",
+                "Other"
+              ],
               "required": true
             },
             {
@@ -1133,21 +1569,38 @@
               "name": "existing_or_new",
               "label": "Existing structure or new build?",
               "type": "select",
-              "options": ["New", "Modification", "Repair"],
+              "options": [
+                "New",
+                "Modification",
+                "Repair",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "materials_preferred",
               "label": "Materials preferred",
               "type": "select",
-              "options": ["Steel", "Concrete", "Timber", "Mixed", "Not sure"],
+              "options": [
+                "Steel",
+                "Concrete",
+                "Timber",
+                "Mixed",
+                "Not sure",
+                "Other"
+              ],
               "required": false
             },
             {
               "name": "structural_drawings",
               "label": "Any structural drawings available?",
               "type": "select",
-              "options": ["Yes", "No", "Partial"],
+              "options": [
+                "Yes",
+                "No",
+                "Partial",
+                "Other"
+              ],
               "required": false
             },
             {
