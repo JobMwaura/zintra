@@ -10,8 +10,10 @@ import React, { useState, useCallback } from 'react';
  * Props:
  * - fields: Array of field objects with name, label, type, options, etc.
  * - onFieldChange: Callback when field value changes: (fieldName, value)
+ * - onChange: Alternative callback for parent component state sync
  * - onFieldError: Callback when field validation fails: (fieldName, errorMessage)
  * - initialValues: Object with initial field values
+ * - values: Current values from parent component (overrides internal state for display)
  * - disabled: Boolean to disable all fields
  *
  * Returns:
@@ -19,10 +21,13 @@ import React, { useState, useCallback } from 'react';
  * - Error tracking: { fieldName: errorMessage, ... }
  */
 export const RfqFormRenderer = React.forwardRef(
-  ({ fields, onFieldChange, onFieldError, initialValues = {}, disabled = false }, ref) => {
+  ({ fields, onFieldChange, onChange, onFieldError, initialValues = {}, values = {}, disabled = false }, ref) => {
     const [formValues, setFormValues] = useState(initialValues);
     const [errors, setErrors] = useState({});
     const [filePreview, setFilePreview] = useState({});
+    
+    // Use values from parent if provided, otherwise use internal formValues
+    const currentValues = Object.keys(values).length > 0 ? values : formValues;
 
     // Validate field value based on field spec
     const validateField = useCallback((field, value) => {
@@ -74,11 +79,14 @@ export const RfqFormRenderer = React.forwardRef(
           onFieldError?.(fieldName, null);
         }
 
-        // Update value
+        // Update internal value
         setFormValues((prev) => ({ ...prev, [fieldName]: value }));
+        
+        // Call both callbacks for parent component sync
         onFieldChange?.(fieldName, value);
+        onChange?.(fieldName, value);  // For WizardRFQModal compatibility
       },
-      [fields, validateField, onFieldChange, onFieldError]
+      [fields, validateField, onFieldChange, onChange, onFieldError]
     );
 
     // Handle file uploads
@@ -104,7 +112,7 @@ export const RfqFormRenderer = React.forwardRef(
 
     // Expose form methods via ref
     React.useImperativeHandle(ref, () => ({
-      getValues: () => formValues,
+      getValues: () => currentValues,
       getErrors: () => errors,
       isValid: () => Object.keys(errors).length === 0,
       setFieldValue: (fieldName, value) => handleFieldChange(fieldName, value),
@@ -115,7 +123,7 @@ export const RfqFormRenderer = React.forwardRef(
     const renderField = (field) => {
       const fieldId = `rfq-field-${field.name}`;
       const fieldError = errors[field.name];
-      const fieldValue = formValues[field.name] ?? '';
+      const fieldValue = currentValues[field.name] ?? '';
 
       const baseClasses =
         'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition';
@@ -168,7 +176,7 @@ export const RfqFormRenderer = React.forwardRef(
         case 'select':
           const isOtherSelected = fieldValue === 'Other';
           const customValueKey = `${field.name}_custom`;
-          const customFieldValue = formValues[customValueKey] || '';
+          const customFieldValue = currentValues[customValueKey] || '';
           
           return (
             <div key={field.name} className="mb-6">
