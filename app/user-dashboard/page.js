@@ -57,18 +57,54 @@ export default function UserDashboard() {
       // Add 10-second timeout to user data fetch
       await Promise.race([
         (async () => {
+          // Use maybeSingle() instead of single() to handle 0 rows gracefully
+          // This prevents 406 errors when user record doesn't exist yet
           const { data, error: fetchError } = await supabase
             .from('users')
             .select('*')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
           if (fetchError) {
-            console.error('Error fetching user data:', fetchError);
-            setError('Failed to load user data');
-          } else {
+            // Only log if it's not a PGRST116 (0 rows returned) error
+            if (fetchError.code !== 'PGRST116') {
+              console.error('Error fetching user data:', fetchError);
+              setError('Failed to load user data');
+            } else {
+              console.warn('⚠️ User record not found in database - this is normal for new registrations');
+              // Create default user data structure
+              const defaultUserData = {
+                id: user.id,
+                email: user.email,
+                full_name: user.user_metadata?.full_name || '',
+                phone: null,
+                phone_verified: false,
+                bio: '',
+                rfq_count: 0,
+                rfqs_completed: 0,
+                buyer_reputation: 'new',
+              };
+              console.log('✅ Using default user data for new user');
+              setUserData(defaultUserData);
+            }
+          } else if (data) {
             console.log('✅ UserDashboard: User data fetched');
             setUserData(data);
+          } else {
+            // data is null (no record found) - use default
+            console.warn('⚠️ User record not found in database - this is normal for new registrations');
+            const defaultUserData = {
+              id: user.id,
+              email: user.email,
+              full_name: user.user_metadata?.full_name || '',
+              phone: null,
+              phone_verified: false,
+              bio: '',
+              rfq_count: 0,
+              rfqs_completed: 0,
+              buyer_reputation: 'new',
+            };
+            setUserData(defaultUserData);
           }
         })(),
         new Promise((_, reject) => 
