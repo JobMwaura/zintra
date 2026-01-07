@@ -506,7 +506,7 @@ export default function RFQRespond() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{rfq.title}</h1>
           <p className="text-gray-600 mb-4">{rfq.description}</p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
               <p className="text-xs text-gray-500 mb-1">Budget</p>
               <p className="font-semibold text-gray-900">{rfq.budget_estimate || 'Not specified'}</p>
@@ -519,13 +519,28 @@ export default function RFQRespond() {
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Category</p>
-              <p className="font-semibold text-gray-900">{rfq.category}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-gray-900">{rfq.category}</p>
+                {rfq.is_custom_category && (
+                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-medium">Custom</span>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Type</p>
               <p className="font-semibold text-gray-900 capitalize">{rfq.type}</p>
             </div>
           </div>
+
+          {/* Show custom details if this is a custom category RFQ */}
+          {rfq.is_custom_category && rfq.custom_details && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-semibold mb-2">ADDITIONAL SPECIFICATIONS</p>
+              <p className="text-gray-700 bg-blue-50 p-3 rounded border border-blue-200 text-sm whitespace-pre-wrap">
+                {rfq.custom_details}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Error Message */}

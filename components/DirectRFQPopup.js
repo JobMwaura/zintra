@@ -27,6 +27,8 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     title: '',
     description: '',
     category: '',
+    custom_category: '', // For "Other" category
+    custom_details: '', // For custom floor types, roofing types, etc
     budget: '',
     location: '',
     attachment: null,
@@ -150,6 +152,18 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
       return;
     }
 
+    // Validate category selection
+    if (!form.category) {
+      setStatus('❌ Please select a category');
+      return;
+    }
+
+    // Validate custom category if "Other" is selected
+    if (form.category === 'other' && !form.custom_category.trim()) {
+      setStatus('❌ Please specify your category');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -177,13 +191,18 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         }
       }
 
+      // Determine final category name
+      const finalCategory = form.category === 'other' ? form.custom_category : form.category;
+
       /** Save RFQ in main table */
       const { data: rfqData, error: rfqError } = await supabase
         .from('rfqs')
         .insert([{
           title: form.title,
           description: form.description,
-          category: form.category,
+          category: finalCategory,
+          custom_details: form.custom_details || null,
+          is_custom_category: form.category === 'other',
           budget_range: form.budget,
           location: form.location,
           user_id: user?.id || null,
@@ -371,13 +390,14 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
               <label className="block text-sm font-medium text-slate-800 mb-1">Category</label>
               <select
                 value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                onChange={(e) => setForm({ ...form, category: e.target.value, custom_category: '' })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
               >
                 <option value="">Select category</option>
                 {ALL_CATEGORIES_FLAT.map((cat) => (
-                  <option key={cat.value}>{cat.label}</option>
+                  <option key={cat.value} value={cat.label}>{cat.label}</option>
                 ))}
+                <option value="other">Other (Please specify)</option>
               </select>
             </div>
 
@@ -396,6 +416,34 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
               </select>
             </div>
           </div>
+
+          {/* Custom Category Input (shown when "Other" is selected) */}
+          {form.category === 'other' && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <label className="block text-sm font-medium text-slate-800 mb-2">
+                Please specify your category<span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Plumbing, Roofing, Electrical, etc."
+                value={form.custom_category}
+                onChange={(e) => setForm({ ...form, custom_category: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:ring-1 focus:ring-orange-400 mb-3"
+              />
+              
+              <label className="block text-sm font-medium text-slate-800 mb-2">
+                Additional details (e.g., floor types, roofing materials, specifications)
+              </label>
+              <textarea
+                rows="2"
+                placeholder="Describe specific types, materials, or requirements not listed above..."
+                value={form.custom_details}
+                onChange={(e) => setForm({ ...form, custom_details: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+              />
+              <p className="text-xs text-gray-600 mt-2">This helps vendors better understand your specific needs</p>
+            </div>
+          )}
 
           {/* Location */}
           <div>
