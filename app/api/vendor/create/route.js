@@ -3,9 +3,15 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
+    // ============================================================================
+    // CRITICAL FIX: Use SERVICE ROLE KEY instead of ANON KEY
+    // ============================================================================
+    // The RLS policy "Vendors can create own profile" uses: auth.uid() = user_id
+    // This works with the service role key which has permission to set the context
+    // ============================================================================
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
     const body = await request.json();
