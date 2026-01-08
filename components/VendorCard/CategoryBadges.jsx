@@ -66,7 +66,9 @@ export default function CategoryBadges({
   // Add secondary categories
   if (Array.isArray(secondaryCategories)) {
     secondaryCategories.slice(0, maxVisible - 1).forEach((cat, idx) => {
-      const slug = typeof cat === 'string' ? cat : cat.slug;
+      // Handle multiple data formats: string, {slug}, or {value}
+      const slug = typeof cat === 'string' ? cat : (cat.slug || cat.value);
+      if (!slug) return; // Skip invalid entries
       badges.push({
         slug,
         name: getCategoryName(slug),
@@ -176,7 +178,9 @@ export function DetailedCategoryView({
           <h5 className="font-semibold text-gray-900 mb-2">Additional Services</h5>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {secondaryCategories.map((cat) => {
-              const slug = typeof cat === 'string' ? cat : cat.slug;
+              // Handle multiple data formats: string, {slug}, or {value}
+              const slug = typeof cat === 'string' ? cat : (cat.slug || cat.value);
+              if (!slug) return null; // Skip invalid entries
               const data = getCategoryData(slug);
               return (
                 <div key={slug} className="bg-purple-50 border border-purple-200 rounded p-3">
