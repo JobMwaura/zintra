@@ -1,0 +1,80 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prismaClient';
+
+/**
+ * POST /api/portfolio/images
+ * Create a portfolio project image
+ * 
+ * Body:
+ * - projectId (required): UUID of portfolio project
+ * - imageUrl (required): URL of uploaded image
+ * - imageType (required): 'before', 'during', or 'after'
+ * - caption (optional): Image caption
+ * - displayOrder (required): Order to display image (0-based)
+ */
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const {
+      projectId,
+      imageUrl,
+      imageType,
+      caption = null,
+      displayOrder = 0,
+    } = body;
+
+    // Validate required fields
+    if (!projectId || !imageUrl || !imageType) {
+      return NextResponse.json(
+        { message: 'Missing required fields: projectId, imageUrl, imageType' },
+        { status: 400 }
+      );
+    }
+
+    // Validate imageType
+    const validTypes = ['before', 'during', 'after'];
+    if (!validTypes.includes(imageType)) {
+      return NextResponse.json(
+        { message: `Invalid imageType. Must be one of: ${validTypes.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Verify project exists
+    const project = await prisma.portfolioProject.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        { message: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    // Create image
+    const image = await prisma.portfolioProjectImage.create({
+      data: {
+        portfolioProjectId: projectId,
+        imageUrl,
+        imageType,
+        caption,
+        displayOrder,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        message: 'Image created successfully',
+        image,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Portfolio image creation failed:', error);
+    return NextResponse.json(
+      { message: 'Internal server error', error: error.message },
+      { status: 500 }
+    );
+  }
+}
