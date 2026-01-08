@@ -20,38 +20,20 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { CANONICAL_CATEGORIES } from '@/lib/categories/canonicalCategories';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// List of valid category slugs (from the CATEGORIES_DATA)
-const VALID_CATEGORY_SLUGS = [
-  'architectural_design',
-  'building_design_services',
-  'construction_excavation',
-  'concrete_supplies_products',
-  'electrical_solar',
-  'doors_windows_glass',
-  'flooring_carpets',
-  'fencing_landscape',
-  'generators_power_supplies',
-  'hardware_equipment',
-  'home_office_furniture',
-  'kitchen_appliances',
-  'lighting_fixtures',
-  'painting_varnishing',
-  'plumbing_water_supplies',
-  'safety_security_systems',
-  'tiles_sanitary_ware',
-  'tools_machinery',
-  'transport_logistics',
-  'waste_management',
-];
-
+/**
+ * Validate category slug against canonical categories
+ * @param {string} slug - Category slug to validate
+ * @returns {boolean} True if valid
+ */
 function isValidCategorySlug(slug) {
-  return VALID_CATEGORY_SLUGS.includes(slug);
+  return CANONICAL_CATEGORIES.some((cat) => cat.slug === slug);
 }
 
 export async function PUT(request) {
