@@ -17,6 +17,32 @@ export async function POST(request) {
       );
     }
 
+    // Check if a vendor with this email already exists
+    const { data: existingVendor, error: checkError } = await supabase
+      .from('vendors')
+      .select('id, email')
+      .eq('email', body.email.trim())
+      .limit(1);
+
+    if (checkError) {
+      console.error('Error checking for existing vendor:', checkError.message);
+      return NextResponse.json(
+        { error: 'Error validating vendor information' },
+        { status: 500 }
+      );
+    }
+
+    if (existingVendor && existingVendor.length > 0) {
+      console.warn(`Vendor with email ${body.email} already exists`);
+      return NextResponse.json(
+        { 
+          error: 'A vendor with this email already exists. Please sign in to your existing account or use a different email.',
+          vendorId: existingVendor[0].id
+        },
+        { status: 409 }
+      );
+    }
+
     const vendorPayload = {
       user_id: body.user_id || null,  // ← ALWAYS include this, even if null
       company_name: body.company_name,
@@ -24,7 +50,7 @@ export async function POST(request) {
       phone: body.phone || null,
       phone_verified: body.phone_verified || false,
       phone_verified_at: body.phone_verified_at || null,
-      email: body.email,
+      email: body.email.trim(),
       county: body.county || null,
       location: body.location || null,
       category: body.category || null,
@@ -44,6 +70,13 @@ export async function POST(request) {
 
     if (error) {
       console.error('Database error:', error.message);
+      // Check if it's a unique constraint violation
+      if (error.message && error.message.includes('duplicate key value violates unique constraint')) {
+        return NextResponse.json(
+          { error: 'Vendor with this email already exists' },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

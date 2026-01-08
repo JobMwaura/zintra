@@ -408,18 +408,38 @@ export default function VendorRegistration() {
         });
 
         if (error) {
-          setMessage('Error creating account: ' + error.message);
-          setIsLoading(false);
-          return;
-        }
+          // Handle "user already exists" error - try sign-in instead
+          if (error.message && error.message.toLowerCase().includes('already exists')) {
+            console.log('User already exists in Auth, attempting sign-in...');
+            
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: formData.email.trim(),
+              password: formData.password,
+            });
 
-        userId = data?.user?.id || null;
-        userEmail = data?.user?.email || formData.email.trim();
+            if (signInError) {
+              setMessage('Account already exists. Please sign in with the correct password or try a different email.');
+              setIsLoading(false);
+              return;
+            }
 
-        if (!userId) {
-          setMessage('Account created. Please verify your email, then sign in to complete your vendor profile.');
-          setIsLoading(false);
-          return;
+            userId = signInData?.user?.id;
+            userEmail = signInData?.user?.email || formData.email.trim();
+            console.log('Successfully signed in existing user');
+          } else {
+            setMessage('Error creating account: ' + error.message);
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          userId = data?.user?.id || null;
+          userEmail = data?.user?.email || formData.email.trim();
+
+          if (!userId) {
+            setMessage('Account created. Please verify your email, then sign in to complete your vendor profile.');
+            setIsLoading(false);
+            return;
+          }
         }
       }
 
