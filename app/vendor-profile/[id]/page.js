@@ -681,7 +681,7 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
-          {['overview', 'expertise', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'updates', 'rfqs'] : [])].map((tab) => (
+          {['overview', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'updates', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -697,8 +697,8 @@ export default function VendorProfilePage() {
                 ? 'RFQ Inbox'
                 : tab === 'categories'
                 ? 'Categories'
-                : tab === 'expertise'
-                ? 'Services & Expertise'
+                : tab === 'portfolio'
+                ? 'Portfolio'
                 : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -823,6 +823,73 @@ export default function VendorProfilePage() {
               )}
             </section>
           )}
+              </>
+            )}
+
+            {/* Portfolio Tab */}
+            {activeTab === 'portfolio' && (
+              <>
+                <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">Portfolio & Highlights</h3>
+                      <p className="text-sm text-slate-600">Showcase your best work and completed projects</p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        onClick={() => setShowHighlightsManager(true)}
+                        className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
+                      >
+                        + Add Portfolio Item
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Portfolio Items Grid */}
+                  {vendor.highlights && vendor.highlights.length > 0 ? (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {vendor.highlights.map((highlight) => (
+                        <div key={highlight.id} className="rounded-lg border border-slate-200 overflow-hidden hover:border-amber-300 transition">
+                          {highlight.image_url && (
+                            <img
+                              src={highlight.image_url}
+                              alt={highlight.title}
+                              className="aspect-square object-cover w-full"
+                            />
+                          )}
+                          <div className="p-4">
+                            <h4 className="font-semibold text-slate-900 mb-1">{highlight.title}</h4>
+                            {highlight.description && (
+                              <p className="text-sm text-slate-600 line-clamp-2 mb-2">{highlight.description}</p>
+                            )}
+                            {highlight.url && (
+                              <a
+                                href={highlight.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-amber-600 hover:text-amber-700 font-semibold"
+                              >
+                                View Project →
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-slate-600 mb-4">No portfolio items yet</p>
+                      {canEdit && (
+                        <button
+                          onClick={() => setShowHighlightsManager(true)}
+                          className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
+                        >
+                          Add Your First Portfolio Item
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </section>
               </>
             )}
 
