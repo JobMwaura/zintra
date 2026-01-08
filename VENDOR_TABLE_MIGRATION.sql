@@ -15,7 +15,7 @@
 SELECT 
   COUNT(*) as total_vendors,
   COUNT(DISTINCT primary_category_slug) as unique_primary_slugs,
-  COUNT(CASE WHEN secondary_categories LIKE '%equipment_rental%' THEN 1 END) as vendors_with_equipment_rental,
+  COUNT(CASE WHEN secondary_categories @> '"equipment_rental"'::jsonb THEN 1 END) as vendors_with_equipment_rental,
   COUNT(CASE WHEN user_id IS NULL THEN 1 END) as vendors_missing_user_id,
   COUNT(CASE WHEN email IS NULL OR email = '' THEN 1 END) as vendors_missing_email
 FROM vendors;
@@ -212,8 +212,7 @@ WHERE primary_category_slug NOT IN (
 -- Check secondary categories no longer have "equipment_rental"
 SELECT id, company_name, secondary_categories
 FROM vendors
-WHERE secondary_categories LIKE '%equipment_rental%'
-  OR secondary_categories LIKE '%"equipment_rental"%';
+WHERE secondary_categories @> '"equipment_rental"'::jsonb;
 
 -- Should return 0 rows if all fixed!
 
