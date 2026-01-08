@@ -1496,7 +1496,6 @@ export default function VendorProfilePage() {
       {showProductModal && (
         <ProductUploadModal
           vendor={vendor}
-          products={products}
           onClose={() => setShowProductModal(false)}
           onSuccess={(newProduct) => {
             setProducts([newProduct, ...products]);

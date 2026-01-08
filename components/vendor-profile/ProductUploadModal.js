@@ -46,19 +46,32 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess }) {
 
       // Upload image if provided
       if (imageFile) {
+        console.log('📸 Uploading image:', imageFile.name);
         const ext = imageFile.name.split('.').pop();
         const fileName = `products/${vendor.id}/product-${Date.now()}.${ext}`;
         const { data, error: uploadError } = await supabase.storage
           .from('vendor-assets')
           .upload(fileName, imageFile, { upsert: true });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('❌ Image upload error:', uploadError);
+          throw uploadError;
+        }
 
+        console.log('✅ Image uploaded:', data.path);
         const { data: urlData } = supabase.storage.from('vendor-assets').getPublicUrl(data.path);
         imageUrl = urlData?.publicUrl || null;
+        console.log('📎 Image URL:', imageUrl);
       }
 
       // Save product to database
+      console.log('💾 Saving product to database:', {
+        vendor_id: vendor.id,
+        name: form.name,
+        price: form.price,
+        image_url: imageUrl,
+      });
+
       const { data: product, error: saveError } = await supabase
         .from('vendor_products')
         .insert([
@@ -78,11 +91,15 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess }) {
         .select()
         .single();
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('❌ Database save error:', saveError);
+        throw saveError;
+      }
 
+      console.log('✅ Product saved:', product);
       onSuccess(product);
     } catch (err) {
-      console.error('Product upload failed:', err);
+      console.error('❌ Product upload failed:', err);
       setError(err.message || 'Failed to save product');
     } finally {
       setLoading(false);
