@@ -43,6 +43,7 @@ import CategoryBadges from '@/components/VendorCard/CategoryBadges';
 import AddProjectModal from '@/components/vendor-profile/AddProjectModal';
 import PortfolioProjectCard from '@/components/vendor-profile/PortfolioProjectCard';
 import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
+import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -65,6 +66,7 @@ export default function VendorProfilePage() {
   // Modal visibility states
   const [showProductModal, setShowProductModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const [showHoursEditor, setShowHoursEditor] = useState(false);
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [showCertManager, setShowCertManager] = useState(false);
@@ -746,7 +748,7 @@ export default function VendorProfilePage() {
               <h3 className="text-lg font-semibold text-slate-900">About {vendor.company_name}</h3>
               {canEdit && (
                 <button
-                  onClick={() => setShowProductModal(true)}
+                  onClick={() => setShowAboutModal(true)}
                   className="text-sm font-semibold text-amber-700 hover:text-amber-800"
                 >
                   Edit
@@ -1511,6 +1513,17 @@ export default function VendorProfilePage() {
           onSuccess={(newService) => {
             setServices([newService, ...services]);
             setShowServiceModal(false);
+          }}
+        />
+      )}
+
+      {showAboutModal && (
+        <EditAboutModal
+          vendor={vendor}
+          onClose={() => setShowAboutModal(false)}
+          onSuccess={(updatedVendor) => {
+            setVendor(updatedVendor);
+            setShowAboutModal(false);
           }}
         />
       )}
