@@ -40,6 +40,9 @@ import RFQInboxTab from '@/components/vendor-profile/RFQInboxTab';
 import ReviewRatingSystem from '@/components/vendor-profile/ReviewRatingSystem';
 import ReviewsList from '@/components/vendor-profile/ReviewsList';
 import CategoryBadges from '@/components/VendorCard/CategoryBadges';
+import AddProjectModal from '@/components/vendor-profile/AddProjectModal';
+import PortfolioProjectCard from '@/components/vendor-profile/PortfolioProjectCard';
+import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -78,6 +81,9 @@ export default function VendorProfilePage() {
   const [rfqLoading, setRfqLoading] = useState(false);
   const [profileStats, setProfileStats] = useState({ likes_count: 0, views_count: 0 });
   const [userLiked, setUserLiked] = useState(false);
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+  const [portfolioProjects, setPortfolioProjects] = useState([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
 
   // Data needed for rendering
@@ -280,6 +286,29 @@ export default function VendorProfilePage() {
 
     fetchProfileStats();
   }, [vendor?.id, currentUser?.id]);
+
+  // Fetch portfolio projects
+  useEffect(() => {
+    const fetchPortfolioProjects = async () => {
+      if (!vendor?.id) return;
+
+      try {
+        setPortfolioLoading(true);
+        const response = await fetch(`/api/portfolio/projects?vendorId=${vendor.id}`);
+        if (!response.ok) throw new Error('Failed to fetch projects');
+        
+        const { projects } = await response.json();
+        setPortfolioProjects(projects || []);
+      } catch (err) {
+        console.error('Error fetching portfolio projects:', err);
+        setPortfolioProjects([]);
+      } finally {
+        setPortfolioLoading(false);
+      }
+    };
+
+    fetchPortfolioProjects();
+  }, [vendor?.id]);
 
   // Track profile view (non-critical, errors are silently ignored)
   useEffect(() => {
@@ -829,67 +858,87 @@ export default function VendorProfilePage() {
             {/* Portfolio Tab */}
             {activeTab === 'portfolio' && (
               <>
-                <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900">Portfolio & Highlights</h3>
-                      <p className="text-sm text-slate-600">Showcase your best work and completed projects</p>
+                {portfolioLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mb-3"></div>
+                      <p className="text-slate-600">Loading portfolio projects...</p>
                     </div>
-                    {canEdit && (
-                      <button
-                        onClick={() => setShowHighlightsManager(true)}
-                        className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
-                      >
-                        + Add Portfolio Item
-                      </button>
-                    )}
                   </div>
-
-                  {/* Portfolio Items Grid */}
-                  {vendor.highlights && vendor.highlights.length > 0 ? (
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {vendor.highlights.map((highlight) => (
-                        <div key={highlight.id} className="rounded-lg border border-slate-200 overflow-hidden hover:border-amber-300 transition">
-                          {highlight.image_url && (
-                            <img
-                              src={highlight.image_url}
-                              alt={highlight.title}
-                              className="aspect-square object-cover w-full"
-                            />
-                          )}
-                          <div className="p-4">
-                            <h4 className="font-semibold text-slate-900 mb-1">{highlight.title}</h4>
-                            {highlight.description && (
-                              <p className="text-sm text-slate-600 line-clamp-2 mb-2">{highlight.description}</p>
-                            )}
-                            {highlight.url && (
-                              <a
-                                href={highlight.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs text-amber-600 hover:text-amber-700 font-semibold"
-                              >
-                                View Project →
-                              </a>
-                            )}
-                          </div>
+                ) : portfolioProjects.length > 0 ? (
+                  <div className="space-y-6">
+                    {/* Portfolio Header with Add Button */}
+                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-900">Portfolio & Projects</h3>
+                          <p className="text-sm text-slate-600">Showcase of completed projects</p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-slate-600 mb-4">No portfolio items yet</p>
-                      {canEdit && (
-                        <button
-                          onClick={() => setShowHighlightsManager(true)}
-                          className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
-                        >
-                          Add Your First Portfolio Item
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </section>
+                        {canEdit && (
+                          <button
+                            onClick={() => setShowAddProjectModal(true)}
+                            className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
+                          >
+                            + Add Project
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Projects Grid */}
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {portfolioProjects.map((project) => (
+                          <PortfolioProjectCard
+                            key={project.id}
+                            project={project}
+                            canEdit={canEdit}
+                            onView={() => {
+                              // TODO: Implement view detail modal (Phase 3)
+                              console.log('View project:', project.id);
+                            }}
+                            onEdit={() => {
+                              // TODO: Implement edit modal (Phase 3)
+                              console.log('Edit project:', project.id);
+                            }}
+                            onDelete={() => {
+                              // TODO: Implement delete (Phase 3)
+                              console.log('Delete project:', project.id);
+                            }}
+                            onShare={() => {
+                              // TODO: Implement share (Phase 3)
+                              const url = `${window.location.origin}/vendor-profile/${vendor.id}/portfolio/${project.id}`;
+                              navigator.clipboard.writeText(url);
+                              alert('Portfolio link copied to clipboard!');
+                            }}
+                            onRequestQuote={() => {
+                              // TODO: Implement request quote modal (Phase 3)
+                              console.log('Request quote for project:', project.id);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                ) : (
+                  <PortfolioEmptyState
+                    canEdit={canEdit}
+                    onAddProject={() => setShowAddProjectModal(true)}
+                  />
+                )}
+
+                {/* Add Project Modal */}
+                {canEdit && (
+                  <AddProjectModal
+                    vendorId={vendor?.id}
+                    vendorPrimaryCategory={vendor?.primaryCategorySlug}
+                    isOpen={showAddProjectModal}
+                    onClose={() => setShowAddProjectModal(false)}
+                    onSuccess={(newProject) => {
+                      // Refresh portfolio projects
+                      setPortfolioProjects((prev) => [newProject, ...prev]);
+                      setShowAddProjectModal(false);
+                    }}
+                  />
+                )}
               </>
             )}
 
