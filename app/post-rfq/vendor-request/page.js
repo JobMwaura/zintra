@@ -48,7 +48,7 @@ function VendorRequestContent() {
 
         const { data, error: fetchError } = await supabase
           .from('vendors')
-          .select('id, name, primary_category, categories, email, phone, location')
+          .select('id, company_name, category, email, phone, location')
           .eq('id', vendorId)
           .single();
 
@@ -135,16 +135,16 @@ function VendorRequestContent() {
             {/* Vendor Info Card */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Request a Quote from {vendor.name}
+                Request a Quote from {vendor.company_name}
               </h2>
               <p className="text-gray-600">
                 Fill out the form below to send a customized RFQ to this vendor. Your request will be category-specific 
                 based on their primary expertise.
               </p>
-              {vendor.primary_category && (
+              {vendor.category && (
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <span className="font-semibold">Category:</span> {vendor.primary_category}
+                    <span className="font-semibold">Category:</span> {vendor.category}
                   </p>
                 </div>
               )}
@@ -157,9 +157,9 @@ function VendorRequestContent() {
                 isOpen={modalOpen}
                 onClose={handleModalClose}
                 vendorId={vendor.id}
-                vendorCategories={vendor.primary_category ? [vendor.primary_category] : []}
-                vendorName={vendor.name}
-                preSelectedCategory={vendor.primary_category}
+                vendorCategories={vendor.category ? [vendor.category] : []}
+                vendorName={vendor.company_name}
+                preSelectedCategory={vendor.category}
               />
             )}
           </>
