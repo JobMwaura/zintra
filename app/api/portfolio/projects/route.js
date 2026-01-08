@@ -83,9 +83,20 @@ export async function POST(request) {
       .single();
 
     if (projectError) {
+      console.error('❌ Project creation error:', projectError);
+      
+      // If table doesn't exist, give helpful message
+      if (projectError.message?.includes('relation') || projectError.message?.includes('does not exist')) {
+        return NextResponse.json(
+          { message: 'Portfolio feature is being set up. Please run the database migration: npx prisma migrate deploy' },
+          { status: 503 }
+        );
+      }
+      
       throw projectError;
     }
 
+    console.log('✅ Project created:', project.id);
     return NextResponse.json(
       { 
         message: 'Project created successfully',
@@ -118,7 +129,10 @@ export async function GET(request) {
       );
     }
 
+    console.log('🔍 Fetching portfolio projects for vendor:', vendorId);
+
     // Get published projects for vendor
+    // Note: Table is quoted because it's a Prisma convention, but Supabase may not have this table yet
     const { data: projects, error: projectsError } = await supabase
       .from('PortfolioProject')
       .select('*, PortfolioProjectImage(*)')
@@ -127,15 +141,25 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     if (projectsError) {
+      console.error('❌ Portfolio projects fetch error:', projectsError);
+      
+      // If table doesn't exist, return empty array (migration not deployed yet)
+      if (projectsError.message?.includes('relation') || projectsError.message?.includes('does not exist')) {
+        console.log('⚠️ PortfolioProject table does not exist yet. Returning empty array.');
+        return NextResponse.json({ projects: [] }, { status: 200 });
+      }
+      
       throw projectsError;
     }
 
-    return NextResponse.json({ projects }, { status: 200 });
+    console.log('✅ Found', projects?.length || 0, 'portfolio projects');
+    return NextResponse.json({ projects: projects || [] }, { status: 200 });
   } catch (error) {
-    console.error('Portfolio projects fetch failed:', error);
+    console.error('❌ Portfolio projects fetch failed:', error);
+    // Return empty array instead of 500 error while table is being created
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
-      { status: 500 }
+      { projects: [], message: 'Portfolio feature is being set up' },
+      { status: 200 }
     );
   }
 }

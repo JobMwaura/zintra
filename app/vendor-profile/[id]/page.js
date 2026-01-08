@@ -296,13 +296,18 @@ export default function VendorProfilePage() {
 
       try {
         setPortfolioLoading(true);
+        console.log('🔹 Fetching portfolio projects for vendor:', vendor.id);
         const response = await fetch(`/api/portfolio/projects?vendorId=${vendor.id}`);
-        if (!response.ok) throw new Error('Failed to fetch projects');
         
-        const { projects } = await response.json();
+        // Handle all responses gracefully - even 500 errors should return empty array
+        const data = await response.json();
+        const { projects } = data;
+        
+        console.log('✅ Portfolio projects fetched:', projects?.length || 0);
         setPortfolioProjects(projects || []);
       } catch (err) {
         console.error('Error fetching portfolio projects:', err);
+        // Silently fail - portfolio is optional
         setPortfolioProjects([]);
       } finally {
         setPortfolioLoading(false);

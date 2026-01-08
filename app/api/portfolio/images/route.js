@@ -55,6 +55,16 @@ export async function POST(request) {
       .single();
 
     if (projectError || !project) {
+      console.error('❌ Project not found:', projectId, projectError);
+      
+      // If table doesn't exist, return helpful message
+      if (projectError?.message?.includes('relation') || projectError?.message?.includes('does not exist')) {
+        return NextResponse.json(
+          { message: 'Portfolio feature is being set up. Please run the database migration: npx prisma migrate deploy' },
+          { status: 503 }
+        );
+      }
+      
       return NextResponse.json(
         { message: 'Project not found' },
         { status: 404 }
@@ -75,9 +85,20 @@ export async function POST(request) {
       .single();
 
     if (imageError) {
+      console.error('❌ Image creation error:', imageError);
+      
+      // If table doesn't exist, return helpful message
+      if (imageError.message?.includes('relation') || imageError.message?.includes('does not exist')) {
+        return NextResponse.json(
+          { message: 'Portfolio feature is being set up. Please run the database migration: npx prisma migrate deploy' },
+          { status: 503 }
+        );
+      }
+      
       throw imageError;
     }
 
+    console.log('✅ Portfolio image created:', image.id);
     return NextResponse.json(
       {
         message: 'Image created successfully',
