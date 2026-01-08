@@ -471,26 +471,53 @@ export default function VendorRegistration() {
 
       const responseData = await response.json();
 
+      // ============================================================================
+      // ✅ FIX: Check response status FIRST before proceeding to success path
+      // ============================================================================
       if (!response.ok) {
-        console.error('API error:', responseData.error);
-        setMessage('Error: ' + (responseData.error || 'Failed to create vendor profile'));
+        const errorMessage = responseData?.error || response.statusText || 'Unknown error';
+        console.error('❌ Vendor creation failed:', { status: response.status, error: errorMessage });
+        
+        setMessage('❌ Error creating vendor profile: ' + errorMessage);
+        setIsLoading(false);
+        return; // ✅ CRITICAL: Must return here on error!
+      }
+
+      // ============================================================================
+      // Verify we got valid data back
+      // ============================================================================
+      if (!responseData.data || !Array.isArray(responseData.data) || responseData.data.length === 0) {
+        console.error('❌ Vendor creation returned invalid data:', responseData);
+        setMessage('❌ Error: Vendor profile creation returned no data');
         setIsLoading(false);
         return;
       }
 
-      setMessage(
-        user?.id
-          ? '✅ Vendor profile created successfully!'
-          : '✅ Account created. Check your email to verify and activate your profile.'
-      );
+      const createdVendor = responseData.data[0];
+      if (!createdVendor?.id) {
+        console.error('❌ Vendor created but no ID returned:', createdVendor);
+        setMessage('❌ Error: No vendor ID received from server');
+        setIsLoading(false);
+        return;
+      }
+
+      // ============================================================================
+      // ✅ Only reaches here on success
+      // ============================================================================
+      console.log('✅ Vendor profile created successfully:', createdVendor);
+
+      const successMessage = user?.id
+        ? '✅ Vendor profile created successfully!'
+        : '✅ Account created. Check your email to verify and activate your profile.';
+
+      setMessage(successMessage);
       setCurrentStep(6);
 
-      const createdId = responseData?.data?.[0]?.id;
-      if (createdId) {
-        setTimeout(() => {
-          router.push(`/vendor-profile/${createdId}`);
-        }, 1200);
-      }
+      setTimeout(() => {
+        console.log('🔹 Redirecting to vendor profile:', createdVendor.id);
+        router.push(`/vendor-profile/${createdVendor.id}`);
+      }, 1200);
+      return;
     } catch (err) {
       console.error('Unexpected error:', err);
       setMessage('Error: ' + (err.message || 'Something went wrong'));

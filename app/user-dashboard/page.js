@@ -43,6 +43,49 @@ export default function UserDashboard() {
     }
   }, [authLoading, user]);
 
+  // ============================================================================
+  // ✅ NEW: Redirect vendors to their vendor profile instead of user dashboard
+  // ============================================================================
+  useEffect(() => {
+    const checkIfVendor = async () => {
+      // Only run if user is loaded and authenticated
+      if (authLoading || !user) {
+        return;
+      }
+
+      try {
+        console.log('🔹 UserDashboard: Checking if user is vendor...');
+        
+        const { data: vendor, error: vendorError } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        // PGRST116 is the normal "0 rows found" error - this means user is NOT a vendor
+        if (vendorError && vendorError.code !== 'PGRST116') {
+          console.error('⚠️ Error checking vendor status:', vendorError);
+          return;
+        }
+
+        // If vendor record exists, user is a vendor - redirect them
+        if (vendor?.id) {
+          console.warn('⚠️ Vendor user accessed user-dashboard, redirecting to vendor profile...');
+          window.location.href = `/vendor-profile/${vendor.id}`;
+          return;
+        }
+
+        // If we get here: user is NOT a vendor, proceed with user dashboard
+        console.log('✅ User is not a vendor, user dashboard is correct');
+      } catch (error) {
+        console.error('❌ Error in vendor redirect check:', error);
+        // Don't block user dashboard if check fails
+      }
+    };
+
+    checkIfVendor();
+  }, [user, authLoading, supabase]);
+
   const fetchUserData = async () => {
     if (!user) {
       console.log('🔹 UserDashboard: No user, skipping fetchUserData');
