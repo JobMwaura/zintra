@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle, Plus, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Upload, Image as ImageIcon, AlertCircle, HelpCircle, Plus, X, CheckCircle } from 'lucide-react';
 import LocationSelector from '@/components/LocationSelector';
 import PhoneInput from '@/components/PhoneInput';
 import CategorySelector from '@/components/vendor-profile/CategorySelector';
@@ -402,12 +402,61 @@ export default function VendorRegistration() {
       let userEmail = user?.email || null;
 
       if (!user?.id) {
+        // ============================================================================
+        // DEBUG: Validate email and password format BEFORE calling Supabase
+        // ============================================================================
+        const trimmedEmail = formData.email.trim().toLowerCase();
+        
+        console.log('🔹 VENDOR SIGNUP DEBUG:', {
+          email: trimmedEmail,
+          emailLength: trimmedEmail.length,
+          hasAtSign: trimmedEmail.includes('@'),
+          hasDot: trimmedEmail.includes('.'),
+          passwordLength: formData.password.length,
+          confirmPasswordMatches: formData.password === formData.confirmPassword,
+        });
+
+        // Validate email format
+        if (!trimmedEmail || !formData.password) {
+          setMessage('❌ Email and password are required');
+          setIsLoading(false);
+          return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+          console.error('❌ Email format invalid:', trimmedEmail);
+          setMessage('❌ Please enter a valid email address (example: vendor@company.com)');
+          setIsLoading(false);
+          return;
+        }
+
+        if (formData.password.length < 8) {
+          setMessage('❌ Password must be at least 8 characters');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('✅ Validation passed, calling auth.signUp()...');
+
         const { data, error } = await supabase.auth.signUp({
-          email: formData.email.trim(),
+          email: trimmedEmail,
           password: formData.password,
         });
 
+        console.log('📡 Supabase response:', {
+          hasError: !!error,
+          errorMessage: error?.message,
+          hasData: !!data,
+          userId: data?.user?.id,
+        });
+
         if (error) {
+          console.error('❌ Signup error details:', {
+            message: error.message,
+            status: error.status,
+            code: error.code,
+          });
+          
           // Handle "user already exists" error - try sign-in instead
           if (error.message && error.message.toLowerCase().includes('already exists')) {
             console.log('User already exists in Auth, attempting sign-in...');
@@ -866,6 +915,28 @@ export default function VendorRegistration() {
     }
 
     if (currentStep === 4) {
+      // ============================================================================
+      // FIX: If no additional details needed, show completion message
+      // ============================================================================
+      if (!needsServices && !needsPortfolio && !needsProducts) {
+        return (
+          <div className="space-y-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-green-900">Profile Complete!</h3>
+              <p className="text-sm text-green-700 mt-2">
+                Your category doesn't require additional details. You're ready to choose your subscription plan!
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      // ============================================================================
+      // If additional details needed, show form
+      // ============================================================================
       return (
         <div className="space-y-6">
           <div>
@@ -986,15 +1057,6 @@ export default function VendorRegistration() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {!needsServices && !needsPortfolio && !needsProducts && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-sm text-amber-900">
-                <HelpCircle className="w-4 h-4 inline mr-2" />
-                You're all set! Move to the next step to choose your subscription plan.
-              </p>
             </div>
           )}
         </div>
