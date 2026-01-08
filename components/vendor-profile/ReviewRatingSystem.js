@@ -12,6 +12,12 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  // Check if current user is the vendor (vendors cannot review themselves)
+  const isVendor = currentUser && vendor && (
+    currentUser.id === vendor.user_id || 
+    currentUser.email === vendor.email
+  );
+
   const handleSubmitReview = async () => {
     // Validation checks
     try {
@@ -132,7 +138,14 @@ export default function ReviewRatingSystem({ vendor, currentUser, onReviewAdded 
       </section>
 
       {/* Review Writing Section */}
-      {currentUser ? (
+      {isVendor ? (
+        <section className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+          <p className="text-slate-900 font-semibold mb-2">You cannot review your own business</p>
+          <p className="text-slate-600 text-sm">
+            As the vendor, you can respond to reviews from customers below, but cannot write reviews for yourself.
+          </p>
+        </section>
+      ) : currentUser ? (
         <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <h4 className="text-lg font-semibold text-slate-900 mb-4">Write a Review</h4>
           
