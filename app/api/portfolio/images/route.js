@@ -1,5 +1,12 @@
+'use server';
+
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prismaClient';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * POST /api/portfolio/images
@@ -41,11 +48,13 @@ export async function POST(request) {
     }
 
     // Verify project exists
-    const project = await prisma.portfolioProject.findUnique({
-      where: { id: projectId },
-    });
+    const { data: project, error: projectError } = await supabase
+      .from('PortfolioProject')
+      .select('id')
+      .eq('id', projectId)
+      .single();
 
-    if (!project) {
+    if (projectError || !project) {
       return NextResponse.json(
         { message: 'Project not found' },
         { status: 404 }
@@ -53,15 +62,21 @@ export async function POST(request) {
     }
 
     // Create image
-    const image = await prisma.portfolioProjectImage.create({
-      data: {
+    const { data: image, error: imageError } = await supabase
+      .from('PortfolioProjectImage')
+      .insert({
         portfolioProjectId: projectId,
         imageUrl,
         imageType,
         caption,
         displayOrder,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (imageError) {
+      throw imageError;
+    }
 
     return NextResponse.json(
       {

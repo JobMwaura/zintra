@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+'use server';
+
 import { createClient } from '@supabase/supabase-js';
-import { prisma } from '@/lib/prismaClient';
+import { NextResponse } from 'next/server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -47,12 +48,14 @@ export async function POST(request) {
       );
     }
 
-    // Validate vendor exists and user owns it
-    const vendor = await prisma.vendorProfile.findUnique({
-      where: { id: vendorId },
-    });
+    // Verify vendor exists
+    const { data: vendor, error: vendorError } = await supabase
+      .from('vendors')
+      .select('id')
+      .eq('id', vendorId)
+      .single();
 
-    if (!vendor) {
+    if (vendorError || !vendor) {
       return NextResponse.json(
         { message: 'Vendor not found' },
         { status: 404 }
@@ -60,8 +63,9 @@ export async function POST(request) {
     }
 
     // Create project
-    const project = await prisma.portfolioProject.create({
-      data: {
+    const { data: project, error: projectError } = await supabase
+      .from('PortfolioProject')
+      .insert({
         vendorProfileId: vendorId,
         title: title.trim(),
         description: description.trim(),
@@ -71,11 +75,16 @@ export async function POST(request) {
         budgetMax: budgetMax ? parseInt(budgetMax) : null,
         timeline,
         location,
-        completionDate: completionDate ? new Date(completionDate) : null,
+        completionDate: completionDate ? new Date(completionDate).toISOString() : null,
         viewCount: 0,
         quoteRequestCount: 0,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (projectError) {
+      throw projectError;
+    }
 
     return NextResponse.json(
       { 
@@ -109,19 +118,17 @@ export async function GET(request) {
       );
     }
 
-    // Get published projects or all projects if user owns vendor
-    const projects = await prisma.portfolioProject.findMany({
-      where: {
-        vendorProfileId: vendorId,
-        status: 'published', // For now, only return published
-      },
-      include: {
-        images: {
-          orderBy: { displayOrder: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Get published projects for vendor
+    const { data: projects, error: projectsError } = await supabase
+      .from('PortfolioProject')
+      .select('*, PortfolioProjectImage(*)')
+      .eq('vendorProfileId', vendorId)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false });
+
+    if (projectsError) {
+      throw projectsError;
+    }
 
     return NextResponse.json({ projects }, { status: 200 });
   } catch (error) {
