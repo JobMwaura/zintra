@@ -1,0 +1,188 @@
+'use client';
+
+import { useState } from 'react';
+import { Eye, Edit2, Share2, MessageSquare, Trash2 } from 'lucide-react';
+
+/**
+ * PortfolioProjectCard Component
+ * 
+ * Displays a single portfolio project as a card with:
+ * - Cover image
+ * - Project title
+ * - Category badge
+ * - Quick spec chips (completion date, budget, location)
+ * - Action buttons (view, edit, share, request quote)
+ * 
+ * Props:
+ * - project: Project object with title, description, images[], etc.
+ * - canEdit: Boolean (true if vendor viewing own profile)
+ * - onView: Callback when "View" clicked
+ * - onEdit: Callback when "Edit" clicked
+ * - onDelete: Callback when "Delete" clicked
+ * - onShare: Callback when "Share" clicked
+ * - onRequestQuote: Callback when "Request Quote" clicked
+ */
+export default function PortfolioProjectCard({
+  project,
+  canEdit = false,
+  onView,
+  onEdit,
+  onDelete,
+  onShare,
+  onRequestQuote,
+}) {
+  const [isHovering, setIsHovering] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Get cover image (first "after" image, or any image)
+  const coverImage = project.images?.find(img => img.imageType === 'after')?.imageUrl ||
+                     project.images?.[0]?.imageUrl;
+
+  // Format budget range
+  const formatBudget = () => {
+    if (!project.budgetMin && !project.budgetMax) return null;
+    const min = project.budgetMin ? `${project.budgetMin.toLocaleString()}` : '—';
+    const max = project.budgetMax ? `${project.budgetMax.toLocaleString()}` : '—';
+    return `${min}–${max}`;
+  };
+
+  // Format completion date
+  const formatDate = () => {
+    if (!project.completionDate) return null;
+    return new Date(project.completionDate).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+    setIsDeleting(true);
+    try {
+      await onDelete?.();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div
+      className="group rounded-lg border border-slate-200 overflow-hidden hover:border-amber-300 transition hover:shadow-lg"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      {/* Cover Image */}
+      <div className="relative aspect-square overflow-hidden bg-slate-100">
+        {coverImage ? (
+          <img
+            src={coverImage}
+            alt={project.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">
+            <span className="text-slate-500 font-medium">No Image</span>
+          </div>
+        )}
+
+        {/* Draft Badge */}
+        {project.status === 'draft' && (
+          <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs font-semibold">
+            Draft
+          </div>
+        )}
+
+        {/* Hover Overlay - Action Buttons */}
+        {isHovering && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2">
+            <button
+              onClick={() => onView?.()}
+              className="p-2 bg-white text-slate-900 rounded-lg hover:bg-amber-500 hover:text-white transition"
+              title="View project"
+            >
+              <Eye className="w-5 h-5" />
+            </button>
+            {canEdit && (
+              <>
+                <button
+                  onClick={() => onEdit?.()}
+                  className="p-2 bg-white text-slate-900 rounded-lg hover:bg-amber-500 hover:text-white transition"
+                  title="Edit project"
+                >
+                  <Edit2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => onDelete?.()}
+                  disabled={isDeleting}
+                  className="p-2 bg-white text-slate-900 rounded-lg hover:bg-red-500 hover:text-white transition disabled:opacity-50"
+                  title="Delete project"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* View Count */}
+        <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+          👁️ {project.viewCount || 0}
+        </div>
+      </div>
+
+      {/* Card Content */}
+      <div className="p-4">
+        {/* Title */}
+        <h3 className="font-semibold text-slate-900 mb-2 line-clamp-2 text-sm">
+          {project.title}
+        </h3>
+
+        {/* Category Badge */}
+        {project.categorySlug && (
+          <div className="inline-flex items-center mb-3 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+            🏢 {project.categorySlug.replace(/-/g, ' ')}
+          </div>
+        )}
+
+        {/* Quick Spec Chips */}
+        <div className="space-y-2 mb-4 text-xs text-slate-600">
+          {formatDate() && (
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">✓</span> Completed: {formatDate()}
+            </div>
+          )}
+          {formatBudget() && (
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">💰</span> Budget: {formatBudget()} KES
+            </div>
+          )}
+          {project.location && (
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">📍</span> {project.location}
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-3 border-t border-slate-200">
+          <button
+            onClick={() => onShare?.()}
+            className="flex-1 flex items-center justify-center gap-1 py-2 text-slate-600 hover:text-amber-700 font-medium text-xs transition"
+            title="Share project"
+          >
+            <Share2 className="w-4 h-4" /> Share
+          </button>
+          {!canEdit && (
+            <button
+              onClick={() => onRequestQuote?.()}
+              className="flex-1 flex items-center justify-center gap-1 py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium text-xs rounded transition"
+              title="Request quote for similar project"
+            >
+              <MessageSquare className="w-4 h-4" /> Quote
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
