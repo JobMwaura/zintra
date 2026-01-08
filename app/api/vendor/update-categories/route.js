@@ -57,19 +57,14 @@ export async function PUT(request) {
       );
     }
 
-    if (Array.isArray(secondaryCategories) && secondaryCategories.length > 0) {
-      for (const slug of secondaryCategories) {
-        if (!isValidCategorySlug(slug)) {
-          return NextResponse.json(
-            { error: `Invalid secondary category slug: ${slug}` },
-            { status: 400 }
-          );
-        }
-      }
-    }
+    // Filter secondary categories to only include valid canonical categories
+    // This handles migration from old category slugs to canonical ones
+    const validSecondaryCategories = Array.isArray(secondaryCategories)
+      ? secondaryCategories.filter((slug) => isValidCategorySlug(slug))
+      : [];
 
     // Prevent primary category from being in secondary
-    const filteredSecondary = secondaryCategories.filter(
+    const filteredSecondary = validSecondaryCategories.filter(
       (s) => s !== primaryCategorySlug
     );
 
