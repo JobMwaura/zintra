@@ -7,6 +7,7 @@ import ModalHeader from './ModalHeader';
 import ModalFooter from './ModalFooter';
 import StepIndicator from './StepIndicator';
 import StepCategory from './Steps/StepCategory';
+import StepCategoryConfirmation from './Steps/StepCategoryConfirmation';
 import StepTemplate from './Steps/StepTemplate';
 import StepGeneral from './Steps/StepGeneral';
 import StepRecipients from './Steps/StepRecipients';
@@ -74,14 +75,29 @@ export default function RFQModal({
   const [categoryNeedsJobType, setCategoryNeedsJobType] = useState(false);
   const [rfqId, setRfqId] = useState(null);
 
+  // Determine if this is a single-category vendor request
+  const isSingleCategoryVendorRequest = 
+    rfqType === 'vendor-request' && 
+    vendorCategories?.length === 1;
+
   // Determine which steps to show based on rfqType
   // For vendor-request: skip both category selection AND vendor selection (vendor is pre-determined)
   const getSteps = () => {
     const hasPreSelectedCategory = preSelectedCat ? true : false;
     const skipRecipientSelection = rfqType === 'vendor-request';
     
-    if (hasPreSelectedCategory && skipRecipientSelection) {
-      // Vendor-request: skip category AND recipients
+    if (isSingleCategoryVendorRequest) {
+      // Single-category vendor request: show confirmation banner first
+      return [
+        { number: 1, name: 'category-confirmation' },
+        { number: 2, name: 'details' },
+        { number: 3, name: 'project' },
+        { number: 4, name: 'auth' },
+        { number: 5, name: 'review' },
+        { number: 6, name: 'success' }
+      ];
+    } else if (hasPreSelectedCategory && skipRecipientSelection) {
+      // Vendor-request with multiple categories: skip category AND recipients
       return [
         { number: 1, name: 'details' },
         { number: 2, name: 'project' },
@@ -262,6 +278,15 @@ export default function RFQModal({
 
   const validateStep = () => {
     const newErrors = {};
+
+    if (currentStep === 'category-confirmation') {
+      // Category-confirmation step is always valid when shown
+      // The category is already determined by the vendor
+      if (!formData.selectedCategory && vendorCategories?.length > 0) {
+        // Auto-set category if not already set
+        handleInputChange('selectedCategory', vendorCategories[0]);
+      }
+    }
 
     if (currentStep === 'category') {
       if (!formData.selectedCategory) newErrors.selectedCategory = 'Required';
@@ -502,6 +527,23 @@ export default function RFQModal({
               onCategoryChange={(cat) => handleInputChange('selectedCategory', cat)}
               onJobTypeChange={(jt) => handleInputChange('selectedJobType', jt)}
               errors={errors}
+            />
+          )}
+
+          {currentStep === 'category-confirmation' && (
+            <StepCategoryConfirmation
+              vendorName={vendorName}
+              vendorCategory={vendorCategories?.[0]}
+              onConfirm={() => {
+                // Category already set, just move to next step
+                handleInputChange('selectedCategory', vendorCategories?.[0]);
+                nextStep();
+              }}
+              onChangeCategory={() => {
+                // Go back to regular category selection if available
+                // For vendor-request with single category, this essentially closes
+                onClose();
+              }}
             />
           )}
 
