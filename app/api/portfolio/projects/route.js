@@ -65,6 +65,7 @@ export async function POST(request) {
 
     // Create project
     const projectId = randomUUID();
+    const now = new Date().toISOString();
     const { data: project, error: projectError } = await supabase
       .from('PortfolioProject')
       .insert({
@@ -81,6 +82,7 @@ export async function POST(request) {
         completionDate: completionDate ? new Date(completionDate).toISOString() : null,
         viewCount: 0,
         quoteRequestCount: 0,
+        updatedAt: now,
       })
       .select()
       .single();
