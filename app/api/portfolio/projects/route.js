@@ -66,7 +66,7 @@ export async function POST(request) {
     // Create project
     const projectId = randomUUID();
     const now = new Date().toISOString();
-    const { data: project, error: projectError } = await supabase
+    const { data: projects, error: projectError } = await supabase
       .from('PortfolioProject')
       .insert({
         id: projectId,
@@ -84,8 +84,7 @@ export async function POST(request) {
         quoteRequestCount: 0,
         updatedAt: now,
       })
-      .select()
-      .single();
+      .select();
 
     if (projectError) {
       console.error('❌ Project creation error:', projectError);
@@ -98,10 +97,15 @@ export async function POST(request) {
         );
       }
       
-      throw projectError;
+      // Return the actual error instead of throwing
+      return NextResponse.json(
+        { message: 'Failed to create project', error: projectError.message },
+        { status: 400 }
+      );
     }
 
-    console.log('✅ Project created:', project.id);
+    const project = projects && projects.length > 0 ? projects[0] : null;
+    console.log('✅ Project created:', project?.id);
     return NextResponse.json(
       { 
         message: 'Project created successfully',
