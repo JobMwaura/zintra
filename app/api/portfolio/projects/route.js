@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -63,9 +64,11 @@ export async function POST(request) {
     }
 
     // Create project
+    const projectId = randomUUID();
     const { data: project, error: projectError } = await supabase
       .from('PortfolioProject')
       .insert({
+        id: projectId,
         vendorProfileId: vendorId,
         title: title.trim(),
         description: description.trim(),
@@ -138,7 +141,7 @@ export async function GET(request) {
       .select('*, PortfolioProjectImage(*)')
       .eq('vendorProfileId', vendorId)
       .eq('status', 'published')
-      .order('created_at', { ascending: false });
+      .order('createdAt', { ascending: false });
 
     if (projectsError) {
       console.error('❌ Portfolio projects fetch error:', projectsError);
