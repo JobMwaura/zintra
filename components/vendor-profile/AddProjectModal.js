@@ -243,7 +243,8 @@ export default function AddProjectModal({
       case 3:
         return formData.description.trim().length > 0;
       case 4:
-        return formData.photos.length > 0 && formData.photos.every((p) => p.isUploaded);
+        // Photos are now optional - allow proceeding with no photos
+        return formData.photos.length === 0 || formData.photos.every((p) => p.isUploaded);
       case 5:
         return true; // Optional details
       case 6:
@@ -271,8 +272,8 @@ export default function AddProjectModal({
 
   // Submit project
   const submitProject = async () => {
-    if (!formData.title.trim() || !formData.categorySlug || !formData.description.trim() || formData.photos.length === 0) {
-      setError('Please fill in all required fields');
+    if (!formData.title.trim() || !formData.categorySlug || !formData.description.trim()) {
+      setError('Please fill in title, category, and description');
       return;
     }
 
