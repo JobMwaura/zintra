@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS "PortfolioProject_status_idx" ON "PortfolioProject"("
 -- CreateIndex for PortfolioProjectImage table (if not exists)
 CREATE INDEX IF NOT EXISTS "PortfolioProjectImage_portfolioProjectId_idx" ON "PortfolioProjectImage"("portfolioProjectId");
 
--- AddForeignKey - Link PortfolioProject to VendorProfile (if not exists)
+-- AddForeignKey - Link PortfolioProject to vendors table (if not exists)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -61,7 +61,7 @@ BEGIN
     ALTER TABLE "PortfolioProject" 
     ADD CONSTRAINT "PortfolioProject_vendorProfileId_fkey" 
     FOREIGN KEY ("vendorProfileId") 
-    REFERENCES "VendorProfile"("id") 
+    REFERENCES "vendors"("id") 
     ON DELETE CASCADE 
     ON UPDATE CASCADE;
   END IF;
@@ -115,7 +115,7 @@ END $$;
 --   PortfolioProject_status_idx: For filtering by status
 --
 -- Foreign Keys:
---   vendorProfileId → VendorProfile(id) ON DELETE CASCADE
+--   vendorProfileId → vendors(id) ON DELETE CASCADE
 
 -- PortfolioProjectImage Table
 -- ===========================

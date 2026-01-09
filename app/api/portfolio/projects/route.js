@@ -49,7 +49,7 @@ export async function POST(request) {
       );
     }
 
-    // Verify vendor exists
+    // Verify vendor exists in the vendors table (correct table name)
     const { data: vendor, error: vendorError } = await supabase
       .from('vendors')
       .select('id')
