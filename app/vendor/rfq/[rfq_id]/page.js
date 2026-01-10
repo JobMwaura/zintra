@@ -67,7 +67,7 @@ export default function VendorRFQDetails() {
           try {
             // Fetch vendor profile
             const { data: vendor } = await supabase
-              .from('vendor_profiles')
+              .from('vendors')
               .select('*')
               .eq('user_id', authUser.id)
               .single();

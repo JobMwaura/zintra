@@ -109,8 +109,8 @@ export default function RFQCreate() {
 
       // Fetch vendors for direct RFQ
       const { data: vendorData } = await supabase
-        .from('vendor_profiles')
-        .select('id, business_name, category, location, rating')
+        .from('vendors')
+        .select('id, company_name, category, location, rating')
         .order('rating', { ascending: false })
         .limit(50);
 

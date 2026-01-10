@@ -192,7 +192,7 @@ export default function VendorDashboard() {
           Object.values(convMap).map(async (conv) => {
             try {
               const { data: profileData, error: profileError } = await supabase
-                .from('vendor_profiles')
+                .from('vendors')
                 .select('email, company_name')
                 .eq('user_id', conv.otherUserId)
                 .maybeSingle();

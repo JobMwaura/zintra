@@ -170,7 +170,7 @@ export default function VendorRFQDashboard() {
 
       // Fetch vendor profile (required for dashboard)
       const { data: vendor, error: vendorError } = await supabase
-        .from('vendor_profiles')
+        .from('vendors')
         .select('*')
         .eq('user_id', session.user.id)
         .single();

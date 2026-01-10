@@ -58,8 +58,8 @@ export async function GET(request) {
 
     // Get vendor profile to check if they're a vendor
     const { data: vendorProfile } = await supabase
-      .from('vendor_profiles')
-      .select('id, category, location, business_type')
+      .from('vendors')
+      .select('id, category, location')
       .eq('user_id', user.id)
       .single();
 

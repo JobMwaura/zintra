@@ -41,8 +41,8 @@ export async function GET(req) {
 
     // 2. Get vendor count by category
     const { data: vendorsByCategory, error: vendorError } = await supabase
-      .from('vendor_profiles')
-      .select('primaryCategorySlug, id');
+      .from('vendors')
+      .select('primary_category_slug, id');
 
     if (vendorError) throw vendorError;
 
