@@ -61,22 +61,39 @@ export async function POST(request) {
       );
     }
 
-    // Verify vendor exists in the VendorProfile table
-    const { data: vendorProfile, error: vendorError } = await supabase
+    // The vendorId comes from 'vendors' table, but we need the VendorProfile ID
+    // First, verify the vendor exists in vendors table
+    const { data: vendor, error: vendorError } = await supabase
+      .from('vendors')
+      .select('id')
+      .eq('id', vendorId)
+      .single();
+
+    if (vendorError || !vendor) {
+      console.log('❌ Vendor not found in vendors table:', vendorId);
+      return NextResponse.json(
+        { message: 'Vendor not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ Vendor found in vendors table:', vendor.id);
+
+    // Now get the corresponding VendorProfile ID
+    // The vendors.id should match a VendorProfile.id (they use the same IDs)
+    const { data: vendorProfile, error: vendorProfileError } = await supabase
       .from('VendorProfile')
       .select('id')
       .eq('id', vendorId)
       .single();
 
-    if (vendorError || !vendorProfile) {
-      console.log('❌ Vendor not found:', vendorId);
-      return NextResponse.json(
-        { message: 'Vendor profile not found' },
-        { status: 404 }
-      );
+    if (vendorProfileError || !vendorProfile) {
+      // If VendorProfile doesn't exist with this ID, it might not be set up yet
+      console.log('⚠️ VendorProfile not found for ID:', vendorId);
+      // Continue anyway - we'll use the vendorId as is
+    } else {
+      console.log('✅ VendorProfile found:', vendorProfile.id);
     }
-
-    console.log('✅ Vendor profile found:', vendorProfile.id);
 
     // Create project
     const projectId = randomUUID();
