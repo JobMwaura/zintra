@@ -143,10 +143,22 @@ export default function AddProjectModal({
         setUploadProgress((prev) => ({ ...prev, [filename]: 0 }));
 
         try {
-          // Step 1: Get presigned URL from backend
+          // Get the session token for authentication
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          
+          if (!session || !session.access_token) {
+            throw new Error('Not authenticated - please log in again');
+          }
+
+          // Step 1: Get presigned URL from backend with auth header
           const presignedResponse = await fetch('/api/portfolio/upload-image', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
             body: JSON.stringify({
               fileName: filename,
               contentType: file.type,

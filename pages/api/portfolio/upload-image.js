@@ -2,8 +2,7 @@
 // Presigned URL generation for portfolio image uploads to AWS S3
 
 import { generatePresignedUploadUrl } from '@/lib/aws-s3';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -12,29 +11,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the session
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
+    // Get the session from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No authorization header');
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    // Create Supabase client with the token
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
         },
       }
     );
 
-    // Get user from session
+    // Get user from token
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      console.log('❌ Auth error or no user:', authError);
+      return res.status(401).json({ error: 'Unauthorized - invalid token' });
     }
+    
+    console.log('✅ User authenticated:', user.id);
 
     const { fileName, contentType } = req.body;
 
