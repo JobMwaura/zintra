@@ -248,24 +248,40 @@ Example:
 - ✅ Vendor logos and banners
 
 ### Phase 2: Document Exports (Recommended Next)
-```sql
+
+**Copy this SQL directly into Supabase SQL Editor:**
+
+```
 -- Add URL columns to rfq_responses table
 ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS pdf_export_url TEXT;
 ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS pdf_generated_at TIMESTAMPTZ;
+```
 
--- When quote is finalized:
-UPDATE rfq_responses
-SET pdf_export_url = 's3://bucket/vendor-quotes/...',
-    pdf_generated_at = NOW()
-WHERE id = $1;
+**Then when quote is finalized, run this in your application code:**
+
+```javascript
+// Update quote with PDF URL
+const { data } = await supabase
+  .from('rfq_responses')
+  .update({
+    pdf_export_url: 's3://bucket/vendor-quotes/...',
+    pdf_generated_at: new Date().toISOString()
+  })
+  .eq('id', quoteId);
 ```
 
 ### Phase 3: Portfolio High-Resolution Images
-```sql
+
+**Copy this SQL directly into Supabase SQL Editor:**
+
+```
 -- Add high-res image support to vendor_portfolio_projects
 ALTER TABLE vendor_portfolio_projects ADD COLUMN IF NOT EXISTS images JSONB;
+```
 
--- Example data structure:
+**Example data structure to store in the `images` column:**
+
+```json
 {
   "images": [
     {
@@ -279,21 +295,31 @@ ALTER TABLE vendor_portfolio_projects ADD COLUMN IF NOT EXISTS images JSONB;
 ```
 
 ### Phase 4: Document Verification (Certifications, Licenses)
-```sql
+
+**Copy this SQL directly into Supabase SQL Editor:**
+
+```
 -- New table for vendor documents
 CREATE TABLE vendor_documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   vendor_id UUID NOT NULL REFERENCES vendors(id),
-  document_type VARCHAR(50), -- 'license', 'certification', 'insurance'
-  file_url TEXT NOT NULL, -- S3 URL
-  file_key TEXT NOT NULL, -- S3 key for deletion
+  document_type VARCHAR(50),
+  file_url TEXT NOT NULL,
+  file_key TEXT NOT NULL,
   expires_at DATE,
   verified BOOLEAN DEFAULT false,
-  verified_by UUID, -- Admin ID
+  verified_by UUID,
   verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
+
+**Where:**
+- `document_type`: 'license', 'certification', 'insurance', etc.
+- `file_url`: The S3 presigned URL
+- `file_key`: The S3 key for deletion (e.g., 'vendor-documents/v123/electrical-license.pdf')
+- `verified`: Admin has verified the document
+- `expires_at`: When the certification expires (optional)
 
 ---
 
