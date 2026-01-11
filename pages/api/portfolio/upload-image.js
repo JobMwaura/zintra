@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Generate presigned URL for portfolio images
+    // Generate presigned URL for portfolio images with correct S3 path
     console.log('🔄 Generating presigned URL for portfolio image...');
     console.log('User ID:', user.id);
     console.log('File name:', fileName);
@@ -76,18 +76,16 @@ export default async function handler(req, res) {
         'vendor-id': user.id,
         'upload-type': 'portfolio-image',
         'uploaded-by': user.email,
-      }
+      },
+      `vendor-profiles/portfolio/${user.id}/`
     );
     
     console.log('✅ Presigned URL generated successfully');
 
-    // Modify the S3 key to use vendor-profiles/portfolio path
-    const portfolioKey = `vendor-profiles/portfolio/${user.id}/${uploadResult.key.split('/').pop()}`;
-
     return res.status(200).json({
       uploadUrl: uploadResult.uploadUrl,
       fileUrl: uploadResult.fileUrl,
-      key: portfolioKey,
+      key: uploadResult.key,
       fileName: uploadResult.fileName,
     });
   } catch (error) {
