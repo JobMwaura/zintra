@@ -72,6 +72,8 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Portfolio image upload error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
 
     // Check if it's an AWS configuration error
     if (error.message?.includes('AWS')) {
@@ -84,6 +86,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'Failed to generate upload URL',
       message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 }
