@@ -49,6 +49,9 @@ export async function POST(request) {
 
     // Verify project exists
     console.log('🔍 Checking if project exists:', projectId);
+    console.log('🔍 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT SET');
+    console.log('🔍 Service Role Key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET');
+    
     const { data: project, error: projectError } = await supabase
       .from('PortfolioProject')
       .select('id')
@@ -60,6 +63,12 @@ export async function POST(request) {
       console.error('Error code:', projectError.code);
       console.error('Error message:', projectError.message);
       console.error('Full error:', JSON.stringify(projectError, null, 2));
+      console.error('Error details:', {
+        status: projectError.status,
+        statusText: projectError.statusText,
+        details: projectError.details,
+        hint: projectError.hint,
+      });
       
       // Check for RLS-related errors
       if (projectError?.message?.includes('Row Level Security') || 
