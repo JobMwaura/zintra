@@ -421,9 +421,13 @@ export default function AddProjectModal({
 
       const { project } = projectResult;
 
-      // Create images
-      const imagePromises = formData.photos.map((photo) =>
-        fetch('/api/portfolio/images', {
+      // Create images sequentially (not in parallel) to avoid overwhelming the serverless function
+      console.log(`📤 Uploading ${formData.photos.length} images sequentially...`);
+      for (let i = 0; i < formData.photos.length; i++) {
+        const photo = formData.photos[i];
+        console.log(`📤 Uploading image ${i + 1}/${formData.photos.length}...`);
+        
+        const imageResponse = await fetch('/api/portfolio/images', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -431,16 +435,18 @@ export default function AddProjectModal({
             imageUrl: photo.imageUrl,
             imageType: photo.type,
             caption: photo.caption || null,
-            displayOrder: formData.photos.indexOf(photo),
+            displayOrder: i,
           }),
-        })
-      );
+        });
 
-      const imageResponses = await Promise.all(imagePromises);
-      for (const res of imageResponses) {
-        if (!res.ok) {
-          throw new Error('Failed to save some images');
+        if (!imageResponse.ok) {
+          const errorData = await imageResponse.json();
+          console.error(`❌ Image ${i + 1} upload failed:`, errorData);
+          throw new Error(`Failed to save image ${i + 1}: ${errorData.message || 'Unknown error'}`);
         }
+        
+        const imageData = await imageResponse.json();
+        console.log(`✅ Image ${i + 1} saved successfully:`, imageData);
       }
 
       // Success!
