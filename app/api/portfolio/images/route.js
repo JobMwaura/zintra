@@ -48,30 +48,45 @@ export async function POST(request) {
     }
 
     // Verify project exists
+    console.log('🔍 Checking if project exists:', projectId);
     const { data: project, error: projectError } = await supabase
       .from('PortfolioProject')
       .select('id')
       .eq('id', projectId)
       .single();
 
-    if (projectError || !project) {
-      console.error('❌ Project not found:', projectId, projectError);
+    if (projectError) {
+      console.error('❌ Error fetching project:', projectError);
       
       // If table doesn't exist, return helpful message
       if (projectError?.message?.includes('relation') || projectError?.message?.includes('does not exist')) {
+        console.error('❌ PortfolioProject table not found');
         return NextResponse.json(
-          { message: 'Portfolio feature is being set up. Please run the database migration: npx prisma migrate deploy' },
+          { message: 'Portfolio tables not set up. Run database migration.', error: projectError.message },
           { status: 503 }
         );
       }
       
+      // Project not found but table exists
+      console.log('⚠️ Project not found (but table exists):', projectId);
+      return NextResponse.json(
+        { message: 'Project not found', error: projectError.message },
+        { status: 404 }
+      );
+    }
+
+    if (!project) {
+      console.log('⚠️ Project not found:', projectId);
       return NextResponse.json(
         { message: 'Project not found' },
         { status: 404 }
       );
     }
 
+    console.log('✅ Project found:', project.id);
+
     // Create image
+    console.log('📝 Creating image for project:', projectId);
     const { data: image, error: imageError } = await supabase
       .from('PortfolioProjectImage')
       .insert({
@@ -89,13 +104,26 @@ export async function POST(request) {
       
       // If table doesn't exist, return helpful message
       if (imageError.message?.includes('relation') || imageError.message?.includes('does not exist')) {
+        console.error('❌ PortfolioProjectImage table not found');
         return NextResponse.json(
-          { message: 'Portfolio feature is being set up. Please run the database migration: npx prisma migrate deploy' },
+          { message: 'Portfolio tables not set up', error: imageError.message },
           { status: 503 }
         );
       }
       
-      throw imageError;
+      // Other errors (constraint violations, etc)
+      return NextResponse.json(
+        { message: 'Failed to create image', error: imageError.message },
+        { status: 400 }
+      );
+    }
+
+    if (!image) {
+      console.error('❌ Image creation returned no data');
+      return NextResponse.json(
+        { message: 'Image creation failed - no data returned' },
+        { status: 500 }
+      );
     }
 
     console.log('✅ Portfolio image created:', image.id);
