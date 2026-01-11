@@ -322,6 +322,34 @@ export default function VendorRFQDashboard() {
             </div>
           </div>
 
+          {/* Navigation Buttons */}
+          <div className="flex flex-wrap gap-3 mb-6">
+            <button
+              onClick={() => router.push('/vendor-profile')}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              View Profile
+            </button>
+            <button
+              onClick={() => router.push('/vendor/rfq-dashboard')}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-medium"
+            >
+              My RFQs
+            </button>
+            <button
+              onClick={() => router.push('/vendor-quotes')}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              My Quotes
+            </button>
+            <button
+              onClick={() => router.push('/user-dashboard')}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              Dashboard
+            </button>
+          </div>
+
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2">
