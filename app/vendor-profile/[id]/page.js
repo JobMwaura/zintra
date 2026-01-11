@@ -217,29 +217,21 @@ export default function VendorProfilePage() {
 
   // Fetch RFQ Inbox data for vendor
   useEffect(() => {
+    // RFQ inbox feature disabled - requires get_vendor_rfq_inbox RPC function
+    // This feature will be re-enabled once the RPC function is properly created in Supabase
     const fetchRFQData = async () => {
       if (!canEdit || !vendor?.id) return;
       
       try {
         setRfqLoading(true);
-        const { data: rfqs, error } = await supabase.rpc('get_vendor_rfq_inbox', {
-          p_vendor_id: vendor.id
-        });
+        // Commented out until get_vendor_rfq_inbox RPC function is created
+        // const { data: rfqs, error } = await supabase.rpc('get_vendor_rfq_inbox', {
+        //   p_vendor_id: vendor.id
+        // });
 
-        if (error) {
-          console.error('Error fetching RFQ data:', error);
-          return;
-        }
-
-        setRfqInboxData(rfqs || []);
-
-        // Calculate stats
-        const total = rfqs?.length || 0;
-        const unread = rfqs?.filter((r) => r.viewed_at === null).length || 0;
-        const pending = rfqs?.filter((r) => r.status === 'pending').length || 0;
-        const with_quotes = rfqs?.filter((r) => r.quote_count > 0).length || 0;
-
-        setRfqStats({ total, unread, pending, with_quotes });
+        // Set empty data to prevent errors
+        setRfqInboxData([]);
+        setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
       } catch (err) {
         console.error('Error loading RFQ data:', err);
       } finally {
@@ -247,10 +239,9 @@ export default function VendorProfilePage() {
       }
     };
 
-    const interval = setInterval(fetchRFQData, 30000); // Refresh every 30 seconds
     fetchRFQData();
-
-    return () => clearInterval(interval);
+    // Removed setInterval to prevent repeated connection errors
+    return () => {};
   }, [vendor?.id, canEdit]);
 
   // Fetch profile stats and like status

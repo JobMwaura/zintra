@@ -33,23 +33,25 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_vendor_rfq_inbox', {
-        p_vendor_id: vendor.id
-      });
+      // RFQ inbox feature disabled - requires get_vendor_rfq_inbox RPC function
+      // This will be re-enabled once the RPC function is properly created in Supabase
+      // const { data, error } = await supabase.rpc('get_vendor_rfq_inbox', {
+      //   p_vendor_id: vendor.id
+      // });
 
-      if (error) throw error;
-
+      // Set empty data to prevent errors
+      const data = [];
       setRfqs(data || []);
 
       // Calculate stats
       const statsData = {
-        total: data?.length || 0,
-        unread: data?.filter((r) => !r.viewed_at).length || 0,
-        pending: data?.filter((r) => r.status === 'pending').length || 0,
-        direct: data?.filter((r) => r.rfq_type === 'direct').length || 0,
-        matched: data?.filter((r) => r.rfq_type === 'matched').length || 0,
-        wizard: data?.filter((r) => r.rfq_type === 'wizard').length || 0,
-        public: data?.filter((r) => r.rfq_type === 'public').length || 0,
+        total: 0,
+        unread: 0,
+        pending: 0,
+        direct: 0,
+        matched: 0,
+        wizard: 0,
+        public: 0,
       };
 
       setStats(statsData);
