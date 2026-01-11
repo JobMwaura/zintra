@@ -1,7 +1,7 @@
 // /pages/api/status-updates/upload-image.js
 // Presigned URL generation for status update image uploads to AWS S3
 
-import { generatePresignedUrl } from '@/lib/aws-s3';
+import { generatePresignedUploadUrl } from '@/lib/aws-s3';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const keyPrefix = 'vendor-profiles/status-updates/';
 
     // Generate presigned URL
-    const presignedUrl = await generatePresignedUrl(
+    const uploadResult = await generatePresignedUploadUrl(
       fileName,
       contentType,
       {}, // No metadata to avoid signature mismatches
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     console.log('✅ Generated presigned URL for status update image');
 
     return res.status(200).json({
-      presignedUrl,
+      presignedUrl: uploadResult.uploadUrl,
       bucket: process.env.AWS_S3_BUCKET,
       region: process.env.AWS_REGION,
     });
