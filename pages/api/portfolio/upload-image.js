@@ -73,7 +73,8 @@ export default async function handler(req, res) {
       fileName,
       contentType,
       {}, // Empty metadata - don't include in presigned URL to avoid signature mismatch
-      `vendor-profiles/portfolio/${user.id}/`
+      `vendor-profiles/portfolio/${user.id}/`,
+      true // skipFileNameGen - use fileName as-is since component already generated it
     );
     
     console.log('✅ Presigned URL generated successfully');
