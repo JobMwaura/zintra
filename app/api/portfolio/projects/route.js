@@ -244,7 +244,7 @@ export async function GET(request) {
       }
 
       // Transform projects to camelCase for frontend consistency
-      projects = projects?.map(project => ({
+      const transformedProjects = projects?.map(project => ({
         id: project.id,
         vendorProfileId: project.vendorprofileid,
         title: project.title,
@@ -260,6 +260,8 @@ export async function GET(request) {
         updatedAt: project.updatedat,
         images: project.images || [],
       })) || [];
+
+      return NextResponse.json({ projects: transformedProjects }, { status: 200 });
     }
 
     return NextResponse.json({ projects: projects || [] }, { status: 200 });
