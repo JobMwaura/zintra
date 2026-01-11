@@ -61,11 +61,19 @@ export async function POST(request) {
       console.error('Error message:', projectError.message);
       console.error('Full error:', JSON.stringify(projectError, null, 2));
       
-      // If table doesn't exist, return helpful message
-      if (projectError?.message?.includes('relation') || projectError?.message?.includes('does not exist') || projectError?.code === 'PGRST116') {
-        console.error('❌ PortfolioProject table not found');
+      // Check for RLS-related errors
+      if (projectError?.message?.includes('Row Level Security') || 
+          projectError?.message?.includes('permission denied') ||
+          projectError?.code === 'PGRST301' ||
+          projectError?.message?.includes('relation')) {
+        console.error('❌ RLS or permission error on PortfolioProject table');
         return NextResponse.json(
-          { message: 'Portfolio tables not set up. Run database migration.', error: projectError.message, code: projectError.code },
+          { 
+            message: 'PortfolioProject table access denied. RLS policy needs to be configured.',
+            error: projectError.message, 
+            code: projectError.code,
+            action: 'Run SQL to create RLS policy: CREATE POLICY "Allow all operations" ON "PortfolioProject" FOR ALL USING (true) WITH CHECK (true);'
+          },
           { status: 503 }
         );
       }
@@ -117,11 +125,19 @@ export async function POST(request) {
       console.error('Error message:', imageError.message);
       console.error('Full error:', JSON.stringify(imageError, null, 2));
       
-      // If table doesn't exist, return helpful message
-      if (imageError?.message?.includes('relation') || imageError?.message?.includes('does not exist') || imageError?.code === 'PGRST116') {
-        console.error('❌ PortfolioProjectImage table not found');
+      // Check for RLS-related errors
+      if (imageError?.message?.includes('Row Level Security') || 
+          imageError?.message?.includes('permission denied') ||
+          imageError?.code === 'PGRST301' ||
+          imageError?.message?.includes('relation')) {
+        console.error('❌ RLS or permission error on PortfolioProjectImage table');
         return NextResponse.json(
-          { message: 'Portfolio tables not set up', error: imageError.message, code: imageError.code },
+          { 
+            message: 'PortfolioProjectImage table access denied. RLS policy needs to be configured.',
+            error: imageError.message, 
+            code: imageError.code,
+            action: 'Run SQL to create RLS policy: CREATE POLICY "Allow all operations" ON "PortfolioProjectImage" FOR ALL USING (true) WITH CHECK (true);'
+          },
           { status: 503 }
         );
       }
