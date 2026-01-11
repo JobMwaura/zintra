@@ -87,15 +87,24 @@ export async function POST(request) {
 
     // Create image
     console.log('📝 Creating image for project:', projectId);
+    console.log('  imageUrl:', imageUrl);
+    console.log('  imageType:', imageType);
+    console.log('  caption:', caption);
+    console.log('  displayOrder:', displayOrder);
+    
+    const insertData = {
+      portfolioProjectId: projectId,
+      imageUrl,
+      imageType,
+      caption,
+      displayOrder,
+    };
+    
+    console.log('📋 Insert data:', JSON.stringify(insertData));
+    
     const { data: image, error: imageError } = await supabase
       .from('PortfolioProjectImage')
-      .insert({
-        portfolioProjectId: projectId,
-        imageUrl,
-        imageType,
-        caption,
-        displayOrder,
-      })
+      .insert(insertData)
       .select()
       .single();
 
