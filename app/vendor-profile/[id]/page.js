@@ -313,6 +313,33 @@ export default function VendorProfilePage() {
     fetchPortfolioProjects();
   }, [vendor?.id]);
 
+  // Fetch status updates (business updates)
+  useEffect(() => {
+    const fetchStatusUpdates = async () => {
+      if (!vendor?.id) return;
+
+      try {
+        console.log('🔹 Fetching status updates for vendor:', vendor.id);
+        const response = await fetch(`/api/status-updates?vendorId=${vendor.id}`);
+        
+        if (!response.ok) {
+          console.error('Failed to fetch status updates:', response.status);
+          setStatusUpdates([]);
+          return;
+        }
+
+        const { updates } = await response.json();
+        console.log('✅ Status updates fetched:', updates?.length || 0);
+        setStatusUpdates(updates || []);
+      } catch (err) {
+        console.error('Error fetching status updates:', err);
+        setStatusUpdates([]);
+      }
+    };
+
+    fetchStatusUpdates();
+  }, [vendor?.id]);
+
   // Track profile view (non-critical, errors are silently ignored)
   useEffect(() => {
     if (!vendor?.id) return;
