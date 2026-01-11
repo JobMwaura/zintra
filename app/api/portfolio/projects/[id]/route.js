@@ -12,7 +12,8 @@ const supabase = createClient(
  */
 export async function DELETE(request, { params }) {
   try {
-    const { id: projectId } = params;
+    const resolvedParams = await params;
+    const projectId = resolvedParams.id;
 
     if (!projectId) {
       return NextResponse.json(
