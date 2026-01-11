@@ -2,62 +2,181 @@
 
 import { useState } from 'react';
 import { X, Image as ImageIcon, Heart, MessageCircle, Loader } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 
 export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
   const [content, setContent] = useState('');
   const [images, setImages] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Compress image using canvas
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Resize to max 1920x1440
+          const maxWidth = 1920;
+          const maxHeight = 1440;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+  };
+
+  const uploadImageToS3 = async (file) => {
+    const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
+
+    try {
+      // Step 1: Get presigned URL from our API
+      const presignResponse = await fetch('/api/status-updates/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') || '' : ''}`,
+        },
+        body: JSON.stringify({
+          fileName: uniqueFilename,
+          contentType: file.type || 'image/jpeg',
+        }),
+      });
+
+      if (!presignResponse.ok) {
+        const errorData = await presignResponse.json();
+        throw new Error(errorData.message || 'Failed to get presigned URL');
+      }
+
+      const { presignedUrl } = await presignResponse.json();
+      console.log('✅ Got presigned URL');
+
+      // Step 2: Upload directly to S3
+      const uploadResponse = await fetch(presignedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'image/jpeg',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+      }
+
+      // Extract S3 URL from presigned URL (remove query parameters)
+      const s3Url = presignedUrl.split('?')[0];
+      console.log('✅ Uploaded to S3:', s3Url);
+
+      return s3Url;
+    } catch (err) {
+      console.error('❌ S3 upload error:', err);
+      throw err;
+    }
+  };
+
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    
+
     if (images.length + files.length > 5) {
       setError('Maximum 5 images allowed');
       return;
     }
 
     setLoading(true);
+    setError(null);
+
     try {
       const uploadedUrls = [];
 
-      for (const file of files) {
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setPreviewUrls((prev) => [...prev, e.target.result]);
-        };
-        reader.readAsDataURL(file);
+      // Sequential uploads to prevent overload
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileKey = `${Date.now()}-${i}`;
 
-        // Upload to Supabase Storage
-        const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
-        const { data, error: uploadError } = await supabase.storage
-          .from('vendor-status-images')
-          .upload(`${vendor.id}/${filename}`, file);
+        try {
+          // Create preview
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setPreviewUrls((prev) => [...prev, e.target.result]);
+          };
+          reader.readAsDataURL(file);
 
-        if (uploadError) throw uploadError;
+          // Compress image
+          setUploadProgress((prev) => ({
+            ...prev,
+            [fileKey]: 'Compressing...',
+          }));
 
-        // Get public URL
-        const { data: publicUrl } = supabase.storage
-          .from('vendor-status-images')
-          .getPublicUrl(`${vendor.id}/${filename}`);
+          const compressedFile = await compressImage(file);
 
-        if (publicUrl?.publicUrl) {
-          uploadedUrls.push(publicUrl.publicUrl);
+          // Upload to S3
+          setUploadProgress((prev) => ({
+            ...prev,
+            [fileKey]: 'Uploading...',
+          }));
+
+          const s3Url = await uploadImageToS3(compressedFile);
+          uploadedUrls.push(s3Url);
+
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev };
+            delete newProgress[fileKey];
+            return newProgress;
+          });
+        } catch (err) {
+          console.error(`Error uploading file ${i + 1}:`, err);
+          setError(`Failed to upload image ${i + 1}: ${err.message}`);
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev };
+            delete newProgress[fileKey];
+            return newProgress;
+          });
         }
       }
 
-      setImages([...images, ...uploadedUrls]);
-      setError(null);
-    } catch (err) {
-      console.error('Image upload failed:', err);
-      setError('Failed to upload images. Please try again.');
+      if (uploadedUrls.length > 0) {
+        setImages([...images, ...uploadedUrls]);
+      }
     } finally {
       setLoading(false);
     }
   };
+
 
   const removeImage = (index) => {
     setImages(images.filter((_, i) => i !== index));
@@ -73,25 +192,32 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
 
     setLoading(true);
     try {
-      const { data, error: insertError } = await supabase
-        .from('vendor_status_updates')
-        .insert({
-          vendor_id: vendor.id,
+      const response = await fetch('/api/status-updates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vendorId: vendor.id,
           content: content.trim(),
-          images: images.length > 0 ? images : null,
-        })
-        .select()
-        .single();
+          images: images.length > 0 ? images : [],
+        }),
+      });
 
-      if (insertError) throw insertError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to post update');
+      }
+
+      const { update } = await response.json();
 
       setContent('');
       setImages([]);
       setPreviewUrls([]);
       setError(null);
-      
+
       if (onSuccess) {
-        onSuccess(data);
+        onSuccess(update);
       }
       onClose();
     } catch (err) {
@@ -163,6 +289,18 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {Object.keys(uploadProgress).length > 0 && (
+            <div className="space-y-2">
+              {Object.entries(uploadProgress).map(([key, status]) => (
+                <div key={key} className="flex items-center gap-2 text-sm text-slate-600">
+                  <Loader className="w-4 h-4 animate-spin" />
+                  <span>{status}</span>
+                </div>
+              ))}
             </div>
           )}
 
