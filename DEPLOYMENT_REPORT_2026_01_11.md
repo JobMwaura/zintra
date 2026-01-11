@@ -82,14 +82,30 @@ d0beef7 - docs: Add comprehensive AWS S3 setup completion guides (no secrets)
 ✅ All changes synced with GitHub
 ```
 
-### Step 4: Vercel Auto-Deploy 🔄
+### Step 4: Vercel Auto-Deploy ✅
 ```
-Status: In Progress
+Status: Complete
 - Vercel detects new commits on main
 - Auto-deploy triggered
-- Build in progress on Vercel
-- Estimated time: 2-5 minutes
+- Build completed on Vercel
+- Live at: https://zintra-sandy.vercel.app ← YOUR CURRENT PRODUCTION URL
 ```
+
+---
+
+## 🌐 DEPLOYMENT URLs
+
+### Current Production (Your Actual URL)
+- **URL**: https://zintra-sandy.vercel.app
+- **Status**: ✅ LIVE with portfolio AWS S3 integration
+- **Type**: Vercel default URL (no custom domain yet)
+- **Note**: AWS S3 integration works perfectly with this URL
+
+### Future Production (When You Own Domain)
+- **URL**: https://zintra.co.ke
+- **Status**: Available when you purchase the domain
+- **Setup**: Connect custom domain in Vercel → Project Settings → Domains
+- **Note**: AWS S3 will continue working seamlessly after domain switch
 
 ---
 
