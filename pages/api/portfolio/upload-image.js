@@ -72,11 +72,7 @@ export default async function handler(req, res) {
     const uploadResult = await generatePresignedUploadUrl(
       fileName,
       contentType,
-      {
-        'vendor-id': user.id,
-        'upload-type': 'portfolio-image',
-        'uploaded-by': user.email,
-      },
+      {}, // Empty metadata - don't include in presigned URL to avoid signature mismatch
       `vendor-profiles/portfolio/${user.id}/`
     );
     
