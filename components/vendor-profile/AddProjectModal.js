@@ -391,28 +391,35 @@ export default function AddProjectModal({
 
     try {
       // Create project
+      const projectPayload = {
+        vendorId,
+        title: formData.title.trim(),
+        categorySlug: formData.categorySlug,
+        description: formData.description.trim(),
+        budgetMin: formData.budgetMin ? parseInt(formData.budgetMin) : null,
+        budgetMax: formData.budgetMax ? parseInt(formData.budgetMax) : null,
+        timeline: formData.timeline || null,
+        location: formData.location || null,
+        status: formData.isPublished ? 'published' : 'draft',
+      };
+
+      console.log('📤 Sending project data:', projectPayload);
+
       const projectResponse = await fetch('/api/portfolio/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vendorId,
-          title: formData.title.trim(),
-          categorySlug: formData.categorySlug,
-          description: formData.description.trim(),
-          budgetMin: formData.budgetMin ? parseInt(formData.budgetMin) : null,
-          budgetMax: formData.budgetMax ? parseInt(formData.budgetMax) : null,
-          timeline: formData.timeline || null,
-          location: formData.location || null,
-          status: formData.isPublished ? 'published' : 'draft',
-        }),
+        body: JSON.stringify(projectPayload),
       });
 
+      console.log('📥 Project response status:', projectResponse.status);
+      const projectResult = await projectResponse.json();
+      console.log('📥 Project response:', projectResult);
+
       if (!projectResponse.ok) {
-        const result = await projectResponse.json();
-        throw new Error(result.message || 'Failed to create project');
+        throw new Error(projectResult.message || 'Failed to create project');
       }
 
-      const { project } = await projectResponse.json();
+      const { project } = projectResult;
 
       // Create images
       const imagePromises = formData.photos.map((photo) =>

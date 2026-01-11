@@ -28,6 +28,8 @@ const supabase = createClient(
 export async function POST(request) {
   try {
     const body = await request.json();
+    console.log('📦 POST /api/portfolio/projects - Received body:', body);
+    
     const {
       vendorId,
       title,
@@ -41,10 +43,20 @@ export async function POST(request) {
       completionDate = null,
     } = body;
 
+    console.log('🔍 Parsed fields:');
+    console.log('  vendorId:', vendorId, typeof vendorId);
+    console.log('  title:', title, typeof title);
+    console.log('  categorySlug:', categorySlug, typeof categorySlug);
+    console.log('  description:', description, typeof description);
+
     // Validate required fields
     if (!vendorId || !title || !categorySlug || !description) {
+      console.log('❌ Missing required fields');
       return NextResponse.json(
-        { message: 'Missing required fields: vendorId, title, categorySlug, description' },
+        {
+          message: 'Missing required fields: vendorId, title, categorySlug, description',
+          received: { vendorId, title, categorySlug, description },
+        },
         { status: 400 }
       );
     }
