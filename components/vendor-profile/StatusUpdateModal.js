@@ -98,11 +98,10 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
       }
 
-      // Extract S3 URL from presigned URL (remove query parameters)
-      const s3Url = presignedUrl.split('?')[0];
-      console.log('✅ Uploaded to S3:', s3Url);
+      // Keep the full presigned URL with signature
+      console.log('✅ Uploaded to S3:', presignedUrl);
 
-      return s3Url;
+      return presignedUrl;
     } catch (err) {
       console.error('❌ S3 upload error:', err);
       throw err;

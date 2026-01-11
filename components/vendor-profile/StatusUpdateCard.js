@@ -73,7 +73,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
     }
   };
 
-  const canDelete = currentUser?.id === vendor.user_id;
+  const canDelete = currentUser?.id === vendor?.user_id;
 
   const handleDelete = async () => {
     if (!confirm('Delete this update?')) return;
