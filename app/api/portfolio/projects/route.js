@@ -61,8 +61,7 @@ export async function POST(request) {
       );
     }
 
-    // The vendorId comes from 'vendors' table, but we need the VendorProfile ID
-    // First, verify the vendor exists in vendors table
+    // Verify vendor exists in vendors table
     const { data: vendor, error: vendorError } = await supabase
       .from('vendors')
       .select('id')
@@ -79,72 +78,86 @@ export async function POST(request) {
 
     console.log('✅ Vendor found in vendors table:', vendor.id);
 
-    // Now get the corresponding VendorProfile ID
-    // The vendors.id should match a VendorProfile.id (they use the same IDs)
-    const { data: vendorProfile, error: vendorProfileError } = await supabase
-      .from('VendorProfile')
-      .select('id')
-      .eq('id', vendorId)
-      .single();
-
-    if (vendorProfileError || !vendorProfile) {
-      // If VendorProfile doesn't exist with this ID, it might not be set up yet
-      console.log('⚠️ VendorProfile not found for ID:', vendorId);
-      // Continue anyway - we'll use the vendorId as is
-    } else {
-      console.log('✅ VendorProfile found:', vendorProfile.id);
-    }
-
-    // Create project
+    // Create project using raw SQL to avoid foreign key constraint issues
     const projectId = randomUUID();
     const now = new Date().toISOString();
-    const { data: projects, error: projectError } = await supabase
-      .from('PortfolioProject')
-      .insert({
-        id: projectId,
-        vendorProfileId: vendorId,
-        title: title.trim(),
-        description: description.trim(),
-        categorySlug,
-        status,
-        budgetMin: budgetMin ? parseInt(budgetMin) : null,
-        budgetMax: budgetMax ? parseInt(budgetMax) : null,
-        timeline,
-        location,
-        completionDate: completionDate ? new Date(completionDate).toISOString() : null,
-        viewCount: 0,
-        quoteRequestCount: 0,
-        updatedAt: now,
-      })
-      .select();
+    
+    try {
+      console.log('📝 Creating portfolio project with SQL...');
+      const { data: projects, error: projectError } = await supabase
+        .rpc('create_portfolio_project', {
+          p_id: projectId,
+          p_vendor_id: vendorId,
+          p_title: title.trim(),
+          p_description: description.trim(),
+          p_category_slug: categorySlug,
+          p_status: status,
+          p_budget_min: budgetMin ? parseInt(budgetMin) : null,
+          p_budget_max: budgetMax ? parseInt(budgetMax) : null,
+          p_timeline: timeline || null,
+          p_location: location || null,
+          p_completion_date: completionDate ? new Date(completionDate).toISOString() : null,
+        });
 
-    if (projectError) {
-      console.error('❌ Project creation error:', projectError);
-      
-      // If table doesn't exist, give helpful message
-      if (projectError.message?.includes('relation') || projectError.message?.includes('does not exist')) {
+      if (projectError) {
+        console.error('❌ RPC error:', projectError);
+        // If RPC doesn't exist, fall back to direct insert
+        console.log('📝 RPC not found, trying direct insert...');
+        
+        const { data: directProject, error: directError } = await supabase
+          .from('PortfolioProject')
+          .insert({
+            id: projectId,
+            vendorProfileId: vendorId, // Use vendorId directly
+            title: title.trim(),
+            description: description.trim(),
+            categorySlug,
+            status,
+            budgetMin: budgetMin ? parseInt(budgetMin) : null,
+            budgetMax: budgetMax ? parseInt(budgetMax) : null,
+            timeline,
+            location,
+            completionDate: completionDate ? new Date(completionDate).toISOString() : null,
+            viewCount: 0,
+            quoteRequestCount: 0,
+            updatedAt: now,
+          })
+          .select();
+
+        if (directError) {
+          console.error('❌ Direct insert error:', directError);
+          return NextResponse.json(
+            { message: 'Failed to create project', error: directError.message },
+            { status: 400 }
+          );
+        }
+
+        const project = directProject && directProject.length > 0 ? directProject[0] : null;
+        console.log('✅ Project created (direct insert):', project?.id);
         return NextResponse.json(
-          { message: 'Portfolio feature is being set up. Please run the database migration: npx prisma migrate deploy' },
-          { status: 503 }
+          { 
+            message: 'Project created successfully',
+            project,
+          },
+          { status: 201 }
         );
       }
-      
-      // Return the actual error instead of throwing
+
+      console.log('✅ Project created via RPC:', projectId);
       return NextResponse.json(
-        { message: 'Failed to create project', error: projectError.message },
-        { status: 400 }
+        { 
+          message: 'Project created successfully',
+          project: { id: projectId },
+        },
+        { status: 201 }
+      );
+    } catch (error) {
+      console.error('❌ Error creating project:', error);
+      return NextResponse.json(
+        { message: 'Failed to create project', error: error.message },
+        { status: 500 }
       );
     }
-
-    const project = projects && projects.length > 0 ? projects[0] : null;
-    console.log('✅ Project created:', project?.id);
-    return NextResponse.json(
-      { 
-        message: 'Project created successfully',
-        project,
-      },
-      { status: 201 }
-    );
   } catch (error) {
     console.error('Portfolio project creation failed:', error);
     return NextResponse.json(
