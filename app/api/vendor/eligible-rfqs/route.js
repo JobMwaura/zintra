@@ -81,10 +81,13 @@ export async function GET(request) {
     const limit = Math.min(100, parseInt(searchParams.get('limit') || '20'));
     const offset = (page - 1) * limit;
 
-    // Build query
+    // Build query - query rfqs table directly instead of incomplete view
     let query = supabase
-      .from('vendor_eligible_rfqs')
+      .from('rfqs')
       .select('*', { count: 'exact' });
+
+    // Filter by status (assigned or in_review)
+    query = query.in('status', ['assigned', 'in_review', 'submitted', 'approved']);
 
     // Filter by vendor's category if not specified
     if (category) {

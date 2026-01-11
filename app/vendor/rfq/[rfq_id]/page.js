@@ -94,17 +94,6 @@ export default function VendorRFQDetails() {
               setRfq(rfqData);
             }
 
-            // Fetch requester info
-            const { data: requesterData } = await supabase
-              .from('users')
-              .select('id, email, user_metadata')
-              .eq('id', rfqData.user_id)
-              .single();
-
-            if (isMounted) {
-              setRequester(requesterData);
-            }
-
             // Fetch response count
             const { count } = await supabase
               .from('rfq_responses')
