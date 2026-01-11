@@ -51,6 +51,13 @@ export default async function handler(req, res) {
     }
 
     // Generate presigned URL for portfolio images
+    console.log('🔄 Generating presigned URL for portfolio image...');
+    console.log('User ID:', user.id);
+    console.log('File name:', fileName);
+    console.log('Content type:', contentType);
+    console.log('AWS_S3_BUCKET:', process.env.AWS_S3_BUCKET);
+    console.log('AWS_REGION:', process.env.AWS_REGION);
+    
     const uploadResult = await generatePresignedUploadUrl(
       fileName,
       contentType,
@@ -60,6 +67,8 @@ export default async function handler(req, res) {
         'uploaded-by': user.email,
       }
     );
+    
+    console.log('✅ Presigned URL generated successfully');
 
     // Modify the S3 key to use vendor-profiles/portfolio path
     const portfolioKey = `vendor-profiles/portfolio/${user.id}/${uploadResult.key.split('/').pop()}`;
