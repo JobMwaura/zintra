@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
+import { generateFileAccessUrl } from '@/lib/aws-s3';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -110,7 +111,7 @@ export async function POST(request) {
 
 /**
  * GET /api/status-updates?vendorId=...
- * Get status updates for a vendor with images
+ * Get status updates for a vendor with fresh presigned image URLs
  */
 export async function GET(request) {
   try {
@@ -144,14 +145,31 @@ export async function GET(request) {
 
     console.log('✅ Found', updates?.length || 0, 'status updates');
 
-    // Images are already in the updates array, no need to fetch separately
-    // Just ensure they're properly formatted
+    // Generate fresh presigned URLs for all image file keys
     if (updates && updates.length > 0) {
-      updates.forEach(update => {
+      for (const update of updates) {
         if (!update.images) {
           update.images = [];
+          continue;
         }
-      });
+
+        // Generate fresh presigned GET URLs from file keys
+        const freshUrls = [];
+        for (const imageKey of update.images) {
+          try {
+            // imageKey is stored as file key in database instead of full presigned URL
+            // Generate long-lived URLs (365 days) so images stay accessible
+            const freshUrl = await generateFileAccessUrl(imageKey, 86400 * 365); // 365 days
+            freshUrls.push(freshUrl);
+            console.log('✅ Generated fresh 365-day URL for image key:', imageKey);
+          } catch (err) {
+            console.error('⚠️ Failed to generate URL for image key:', imageKey, err.message);
+            // If URL generation fails, still include the key in case it's needed for debugging
+            freshUrls.push(imageKey);
+          }
+        }
+        update.images = freshUrls;
+      }
     }
 
     return NextResponse.json(
