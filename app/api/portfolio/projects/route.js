@@ -108,16 +108,16 @@ export async function POST(request) {
           .from('PortfolioProject')
           .insert({
             id: projectId,
-            vendorProfileId: vendorId, // vendorId is UUID - will be sent as string but DB expects UUID
+            vendorprofileid: vendorId,
             title: title.trim(),
             description: description.trim(),
-            categorySlug,
+            categoryslug: categorySlug,
             status,
-            budgetMin: budgetMin ? parseInt(budgetMin) : null,
-            budgetMax: budgetMax ? parseInt(budgetMax) : null,
+            budgetmin: budgetMin ? parseInt(budgetMin) : null,
+            budgetmax: budgetMax ? parseInt(budgetMax) : null,
             timeline,
             location,
-            completionDate: completionDate ? new Date(completionDate).toISOString() : null,
+            completiondate: completionDate ? new Date(completionDate).toISOString() : null,
           })
           .select();
 

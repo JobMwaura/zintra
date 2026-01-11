@@ -126,11 +126,11 @@ export async function POST(request) {
     console.log('  displayOrder:', displayOrder);
     
     const insertData = {
-      portfolioProjectId: projectId,
-      imageUrl,
-      imageType,
+      portfolioprojectid: projectId,
+      imageurl: imageUrl,
+      imagetype: imageType,
       caption,
-      displayOrder,
+      displayorder: displayOrder,
     };
     
     console.log('📋 Insert data:', JSON.stringify(insertData));
