@@ -84,6 +84,55 @@ export default function AddProjectModal({
     setError('');
   };
 
+  // Helper: Compress image before upload
+  const compressImage = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxWidth = 1920; // Max width for compressed image
+          const maxHeight = 1440; // Max height
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              // Create a new File object from the compressed blob
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            0.85 // 85% quality
+          );
+        };
+      };
+    });
+  };
+
   // Step 4: Photo Upload
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -101,117 +150,132 @@ export default function AddProjectModal({
     try {
       const newPhotos = [];
 
+      // Get session token once for all uploads
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      if (!session || !session.access_token) {
+        throw new Error('Not authenticated - please log in again');
+      }
+
+      // Validate all files first
+      const validatedFiles = [];
       for (const file of files) {
-        // Validate image file
         if (!file.type.startsWith('image/')) {
           setError('Only image files are allowed');
           continue;
         }
-
-        if (file.size > 5 * 1024 * 1024) {
-          // 5MB limit
-          setError(`${file.name} is too large (max 5MB)`);
+        if (file.size > 10 * 1024 * 1024) {
+          setError(`${file.name} is too large (max 10MB)`);
           continue;
         }
+        validatedFiles.push(file);
+      }
 
-        // Create preview
-        const preview = new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(file);
-        });
+      if (validatedFiles.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-        const previewUrl = await preview;
+      // Step 1: Compress all images in parallel
+      console.log(`📦 Compressing ${validatedFiles.length} images...`);
+      const compressionPromises = validatedFiles.map(async (file) => {
+        const compressed = await compressImage(file);
+        console.log(
+          `✅ ${file.name}: ${(file.size / 1024).toFixed(1)}KB → ${(compressed.size / 1024).toFixed(1)}KB`
+        );
+        return { originalFile: file, compressedFile: compressed };
+      });
 
-        // Generate unique filename
-        const timestamp = Date.now();
+      const compressedFiles = await Promise.all(compressionPromises);
+
+      // Step 2: Get all presigned URLs in parallel
+      console.log(`🔑 Requesting ${compressedFiles.length} presigned URLs...`);
+      const presignedPromises = compressedFiles.map(async ({ originalFile, compressedFile }) => {
+        const timestamp = Date.now() + Math.random(); // Unique timestamp
         const random = Math.random().toString(36).substring(7);
-        const filename = `${timestamp}-${random}-${file.name}`;
-        const photoId = `${timestamp}-${random}`;
+        const filename = `${Math.floor(timestamp)}-${random}-${originalFile.name}`;
+        const photoId = `${Math.floor(timestamp)}-${random}`;
 
-        newPhotos.push({
-          id: photoId,
-          file,
-          filename,
-          type: 'after', // Default type
-          caption: '',
-          preview: previewUrl,
-          isUploaded: false,
+        const presignedResponse = await fetch('/api/portfolio/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            fileName: filename,
+            contentType: 'image/jpeg',
+          }),
         });
 
-        // Upload to AWS S3 via presigned URL
-        setUploadProgress((prev) => ({ ...prev, [filename]: 0 }));
+        if (!presignedResponse.ok) {
+          const result = await presignedResponse.json();
+          throw new Error(result.error || `Failed to get URL for ${originalFile.name}`);
+        }
 
+        const { uploadUrl, fileUrl, key } = await presignedResponse.json();
+        return { filename, photoId, originalFile, compressedFile, uploadUrl, fileUrl, key };
+      });
+
+      const presignedUrls = await Promise.all(presignedPromises);
+
+      // Step 3: Upload all files to S3 in parallel
+      console.log(`📤 Uploading ${presignedUrls.length} files to S3...`);
+      const uploadPromises = presignedUrls.map(async ({
+        filename,
+        photoId,
+        originalFile,
+        compressedFile,
+        uploadUrl,
+        fileUrl,
+        key,
+      }) => {
         try {
-          // Get the session token for authentication
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          
-          if (!session || !session.access_token) {
-            throw new Error('Not authenticated - please log in again');
-          }
-
-          // Step 1: Get presigned URL from backend with auth header
-          const presignedResponse = await fetch('/api/portfolio/upload-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              fileName: filename,
-              contentType: file.type,
-            }),
-          });
-
-          if (!presignedResponse.ok) {
-            const result = await presignedResponse.json();
-            throw new Error(result.error || 'Failed to get upload URL');
-          }
-
-          const { uploadUrl, fileUrl, key } = await presignedResponse.json();
-
-          // Step 2: Upload file directly to S3 using presigned URL
-          // IMPORTANT: Only send Content-Type header - don't add x-amz-acl or other headers
-          // The presigned URL signature only covers specific headers
           const uploadResponse = await fetch(uploadUrl, {
             method: 'PUT',
             headers: {
-              'Content-Type': file.type,
+              'Content-Type': 'image/jpeg',
             },
-            body: file,
+            body: compressedFile,
           });
 
           if (!uploadResponse.ok) {
             throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
           }
 
-          // Step 3: Update form with S3 URL
-          setFormData((prev) => ({
-            ...prev,
-            photos: prev.photos.map((p) =>
-              p.id === photoId
-                ? { ...p, imageUrl: fileUrl, s3Key: key, isUploaded: true }
-                : p
-            ),
-          }));
-
-          setUploadProgress((prev) => {
-            const updated = { ...prev };
-            delete updated[filename];
-            return updated;
+          // Create preview
+          const preview = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(originalFile);
           });
-        } catch (uploadErr) {
-          console.error('AWS S3 upload failed:', uploadErr);
-          setError(`Failed to upload ${file.name}: ${uploadErr.message}`);
-          newPhotos.pop();
-        }
-      }
 
+          return {
+            id: photoId,
+            filename,
+            type: 'after',
+            caption: '',
+            preview,
+            isUploaded: true,
+            imageUrl: fileUrl,
+            s3Key: key,
+          };
+        } catch (uploadErr) {
+          console.error(`Upload failed for ${originalFile.name}:`, uploadErr);
+          setError(`Failed to upload ${originalFile.name}: ${uploadErr.message}`);
+          return null;
+        }
+      });
+
+      const uploadedPhotos = await Promise.all(uploadPromises);
+      const validPhotos = uploadedPhotos.filter((p) => p !== null);
+
+      console.log(`✅ Successfully uploaded ${validPhotos.length} photos`);
       setFormData((prev) => ({
         ...prev,
-        photos: [...prev.photos, ...newPhotos],
+        photos: [...prev.photos, ...validPhotos],
       }));
     } catch (err) {
       console.error('Photo processing failed:', err);
