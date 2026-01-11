@@ -903,8 +903,31 @@ export default function VendorProfilePage() {
                               setShowEditProjectModal(true);
                             }}
                             onDelete={() => {
-                              // TODO: Implement delete (Phase 3)
-                              console.log('Delete project:', project.id);
+                              if (!window.confirm('Are you sure you want to delete this project? This cannot be undone.')) {
+                                return;
+                              }
+                              
+                              const deleteProject = async () => {
+                                try {
+                                  const response = await fetch(`/api/portfolio/projects/${project.id}`, {
+                                    method: 'DELETE',
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    const error = await response.json();
+                                    throw new Error(error.message || 'Failed to delete project');
+                                  }
+                                  
+                                  // Remove project from list
+                                  setPortfolioProjects(prev => prev.filter(p => p.id !== project.id));
+                                  alert('Project deleted successfully!');
+                                } catch (err) {
+                                  console.error('Delete error:', err);
+                                  alert('Failed to delete project: ' + err.message);
+                                }
+                              };
+                              
+                              deleteProject();
                             }}
                             onShare={() => {
                               // TODO: Implement share (Phase 3)
@@ -984,11 +1007,25 @@ export default function VendorProfilePage() {
                       // await fetchPortfolioProjects();
                     }}
                     onDelete={async () => {
-                      // TODO: Implement delete API call
-                      console.log('Delete project:', selectedProject?.id);
-                      setShowEditProjectModal(false);
-                      // Refresh portfolio projects
-                      // await fetchPortfolioProjects();
+                      try {
+                        const response = await fetch(`/api/portfolio/projects/${selectedProject?.id}`, {
+                          method: 'DELETE',
+                        });
+                        
+                        if (!response.ok) {
+                          const error = await response.json();
+                          throw new Error(error.message || 'Failed to delete project');
+                        }
+                        
+                        // Remove project from list
+                        setPortfolioProjects(prev => prev.filter(p => p.id !== selectedProject?.id));
+                        setShowEditProjectModal(false);
+                        setSelectedProject(null);
+                        alert('Project deleted successfully!');
+                      } catch (err) {
+                        console.error('Delete error:', err);
+                        alert('Failed to delete project: ' + err.message);
+                      }
                     }}
                   />
                 )}
