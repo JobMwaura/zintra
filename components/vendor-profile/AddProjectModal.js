@@ -127,9 +127,10 @@ export default function AddProjectModal({
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
         const filename = `${timestamp}-${random}-${file.name}`;
+        const photoId = `${timestamp}-${random}`;
 
         newPhotos.push({
-          id: `${timestamp}-${random}`,
+          id: photoId,
           file,
           filename,
           type: 'after', // Default type
@@ -138,31 +139,50 @@ export default function AddProjectModal({
           isUploaded: false,
         });
 
-        // Upload to Supabase
+        // Upload to AWS S3 via presigned URL
         setUploadProgress((prev) => ({ ...prev, [filename]: 0 }));
 
         try {
-          const { data, error: uploadError } = await supabase.storage
-            .from('portfolio-images')
-            .upload(`${vendorId}/${filename}`, file);
+          // Step 1: Get presigned URL from backend
+          const presignedResponse = await fetch('/api/portfolio/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: filename,
+              contentType: file.type,
+            }),
+          });
 
-          if (uploadError) throw uploadError;
-
-          // Get public URL
-          const { data: publicUrl } = supabase.storage
-            .from('portfolio-images')
-            .getPublicUrl(`${vendorId}/${filename}`);
-
-          if (publicUrl?.publicUrl) {
-            setFormData((prev) => ({
-              ...prev,
-              photos: prev.photos.map((p) =>
-                p.id === `${timestamp}-${random}`
-                  ? { ...p, imageUrl: publicUrl.publicUrl, isUploaded: true }
-                  : p
-              ),
-            }));
+          if (!presignedResponse.ok) {
+            const result = await presignedResponse.json();
+            throw new Error(result.error || 'Failed to get upload URL');
           }
+
+          const { uploadUrl, fileUrl, key } = await presignedResponse.json();
+
+          // Step 2: Upload file directly to S3 using presigned URL
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': file.type,
+              'x-amz-acl': 'private',
+            },
+            body: file,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+          }
+
+          // Step 3: Update form with S3 URL
+          setFormData((prev) => ({
+            ...prev,
+            photos: prev.photos.map((p) =>
+              p.id === photoId
+                ? { ...p, imageUrl: fileUrl, s3Key: key, isUploaded: true }
+                : p
+            ),
+          }));
 
           setUploadProgress((prev) => {
             const updated = { ...prev };
@@ -170,8 +190,8 @@ export default function AddProjectModal({
             return updated;
           });
         } catch (uploadErr) {
-          console.error('Upload failed:', uploadErr);
-          setError(`Failed to upload ${file.name}`);
+          console.error('AWS S3 upload failed:', uploadErr);
+          setError(`Failed to upload ${file.name}: ${uploadErr.message}`);
           newPhotos.pop();
         }
       }
@@ -243,8 +263,8 @@ export default function AddProjectModal({
       case 3:
         return formData.description.trim().length > 0;
       case 4:
-        // Photos are now optional - allow proceeding with no photos
-        return formData.photos.length === 0 || formData.photos.every((p) => p.isUploaded);
+        // IMAGES ARE NOW REQUIRED - at least 1 photo must be uploaded
+        return formData.photos.length > 0 && formData.photos.every((p) => p.isUploaded);
       case 5:
         return true; // Optional details
       case 6:
@@ -277,7 +297,19 @@ export default function AddProjectModal({
       return;
     }
 
+    // IMAGES ARE REQUIRED
+    if (formData.photos.length === 0) {
+      setError('At least one photo is required to create a portfolio project');
+      return;
+    }
+
+    if (!formData.photos.every((p) => p.isUploaded)) {
+      setError('All photos must finish uploading before submitting');
+      return;
+    }
+
     setLoading(true);
+    setError('');
     setError('');
 
     try {
@@ -419,8 +451,15 @@ export default function AddProjectModal({
       case 4:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Project Photos</h3>
-            <p className="text-sm text-gray-600">Upload before, during, and after photos (max 12)</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Project Photos</h3>
+                <p className="text-sm text-gray-600">Upload before, during, and after photos (max 12)</p>
+              </div>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                ⚠️ Required
+              </span>
+            </div>
 
             {/* Upload Button */}
             <button

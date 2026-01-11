@@ -1,0 +1,89 @@
+// /pages/api/portfolio/upload-image.js
+// Presigned URL generation for portfolio image uploads to AWS S3
+
+import { generatePresignedUploadUrl } from '@/lib/aws-s3';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export default async function handler(req, res) {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    // Get the session
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+        },
+      }
+    );
+
+    // Get user from session
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { fileName, contentType } = req.body;
+
+    if (!fileName || !contentType) {
+      return res.status(400).json({ error: 'Missing fileName or contentType' });
+    }
+
+    // Validate file type (images only)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(contentType)) {
+      return res.status(400).json({
+        error: `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`,
+      });
+    }
+
+    // Generate presigned URL for portfolio images
+    const uploadResult = await generatePresignedUploadUrl(
+      fileName,
+      contentType,
+      {
+        'vendor-id': user.id,
+        'upload-type': 'portfolio-image',
+        'uploaded-by': user.email,
+      }
+    );
+
+    // Modify the S3 key to use vendor-profiles/portfolio path
+    const portfolioKey = `vendor-profiles/portfolio/${user.id}/${uploadResult.key.split('/').pop()}`;
+
+    return res.status(200).json({
+      uploadUrl: uploadResult.uploadUrl,
+      fileUrl: uploadResult.fileUrl,
+      key: portfolioKey,
+      fileName: uploadResult.fileName,
+    });
+  } catch (error) {
+    console.error('Portfolio image upload error:', error);
+
+    // Check if it's an AWS configuration error
+    if (error.message?.includes('AWS')) {
+      return res.status(500).json({
+        error: 'AWS S3 not configured properly. Please contact support.',
+        details: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Failed to generate upload URL',
+      message: error.message,
+    });
+  }
+}
