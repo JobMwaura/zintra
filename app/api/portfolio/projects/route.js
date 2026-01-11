@@ -218,19 +218,48 @@ export async function GET(request) {
         console.error('❌ Error fetching portfolio images:', imagesError);
         // Continue without images
       } else {
+        // Transform images to camelCase for frontend consistency
+        const transformedImages = images?.map(img => ({
+          id: img.id,
+          portfolioProjectId: img.portfolioprojectid,
+          imageUrl: img.imageurl,
+          imageType: img.imagetype,
+          caption: img.caption,
+          displayOrder: img.displayorder,
+          uploadedAt: img.uploadedat,
+        })) || [];
+
         // Attach images to projects
         const imagesByProjectId = {};
-        images?.forEach(img => {
-          if (!imagesByProjectId[img.portfolioprojectid]) {
-            imagesByProjectId[img.portfolioprojectid] = [];
+        transformedImages.forEach(img => {
+          if (!imagesByProjectId[img.portfolioProjectId]) {
+            imagesByProjectId[img.portfolioProjectId] = [];
           }
-          imagesByProjectId[img.portfolioprojectid].push(img);
+          imagesByProjectId[img.portfolioProjectId].push(img);
         });
 
         projects.forEach(project => {
           project.images = imagesByProjectId[project.id] || [];
         });
       }
+
+      // Transform projects to camelCase for frontend consistency
+      projects = projects?.map(project => ({
+        id: project.id,
+        vendorProfileId: project.vendorprofileid,
+        title: project.title,
+        categorySlug: project.categoryslug,
+        description: project.description,
+        status: project.status,
+        budgetMin: project.budgetmin,
+        budgetMax: project.budgetmax,
+        timeline: project.timeline,
+        location: project.location,
+        completionDate: project.completiondate,
+        createdAt: project.createdat,
+        updatedAt: project.updatedat,
+        images: project.images || [],
+      })) || [];
     }
 
     return NextResponse.json({ projects: projects || [] }, { status: 200 });
