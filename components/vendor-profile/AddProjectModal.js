@@ -173,11 +173,12 @@ export default function AddProjectModal({
           const { uploadUrl, fileUrl, key } = await presignedResponse.json();
 
           // Step 2: Upload file directly to S3 using presigned URL
+          // IMPORTANT: Only send Content-Type header - don't add x-amz-acl or other headers
+          // The presigned URL signature only covers specific headers
           const uploadResponse = await fetch(uploadUrl, {
             method: 'PUT',
             headers: {
               'Content-Type': file.type,
-              'x-amz-acl': 'private',
             },
             body: file,
           });
