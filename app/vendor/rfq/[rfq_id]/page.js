@@ -26,7 +26,6 @@ export default function VendorRFQDetails() {
   const rfqId = params.rfq_id;
 
   const [rfq, setRfq] = useState(null);
-  const [requester, setRequester] = useState(null);
   const [vendorProfile, setVendorProfile] = useState(null);
   const [responseCount, setResponseCount] = useState(0);
   const [userResponse, setUserResponse] = useState(null);
@@ -302,29 +301,6 @@ export default function VendorRFQDetails() {
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
-            {/* Requester Card */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Requester</h2>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <User size={24} className="text-emerald-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    {requester?.user_metadata?.first_name || 'User'}
-                  </p>
-                  <p className="text-sm text-gray-500">Verified Customer</p>
-                </div>
-              </div>
-              <div className="space-y-3 text-sm">
-                {requester?.email && (
-                  <div className="text-gray-600">
-                    <span className="font-semibold">Email:</span> {requester.email}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Timeline Card */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Timeline</h2>
