@@ -325,7 +325,7 @@ export default function VendorRFQDashboard() {
           {/* Navigation Buttons */}
           <div className="flex flex-wrap gap-3 mb-6">
             <button
-              onClick={() => router.push('/vendor-profile')}
+              onClick={() => vendorProfile?.id && router.push(`/vendor-profile/${vendorProfile.id}`)}
               className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
             >
               View Profile
