@@ -61,19 +61,22 @@ export async function POST(request) {
       );
     }
 
-    // Verify vendor exists in the vendors table (correct table name)
-    const { data: vendor, error: vendorError } = await supabase
-      .from('vendors')
+    // Verify vendor exists in the VendorProfile table
+    const { data: vendorProfile, error: vendorError } = await supabase
+      .from('VendorProfile')
       .select('id')
       .eq('id', vendorId)
       .single();
 
-    if (vendorError || !vendor) {
+    if (vendorError || !vendorProfile) {
+      console.log('❌ Vendor not found:', vendorId);
       return NextResponse.json(
-        { message: 'Vendor not found' },
+        { message: 'Vendor profile not found' },
         { status: 404 }
       );
     }
+
+    console.log('✅ Vendor profile found:', vendorProfile.id);
 
     // Create project
     const projectId = randomUUID();
