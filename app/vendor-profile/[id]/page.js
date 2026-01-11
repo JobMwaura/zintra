@@ -42,6 +42,8 @@ import ReviewsList from '@/components/vendor-profile/ReviewsList';
 import CategoryBadges from '@/components/VendorCard/CategoryBadges';
 import AddProjectModal from '@/components/vendor-profile/AddProjectModal';
 import PortfolioProjectCard from '@/components/vendor-profile/PortfolioProjectCard';
+import PortfolioProjectModal from '@/components/vendor-profile/PortfolioProjectModal';
+import EditPortfolioProjectModal from '@/components/vendor-profile/EditPortfolioProjectModal';
 import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
 import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
 
@@ -86,6 +88,9 @@ export default function VendorProfilePage() {
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [portfolioProjects, setPortfolioProjects] = useState([]);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
 
   // Data needed for rendering
@@ -890,12 +895,12 @@ export default function VendorProfilePage() {
                             project={project}
                             canEdit={canEdit}
                             onView={() => {
-                              // TODO: Implement view detail modal (Phase 3)
-                              console.log('View project:', project.id);
+                              setSelectedProject(project);
+                              setShowProjectModal(true);
                             }}
                             onEdit={() => {
-                              // TODO: Implement edit modal (Phase 3)
-                              console.log('Edit project:', project.id);
+                              setSelectedProject(project);
+                              setShowEditProjectModal(true);
                             }}
                             onDelete={() => {
                               // TODO: Implement delete (Phase 3)
@@ -934,6 +939,56 @@ export default function VendorProfilePage() {
                       // Refresh portfolio projects
                       setPortfolioProjects((prev) => [newProject, ...prev]);
                       setShowAddProjectModal(false);
+                    }}
+                  />
+                )}
+
+                {/* View Project Modal */}
+                <PortfolioProjectModal
+                  isOpen={showProjectModal}
+                  project={selectedProject}
+                  onClose={() => {
+                    setShowProjectModal(false);
+                    setSelectedProject(null);
+                  }}
+                  onEdit={() => {
+                    setShowProjectModal(false);
+                    setShowEditProjectModal(true);
+                  }}
+                  onShare={() => {
+                    const url = `${window.location.origin}/vendor-profile/${vendor?.id}/portfolio/${selectedProject?.id}`;
+                    navigator.clipboard.writeText(url);
+                    alert('Project link copied to clipboard!');
+                  }}
+                  onRequestQuote={() => {
+                    // TODO: Implement quote request
+                    console.log('Request quote for project:', selectedProject?.id);
+                  }}
+                />
+
+                {/* Edit Project Modal */}
+                {canEdit && (
+                  <EditPortfolioProjectModal
+                    isOpen={showEditProjectModal}
+                    project={selectedProject}
+                    onClose={() => {
+                      setShowEditProjectModal(false);
+                      setSelectedProject(null);
+                    }}
+                    onSave={async (updatedData) => {
+                      // TODO: Implement save to API
+                      console.log('Save project:', updatedData);
+                      // For now just refresh
+                      setShowEditProjectModal(false);
+                      // Refresh portfolio projects
+                      // await fetchPortfolioProjects();
+                    }}
+                    onDelete={async () => {
+                      // TODO: Implement delete API call
+                      console.log('Delete project:', selectedProject?.id);
+                      setShowEditProjectModal(false);
+                      // Refresh portfolio projects
+                      // await fetchPortfolioProjects();
                     }}
                   />
                 )}
