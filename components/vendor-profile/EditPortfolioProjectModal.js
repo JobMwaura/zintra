@@ -191,8 +191,8 @@ export default function EditPortfolioProjectModal({
                   {images.map((img) => (
                     <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 group">
                       <img
-                        src={img.imageurl}
-                        alt={img.imagetype}
+                        src={img.imageUrl}
+                        alt={img.imageType}
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
@@ -204,7 +204,7 @@ export default function EditPortfolioProjectModal({
                         </button>
                       </div>
                       <div className="absolute top-1 right-1 bg-black/70 text-white px-2 py-0.5 rounded text-xs font-semibold capitalize">
-                        {img.imagetype}
+                        {img.imageType}
                       </div>
                     </div>
                   ))}

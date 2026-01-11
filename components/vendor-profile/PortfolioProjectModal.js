@@ -84,14 +84,14 @@ export default function PortfolioProjectModal({
                 {/* Main Image */}
                 <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden">
                   <img
-                    src={currentImage?.imageurl}
-                    alt={`${project.title} - ${currentImage?.imagetype}`}
+                    src={currentImage?.imageUrl}
+                    alt={`${project.title} - ${currentImage?.imageType}`}
                     className="w-full h-full object-cover"
                   />
                   
                   {/* Image Badge */}
                   <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-xs font-semibold capitalize">
-                    {currentImage?.imagetype}
+                    {currentImage?.imageType}
                   </div>
                 </div>
 
@@ -139,8 +139,8 @@ export default function PortfolioProjectModal({
                       }`}
                     >
                       <img
-                        src={img.imageurl}
-                        alt={img.imagetype}
+                        src={img.imageUrl}
+                        alt={img.imageType}
                         className="w-full h-full object-cover"
                       />
                     </button>
