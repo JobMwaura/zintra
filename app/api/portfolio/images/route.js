@@ -57,12 +57,15 @@ export async function POST(request) {
 
     if (projectError) {
       console.error('❌ Error fetching project:', projectError);
+      console.error('Error code:', projectError.code);
+      console.error('Error message:', projectError.message);
+      console.error('Full error:', JSON.stringify(projectError, null, 2));
       
       // If table doesn't exist, return helpful message
-      if (projectError?.message?.includes('relation') || projectError?.message?.includes('does not exist')) {
+      if (projectError?.message?.includes('relation') || projectError?.message?.includes('does not exist') || projectError?.code === 'PGRST116') {
         console.error('❌ PortfolioProject table not found');
         return NextResponse.json(
-          { message: 'Portfolio tables not set up. Run database migration.', error: projectError.message },
+          { message: 'Portfolio tables not set up. Run database migration.', error: projectError.message, code: projectError.code },
           { status: 503 }
         );
       }
@@ -110,17 +113,21 @@ export async function POST(request) {
 
     if (imageError) {
       console.error('❌ Image creation error:', imageError);
+      console.error('Error code:', imageError.code);
+      console.error('Error message:', imageError.message);
+      console.error('Full error:', JSON.stringify(imageError, null, 2));
       
       // If table doesn't exist, return helpful message
-      if (imageError.message?.includes('relation') || imageError.message?.includes('does not exist')) {
+      if (imageError?.message?.includes('relation') || imageError?.message?.includes('does not exist') || imageError?.code === 'PGRST116') {
         console.error('❌ PortfolioProjectImage table not found');
         return NextResponse.json(
-          { message: 'Portfolio tables not set up', error: imageError.message },
+          { message: 'Portfolio tables not set up', error: imageError.message, code: imageError.code },
           { status: 503 }
         );
       }
       
       // Other errors (constraint violations, etc)
+      console.error('Returning 400 error:', imageError.message);
       return NextResponse.json(
         { message: 'Failed to create image', error: imageError.message },
         { status: 400 }
@@ -144,9 +151,18 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Portfolio image creation failed:', error);
+    console.error('❌ Portfolio image creation failed:', error);
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', JSON.stringify(error, null, 2));
+    
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
+      { 
+        message: 'Internal server error', 
+        error: error.message,
+        errorType: error.constructor.name,
+        errorDetails: error.toString(),
+      },
       { status: 500 }
     );
   }
