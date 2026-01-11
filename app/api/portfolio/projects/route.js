@@ -183,13 +183,13 @@ export async function GET(request) {
     console.log('🔍 Fetching portfolio projects for vendor:', vendorId);
 
     // Get published projects for vendor
-    // Note: Table is quoted because it's a Prisma convention, but Supabase may not have this table yet
+    // Use lowercase column names (Supabase stores them as lowercase)
     const { data: projects, error: projectsError } = await supabase
       .from('PortfolioProject')
-      .select('*, PortfolioProjectImage(*)')
-      .eq('vendorProfileId', vendorId)
+      .select('*')
+      .eq('vendorprofileid', vendorId)
       .eq('status', 'published')
-      .order('createdAt', { ascending: false });
+      .order('createdat', { ascending: false });
 
     if (projectsError) {
       console.error('❌ Portfolio projects fetch error:', projectsError);
@@ -204,6 +204,35 @@ export async function GET(request) {
     }
 
     console.log('✅ Found', projects?.length || 0, 'portfolio projects');
+
+    // Fetch images for each project
+    if (projects && projects.length > 0) {
+      const projectIds = projects.map(p => p.id);
+      const { data: images, error: imagesError } = await supabase
+        .from('PortfolioProjectImage')
+        .select('*')
+        .in('portfolioprojectid', projectIds)
+        .order('displayorder', { ascending: true });
+
+      if (imagesError) {
+        console.error('❌ Error fetching portfolio images:', imagesError);
+        // Continue without images
+      } else {
+        // Attach images to projects
+        const imagesByProjectId = {};
+        images?.forEach(img => {
+          if (!imagesByProjectId[img.portfolioprojectid]) {
+            imagesByProjectId[img.portfolioprojectid] = [];
+          }
+          imagesByProjectId[img.portfolioprojectid].push(img);
+        });
+
+        projects.forEach(project => {
+          project.images = imagesByProjectId[project.id] || [];
+        });
+      }
+    }
+
     return NextResponse.json({ projects: projects || [] }, { status: 200 });
   } catch (error) {
     console.error('❌ Portfolio projects fetch failed:', error);
