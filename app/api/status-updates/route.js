@@ -101,7 +101,7 @@ export async function POST(request) {
       }));
 
       const { error: imagesError } = await supabase
-        .from('StatusUpdateImage')
+        .from('statusupdateimage')
         .insert(imageRecords);
 
       if (imagesError) {
@@ -122,7 +122,7 @@ export async function POST(request) {
     if (!fetchError && updateWithImages) {
       // Fetch images for this update
       const { data: updateImages } = await supabase
-        .from('StatusUpdateImage')
+        .from('statusupdateimage')
         .select('*')
         .eq('statusupdateid', update.id)
         .order('displayorder', { ascending: true });
@@ -201,7 +201,7 @@ export async function GET(request) {
     if (updates && updates.length > 0) {
       const updateIds = updates.map(u => u.id);
       const { data: allImages } = await supabase
-        .from('StatusUpdateImage')
+        .from('statusupdateimage')
         .select('*')
         .in('statusupdateid', updateIds)
         .order('displayorder', { ascending: true });
