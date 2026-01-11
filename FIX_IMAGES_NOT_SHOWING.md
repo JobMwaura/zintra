@@ -28,7 +28,17 @@ Go to: **https://supabase.com/dashboard**
 
 ### Step 2: Copy the SQL
 
-Copy this entire SQL query:
+The table likely already exists! Try this simpler command first:
+
+```sql
+-- Verify table exists and create if not
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'StatusUpdateImage';
+```
+
+**If you get 1 row result**: Table already exists! Skip to "Now Test It" section below.
+
+**If you get 0 rows**: Run this to create it:
 
 ```sql
 -- Create StatusUpdateImage table for storing image metadata
@@ -52,13 +62,22 @@ CREATE INDEX IF NOT EXISTS idx_statusupdate_displayorder
 -- Enable Row Level Security
 ALTER TABLE public.StatusUpdateImage ENABLE ROW LEVEL SECURITY;
 
--- Create permissive RLS policy
-CREATE POLICY "StatusUpdateImage: allow all operations" 
-  ON public.StatusUpdateImage
-  AS PERMISSIVE
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+-- Create permissive RLS policy (if not already exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'statusupdateimage' 
+    AND policyname = 'StatusUpdateImage: allow all operations'
+  ) THEN
+    CREATE POLICY "StatusUpdateImage: allow all operations" 
+      ON public.StatusUpdateImage
+      AS PERMISSIVE
+      FOR ALL
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;
 ```
 
 ### Step 3: Paste and Execute
