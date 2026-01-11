@@ -69,13 +69,13 @@ export async function POST(request) {
       );
     }
 
-    // Create status update (without images array - they go in separate table)
+    // Create status update with images array
     const { data: update, error: updateError } = await supabase
       .from('vendor_status_updates')
       .insert({
         vendor_id: vendorId,
         content: content.trim(),
-        images: null, // Images will be stored in StatusUpdateImage table
+        images: images && images.length > 0 ? images : [], // Save images directly to array column
       })
       .select()
       .single();
@@ -89,66 +89,13 @@ export async function POST(request) {
     }
 
     console.log('✅ Status update created:', update.id);
+    console.log('✅ Saved', images.length, 'images to array');
 
-    // Save images to separate table
-    if (images.length > 0) {
-      const imageRecords = images.map((imageUrl, index) => ({
-        id: randomUUID(),
-        statusupdateid: update.id,
-        imageurl: imageUrl,
-        imagetype: 'status',
-        displayorder: index,
-      }));
-
-      const { error: imagesError } = await supabase
-        .from('statusupdateimage')
-        .insert(imageRecords);
-
-      if (imagesError) {
-        console.error('❌ Error saving image metadata:', imagesError);
-        // Continue anyway - update is created but images metadata not saved
-      } else {
-        console.log('✅ Saved', images.length, 'image records');
-      }
-    }
-
-    // Fetch the update with images
-    const { data: updateWithImages, error: fetchError } = await supabase
-      .from('vendor_status_updates')
-      .select('*')
-      .eq('id', update.id)
-      .single();
-
-    if (!fetchError && updateWithImages) {
-      // Fetch images for this update
-      const { data: updateImages } = await supabase
-        .from('statusupdateimage')
-        .select('*')
-        .eq('statusupdateid', update.id)
-        .order('displayorder', { ascending: true });
-
-      updateWithImages.images = updateImages?.map(img => ({
-        id: img.id,
-        imageUrl: img.imageurl,
-        imageType: img.imagetype,
-        caption: img.caption,
-        displayOrder: img.displayorder,
-        uploadedAt: img.uploadedat,
-      })) || [];
-
-      return NextResponse.json(
-        {
-          message: 'Status update created successfully',
-          update: updateWithImages,
-        },
-        { status: 201 }
-      );
-    }
-
+    // Return the created update with images
     return NextResponse.json(
       {
         message: 'Status update created successfully',
-        update,
+        update: update,
       },
       { status: 201 }
     );
@@ -197,37 +144,13 @@ export async function GET(request) {
 
     console.log('✅ Found', updates?.length || 0, 'status updates');
 
-    // Fetch images for all updates
+    // Images are already in the updates array, no need to fetch separately
+    // Just ensure they're properly formatted
     if (updates && updates.length > 0) {
-      const updateIds = updates.map(u => u.id);
-      const { data: allImages } = await supabase
-        .from('statusupdateimage')
-        .select('*')
-        .in('statusupdateid', updateIds)
-        .order('displayorder', { ascending: true });
-
-      // Transform images to camelCase
-      const transformedImages = allImages?.map(img => ({
-        id: img.id,
-        statusUpdateId: img.statusupdateid,
-        imageUrl: img.imageurl,
-        imageType: img.imagetype,
-        caption: img.caption,
-        displayOrder: img.displayorder,
-        uploadedAt: img.uploadedat,
-      })) || [];
-
-      // Attach images to updates
-      const imagesByUpdateId = {};
-      transformedImages.forEach(img => {
-        if (!imagesByUpdateId[img.statusUpdateId]) {
-          imagesByUpdateId[img.statusUpdateId] = [];
-        }
-        imagesByUpdateId[img.statusUpdateId].push(img);
-      });
-
       updates.forEach(update => {
-        update.images = imagesByUpdateId[update.id] || [];
+        if (!update.images) {
+          update.images = [];
+        }
       });
     }
 
