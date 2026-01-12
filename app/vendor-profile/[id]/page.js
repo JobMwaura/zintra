@@ -63,7 +63,7 @@ export default function VendorProfilePage() {
   const [saved, setSaved] = useState(false);
 
   // Tab navigation state
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('updates');
 
   // Modal visibility states
   const [showProductModal, setShowProductModal] = useState(false);
@@ -740,7 +740,7 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
-          {['overview', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'updates', 'rfqs'] : [])].map((tab) => (
+          {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -767,124 +767,6 @@ export default function VendorProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           {/* Left Column */}
           <div className="space-y-6">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <>
-              {/* About Section */}
-              <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-slate-900">About {vendor.company_name}</h3>
-              {canEdit && (
-                <button
-                  onClick={() => setShowAboutModal(true)}
-                  className="text-sm font-semibold text-amber-700 hover:text-amber-800"
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-            <p className="text-slate-700 leading-relaxed">
-              {vendor.description || 'No description yet. Add your story and expertise here to win buyer trust.'}
-            </p>
-          </section>
-
-          {/* Status Updates Box in Overview */}
-          {canEdit && (
-            <section className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Business Updates</h3>
-                  <p className="text-sm text-slate-600">Keep your customers informed</p>
-                </div>
-                <button
-                  onClick={() => setShowStatusUpdateModal(true)}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
-                >
-                  + Share Update
-                </button>
-              </div>
-              {statusUpdates.length > 0 && (
-                <div className="space-y-3">
-                  {statusUpdates.slice(0, 2).map((update) => (
-                    <div key={update.id} className="bg-white rounded-lg p-3 border border-amber-100">
-                      <p className="text-sm text-slate-700 line-clamp-2">{update.content}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                        <span>❤️ {update.likes_count || 0} likes</span>
-                        <span>{new Date(update.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {statusUpdates.length > 2 && (
-                    <p className="text-sm text-slate-600 text-center py-2">+ {statusUpdates.length - 2} more updates</p>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Featured Products Preview in Overview */}
-          {products.length > 0 && (
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-slate-900 mb-1">Featured Products</h3>
-                <p className="text-sm text-slate-600">Browse our most popular offerings</p>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {products.slice(0, 4).map((product) => (
-                  <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-200 transition overflow-hidden">
-                    {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="aspect-[4/3] object-cover w-full"
-                      />
-                    )}
-                    <div className="p-3">
-                      <h4 className="font-semibold text-slate-900 text-sm truncate">{product.name}</h4>
-                      <p className="text-sm text-slate-600 mb-2">{product.price}</p>
-                      <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
-                        {product.status || 'In Stock'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {products.length > 4 && (
-                <p className="text-sm text-slate-500 mt-3">+ {products.length - 4} more products</p>
-              )}
-            </section>
-          )}
-
-          {/* Featured Services Preview in Overview */}
-          {services.length > 0 && (
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-slate-900 mb-1">Services We Offer</h3>
-                <p className="text-sm text-slate-600">Our professional service offerings</p>
-              </div>
-              <div className="space-y-3">
-                {services.slice(0, 4).map((service) => (
-                  <div key={service.id} className="flex gap-3 p-3 rounded-lg border border-slate-200 hover:border-amber-200 transition">
-                    <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
-                      ✓
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-slate-900 text-sm font-semibold">{service.name}</p>
-                      {service.description && (
-                        <p className="text-slate-600 text-sm line-clamp-2">{service.description}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {services.length > 4 && (
-                <p className="text-sm text-slate-500 mt-3">+ {services.length - 4} more services</p>
-              )}
-            </section>
-          )}
-              </>
-            )}
-
             {/* Portfolio Tab */}
             {activeTab === 'portfolio' && (
               <>
@@ -1056,6 +938,56 @@ export default function VendorProfilePage() {
                     }}
                   />
                 )}
+              </>
+            )}
+
+            {/* Updates Tab */}
+            {activeTab === 'updates' && (
+              <>
+                <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">Business Updates</h3>
+                      <p className="text-sm text-slate-600">Keep customers informed with latest news and updates</p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        onClick={() => setShowStatusUpdateModal(true)}
+                        className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
+                      >
+                        + Share Update
+                      </button>
+                    )}
+                  </div>
+                  
+                  {statusUpdates.length > 0 ? (
+                    <div className="space-y-4">
+                      {statusUpdates.map((update) => (
+                        <StatusUpdateCard
+                          key={update.id}
+                          update={update}
+                          vendor={vendor}
+                          currentUser={currentUser}
+                          onDelete={(deletedId) => {
+                            setStatusUpdates(statusUpdates.filter(u => u.id !== deletedId));
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-slate-600 mb-4">No updates yet. Share your first business update!</p>
+                      {canEdit && (
+                        <button
+                          onClick={() => setShowStatusUpdateModal(true)}
+                          className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition"
+                        >
+                          + Share Update
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </section>
               </>
             )}
 
