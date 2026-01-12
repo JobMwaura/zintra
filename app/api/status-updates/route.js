@@ -157,18 +157,28 @@ export async function GET(request) {
 
         // Generate fresh presigned GET URLs from file keys (7-day expiry is AWS max)
         const freshUrls = [];
-        for (const imageKey of update.images) {
+        for (const imageItem of update.images) {
           try {
-            // imageKey is stored as file key in database
-            // Generate fresh 7-day presigned URLs on every fetch (AWS maximum)
-            // This means users always get valid URLs, and updates never technically expire
-            const freshUrl = await generateFileAccessUrl(imageKey, 7 * 24 * 60 * 60); // 7 days
-            freshUrls.push(freshUrl);
-            console.log('✅ Generated fresh 7-day URL for image key:', imageKey);
+            // Handle both old format (full presigned URL) and new format (file key)
+            const isPresignedUrl = imageItem.startsWith('https://') || imageItem.includes('X-Amz-');
+            
+            if (isPresignedUrl) {
+              // Old format: already a presigned URL, use as-is
+              freshUrls.push(imageItem);
+              console.log('✅ Using existing presigned URL (old format)');
+            } else {
+              // New format: file key, generate fresh presigned URL
+              const freshUrl = await generateFileAccessUrl(imageItem, 7 * 24 * 60 * 60); // 7 days
+              freshUrls.push(freshUrl);
+              console.log('✅ Generated fresh 7-day URL for image key:', imageItem);
+            }
           } catch (err) {
-            console.error('⚠️ Failed to generate URL for image key:', imageKey, err.message);
-            // If URL generation fails, still include the key for debugging
-            freshUrls.push(imageKey);
+            console.error('⚠️ Failed to process image:', imageItem, err.message);
+            // If URL generation fails and it's a file key, still try to use it
+            // (might be accessible depending on S3 bucket configuration)
+            if (!imageItem.startsWith('https://')) {
+              freshUrls.push(imageItem);
+            }
           }
         }
         update.images = freshUrls;
