@@ -125,12 +125,12 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
 
         {canDelete && (
           <div className="relative group">
-            <button className="p-1.5 hover:bg-slate-100 rounded-lg transition">
+            <button className="p-1.5 hover:bg-slate-100 rounded-lg transition cursor-pointer">
               <MoreVertical className="w-4 h-4 text-slate-600" />
             </button>
             <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-20 whitespace-nowrap">
               <button
-                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                 disabled={loading}
               >
                 <Edit2 className="w-4 h-4" />
@@ -140,7 +140,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={loading}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 font-medium"
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 font-medium cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -268,10 +268,10 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog - Rendered as Portal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Update?</h3>
             <p className="text-slate-600 mb-6">
               Are you sure you want to delete this update? This action cannot be undone.
@@ -280,14 +280,14 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={loading}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50"
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>

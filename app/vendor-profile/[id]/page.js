@@ -969,7 +969,7 @@ export default function VendorProfilePage() {
                           vendor={vendor}
                           currentUser={currentUser}
                           onDelete={(deletedId) => {
-                            setStatusUpdates(statusUpdates.filter(u => u.id !== deletedId));
+                            setStatusUpdates(prev => prev.filter(u => u.id !== deletedId));
                           }}
                         />
                       ))}
