@@ -3,8 +3,24 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
-export default function EditCommentModal({ comment, onSave, onCancel, isLoading }) {
-  const [editedContent, setEditedContent] = useState(comment.content);
+export default function EditCommentModal({ 
+  comment, 
+  currentContent,
+  onSave, 
+  onCancel,
+  onClose,
+  isLoading,
+  isOpen
+}) {
+  // Support both old API (comment object) and new API (currentContent prop)
+  const initialContent = currentContent !== undefined ? currentContent : comment?.content || '';
+  const [editedContent, setEditedContent] = useState(initialContent);
+
+  // Support both old API (onCancel) and new API (onClose)
+  const handleCancel = () => {
+    if (onClose) onClose();
+    if (onCancel) onCancel();
+  };
 
   const handleSave = async () => {
     if (!editedContent.trim()) {
@@ -12,13 +28,19 @@ export default function EditCommentModal({ comment, onSave, onCancel, isLoading 
       return;
     }
 
-    if (editedContent.trim() === comment.content) {
-      onCancel();
+    const originalContent = currentContent !== undefined ? currentContent : comment?.content;
+    if (editedContent.trim() === originalContent) {
+      handleCancel();
       return;
     }
 
     await onSave(editedContent.trim());
   };
+
+  // If isOpen is provided and false, don't render
+  if (isOpen === false) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -26,7 +48,7 @@ export default function EditCommentModal({ comment, onSave, onCancel, isLoading 
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-slate-900">Edit Comment</h3>
           <button
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isLoading}
             className="p-1 text-slate-400 hover:text-slate-600 transition disabled:opacity-50"
           >
@@ -45,7 +67,7 @@ export default function EditCommentModal({ comment, onSave, onCancel, isLoading 
 
         <div className="flex justify-end gap-2 mt-4">
           <button
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isLoading}
             className="px-4 py-2 text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
           >
