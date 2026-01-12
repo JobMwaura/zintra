@@ -453,7 +453,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div>
                         <p className="font-medium text-slate-900">
-                          {comment.auth_users?.user_metadata?.name || comment.auth_users?.email || 'Anonymous'}
+                          User {comment.user_id?.substring(0, 8) || 'Anonymous'}
                         </p>
                         <p className="text-xs text-slate-500">
                           {formatTime(comment.created_at)}

@@ -26,8 +26,7 @@ export async function GET(request) {
         id,
         content,
         user_id,
-        created_at,
-        auth_users:user_id(id, email, user_metadata)
+        created_at
       `)
       .eq('update_id', updateId)
       .order('created_at', { ascending: true })
@@ -148,8 +147,7 @@ export async function POST(request) {
         id,
         content,
         user_id,
-        created_at,
-        auth_users:user_id(id, email, user_metadata)
+        created_at
       `)
       .eq('id', comment.id)
       .single();
