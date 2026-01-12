@@ -92,7 +92,46 @@ export async function POST(request) {
     console.log('✅ Status update created:', update.id);
     console.log('✅ Saved', images.length, 'images to array');
 
-    // Return the created update with images
+    // Generate fresh presigned URLs from file keys before returning to client
+    // This ensures the newly created update displays images immediately without 404 errors
+    if (update.images && update.images.length > 0) {
+      console.log('🔄 Generating fresh presigned URLs for newly created update...');
+      const freshUrls = [];
+      
+      for (const imageItem of update.images) {
+        try {
+          // Handle both old format (full presigned URL) and new format (file key)
+          const isPresignedUrl = imageItem.startsWith('https://') || imageItem.includes('X-Amz-');
+          
+          if (isPresignedUrl) {
+            // Old format: already a presigned URL, use as-is
+            freshUrls.push(imageItem);
+            console.log('✅ Using existing presigned URL (old format)');
+          } else {
+            // New format: file key, generate fresh presigned URL
+            console.log('🔄 Generating fresh URL for file key:', imageItem.substring(0, 50) + '...');
+            try {
+              const freshUrl = await generateFileAccessUrl(imageItem, 7 * 24 * 60 * 60); // 7 days
+              freshUrls.push(freshUrl);
+              console.log('✅ Generated fresh 7-day URL for new image');
+            } catch (urlErr) {
+              console.error('❌ Failed to generate URL for key:', imageItem);
+              console.error('   Error:', urlErr.message);
+              // Fallback: return the file key (will fail client-side, but helps debugging)
+              freshUrls.push(imageItem);
+            }
+          }
+        } catch (err) {
+          console.error('⚠️ Failed to process image:', imageItem, err.message);
+          freshUrls.push(imageItem);
+        }
+      }
+      
+      update.images = freshUrls;
+      console.log('✅ Processed', freshUrls.length, 'images for POST response');
+    }
+
+    // Return the created update with fresh presigned URLs
     return NextResponse.json(
       {
         message: 'Status update created successfully',
