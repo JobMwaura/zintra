@@ -7,6 +7,7 @@ import {
   Wrench, FileText, HelpCircle, Check, AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import RFQFileUpload from '@/components/RFQModal/RFQFileUpload';
 
 // ============================================================================
 // ACCORDION COMPONENT
@@ -1227,49 +1228,18 @@ export default function VendorRFQResponseForm({ rfqId, rfqDetails }) {
         onToggle={() => toggleSection(7)}
         complete={isSectionComplete(7)}
       >
-        <p className="text-sm text-gray-600 mb-4">
-          Upload supporting documents to strengthen your quote (optional)
-        </p>
-        
-        <div className="space-y-3">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">
-              Drag files here or click to upload
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Quotation PDF, BOQ, Product Datasheets, Past Work Photos
-            </p>
-            <input
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                // Handle file upload - would integrate with S3/storage
-                console.log('Files selected:', e.target.files);
-              }}
-            />
-          </div>
-          
-          {formData.attachments.length > 0 && (
-            <div className="space-y-2">
-              {formData.attachments.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <span className="text-sm text-gray-700">{file.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateField('attachments', formData.attachments.filter((_, i) => i !== idx));
-                    }}
-                    className="text-red-500"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <RFQFileUpload
+          files={formData.attachments}
+          onUpload={(fileData) => {
+            updateField('attachments', [...formData.attachments, fileData]);
+          }}
+          onRemove={(fileKey) => {
+            updateField('attachments', formData.attachments.filter(f => f.key !== fileKey));
+          }}
+          maxFiles={10}
+          maxSize={50}
+          uploadType="vendor-response"
+        />
         
         <TextField
           label="Portfolio Links (Optional)"

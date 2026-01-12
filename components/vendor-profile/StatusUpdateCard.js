@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import ReactionPicker from './ReactionPicker';
+import EditCommentModal from './EditCommentModal';
 
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
   const router = useRouter();
@@ -18,6 +20,8 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentContent, setEditingCommentContent] = useState('');
 
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];
@@ -172,6 +176,44 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       setCommentsCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error('❌ Error deleting comment:', err);
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentContent(comment.content);
+  };
+
+  const handleSaveEdit = async (newContent) => {
+    if (!editingCommentId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/status-updates/comments/${editingCommentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newContent }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update comment');
+      }
+
+      const data = await response.json();
+      console.log('✅ Comment updated:', editingCommentId);
+
+      // Update comment in list
+      setComments(prev => 
+        prev.map(c => c.id === editingCommentId ? data.comment : c)
+      );
+      setEditingCommentId(null);
+      setEditingCommentContent('');
+    } catch (err) {
+      console.error('❌ Error updating comment:', err);
       alert(err.message);
     } finally {
       setLoading(false);
@@ -452,30 +494,45 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
             ) : (
               <div className="space-y-3">
                 {comments.map((comment) => (
-                  <div key={comment.id} className="bg-white rounded-lg p-3 text-sm">
-                    <div className="flex items-start justify-between gap-2 mb-1">
+                  <div key={comment.id} className="bg-white rounded-lg p-3 text-sm border border-slate-200 hover:border-slate-300 transition">
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <p className="font-medium text-slate-900">
                           User {comment.user_id?.substring(0, 8) || 'Anonymous'}
                         </p>
                         <p className="text-xs text-slate-500">
                           {formatTime(comment.created_at)}
+                          {comment.updated_at && comment.updated_at !== comment.created_at && (
+                            <span> (edited)</span>
+                          )}
                         </p>
                       </div>
                       {currentUser?.id === comment.user_id && (
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          disabled={loading}
-                          className="p-1 text-slate-400 hover:text-red-600 transition disabled:opacity-50"
-                          title="Delete comment"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditComment(comment)}
+                            disabled={loading}
+                            className="p-1 text-slate-400 hover:text-blue-600 transition disabled:opacity-50"
+                            title="Edit comment"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            disabled={loading}
+                            className="p-1 text-slate-400 hover:text-red-600 transition disabled:opacity-50"
+                            title="Delete comment"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
-                    <p className="text-slate-700 whitespace-pre-wrap break-words">
+                    <p className="text-slate-700 whitespace-pre-wrap break-words mb-2">
                       {comment.content}
                     </p>
+                    {/* Reaction Picker */}
+                    <ReactionPicker commentId={comment.id} currentUser={currentUser} />
                   </div>
                 ))}
               </div>
@@ -563,6 +620,18 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           </div>
         </div>
       )}
+
+      {/* Edit Comment Modal */}
+      <EditCommentModal
+        isOpen={editingCommentId !== null}
+        currentContent={editingCommentContent}
+        onClose={() => {
+          setEditingCommentId(null);
+          setEditingCommentContent('');
+        }}
+        onSave={handleSaveEdit}
+        isLoading={loading}
+      />
     </div>
   );
 }

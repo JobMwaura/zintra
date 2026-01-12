@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { CountySelect } from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { getUserProfile } from '@/app/actions/getUserProfile';
+import RFQFileUpload from '@/components/RFQModal/RFQFileUpload';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -20,8 +21,6 @@ const BRAND = {
   white: '#ffffff',
 };
 
-const RFQ_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_RFQ_BUCKET || 'rfq_attachments';
-
 export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [form, setForm] = useState({
     title: '',
@@ -31,7 +30,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     custom_details: '', // For custom floor types, roofing types, etc
     budget: '',
     location: '',
-    attachment: null,
+    attachments: [], // Changed from single attachment to array for S3 uploads
     confirmed: false,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -168,28 +167,6 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
     try {
       setStatus('');
-      
-      /** Upload file if exists */
-      let attachmentUrl = null;
-      if (form.attachment) {
-        const fileName = `${Date.now()}_${form.attachment.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from(RFQ_BUCKET)
-          .upload(fileName, form.attachment);
-
-        if (uploadError) {
-          if (uploadError.message?.toLowerCase().includes('bucket')) {
-            setStatus('⚠️ Attachment bucket missing; request sent without file.');
-          } else {
-            throw uploadError;
-          }
-        } else {
-          const { data: publicUrl } = supabase.storage
-            .from(RFQ_BUCKET)
-            .getPublicUrl(uploadData.path);
-          attachmentUrl = publicUrl?.publicUrl || null;
-        }
-      }
 
       // Determine final category name
       const finalCategory = form.category === 'other' ? form.custom_category : form.category;
@@ -207,6 +184,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           location: form.location,
           user_id: user?.id || null,
           status: 'submitted',
+          attachments: form.attachments.length > 0 ? form.attachments : null, // Store S3 file URLs
         }])
         .select()
         .maybeSingle();
@@ -454,20 +432,26 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
             />
           </div>
 
-          {/* Attachment */}
+          {/* Attachment - Now using RFQFileUpload component */}
           <div>
-            <label className="block text-sm font-medium text-slate-800 mb-1">Attachments (Optional)</label>
-            <div className="flex items-center justify-between rounded-lg border border-slate-300 px-3 py-2 text-sm">
-              <input
-                type="file"
-                accept=".pdf,.jpg,.png,.docx"
-                onChange={(e) => setForm({ ...form, attachment: e.target.files[0] })}
-              />
-              <FileUp className="h-4 w-4 text-slate-500" />
-            </div>
-            {form.attachment && (
-              <p className="mt-1 text-xs text-slate-500">Uploaded: {form.attachment.name}</p>
-            )}
+            <RFQFileUpload
+              files={form.attachments}
+              onUpload={(fileData) => {
+                setForm({
+                  ...form,
+                  attachments: [...form.attachments, fileData],
+                });
+              }}
+              onRemove={(fileKey) => {
+                setForm({
+                  ...form,
+                  attachments: form.attachments.filter(f => f.key !== fileKey),
+                });
+              }}
+              maxFiles={5}
+              maxSize={50}
+              uploadType="rfq-attachment"
+            />
           </div>
 
           {/* Confirmation */}

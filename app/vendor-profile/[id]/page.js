@@ -470,25 +470,87 @@ export default function VendorProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+    if (file.size > maxSize) {
+      console.error('File too large:', file.size);
+      alert('File too large. Maximum size: 10MB');
+      return;
+    }
+
+    if (!allowedTypes.includes(file.type)) {
+      console.error('Invalid file type:', file.type);
+      alert('Invalid file type. Allowed: JPEG, PNG, WebP, GIF');
+      return;
+    }
+
     try {
       setUploadingLogo(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `logos/${vendor.id}/vendor-${vendor.id}-${Date.now()}.${fileExt}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from('vendor-assets')
-        .upload(fileName, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('vendor-assets').getPublicUrl(data.path);
-      const publicUrl = urlData?.publicUrl;
-
-      if (publicUrl) {
-        await supabase.from('vendors').update({ logo_url: publicUrl }).eq('id', vendor.id);
-        setVendor((prev) => ({ ...prev, logo_url: publicUrl }));
+      // Get current user session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('Not authenticated');
       }
+
+      // Step 1: Get presigned URL from our API
+      const presignedResponse = await fetch('/api/vendor-profile/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+          vendorId: vendor.id,
+        }),
+      });
+
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json();
+        throw new Error(errorData.error || 'Failed to get upload URL');
+      }
+
+      const { uploadUrl, fileUrl, key } = await presignedResponse.json();
+      console.log('✅ Got presigned URL for vendor profile image');
+
+      // Step 2: Upload file directly to S3 using presigned URL
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+      }
+
+      console.log('✅ Uploaded vendor profile image to S3');
+
+      // Step 3: Save S3 URL to database
+      const { error: updateError } = await supabase
+        .from('vendors')
+        .update({ 
+          logo_url: fileUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', vendor.id);
+
+      if (updateError) throw updateError;
+
+      console.log('✅ Updated vendor profile with new image');
+
+      // Step 4: Update local state
+      setVendor((prev) => ({ ...prev, logo_url: fileUrl }));
+      console.log('✅ Vendor profile image upload complete');
     } catch (err) {
-      console.error('Logo upload failed:', err);
+      console.error('❌ Logo upload failed:', err);
+      alert('Failed to upload image: ' + err.message);
     } finally {
       setUploadingLogo(false);
     }
