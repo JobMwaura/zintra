@@ -146,6 +146,8 @@ export async function GET(request) {
     console.log('✅ Found', updates?.length || 0, 'status updates');
 
     // Generate fresh presigned URLs for all image file keys
+    // AWS SigV4 presigned URLs max expiry is 7 days, but we generate fresh ones on each page load
+    // This ensures images are always accessible without ever needing to "renew" in the database
     if (updates && updates.length > 0) {
       for (const update of updates) {
         if (!update.images) {
@@ -153,18 +155,19 @@ export async function GET(request) {
           continue;
         }
 
-        // Generate fresh presigned GET URLs from file keys
+        // Generate fresh presigned GET URLs from file keys (7-day expiry is AWS max)
         const freshUrls = [];
         for (const imageKey of update.images) {
           try {
-            // imageKey is stored as file key in database instead of full presigned URL
-            // Generate long-lived URLs (365 days) so images stay accessible
-            const freshUrl = await generateFileAccessUrl(imageKey, 86400 * 365); // 365 days
+            // imageKey is stored as file key in database
+            // Generate fresh 7-day presigned URLs on every fetch (AWS maximum)
+            // This means users always get valid URLs, and updates never technically expire
+            const freshUrl = await generateFileAccessUrl(imageKey, 7 * 24 * 60 * 60); // 7 days
             freshUrls.push(freshUrl);
-            console.log('✅ Generated fresh 365-day URL for image key:', imageKey);
+            console.log('✅ Generated fresh 7-day URL for image key:', imageKey);
           } catch (err) {
             console.error('⚠️ Failed to generate URL for image key:', imageKey, err.message);
-            // If URL generation fails, still include the key in case it's needed for debugging
+            // If URL generation fails, still include the key for debugging
             freshUrls.push(imageKey);
           }
         }

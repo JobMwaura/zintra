@@ -44,6 +44,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       presignedUrl: uploadResult.uploadUrl,
+      fileKey: uploadResult.key, // Return the file key so we can generate fresh URLs later
       bucket: process.env.AWS_S3_BUCKET,
       region: process.env.AWS_REGION,
     });

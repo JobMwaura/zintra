@@ -82,8 +82,8 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         throw new Error(errorData.message || 'Failed to get presigned URL');
       }
 
-      const { presignedUrl } = await presignResponse.json();
-      console.log('✅ Got presigned URL');
+      const { presignedUrl, fileKey } = await presignResponse.json();
+      console.log('✅ Got presigned URL, fileKey:', fileKey);
 
       // Step 2: Upload directly to S3
       const uploadResponse = await fetch(presignedUrl, {
@@ -98,10 +98,10 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
       }
 
-      // Keep the full presigned URL with signature
-      console.log('✅ Uploaded to S3:', presignedUrl);
+      // Store the file key (not the full presigned URL) so we can generate fresh URLs later
+      console.log('✅ Uploaded to S3, storing file key:', fileKey);
 
-      return presignedUrl;
+      return fileKey; // Return file key instead of presigned URL
     } catch (err) {
       console.error('❌ S3 upload error:', err);
       throw err;
