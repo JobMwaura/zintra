@@ -174,7 +174,7 @@ Look for these in F12 DevTools → Console tab:
 
 ## 🆘 If You Get Stuck
 
-1. **"I don't know which option to choose"**
+1. **"Inow which option to don't k choose"**
    → Pick Option 1 (VENDOR_INBOX_QUICK_START.md) - takes 5 minutes
 
 2. **"I don't understand what RLS is"**
