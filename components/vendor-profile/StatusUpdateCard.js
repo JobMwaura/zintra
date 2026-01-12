@@ -1,14 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(update.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(update.comments_count || 0);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -70,6 +74,93 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       }
     } catch (err) {
       console.error('Like action failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch comments when showing comments section
+  const fetchComments = async () => {
+    setLoadingComments(true);
+    try {
+      const response = await fetch(`/api/status-updates/comments?updateId=${update.id}`);
+      if (!response.ok) throw new Error('Failed to fetch comments');
+      
+      const data = await response.json();
+      setComments(data.comments || []);
+      console.log('✅ Fetched', data.comments?.length || 0, 'comments');
+    } catch (err) {
+      console.error('❌ Error fetching comments:', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleShowComments = async () => {
+    if (!showComments) {
+      // Opening comments section - fetch comments
+      await fetchComments();
+    }
+    setShowComments(!showComments);
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/status-updates/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updateId: update.id,
+          content: commentText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to post comment');
+      }
+
+      const data = await response.json();
+      console.log('✅ Comment posted:', data.comment.id);
+
+      // Add new comment to list
+      setComments(prev => [...prev, data.comment]);
+      setCommentText('');
+      setCommentsCount(prev => prev + 1);
+    } catch (err) {
+      console.error('❌ Error posting comment:', err);
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Delete this comment?')) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/status-updates/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete comment');
+      }
+
+      console.log('✅ Comment deleted:', commentId);
+
+      // Remove comment from list
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      setCommentsCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('❌ Error deleting comment:', err);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -302,11 +393,11 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           <span>{likesCount} {likesCount === 1 ? 'like' : 'likes'}</span>
         </button>
         <button
-          onClick={() => setShowComments(!showComments)}
+          onClick={handleShowComments}
           className="flex items-center gap-1.5 hover:text-blue-600 transition"
         >
           <MessageCircle className="w-4 h-4" />
-          <span>{update.comments_count || 0} {(update.comments_count || 0) === 1 ? 'comment' : 'comments'}</span>
+          <span>{commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}</span>
         </button>
       </div>
 
@@ -324,7 +415,10 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
           Like
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100">
+        <button
+          onClick={handleShowComments}
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100"
+        >
           <MessageCircle className="w-4 h-4" />
           Comment
         </button>
@@ -334,9 +428,78 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         </button>
       </div>
 
+      {/* Comments Section */}
       {showComments && (
-        <div className="mt-3 pt-3 border-t border-slate-100 px-4 py-3 bg-slate-50 rounded-b-lg">
-          <p className="text-sm text-slate-600 text-center">Comments feature coming soon</p>
+        <div className="border-t border-slate-100 bg-slate-50">
+          {/* Comments List */}
+          <div className="px-4 py-3 max-h-64 overflow-y-auto">
+            {loadingComments ? (
+              <p className="text-sm text-slate-500 text-center py-4">Loading comments...</p>
+            ) : comments.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No comments yet</p>
+            ) : (
+              <div className="space-y-3">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="bg-white rounded-lg p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div>
+                        <p className="font-medium text-slate-900">
+                          {comment.auth_users?.user_metadata?.name || comment.auth_users?.email || 'Anonymous'}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatTime(comment.created_at)}
+                        </p>
+                      </div>
+                      {currentUser?.id === comment.user_id && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          disabled={loading}
+                          className="p-1 text-slate-400 hover:text-red-600 transition disabled:opacity-50"
+                          title="Delete comment"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-slate-700 whitespace-pre-wrap break-words">
+                      {comment.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Comment Input Form */}
+          {currentUser && (
+            <form
+              onSubmit={handleAddComment}
+              className="px-4 py-3 border-t border-slate-200 bg-white flex gap-2"
+            >
+              <input
+                type="text"
+                placeholder="Write a comment..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                maxLength={500}
+                disabled={loading}
+                className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-slate-100"
+              />
+              <button
+                type="submit"
+                disabled={loading || !commentText.trim()}
+                className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? '...' : 'Post'}
+              </button>
+            </form>
+          )}
+
+          {!currentUser && (
+            <div className="px-4 py-3 text-center text-sm text-slate-600 bg-white border-t border-slate-200">
+              <p>Sign in to comment</p>
+            </div>
+          )}
         </div>
       )}
 
