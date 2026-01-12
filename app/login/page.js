@@ -117,31 +117,36 @@ export default function Login() {
       }
       console.log('✅ Session verified:', verifySession.user.email);
 
-      let redirectUrl = '/browse';
+      // Check if there's a redirect URL stored from before login
+      let redirectUrl = sessionStorage.getItem('redirectAfterLogin') || '/browse';
+      sessionStorage.removeItem('redirectAfterLogin'); // Clear it after use
 
-      if (activeTab === 'vendor') {
-        // VENDOR LOGIN: Fetch vendor ID and redirect to editable vendor profile
-        console.log('✓ Vendor login detected, fetching vendor profile...');
-        const { data: vendorData, error: vendorError } = await supabase
-          .from('vendors')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .maybeSingle();
+      // If no stored redirect, use default logic based on user type
+      if (!sessionStorage.getItem('redirectAfterLogin')) {
+        if (activeTab === 'vendor') {
+          // VENDOR LOGIN: Fetch vendor ID and redirect to editable vendor profile
+          console.log('✓ Vendor login detected, fetching vendor profile...');
+          const { data: vendorData, error: vendorError } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
 
-        if (vendorError) {
-          console.error('❌ Error fetching vendor:', vendorError);
-          redirectUrl = '/browse'; // fallback
-        } else if (vendorData) {
-          redirectUrl = `/vendor-profile/${vendorData.id}`;
-          console.log('✓ Vendor found, redirecting to:', redirectUrl);
+          if (vendorError) {
+            console.error('❌ Error fetching vendor:', vendorError);
+            redirectUrl = '/browse'; // fallback
+          } else if (vendorData) {
+            redirectUrl = `/vendor-profile/${vendorData.id}`;
+            console.log('✓ Vendor found, redirecting to:', redirectUrl);
+          } else {
+            console.log('⚠️ No vendor profile found for user');
+            redirectUrl = '/browse'; // fallback if no vendor profile
+          }
         } else {
-          console.log('⚠️ No vendor profile found for user');
-          redirectUrl = '/browse'; // fallback if no vendor profile
+          // USER LOGIN: Redirect to user dashboard
+          redirectUrl = '/user-dashboard';
+          console.log('✓ User login detected, redirecting to user dashboard');
         }
-      } else {
-        // USER LOGIN: Redirect to user dashboard
-        redirectUrl = '/user-dashboard';
-        console.log('✓ User login detected, redirecting to user dashboard');
       }
 
       console.log('🔹 Redirecting to:', redirectUrl);

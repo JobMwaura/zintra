@@ -111,6 +111,9 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
     
     // Check if user is signed in
     if (!currentUser) {
+      // Store the current URL so we can return after login
+      const currentUrl = window.location.href;
+      sessionStorage.setItem('redirectAfterLogin', currentUrl);
       router.push('/login');
       return;
     }
@@ -508,7 +511,12 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
             <div className="px-4 py-3 text-center text-sm bg-white border-t border-slate-200">
               <p className="text-slate-600 mb-3">Sign in to comment</p>
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => {
+                  // Store the current URL so we can return after login
+                  const currentUrl = window.location.href;
+                  sessionStorage.setItem('redirectAfterLogin', currentUrl);
+                  router.push('/login');
+                }}
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition cursor-pointer"
               >
                 Sign In

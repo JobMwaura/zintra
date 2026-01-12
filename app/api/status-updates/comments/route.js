@@ -61,7 +61,10 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
-    const { updateId, content } = await request.json();
+    const body = await request.json();
+    const { updateId, content } = body;
+
+    console.log('📝 Incoming POST request:', { updateId, contentLength: content?.length });
 
     if (!updateId || !content) {
       return NextResponse.json(
@@ -93,6 +96,7 @@ export async function POST(request) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
+      console.error('❌ Auth error:', userError);
       return NextResponse.json(
         { message: 'User not authenticated' },
         { status: 401 }
