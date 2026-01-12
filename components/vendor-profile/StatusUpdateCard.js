@@ -84,6 +84,32 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       if (update.images && update.images.length > 0) {
         console.log('🗑️ Deleting', update.images.length, 'S3 images...');
         
+        // Extract file keys from images (they could be presigned URLs or raw keys)
+        const imageKeys = update.images
+          .map(img => {
+            if (typeof img !== 'string') return null;
+            
+            // If it's a presigned URL, extract the key before the query string
+            if (img.startsWith('https://')) {
+              try {
+                const url = new URL(img);
+                // The key is in the pathname, e.g., /vendor-profiles/status-updates/filename.jpg
+                const key = url.pathname.substring(1); // Remove leading slash
+                console.log('   Extracted key from URL:', key.substring(0, 60) + '...');
+                return key;
+              } catch (err) {
+                console.error('   Failed to extract key from URL:', img);
+                return null;
+              }
+            }
+            
+            // If it's already a file key, use it as-is
+            return img;
+          })
+          .filter(Boolean);
+        
+        console.log('   Image keys to delete:', imageKeys.length);
+        
         // Call API to delete S3 files
         const deleteImagesResponse = await fetch('/api/status-updates/delete-images', {
           method: 'POST',
@@ -92,9 +118,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           },
           body: JSON.stringify({
             updateId: update.id,
-            imageKeys: update.images.filter(img => 
-              typeof img === 'string' && !img.startsWith('https://')
-            ), // Only delete file keys, not presigned URLs
+            imageKeys: imageKeys,
           }),
         });
 
