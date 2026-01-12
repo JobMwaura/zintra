@@ -332,16 +332,27 @@ export default function VendorProfilePage() {
         console.log('✅ Status updates fetched:', updates?.length || 0);
         console.log('📋 Update IDs:', updates?.map(u => u.id) || []);
         
-        // Filter out any invalid updates
+        // Filter out any invalid updates - check for required fields
         const validUpdates = (updates || []).filter(u => {
           if (!u || !u.id) {
-            console.warn('⚠️ Invalid update detected:', u);
+            console.warn('⚠️ Invalid update: missing id', u);
+            return false;
+          }
+          if (!u.content) {
+            console.warn('⚠️ Invalid update: missing content', u);
+            return false;
+          }
+          if (!u.created_at) {
+            console.warn('⚠️ Invalid update: missing created_at', u);
             return false;
           }
           return true;
         });
         
         console.log('✅ Valid updates after filtering:', validUpdates.length);
+        if (validUpdates.length !== updates.length) {
+          console.warn(`⚠️ Filtered out ${updates.length - validUpdates.length} invalid updates`);
+        }
         setStatusUpdates(prev => {
           console.log('🔹 useEffect setState - replacing with fetched updates');
           return validUpdates || [];

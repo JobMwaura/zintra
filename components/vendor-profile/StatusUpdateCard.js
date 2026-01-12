@@ -11,6 +11,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const router = useRouter();
   
   // Hooks MUST be called before any conditional checks
+  // Use optional chaining on ALL update properties
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(update?.likes_count || 0);
   const [commentsCount, setCommentsCount] = useState(update?.comments_count || 0);
@@ -26,8 +27,14 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [editingCommentContent, setEditingCommentContent] = useState('');
 
   // Safety check for undefined update - AFTER all hooks
-  if (!update || !update.id) {
-    console.warn('❌ StatusUpdateCard: Invalid update object received:', update);
+  // Check for ALL required fields, not just id
+  if (!update || !update.id || !update.content) {
+    console.warn('❌ StatusUpdateCard: Invalid update received:', {
+      hasUpdate: !!update,
+      hasId: !!update?.id,
+      hasContent: !!update?.content,
+      update
+    });
     return null;
   }
   
