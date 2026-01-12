@@ -9,6 +9,13 @@ import EditCommentModal from './EditCommentModal';
 
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
   const router = useRouter();
+  
+  // Safety check for undefined update
+  if (!update || !update.id) {
+    console.warn('❌ StatusUpdateCard: Invalid update object received:', update);
+    return null;
+  }
+  
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(update.likes_count || 0);
   const [commentsCount, setCommentsCount] = useState(update.comments_count || 0);
@@ -370,7 +377,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       {/* Content */}
       <div className="px-4 py-3">
         <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
-          {update.content}
+          {update?.content || '(No content)'}
         </p>
       </div>
 

@@ -331,9 +331,20 @@ export default function VendorProfilePage() {
         const { updates } = await response.json();
         console.log('✅ Status updates fetched:', updates?.length || 0);
         console.log('📋 Update IDs:', updates?.map(u => u.id) || []);
+        
+        // Filter out any invalid updates
+        const validUpdates = (updates || []).filter(u => {
+          if (!u || !u.id) {
+            console.warn('⚠️ Invalid update detected:', u);
+            return false;
+          }
+          return true;
+        });
+        
+        console.log('✅ Valid updates after filtering:', validUpdates.length);
         setStatusUpdates(prev => {
           console.log('🔹 useEffect setState - replacing with fetched updates');
-          return updates || [];
+          return validUpdates || [];
         });
       } catch (err) {
         console.error('Error fetching status updates:', err);
@@ -1028,7 +1039,9 @@ export default function VendorProfilePage() {
                   
                   {statusUpdates.length > 0 ? (
                     <div className="space-y-4">
-                      {statusUpdates.map((update) => (
+                      {statusUpdates
+                        .filter(update => update && update.id) // Filter out invalid updates
+                        .map((update) => (
                         <StatusUpdateCard
                           key={update.id}
                           update={update}
