@@ -168,20 +168,25 @@ export async function GET(request) {
               console.log('✅ Using existing presigned URL (old format)');
             } else {
               // New format: file key, generate fresh presigned URL
-              const freshUrl = await generateFileAccessUrl(imageItem, 7 * 24 * 60 * 60); // 7 days
-              freshUrls.push(freshUrl);
-              console.log('✅ Generated fresh 7-day URL for image key:', imageItem);
+              console.log('🔄 Attempting to generate fresh URL for file key:', imageItem);
+              try {
+                const freshUrl = await generateFileAccessUrl(imageItem, 7 * 24 * 60 * 60); // 7 days
+                freshUrls.push(freshUrl);
+                console.log('✅ Generated fresh 7-day URL for image key:', imageItem.substring(0, 50) + '...');
+              } catch (urlErr) {
+                console.error('❌ Failed to generate URL for key:', imageItem);
+                console.error('   Error:', urlErr.message);
+                // Fallback: return the file key (will fail client-side, but helps debugging)
+                freshUrls.push(imageItem);
+              }
             }
           } catch (err) {
             console.error('⚠️ Failed to process image:', imageItem, err.message);
-            // If URL generation fails and it's a file key, still try to use it
-            // (might be accessible depending on S3 bucket configuration)
-            if (!imageItem.startsWith('https://')) {
-              freshUrls.push(imageItem);
-            }
+            freshUrls.push(imageItem);
           }
         }
         update.images = freshUrls;
+        console.log('✅ Processed', freshUrls.length, 'images for update:', update.id);
       }
     }
 
