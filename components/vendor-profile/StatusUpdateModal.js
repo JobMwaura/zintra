@@ -184,6 +184,12 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🔔 Form submitted, loading state:', loading);
+    if (loading) {
+      console.warn('⚠️ Form already submitting, ignoring duplicate submit');
+      return;
+    }
+
     if (!content.trim()) {
       setError('Please write something in your update');
       return;
@@ -191,6 +197,7 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
 
     setLoading(true);
     try {
+      console.log('🚀 POST /api/status-updates - Starting request');
       const response = await fetch('/api/status-updates', {
         method: 'POST',
         headers: {
@@ -208,9 +215,10 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         throw new Error(errorData.message || 'Failed to post update');
       }
 
-      const { update } = await response.json();
+      const responseData = await response.json();
+      const { update } = responseData;
 
-      console.log('✅ Received update from POST:', update.id);
+      console.log('✅ POST request completed, received update:', update.id);
       console.log('📸 Update images count:', update.images?.length || 0);
 
       setContent('');

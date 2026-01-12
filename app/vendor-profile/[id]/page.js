@@ -1654,8 +1654,18 @@ export default function VendorProfilePage() {
             console.log('📊 Current statusUpdates count before adding:', statusUpdates.length);
             setStatusUpdates(prev => {
               console.log('📊 Inside setState - current updates:', prev.length);
+              // Check if update already exists to prevent duplicates
+              const alreadyExists = prev.some(u => u.id === newUpdate.id);
+              console.log('🔍 Update already in state?', alreadyExists);
+              
+              if (alreadyExists) {
+                console.warn('⚠️ Update already exists, not adding duplicate');
+                return prev;
+              }
+              
               const updated = [newUpdate, ...prev];
               console.log('📊 After adding - new updates:', updated.length);
+              console.log('📋 Update IDs in state:', updated.map(u => u.id));
               return updated;
             });
             setShowStatusUpdateModal(false);
