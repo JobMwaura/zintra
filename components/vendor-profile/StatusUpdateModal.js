@@ -210,12 +210,16 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
 
       const { update } = await response.json();
 
+      console.log('✅ Received update from POST:', update.id);
+      console.log('📸 Update images count:', update.images?.length || 0);
+
       setContent('');
       setImages([]);
       setPreviewUrls([]);
       setError(null);
 
       if (onSuccess) {
+        console.log('🔔 Calling onSuccess with update:', update.id);
         onSuccess(update);
       }
       onClose();

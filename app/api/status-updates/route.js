@@ -51,6 +51,7 @@ export async function POST(request) {
       );
     }
 
+    console.log('📝 POST /api/status-updates called');
     console.log('📝 Creating status update for vendor:', vendorId);
     console.log('   Content length:', content.length);
     console.log('   Images:', images.length);
@@ -132,6 +133,7 @@ export async function POST(request) {
     }
 
     // Return the created update with fresh presigned URLs
+    console.log('✅ POST returning update:', update.id);
     return NextResponse.json(
       {
         message: 'Status update created successfully',

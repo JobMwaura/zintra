@@ -330,7 +330,11 @@ export default function VendorProfilePage() {
 
         const { updates } = await response.json();
         console.log('✅ Status updates fetched:', updates?.length || 0);
-        setStatusUpdates(updates || []);
+        console.log('📋 Update IDs:', updates?.map(u => u.id) || []);
+        setStatusUpdates(prev => {
+          console.log('🔹 useEffect setState - replacing with fetched updates');
+          return updates || [];
+        });
       } catch (err) {
         console.error('Error fetching status updates:', err);
         setStatusUpdates([]);
@@ -1646,7 +1650,14 @@ export default function VendorProfilePage() {
           vendor={vendor}
           onClose={() => setShowStatusUpdateModal(false)}
           onSuccess={(newUpdate) => {
-            setStatusUpdates([newUpdate, ...statusUpdates]);
+            console.log('✅ onSuccess callback fired with update:', newUpdate.id);
+            console.log('📊 Current statusUpdates count before adding:', statusUpdates.length);
+            setStatusUpdates(prev => {
+              console.log('📊 Inside setState - current updates:', prev.length);
+              const updated = [newUpdate, ...prev];
+              console.log('📊 After adding - new updates:', updated.length);
+              return updated;
+            });
             setShowStatusUpdateModal(false);
           }}
         />
