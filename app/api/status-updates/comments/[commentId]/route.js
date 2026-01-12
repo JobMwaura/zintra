@@ -1,5 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * DELETE /api/status-updates/comments/[commentId]
@@ -8,6 +13,8 @@ import { NextResponse } from 'next/server';
 export async function DELETE(request, { params }) {
   try {
     const { commentId } = params;
+    const body = await request.json().catch(() => ({}));
+    const { userId } = body;
 
     if (!commentId) {
       return NextResponse.json(
@@ -16,22 +23,14 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const supabase = await createClient();
-
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    if (!userId) {
       return NextResponse.json(
-        { message: 'User not authenticated' },
-        { status: 401 }
+        { message: 'userId is required' },
+        { status: 400 }
       );
     }
 
-    console.log('🗑️ Deleting comment:', commentId);
+    console.log('🗑️ Deleting comment:', commentId, 'by user:', userId);
 
     // Get the comment to verify ownership and get updateId
     const { data: comment, error: fetchError } = await supabase
@@ -48,11 +47,11 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Check if user owns this comment
-    if (comment.user_id !== user.id) {
-      console.error('❌ Unauthorized: User', user.id, 'tried to delete comment by', comment.user_id);
+    // Verify user ownership
+    if (comment.user_id !== userId) {
+      console.error('❌ User not authorized to delete this comment');
       return NextResponse.json(
-        { message: 'You can only delete your own comments' },
+        { message: 'Not authorized to delete this comment' },
         { status: 403 }
       );
     }
@@ -110,9 +109,16 @@ export async function PUT(request, { params }) {
   try {
     const { commentId } = params;
     const body = await request.json();
-    const { content } = body;
+    const { content, userId } = body;
 
     console.log('📝 PUT /api/status-updates/comments/:id - commentId:', commentId);
+
+    if (!userId) {
+      return NextResponse.json(
+        { message: 'userId is required' },
+        { status: 400 }
+      );
+    }
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
@@ -125,31 +131,6 @@ export async function PUT(request, { params }) {
       return NextResponse.json(
         { message: 'Comment must be less than 500 characters' },
         { status: 400 }
-      );
-    }
-
-    let supabase;
-    try {
-      supabase = await createClient();
-    } catch (clientError) {
-      console.error('❌ Failed to create Supabase client:', clientError);
-      return NextResponse.json(
-        { message: 'Failed to initialize database', error: clientError.message },
-        { status: 500 }
-      );
-    }
-
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error('❌ Auth error:', userError);
-      return NextResponse.json(
-        { message: 'User not authenticated' },
-        { status: 401 }
       );
     }
 
@@ -168,7 +149,7 @@ export async function PUT(request, { params }) {
       );
     }
 
-    if (comment.user_id !== user.id) {
+    if (comment.user_id !== userId) {
       console.error('❌ User not authorized to edit this comment');
       return NextResponse.json(
         { message: 'You can only edit your own comments' },

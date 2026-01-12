@@ -1,5 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * GET /api/status-updates/comments?updateId=...
@@ -16,18 +21,6 @@ export async function GET(request) {
       return NextResponse.json(
         { message: 'updateId query parameter is required' },
         { status: 400 }
-      );
-    }
-
-    let supabase;
-    try {
-      supabase = await createClient();
-      console.log('✅ Supabase client created');
-    } catch (clientError) {
-      console.error('❌ Failed to create Supabase client:', clientError);
-      return NextResponse.json(
-        { message: 'Failed to initialize database', error: clientError.message },
-        { status: 500 }
       );
     }
 
@@ -71,21 +64,16 @@ export async function GET(request) {
  * POST /api/status-updates/comments
  * Create a new comment on a status update
  */
-
-/**
- * POST /api/status-updates/comments
- * Create a new comment on a status update
- */
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { updateId, content } = body;
+    const { updateId, content, userId } = body;
 
-    console.log('📝 Incoming POST request:', { updateId, contentLength: content?.length });
+    console.log('📝 Incoming POST request:', { updateId, contentLength: content?.length, userId });
 
-    if (!updateId || !content) {
+    if (!updateId || !content || !userId) {
       return NextResponse.json(
-        { message: 'updateId and content are required' },
+        { message: 'updateId, content, and userId are required' },
         { status: 400 }
       );
     }
@@ -104,34 +92,8 @@ export async function POST(request) {
       );
     }
 
-    let supabase;
-    try {
-      supabase = await createClient();
-      console.log('✅ Supabase client created for POST');
-    } catch (clientError) {
-      console.error('❌ Failed to create Supabase client:', clientError);
-      return NextResponse.json(
-        { message: 'Failed to initialize database', error: clientError.message },
-        { status: 500 }
-      );
-    }
-
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error('❌ Auth error:', userError);
-      return NextResponse.json(
-        { message: 'User not authenticated' },
-        { status: 401 }
-      );
-    }
-
     console.log('💬 Creating comment for update:', updateId);
-    console.log('   By user:', user.id);
+    console.log('   By user:', userId);
     console.log('   Content length:', content.length);
 
     // Insert comment
@@ -139,7 +101,7 @@ export async function POST(request) {
       .from('vendor_status_update_comments')
       .insert({
         update_id: updateId,
-        user_id: user.id,
+        user_id: userId,
         content: content.trim(),
       })
       .select()

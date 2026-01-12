@@ -132,7 +132,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
     e.preventDefault();
     
     // Check if user is signed in
-    if (!currentUser) {
+    if (!currentUser || !currentUser.id) {
       // Store the current URL so we can return after login
       const currentUrl = window.location.href;
       sessionStorage.setItem('redirectAfterLogin', currentUrl);
@@ -150,6 +150,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         body: JSON.stringify({
           updateId: update.id,
           content: commentText.trim(),
+          userId: currentUser.id,
         }),
       });
 
@@ -180,6 +181,8 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
     try {
       const response = await fetch(`/api/status-updates/comments/${commentId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser?.id }),
       });
 
       if (!response.ok) {
@@ -213,7 +216,10 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       const response = await fetch(`/api/status-updates/comments/${editingCommentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newContent }),
+        body: JSON.stringify({ 
+          content: newContent,
+          userId: currentUser?.id 
+        }),
       });
 
       if (!response.ok) {

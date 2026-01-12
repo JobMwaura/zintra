@@ -1,5 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * GET /api/status-updates/comments/reactions?commentId=...
@@ -16,17 +21,6 @@ export async function GET(request) {
       return NextResponse.json(
         { message: 'commentId query parameter is required' },
         { status: 400 }
-      );
-    }
-
-    let supabase;
-    try {
-      supabase = await createClient();
-    } catch (clientError) {
-      console.error('❌ Failed to create Supabase client:', clientError);
-      return NextResponse.json(
-        { message: 'Failed to initialize database', error: clientError.message },
-        { status: 500 }
       );
     }
 
