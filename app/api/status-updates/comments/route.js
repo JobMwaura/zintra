@@ -10,6 +10,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const updateId = searchParams.get('updateId');
 
+    console.log('📥 GET /api/status-updates/comments - updateId:', updateId);
+
     if (!updateId) {
       return NextResponse.json(
         { message: 'updateId query parameter is required' },
@@ -17,7 +19,17 @@ export async function GET(request) {
       );
     }
 
-    const supabase = await createClient();
+    let supabase;
+    try {
+      supabase = await createClient();
+      console.log('✅ Supabase client created');
+    } catch (clientError) {
+      console.error('❌ Failed to create Supabase client:', clientError);
+      return NextResponse.json(
+        { message: 'Failed to initialize database', error: clientError.message },
+        { status: 500 }
+      );
+    }
 
     // Fetch comments with user info
     const { data: comments, error: commentsError } = await supabase
@@ -49,11 +61,16 @@ export async function GET(request) {
   } catch (error) {
     console.error('❌ Comments fetch error:', error);
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
+      { message: 'Internal server error', error: error.message, stack: error.stack },
       { status: 500 }
     );
   }
 }
+
+/**
+ * POST /api/status-updates/comments
+ * Create a new comment on a status update
+ */
 
 /**
  * POST /api/status-updates/comments
@@ -87,7 +104,17 @@ export async function POST(request) {
       );
     }
 
-    const supabase = await createClient();
+    let supabase;
+    try {
+      supabase = await createClient();
+      console.log('✅ Supabase client created for POST');
+    } catch (clientError) {
+      console.error('❌ Failed to create Supabase client:', clientError);
+      return NextResponse.json(
+        { message: 'Failed to initialize database', error: clientError.message },
+        { status: 500 }
+      );
+    }
 
     // Get current user
     const {
