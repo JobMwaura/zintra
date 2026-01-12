@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
+  const router = useRouter();
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(update.likes_count || 0);
   const [commentsCount, setCommentsCount] = useState(update.comments_count || 0);
@@ -106,6 +108,13 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
 
   const handleAddComment = async (e) => {
     e.preventDefault();
+    
+    // Check if user is signed in
+    if (!currentUser) {
+      router.push('/auth/signin');
+      return;
+    }
+    
     if (!commentText.trim()) return;
 
     setLoading(true);
@@ -496,8 +505,14 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           )}
 
           {!currentUser && (
-            <div className="px-4 py-3 text-center text-sm text-slate-600 bg-white border-t border-slate-200">
-              <p>Sign in to comment</p>
+            <div className="px-4 py-3 text-center text-sm bg-white border-t border-slate-200">
+              <p className="text-slate-600 mb-3">Sign in to comment</p>
+              <button
+                onClick={() => router.push('/auth/signin')}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition cursor-pointer"
+              >
+                Sign In
+              </button>
             </div>
           )}
         </div>
