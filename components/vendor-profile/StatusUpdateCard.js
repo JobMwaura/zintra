@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
@@ -10,6 +10,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [loading, setLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];
@@ -76,8 +77,6 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const canDelete = currentUser?.id === vendor?.user_id;
 
   const handleDelete = async () => {
-    if (!confirm('Delete this update?')) return;
-
     setLoading(true);
     try {
       const { error } = await supabase
@@ -85,10 +84,18 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         .delete()
         .eq('id', update.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete update: ' + error.message);
+        return;
+      }
+
+      // Call parent callback to remove from list
       if (onDelete) onDelete(update.id);
+      setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Delete failed:', err);
+      alert('Failed to delete update');
     } finally {
       setLoading(false);
     }
@@ -123,10 +130,19 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
             </button>
             <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-20 whitespace-nowrap">
               <button
-                onClick={handleDelete}
+                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
                 disabled={loading}
-                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
               >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </button>
+              <div className="border-t border-slate-100" />
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={loading}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 font-medium"
+              >
+                <Trash2 className="w-4 h-4" />
                 Delete
               </button>
             </div>
@@ -249,6 +265,44 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       {showComments && (
         <div className="mt-3 pt-3 border-t border-slate-100 px-4 py-3 bg-slate-50 rounded-b-lg">
           <p className="text-sm text-slate-600 text-center">Comments feature coming soon</p>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Update?</h3>
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete this update? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={loading}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
