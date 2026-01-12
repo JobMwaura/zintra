@@ -168,10 +168,10 @@ export async function GET(request) {
 
     console.log('🔍 Fetching status updates for vendor:', vendorId);
 
-    // Get status updates
+    // Get status updates with all fields required for rendering
     const { data: updates, error: updatesError } = await supabase
       .from('vendor_status_updates')
-      .select('*')
+      .select('id, content, created_at, updated_at, vendor_id, images, likes_count, comments_count')
       .eq('vendor_id', vendorId)
       .order('created_at', { ascending: false })
       .limit(20);
@@ -185,12 +185,30 @@ export async function GET(request) {
     }
 
     console.log('✅ Found', updates?.length || 0, 'status updates');
+    
+    // Validate fetched data at API layer
+    const validUpdates = (updates || []).filter((u, idx) => {
+      if (!u?.id || !u?.content || !u?.created_at) {
+        console.warn(`⚠️ API: Filtering out incomplete update at index ${idx}:`, {
+          hasId: !!u?.id,
+          hasContent: !!u?.content,
+          hasCreatedAt: !!u?.created_at,
+          update: u
+        });
+        return false;
+      }
+      return true;
+    });
+    
+    if (validUpdates.length < updates.length) {
+      console.warn(`⚠️ API: Filtered out ${updates.length - validUpdates.length} incomplete updates before returning to client`);
+    }
 
     // Generate fresh presigned URLs for all image file keys
     // AWS SigV4 presigned URLs max expiry is 7 days, but we generate fresh ones on each page load
     // This ensures images are always accessible without ever needing to "renew" in the database
-    if (updates && updates.length > 0) {
-      for (const update of updates) {
+    if (validUpdates && validUpdates.length > 0) {
+      for (const update of validUpdates) {
         if (!update.images) {
           update.images = [];
           continue;
@@ -233,7 +251,7 @@ export async function GET(request) {
 
     return NextResponse.json(
       {
-        updates: updates || [],
+        updates: validUpdates || [],
       },
       { status: 200 }
     );
