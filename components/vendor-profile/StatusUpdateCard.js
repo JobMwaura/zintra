@@ -11,6 +11,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [showComments, setShowComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];
@@ -79,22 +80,51 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const handleDelete = async () => {
     setLoading(true);
     try {
+      // Delete S3 images first
+      if (update.images && update.images.length > 0) {
+        console.log('🗑️ Deleting', update.images.length, 'S3 images...');
+        
+        // Call API to delete S3 files
+        const deleteImagesResponse = await fetch('/api/status-updates/delete-images', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            updateId: update.id,
+            imageKeys: update.images.filter(img => 
+              typeof img === 'string' && !img.startsWith('https://')
+            ), // Only delete file keys, not presigned URLs
+          }),
+        });
+
+        if (!deleteImagesResponse.ok) {
+          const errorData = await deleteImagesResponse.json();
+          console.warn('⚠️ Warning: Failed to delete some S3 images:', errorData.message);
+          // Continue with database deletion even if S3 deletion fails
+        } else {
+          console.log('✅ S3 images deleted successfully');
+        }
+      }
+
+      // Delete database record
       const { error } = await supabase
         .from('vendor_status_updates')
         .delete()
         .eq('id', update.id);
 
       if (error) {
-        console.error('Delete error:', error);
+        console.error('❌ Delete error:', error);
         alert('Failed to delete update: ' + error.message);
         return;
       }
 
+      console.log('✅ Update deleted from database');
       // Call parent callback to remove from list
       if (onDelete) onDelete(update.id);
       setShowDeleteConfirm(false);
     } catch (err) {
-      console.error('Delete failed:', err);
+      console.error('❌ Delete failed:', err);
       alert('Failed to delete update');
     } finally {
       setLoading(false);
@@ -102,7 +132,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden" onClick={() => setShowMenu(false)}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -124,28 +154,36 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         </div>
 
         {canDelete && (
-          <div className="relative group">
-            <button className="p-1.5 hover:bg-slate-100 rounded-lg transition cursor-pointer">
+          <div className="relative">
+            <button 
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+            >
               <MoreVertical className="w-4 h-4 text-slate-600" />
             </button>
-            <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-20 whitespace-nowrap">
-              <button
-                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-                disabled={loading}
-              >
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </button>
-              <div className="border-t border-slate-100" />
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={loading}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 font-medium cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            </div>
+            {showMenu && (
+              <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 whitespace-nowrap">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  disabled={loading}
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+                <div className="border-t border-slate-100" />
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(true);
+                    setShowMenu(false);
+                  }}
+                  disabled={loading}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 font-medium cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
