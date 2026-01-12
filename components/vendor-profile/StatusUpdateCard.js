@@ -10,15 +10,10 @@ import EditCommentModal from './EditCommentModal';
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
   const router = useRouter();
   
-  // Safety check for undefined update
-  if (!update || !update.id) {
-    console.warn('❌ StatusUpdateCard: Invalid update object received:', update);
-    return null;
-  }
-  
+  // Hooks MUST be called before any conditional checks
   const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(update.likes_count || 0);
-  const [commentsCount, setCommentsCount] = useState(update.comments_count || 0);
+  const [likesCount, setLikesCount] = useState(update?.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(update?.comments_count || 0);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,6 +25,12 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentContent, setEditingCommentContent] = useState('');
 
+  // Safety check for undefined update - AFTER all hooks
+  if (!update || !update.id) {
+    console.warn('❌ StatusUpdateCard: Invalid update object received:', update);
+    return null;
+  }
+  
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];
   const imageUrls = images.map(img => 
@@ -324,7 +325,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
               {vendor?.company_name || 'Unknown Vendor'}
             </h4>
             <p className="text-xs text-slate-500">
-              {formatTime(update.created_at)}
+              {update?.created_at ? formatTime(update.created_at) : 'Unknown date'}
             </p>
           </div>
         </div>
