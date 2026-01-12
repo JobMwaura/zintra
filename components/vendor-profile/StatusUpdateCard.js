@@ -10,6 +10,21 @@ import EditCommentModal from './EditCommentModal';
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
   const router = useRouter();
   
+  // Safety check FIRST - before any hooks
+  // This prevents React from trying to call hooks on invalid data
+  if (!update || !update.id || !update.content || !update.created_at) {
+    console.error('❌ StatusUpdateCard: Critical validation failed - component unmountable', {
+      hasUpdate: !!update,
+      hasId: !!update?.id,
+      hasContent: !!update?.content,
+      hasCreatedAt: !!update?.created_at,
+      contentType: typeof update?.content,
+      createdAtType: typeof update?.created_at,
+      fullUpdate: update
+    });
+    return null;
+  }
+  
   // Hooks MUST be called before any conditional checks
   // Use optional chaining on ALL update properties
   const [liked, setLiked] = useState(false);
@@ -25,18 +40,6 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [showMenu, setShowMenu] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentContent, setEditingCommentContent] = useState('');
-
-  // Safety check for undefined update - AFTER all hooks
-  // Check for ALL required fields, not just id
-  if (!update || !update.id || !update.content) {
-    console.warn('❌ StatusUpdateCard: Invalid update received:', {
-      hasUpdate: !!update,
-      hasId: !!update?.id,
-      hasContent: !!update?.content,
-      update
-    });
-    return null;
-  }
   
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];

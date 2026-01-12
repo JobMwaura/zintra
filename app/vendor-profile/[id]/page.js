@@ -330,35 +330,69 @@ export default function VendorProfilePage() {
 
         const { updates } = await response.json();
         console.log('✅ Status updates fetched:', updates?.length || 0);
-        console.log('📋 Update IDs:', updates?.map(u => u.id) || []);
         
-        // Filter out any invalid updates - check for required fields
+        // STRICT validation - all required fields must be present and non-null/non-empty
         const validUpdates = (updates || []).filter(u => {
-          if (!u || !u.id) {
-            console.warn('⚠️ Invalid update: missing id', u);
+          // Check update object exists
+          if (!u || typeof u !== 'object') {
+            console.warn('⚠️ Invalid update: not an object', u);
             return false;
           }
-          if (!u.content) {
-            console.warn('⚠️ Invalid update: missing content', u);
+          
+          // Check ID
+          if (!u.id || typeof u.id !== 'string') {
+            console.warn('⚠️ Invalid update: missing or invalid id', { id: u.id, update: u });
             return false;
           }
+          
+          // Check content - MUST be a non-empty string
+          if (!u.content || typeof u.content !== 'string' || !u.content.trim()) {
+            console.warn('⚠️ Invalid update: missing, invalid type, or empty content', { 
+              id: u.id,
+              content: u.content,
+              contentType: typeof u.content 
+            });
+            return false;
+          }
+          
+          // Check created_at - MUST be a valid date string or Date
           if (!u.created_at) {
-            console.warn('⚠️ Invalid update: missing created_at', u);
+            console.warn('⚠️ Invalid update: missing created_at', { id: u.id });
             return false;
           }
+          
+          // Verify created_at is a valid date
+          try {
+            const dateCheck = new Date(u.created_at);
+            if (isNaN(dateCheck.getTime())) {
+              console.warn('⚠️ Invalid update: created_at is not a valid date', { 
+                id: u.id, 
+                created_at: u.created_at 
+              });
+              return false;
+            }
+          } catch (e) {
+            console.warn('⚠️ Invalid update: created_at parse error', { 
+              id: u.id, 
+              created_at: u.created_at,
+              error: e.message 
+            });
+            return false;
+          }
+          
+          // All checks passed
+          console.log('✅ Valid update:', u.id, '- content length:', u.content.length);
           return true;
         });
         
-        console.log('✅ Valid updates after filtering:', validUpdates.length);
-        if (validUpdates.length !== updates.length) {
-          console.warn(`⚠️ Filtered out ${updates.length - validUpdates.length} invalid updates`);
+        console.log('✅ Valid updates after strict filtering:', validUpdates.length, 'of', updates?.length || 0);
+        if (validUpdates.length !== (updates?.length || 0)) {
+          console.warn(`⚠️ Filtered out ${(updates?.length || 0) - validUpdates.length} invalid/incomplete updates`);
         }
-        setStatusUpdates(prev => {
-          console.log('🔹 useEffect setState - replacing with fetched updates');
-          return validUpdates || [];
-        });
+        
+        setStatusUpdates(validUpdates || []);
       } catch (err) {
-        console.error('Error fetching status updates:', err);
+        console.error('❌ Error fetching status updates:', err);
         setStatusUpdates([]);
       }
     };
@@ -1051,7 +1085,22 @@ export default function VendorProfilePage() {
                   {statusUpdates.length > 0 ? (
                     <div className="space-y-4">
                       {statusUpdates
-                        .filter(update => update && update.id) // Filter out invalid updates
+                        .filter(update => {
+                          // Safety check: verify all required fields exist before rendering
+                          if (!update || !update.id) {
+                            console.warn('⚠️ Render filter: Invalid update - missing id', update);
+                            return false;
+                          }
+                          if (!update.content || typeof update.content !== 'string') {
+                            console.warn('⚠️ Render filter: Invalid update - invalid content', { id: update.id, content: update.content });
+                            return false;
+                          }
+                          if (!update.created_at) {
+                            console.warn('⚠️ Render filter: Invalid update - missing created_at', { id: update.id });
+                            return false;
+                          }
+                          return true;
+                        })
                         .map((update) => (
                         <StatusUpdateCard
                           key={update.id}
