@@ -118,16 +118,46 @@ export async function POST(request) {
 
     console.log('✅ Project found:', project.id);
 
+    // Extract S3 key from presigned URL to store in database
+    // This allows the GET endpoint to regenerate fresh presigned URLs
+    let s3Key = imageUrl;
+    if (imageUrl.includes('amazonaws.com')) {
+      // Extract key from presigned URL: https://bucket.s3.region.amazonaws.com/key?params
+      // or https://s3.region.amazonaws.com/bucket/key?params
+      try {
+        const urlObj = new URL(imageUrl);
+        // Try to extract from path
+        let path = urlObj.pathname.replace(/^\//, ''); // Remove leading slash
+        // If path starts with bucket name, remove it
+        if (path.includes('/')) {
+          const parts = path.split('/');
+          // Check if first part looks like a bucket name (no dots after region)
+          if (parts[0] === process.env.AWS_S3_BUCKET) {
+            path = parts.slice(1).join('/');
+          }
+        }
+        s3Key = path;
+        console.log('✅ Extracted S3 key from presigned URL:', s3Key);
+      } catch (error) {
+        console.warn('⚠️ Failed to parse presigned URL, storing full URL instead:', error.message);
+        // Fall back to storing full URL if parsing fails
+        s3Key = imageUrl;
+      }
+    } else if (!imageUrl.startsWith('http')) {
+      // Already an S3 key
+      s3Key = imageUrl;
+    }
+
     // Create image
     console.log('📝 Creating image for project:', projectId);
-    console.log('  imageUrl:', imageUrl);
+    console.log('  imageUrl (storing):', s3Key);
     console.log('  imageType:', imageType);
     console.log('  caption:', caption);
     console.log('  displayOrder:', displayOrder);
     
     const insertData = {
       portfolioprojectid: projectId,
-      imageurl: imageUrl,
+      imageurl: s3Key,
       imagetype: imageType,
       caption,
       displayorder: displayOrder,
