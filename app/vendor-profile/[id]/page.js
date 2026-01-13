@@ -1209,19 +1209,78 @@ export default function VendorProfilePage() {
             {products.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
                 {products.map((product) => (
-                  <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-200 transition p-4">
+                  <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden bg-white group">
+                    {/* Image Container */}
                     {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="aspect-[4/3] rounded-lg object-cover mb-3"
-                      />
+                      <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {/* Status Badge */}
+                        <div className="absolute top-3 right-3">
+                          <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
+                            {product.status || 'In Stock'}
+                          </span>
+                        </div>
+                      </div>
                     )}
-                    <h4 className="font-semibold text-slate-900">{product.name}</h4>
-                    <p className="text-sm text-slate-600 mb-2">{product.price}</p>
-                    <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
-                      {product.status || 'In Stock'}
-                    </span>
+                    
+                    {/* Content */}
+                    <div className="p-4">
+                      {/* Category Badge */}
+                      {product.category && (
+                        <span className="inline-block bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full mb-2">
+                          {product.category}
+                        </span>
+                      )}
+                      
+                      {/* Product Name */}
+                      <h4 className="font-bold text-slate-900 text-base mb-2 line-clamp-2">
+                        {product.name}
+                      </h4>
+                      
+                      {/* Description */}
+                      {product.description && (
+                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">
+                          {product.description}
+                        </p>
+                      )}
+                      
+                      {/* Pricing Section */}
+                      <div className="mb-3 space-y-1">
+                        {/* Sale Price (if available) */}
+                        {product.sale_price ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold text-emerald-600">
+                              KSh {Number(product.sale_price).toLocaleString()}
+                            </span>
+                            <span className="text-sm font-medium text-slate-500 line-through">
+                              KSh {Number(product.price).toLocaleString()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-lg font-bold text-slate-900">
+                            KSh {Number(product.price).toLocaleString()}
+                          </span>
+                        )}
+                        
+                        {/* Offer Label */}
+                        {product.offer_label && (
+                          <span className="inline-block bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded">
+                            🔥 {product.offer_label}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Unit */}
+                      {product.unit && (
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                          Per: {product.unit}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
