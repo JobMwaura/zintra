@@ -466,25 +466,38 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       )}
 
       {/* Stats */}
-      <div className="px-4 py-3 flex items-center justify-between text-sm text-slate-600 border-b border-slate-100">
-        <button className="flex items-center gap-1.5 hover:text-red-600 transition">
-          <Heart className="w-4 h-4" />
-          <span>{likesCount} {likesCount === 1 ? 'like' : 'likes'}</span>
-        </button>
-        <button
-          onClick={handleShowComments}
-          className="flex items-center gap-1.5 hover:text-blue-600 transition"
-        >
-          <MessageCircle className="w-4 h-4" />
-          <span>{commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}</span>
-        </button>
+      <div className="px-4 py-3 border-b border-slate-200 bg-white">
+        <div className="flex items-center justify-between">
+          {/* Reactions Summary */}
+          <div className="flex items-center gap-3 flex-1">
+            {likesCount > 0 && (
+              <button className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 transition group">
+                <Heart className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-xs font-semibold text-red-700 group-hover:text-red-800">{likesCount}</span>
+              </button>
+            )}
+            {commentsCount > 0 && (
+              <button 
+                onClick={handleShowComments}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 transition group"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-xs font-semibold text-blue-700 group-hover:text-blue-800">{commentsCount}</span>
+              </button>
+            )}
+          </div>
+          {/* Spacer for centered look when no reactions */}
+          {likesCount === 0 && commentsCount === 0 && (
+            <div className="flex-1" />
+          )}
+        </div>
       </div>
 
       {/* Actions */}
-      <div className="px-4 py-2 flex gap-1.5">
+      <div className="px-4 py-2.5 flex gap-1 bg-white border-t border-slate-200">
         <button
           onClick={() => setShowReactionPicker(!showReactionPicker)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100"
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition font-medium text-sm text-slate-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 active:from-amber-100 active:to-orange-100"
           title="Add reaction"
         >
           <Smile className="w-4 h-4" />
@@ -492,12 +505,12 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         </button>
         <button
           onClick={handleShowComments}
-          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100"
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition font-medium text-sm text-slate-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 active:from-blue-100 active:to-cyan-100"
         >
           <MessageCircle className="w-4 h-4" />
           Comment
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100">
+        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition font-medium text-sm text-slate-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 active:from-purple-100 active:to-pink-100">
           <Share2 className="w-4 h-4" />
           Share
         </button>
