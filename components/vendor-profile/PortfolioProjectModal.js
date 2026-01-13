@@ -26,6 +26,8 @@ export default function PortfolioProjectModal({
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [authUser, setAuthUser] = useState(null);
+  const [stats, setStats] = useState({ viewCount: 0, saveCount: 0 });
+  const [viewsTracked, setViewsTracked] = useState(false);
 
   // Get current user on mount
   useEffect(() => {
@@ -35,6 +37,39 @@ export default function PortfolioProjectModal({
     };
     getUser();
   }, []);
+
+  // Track view and fetch stats when modal opens
+  useEffect(() => {
+    if (!isOpen || !project?.id) return;
+
+    const trackViewAndGetStats = async () => {
+      try {
+        // Track view
+        if (!viewsTracked) {
+          await fetch('/api/portfolio/views', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId: project.id }),
+          });
+          setViewsTracked(true);
+        }
+
+        // Fetch stats
+        const response = await fetch(`/api/portfolio/views?projectId=${project.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            viewCount: data.viewCount || 0,
+            saveCount: data.saveCount || 0,
+          });
+        }
+      } catch (err) {
+        console.error('❌ Error tracking view/fetching stats:', err);
+      }
+    };
+
+    trackViewAndGetStats();
+  }, [isOpen, project?.id, viewsTracked]);
 
   // Check if project is saved when modal opens
   useEffect(() => {
@@ -130,6 +165,17 @@ export default function PortfolioProjectModal({
       }
 
       setIsSaved(!isSaved);
+      
+      // Refetch stats to update save count
+      const statsResponse = await fetch(`/api/portfolio/views?projectId=${project.id}`);
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats({
+          viewCount: statsData.viewCount || 0,
+          saveCount: statsData.saveCount || 0,
+        });
+      }
+      
       console.log(`✅ Project ${isSaved ? 'unsaved' : 'saved'}`);
     } catch (err) {
       console.error('❌ Error saving project:', err);
@@ -340,6 +386,20 @@ export default function PortfolioProjectModal({
                   <p className="text-sm font-semibold text-slate-900">{formatDate()}</p>
                 </div>
               )}
+            </div>
+
+            {/* Project Statistics */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200 p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-700">{stats.viewCount}</p>
+                  <p className="text-xs text-amber-600 font-semibold uppercase">Views</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-700">{stats.saveCount}</p>
+                  <p className="text-xs text-amber-600 font-semibold uppercase">Saves</p>
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons */}
