@@ -122,25 +122,32 @@ export default function BrowseVendors() {
   }, []);
 
   // ✅ Filtering logic with improved category matching
-  const filteredVendors = vendors.filter((vendor) => {
-    const matchesSearch =
-      vendor.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Match against primary_category_slug or legacy category field
-    const matchesCategory =
-      selectedCategory === 'All Categories' || 
-      vendor.primary_category_slug === selectedCategory ||
-      vendor.category === selectedCategory ||
-      (selectedCategory && vendor.category?.toLowerCase().includes(selectedCategory.toLowerCase()));
-    
-    const matchesCounty =
-      !selectedCounty || vendor.county === selectedCounty;
-    const matchesTown =
-      !selectedTown || vendor.location === selectedTown;
+  const filteredVendors = vendors
+    .filter((vendor) => {
+      const matchesSearch =
+        vendor.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        vendor.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Match against primary_category_slug or legacy category field
+      const matchesCategory =
+        selectedCategory === 'All Categories' || 
+        vendor.primary_category_slug === selectedCategory ||
+        vendor.category === selectedCategory ||
+        (selectedCategory && vendor.category?.toLowerCase().includes(selectedCategory.toLowerCase()));
+      
+      const matchesCounty =
+        !selectedCounty || vendor.county === selectedCounty;
+      const matchesTown =
+        !selectedTown || vendor.location === selectedTown;
 
-    return matchesSearch && matchesCategory && matchesCounty && matchesTown;
-  });
+      return matchesSearch && matchesCategory && matchesCounty && matchesTown;
+    })
+    .sort((a, b) => {
+      // Sort: vendors with logo_url first, then without
+      const aHasLogo = a.logo_url ? 1 : 0;
+      const bHasLogo = b.logo_url ? 1 : 0;
+      return bHasLogo - aHasLogo;
+    });
 
   const clearFilters = () => {
     setSelectedCategory('All Categories');
@@ -278,16 +285,23 @@ export default function BrowseVendors() {
                 key={vendor.id}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col"
               >
-                {/* Vendor Logo/Image Banner with Subtle Faded Lines */}
-                {vendor.logo_url && (
-                  <div className="h-48 flex items-center justify-center border-b border-gray-200 p-6 bg-white" style={{
-                    backgroundImage: 'repeating-linear-gradient(0deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px)'
-                  }}>
+                {/* Vendor Logo/Image Banner with Subtle Faded Lines or Placeholder */}
+                <div className="h-48 flex items-center justify-center border-b border-gray-200 p-6 bg-white" style={{
+                  backgroundImage: 'repeating-linear-gradient(0deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px)'
+                }}>
+                  {vendor.logo_url ? (
                     <div className="rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
                       <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-40 max-w-full object-contain p-2" />
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="rounded-full overflow-hidden border-4 border-gray-300 bg-gray-100 w-40 h-40 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-4xl text-gray-400 mb-2">📸</div>
+                        <p className="text-xs text-gray-500 font-medium">No logo yet</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="p-6 flex-1 flex flex-col">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
