@@ -44,12 +44,15 @@ export default function PortfolioProjectModal({
 
     const trackViewAndGetStats = async () => {
       try {
-        // Track view
+        // Track view (pass userId if authenticated)
         if (!viewsTracked) {
           await fetch('/api/portfolio/views', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectId: project.id }),
+            body: JSON.stringify({ 
+              projectId: project.id,
+              userId: authUser?.id || null,
+            }),
           });
           setViewsTracked(true);
         }
@@ -69,7 +72,7 @@ export default function PortfolioProjectModal({
     };
 
     trackViewAndGetStats();
-  }, [isOpen, project?.id, viewsTracked]);
+  }, [isOpen, project?.id, viewsTracked, authUser?.id]);
 
   // Check if project is saved when modal opens
   useEffect(() => {
