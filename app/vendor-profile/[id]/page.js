@@ -67,6 +67,7 @@ export default function VendorProfilePage() {
 
   // Modal visibility states
   const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showHoursEditor, setShowHoursEditor] = useState(false);
@@ -618,6 +619,29 @@ export default function VendorProfilePage() {
       window.location.href = '/';
     } catch (err) {
       console.error('Logout error:', err);
+    }
+  };
+
+  const deleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('vendor_products')
+        .delete()
+        .eq('id', productId)
+        .eq('vendor_id', vendor.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProducts(products.filter(p => p.id !== productId));
+      console.log('✅ Product deleted successfully');
+    } catch (err) {
+      console.error('❌ Failed to delete product:', err);
+      alert('Failed to delete product: ' + err.message);
     }
   };
 
@@ -1280,6 +1304,27 @@ export default function VendorProfilePage() {
                           Per: {product.unit}
                         </p>
                       )}
+                      
+                      {/* Edit/Delete Actions (for vendor only) */}
+                      {canEdit && (
+                        <div className="flex gap-2 mt-4 pt-4 border-t border-slate-200">
+                          <button
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setShowProductModal(true);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold text-sm py-2 rounded-lg transition"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => deleteProduct(product.id)}
+                            className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-700 hover:bg-red-100 font-semibold text-sm py-2 rounded-lg transition"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1702,10 +1747,21 @@ export default function VendorProfilePage() {
       {showProductModal && (
         <ProductUploadModal
           vendor={vendor}
-          onClose={() => setShowProductModal(false)}
-          onSuccess={(newProduct) => {
-            setProducts([newProduct, ...products]);
+          editingProduct={editingProduct}
+          onClose={() => {
             setShowProductModal(false);
+            setEditingProduct(null);
+          }}
+          onSuccess={(updatedProduct) => {
+            if (editingProduct) {
+              // Update existing product in list
+              setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+            } else {
+              // Add new product to list
+              setProducts([updatedProduct, ...products]);
+            }
+            setShowProductModal(false);
+            setEditingProduct(null);
           }}
         />
       )}
