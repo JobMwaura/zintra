@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
@@ -18,6 +18,16 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess }) {
   const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [session, setSession] = useState(null);
+
+  // Get session on mount
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+    };
+    getSession();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,22 +56,46 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess }) {
 
       // Upload image if provided
       if (imageFile) {
-        console.log('📸 Uploading image:', imageFile.name);
-        const ext = imageFile.name.split('.').pop();
-        const fileName = `products/${vendor.id}/product-${Date.now()}.${ext}`;
-        const { data, error: uploadError } = await supabase.storage
-          .from('vendor-assets')
-          .upload(fileName, imageFile, { upsert: true });
+        console.log('📸 Uploading product image to AWS S3:', imageFile.name);
+        
+        // Step 1: Get presigned URL from API
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+        const filename = `${Math.floor(timestamp)}-${random}-${imageFile.name}`;
+        
+        const presignedResponse = await fetch('/api/products/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            fileName: filename,
+            contentType: imageFile.type,
+          }),
+        });
 
-        if (uploadError) {
-          console.error('❌ Image upload error:', uploadError);
-          throw uploadError;
+        if (!presignedResponse.ok) {
+          const result = await presignedResponse.json();
+          throw new Error(result.error || 'Failed to get presigned URL');
         }
 
-        console.log('✅ Image uploaded:', data.path);
-        const { data: urlData } = supabase.storage.from('vendor-assets').getPublicUrl(data.path);
-        imageUrl = urlData?.publicUrl || null;
-        console.log('📎 Image URL:', imageUrl);
+        const { uploadUrl, fileUrl } = await presignedResponse.json();
+        console.log('✅ Got presigned URL for product image');
+
+        // Step 2: Upload file directly to S3
+        const uploadResult = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': imageFile.type },
+          body: imageFile,
+        });
+
+        if (!uploadResult.ok) {
+          throw new Error(`S3 upload failed with status ${uploadResult.status}`);
+        }
+
+        imageUrl = fileUrl;
+        console.log('✅ Product image uploaded to S3:', imageUrl);
       }
 
       // Save product to database
