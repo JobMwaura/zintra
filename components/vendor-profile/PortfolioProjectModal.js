@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, ChevronLeft, ChevronRight, MapPin, Calendar, DollarSign, Clock } from 'lucide-react';
 
 /**
  * PortfolioProjectModal Component
  * 
  * Displays full project details including:
- * - Image carousel (before, during, after)
+ * - Image type filter (before, during, after)
+ * - Image carousel
  * - Project metadata
  * - Share and quote request buttons
  */
@@ -20,11 +21,27 @@ export default function PortfolioProjectModal({
   onRequestQuote = () => {},
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedImageType, setSelectedImageType] = useState('after');
 
   if (!isOpen || !project) return null;
 
   const images = project.images || [];
-  const currentImage = images[currentImageIndex];
+  
+  // Filter images by selected type
+  const filteredImages = useMemo(() => {
+    return images.filter(img => img.imageType === selectedImageType);
+  }, [images, selectedImageType]);
+
+  const currentImage = filteredImages[currentImageIndex];
+
+  // Get available image types
+  const availableTypes = useMemo(() => {
+    const types = new Set(images.map(img => img.imageType));
+    return Array.from(types).sort((a, b) => {
+      const order = { before: 0, during: 1, after: 2 };
+      return (order[a] || 3) - (order[b] || 3);
+    });
+  }, [images]);
 
   // Format budget range
   const formatBudget = () => {
@@ -44,11 +61,17 @@ export default function PortfolioProjectModal({
   };
 
   const handlePrevImage = () => {
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    setCurrentImageIndex((prev) => (prev === 0 ? filteredImages.length - 1 : prev - 1));
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    setCurrentImageIndex((prev) => (prev === filteredImages.length - 1 ? 0 : prev + 1));
+  };
+
+  // When changing image type, reset index
+  const handleImageTypeChange = (type) => {
+    setSelectedImageType(type);
+    setCurrentImageIndex(0);
   };
 
   return (
@@ -81,22 +104,51 @@ export default function PortfolioProjectModal({
             {/* Image Carousel */}
             {images.length > 0 ? (
               <div className="space-y-3">
+                {/* Image Type Toggle (if multiple types available) */}
+                {availableTypes.length > 1 && (
+                  <div className="flex gap-2">
+                    {availableTypes.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => handleImageTypeChange(type)}
+                        className={`px-3 py-1.5 rounded-lg font-semibold text-sm transition ${
+                          selectedImageType === type
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                      >
+                        {type === 'before' && '📷 Before'}
+                        {type === 'during' && '⏳ During'}
+                        {type === 'after' && '✨ After'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Main Image */}
                 <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden">
-                  <img
-                    src={currentImage?.imageUrl}
-                    alt={`${project.title} - ${currentImage?.imageType}`}
-                    className="w-full h-full object-cover"
-                  />
+                  {currentImage ? (
+                    <img
+                      src={currentImage?.imageUrl}
+                      alt={`${project.title} - ${currentImage?.imageType}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                      No {selectedImageType} images
+                    </div>
+                  )}
                   
                   {/* Image Badge */}
-                  <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-xs font-semibold capitalize">
-                    {currentImage?.imageType}
-                  </div>
+                  {currentImage && (
+                    <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-xs font-semibold capitalize">
+                      {currentImage?.imageType}
+                    </div>
+                  )}
                 </div>
 
                 {/* Image Navigation */}
-                {images.length > 1 && (
+                {filteredImages.length > 1 && (
                   <div className="flex items-center justify-between">
                     <button
                       onClick={handlePrevImage}
@@ -106,7 +158,7 @@ export default function PortfolioProjectModal({
                     </button>
                     
                     <div className="flex gap-2">
-                      {images.map((_, idx) => (
+                      {filteredImages.map((_, idx) => (
                         <button
                           key={idx}
                           onClick={() => setCurrentImageIndex(idx)}
@@ -128,7 +180,7 @@ export default function PortfolioProjectModal({
 
                 {/* Image List */}
                 <div className="grid grid-cols-3 gap-2">
-                  {images.map((img, idx) => (
+                  {filteredImages.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
