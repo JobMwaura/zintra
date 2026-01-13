@@ -99,10 +99,8 @@ export default function PortfolioProjectModal({
     checkSaveStatus();
   }, [isOpen, project?.id, authUser?.id]);
 
-  if (!isOpen || !project) return null;
-
   // Memoize images to prevent dependency array issues
-  const images = useMemo(() => project.images || [], [project?.id]);
+  const images = useMemo(() => project?.images || [], [project?.id]);
   
   // Filter images by selected type
   const filteredImages = useMemo(() => {
@@ -119,6 +117,8 @@ export default function PortfolioProjectModal({
       return (order[a] || 3) - (order[b] || 3);
     });
   }, [images]);
+
+  if (!isOpen || !project) return null;
 
   // Format budget range
   const formatBudget = () => {
