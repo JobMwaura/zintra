@@ -97,12 +97,21 @@ export default function PortfolioProjectCard({
           </div>
         )}
 
-        {/* Draft Badge */}
-        {project.status === 'draft' && (
-          <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs font-semibold">
-            Draft
-          </div>
-        )}
+        {/* Badges */}
+        <div className="absolute top-2 left-2 right-2 flex gap-2 flex-wrap">
+          {/* Featured Badge */}
+          {project.isFeatured && (
+            <div className="bg-amber-500 text-white px-2 py-1 rounded text-xs font-semibold">
+              ⭐ Featured
+            </div>
+          )}
+          {/* Draft Badge */}
+          {project.status === 'draft' && (
+            <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-semibold">
+              Draft
+            </div>
+          )}
+        </div>
 
         {/* Hover Overlay - Action Buttons */}
         {isHovering && (

@@ -298,9 +298,21 @@ export default function VendorProfilePage() {
         
         // Handle all responses gracefully - even 500 errors should return empty array
         const data = await response.json();
-        const { projects } = data;
+        let { projects } = data;
         
         console.log('✅ Portfolio projects fetched:', projects?.length || 0);
+        
+        // Sort projects: featured first, then by creation date (newest first)
+        if (projects && projects.length > 0) {
+          projects.sort((a, b) => {
+            // Featured projects first
+            if (a.isfeatured && !b.isfeatured) return -1;
+            if (!a.isfeatured && b.isfeatured) return 1;
+            // Then by creation date (newest first)
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+          });
+        }
+        
         setPortfolioProjects(projects || []);
       } catch (err) {
         console.error('Error fetching portfolio projects:', err);
@@ -1054,12 +1066,46 @@ export default function VendorProfilePage() {
                       setSelectedProject(null);
                     }}
                     onSave={async (updatedData) => {
-                      // TODO: Implement save to API
-                      console.log('Save project:', updatedData);
-                      // For now just refresh
-                      setShowEditProjectModal(false);
-                      // Refresh portfolio projects
-                      // await fetchPortfolioProjects();
+                      try {
+                        console.log('💾 Saving project:', updatedData);
+                        const response = await fetch(`/api/portfolio/projects/${selectedProject.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            title: updatedData.title,
+                            description: updatedData.description,
+                            categoryslug: updatedData.categorySlug,
+                            status: updatedData.status,
+                            budgetmin: updatedData.budgetMin,
+                            budgetmax: updatedData.budgetMax,
+                            timeline: updatedData.timeline,
+                            location: updatedData.location,
+                            completiondate: updatedData.completionDate,
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          const error = await response.json();
+                          throw new Error(error.message || 'Failed to update project');
+                        }
+
+                        const { project: updatedProject } = await response.json();
+                        console.log('✅ Project updated successfully');
+
+                        // Update local state
+                        setPortfolioProjects(prev =>
+                          prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+                        );
+
+                        setShowEditProjectModal(false);
+                        setSelectedProject(null);
+                        alert('Project updated successfully!');
+                      } catch (err) {
+                        console.error('❌ Save error:', err);
+                        alert('Failed to save project: ' + err.message);
+                      }
                     }}
                     onDelete={async () => {
                       try {
