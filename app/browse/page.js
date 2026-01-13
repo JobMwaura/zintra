@@ -278,10 +278,17 @@ export default function BrowseVendors() {
                 key={vendor.id}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col"
               >
-                {/* Vendor Logo/Image Banner */}
+                {/* Vendor Logo/Image Banner with Checkered Background */}
                 {vendor.logo_url && (
-                  <div className="h-48 bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center border-b border-gray-200 p-6">
-                    <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-40 max-w-full object-contain" />
+                  <div className="h-48 flex items-center justify-center border-b border-gray-200 p-6" style={{
+                    backgroundImage: 'linear-gradient(45deg, #f97316 25%, transparent 25%), linear-gradient(-45deg, #f97316 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f97316 75%), linear-gradient(-45deg, transparent 75%, #f97316 75%)',
+                    backgroundSize: '24px 24px',
+                    backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
+                    backgroundColor: 'white'
+                  }}>
+                    <div className="rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
+                      <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-40 max-w-full object-contain p-2" />
+                    </div>
                   </div>
                 )}
                 
