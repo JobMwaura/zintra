@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, MapPin, Calendar, DollarSign, Clock } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, ChevronLeft, ChevronRight, MapPin, Calendar, DollarSign, Clock, Heart, Share2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * PortfolioProjectModal Component
@@ -10,7 +11,7 @@ import { X, ChevronLeft, ChevronRight, MapPin, Calendar, DollarSign, Clock } fro
  * - Image type filter (before, during, after)
  * - Image carousel
  * - Project metadata
- * - Share and quote request buttons
+ * - Save/Share and quote request buttons
  */
 export default function PortfolioProjectModal({
   isOpen = false,
@@ -22,6 +23,43 @@ export default function PortfolioProjectModal({
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedImageType, setSelectedImageType] = useState('after');
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+
+  // Get current user on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setAuthUser(user);
+    };
+    getUser();
+  }, []);
+
+  // Check if project is saved when modal opens
+  useEffect(() => {
+    if (!isOpen || !project?.id || !authUser?.id) return;
+
+    const checkSaveStatus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const response = await fetch(`/api/portfolio/saves?projectId=${project.id}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        const data = await response.json();
+        setIsSaved(data.saved || false);
+      } catch (err) {
+        console.error('❌ Error checking save status:', err);
+      }
+    };
+
+    checkSaveStatus();
+  }, [isOpen, project?.id, authUser?.id]);
 
   if (!isOpen || !project) return null;
 
@@ -58,6 +96,47 @@ export default function PortfolioProjectModal({
       month: 'long',
       year: 'numeric',
     });
+  };
+
+  // Handle save/unsave project
+  const handleSaveProject = async () => {
+    if (!authUser?.id) {
+      alert('Please log in to save projects');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session');
+      }
+
+      const response = await fetch('/api/portfolio/saves', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          projectId: project.id,
+          action: isSaved ? 'unsave' : 'save',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save project');
+      }
+
+      setIsSaved(!isSaved);
+      console.log(`✅ Project ${isSaved ? 'unsaved' : 'saved'}`);
+    } catch (err) {
+      console.error('❌ Error saving project:', err);
+      alert('Failed to save project: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePrevImage = () => {
@@ -266,12 +345,25 @@ export default function PortfolioProjectModal({
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4 border-t border-slate-200">
               <button
+                onClick={handleSaveProject}
+                disabled={isSaving}
+                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  isSaved
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+                } disabled:opacity-50`}
+              >
+                <Heart className={`w-5 h-5 inline mr-2 ${isSaved ? 'fill-current' : ''}`} />
+                {isSaved ? 'Saved' : 'Save'}
+              </button>
+              <button
                 onClick={() => {
                   onShare?.();
                   onClose();
                 }}
                 className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition"
               >
+                <Share2 className="w-5 h-5 inline mr-2" />
                 Share
               </button>
               <button
