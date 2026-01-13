@@ -101,7 +101,8 @@ export default function PortfolioProjectModal({
 
   if (!isOpen || !project) return null;
 
-  const images = project.images || [];
+  // Memoize images to prevent dependency array issues
+  const images = useMemo(() => project.images || [], [project?.id]);
   
   // Filter images by selected type
   const filteredImages = useMemo(() => {
