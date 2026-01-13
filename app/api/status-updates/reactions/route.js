@@ -34,14 +34,16 @@ export async function GET(request) {
       console.error('❌ Failed to fetch reactions:', reactionsError);
       
       // If table doesn't exist, return empty array instead of error
-      if (reactionsError.message?.includes('relation') || reactionsError.message?.includes('does not exist')) {
+      if (reactionsError.message?.includes('Could not find the table') || 
+          reactionsError.message?.includes('relation') || 
+          reactionsError.message?.includes('does not exist')) {
         console.log('⚠️ vendor_status_update_reactions table does not exist yet. Returning empty array.');
         return NextResponse.json({ reactions: [] }, { status: 200 });
       }
       
       return NextResponse.json(
         { message: 'Failed to fetch reactions', error: reactionsError.message },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
@@ -109,7 +111,9 @@ export async function POST(request) {
       console.error('❌ Error checking reaction:', checkError);
       
       // If table doesn't exist, return gracefully
-      if (checkError.message?.includes('relation') || checkError.message?.includes('does not exist')) {
+      if (checkError.message?.includes('Could not find the table') ||
+          checkError.message?.includes('relation') || 
+          checkError.message?.includes('does not exist')) {
         console.log('⚠️ vendor_status_update_reactions table does not exist yet');
         return NextResponse.json({
           message: 'Status update reactions table not yet created',
@@ -119,7 +123,7 @@ export async function POST(request) {
       
       return NextResponse.json(
         { message: 'Failed to check reaction', error: checkError.message },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
@@ -134,7 +138,7 @@ export async function POST(request) {
         console.error('❌ Failed to delete reaction:', deleteError);
         return NextResponse.json(
           { message: 'Failed to remove reaction', error: deleteError.message },
-          { status: 400 }
+          { status: 500 }
         );
       }
 
@@ -160,7 +164,9 @@ export async function POST(request) {
         console.error('❌ Failed to create reaction:', insertError);
         
         // If table doesn't exist, return gracefully
-        if (insertError.message?.includes('relation') || insertError.message?.includes('does not exist')) {
+        if (insertError.message?.includes('Could not find the table') ||
+            insertError.message?.includes('relation') || 
+            insertError.message?.includes('does not exist')) {
           console.log('⚠️ vendor_status_update_reactions table does not exist yet');
           return NextResponse.json({
             message: 'Status update reactions table not yet created',
@@ -170,7 +176,7 @@ export async function POST(request) {
         
         return NextResponse.json(
           { message: 'Failed to add reaction', error: insertError.message },
-          { status: 400 }
+          { status: 500 }
         );
       }
 
