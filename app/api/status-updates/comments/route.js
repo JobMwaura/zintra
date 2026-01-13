@@ -47,9 +47,37 @@ export async function GET(request) {
 
     console.log('✅ Fetched', comments?.length || 0, 'comments for update:', updateId);
 
+    // Fetch user details for all comments
+    let enrichedComments = comments || [];
+    if (comments && comments.length > 0) {
+      const userIds = [...new Set(comments.map(c => c.user_id))];
+      
+      // Fetch user data from auth.users
+      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+      
+      if (!usersError && users) {
+        const userMap = {};
+        users.forEach(user => {
+          userMap[user.id] = {
+            email: user.email,
+            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous User',
+            avatar: user.user_metadata?.avatar_url,
+          };
+        });
+        
+        // Enrich comments with user info
+        enrichedComments = comments.map(comment => ({
+          ...comment,
+          userName: userMap[comment.user_id]?.name || 'Anonymous User',
+          userEmail: userMap[comment.user_id]?.email,
+          userAvatar: userMap[comment.user_id]?.avatar,
+        }));
+      }
+    }
+
     return NextResponse.json({
-      comments: comments || [],
-      count: comments?.length || 0,
+      comments: enrichedComments || [],
+      count: enrichedComments?.length || 0,
     });
   } catch (error) {
     console.error('❌ Comments fetch error:', error);

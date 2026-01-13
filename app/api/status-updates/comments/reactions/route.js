@@ -76,9 +76,9 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { commentId, emoji } = body;
+    const { commentId, emoji, userId } = body;
 
-    console.log('📝 Adding reaction - commentId:', commentId, 'emoji:', emoji);
+    console.log('📝 Adding reaction - commentId:', commentId, 'emoji:', emoji, 'userId:', userId);
 
     if (!commentId || !emoji) {
       return NextResponse.json(
@@ -107,27 +107,33 @@ export async function POST(request) {
     }
 
     // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    let currentUserId = userId; // Use passed userId if provided
+    
+    if (!currentUserId) {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      console.error('❌ Auth error:', userError);
-      return NextResponse.json(
-        { message: 'User not authenticated' },
-        { status: 401 }
-      );
+      if (userError || !user) {
+        console.error('❌ Auth error:', userError);
+        return NextResponse.json(
+          { message: 'User not authenticated' },
+          { status: 401 }
+        );
+      }
+
+      currentUserId = user.id;
     }
 
-    console.log('💬 Creating reaction by user:', user.id);
+    console.log('💬 Creating reaction by user:', currentUserId);
 
     // Check if user already reacted with this emoji
     const { data: existingReaction, error: checkError } = await supabase
       .from('vendor_status_update_comment_reactions')
       .select('id')
       .eq('comment_id', commentId)
-      .eq('user_id', user.id)
+      .eq('user_id', currentUserId)
       .eq('emoji', emoji)
       .single();
 
@@ -158,7 +164,7 @@ export async function POST(request) {
       .from('vendor_status_update_comment_reactions')
       .insert({
         comment_id: commentId,
-        user_id: user.id,
+        user_id: currentUserId,
         emoji: emoji,
       })
       .select()

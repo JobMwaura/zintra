@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X, Smile } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import ReactionPicker from './ReactionPicker';
 import EditCommentModal from './EditCommentModal';
@@ -40,6 +40,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [showMenu, setShowMenu] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentContent, setEditingCommentContent] = useState('');
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
   
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];
@@ -482,16 +483,12 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       {/* Actions */}
       <div className="px-4 py-2 flex gap-1.5">
         <button
-          onClick={handleLike}
-          disabled={loading}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm ${
-            liked
-              ? 'text-red-600 bg-red-50 hover:bg-red-100'
-              : 'text-slate-600 hover:bg-slate-100'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          onClick={() => setShowReactionPicker(!showReactionPicker)}
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100"
+          title="Add reaction"
         >
-          <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
-          Like
+          <Smile className="w-4 h-4" />
+          React
         </button>
         <button
           onClick={handleShowComments}
@@ -505,6 +502,21 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           Share
         </button>
       </div>
+
+      {/* Reaction Picker */}
+      {showReactionPicker && (
+        <div className="px-4 py-2 border-t border-slate-200 bg-slate-50">
+          <ReactionPicker 
+            updateId={update.id}
+            onReactionAdded={() => {
+              console.log('✅ Reaction added to update');
+              // Could refresh reactions here if needed
+            }}
+            currentUser={currentUser}
+            isUpdate={true}
+          />
+        </div>
+      )}
 
       {/* Comments Section */}
       {showComments && (
@@ -522,7 +534,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <p className="font-medium text-slate-900">
-                          User {comment.user_id?.substring(0, 8) || 'Anonymous'}
+                          {comment.userName || comment.userEmail || `User ${comment.user_id?.substring(0, 8)}`}
                         </p>
                         <p className="text-xs text-slate-500">
                           {formatTime(comment.created_at)}

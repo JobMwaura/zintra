@@ -5,17 +5,22 @@ import { Smile } from 'lucide-react';
 
 const REACTION_EMOJIS = ['👍', '👎', '❤️', '😂', '🔥', '😮', '😢', '🤔', '✨', '🎉'];
 
-export default function ReactionPicker({ commentId, onReactionAdded, currentUser }) {
+export default function ReactionPicker({ commentId, updateId, onReactionAdded, currentUser, isUpdate = false }) {
   const [showPicker, setShowPicker] = useState(false);
   const [reactions, setReactions] = useState({});
   const [loadingReactions, setLoadingReactions] = useState(false);
   const pickerRef = useRef(null);
 
-  // Fetch reactions for this comment
+  // Fetch reactions for this comment or update
   const fetchReactions = async () => {
     setLoadingReactions(true);
     try {
-      const response = await fetch(`/api/status-updates/comments/reactions?commentId=${commentId}`);
+      const queryParam = isUpdate ? `updateId=${updateId}` : `commentId=${commentId}`;
+      const endpoint = isUpdate 
+        ? `/api/status-updates/reactions?${queryParam}`
+        : `/api/status-updates/comments/reactions?${queryParam}`;
+      
+      const response = await fetch(endpoint);
       if (!response.ok) throw new Error('Failed to fetch reactions');
       
       const data = await response.json();
@@ -41,8 +46,10 @@ export default function ReactionPicker({ commentId, onReactionAdded, currentUser
 
   // Load reactions on mount
   useEffect(() => {
-    fetchReactions();
-  }, [commentId]);
+    if (commentId || updateId) {
+      fetchReactions();
+    }
+  }, [commentId, updateId]);
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -63,13 +70,18 @@ export default function ReactionPicker({ commentId, onReactionAdded, currentUser
     }
 
     try {
-      const response = await fetch('/api/status-updates/comments/reactions', {
+      const endpoint = isUpdate 
+        ? '/api/status-updates/reactions'
+        : '/api/status-updates/comments/reactions';
+      
+      const body = isUpdate
+        ? { updateId, emoji, userId: currentUser.id }
+        : { commentId, emoji, userId: currentUser.id };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          commentId,
-          emoji,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) throw new Error('Failed to add reaction');
