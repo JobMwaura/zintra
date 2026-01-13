@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import { generateFileAccessUrl } from '@/lib/aws-s3';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -229,9 +230,33 @@ export async function GET(request) {
           uploadedAt: img.uploadedat,
         })) || [];
 
+        // Regenerate presigned URLs for S3 images
+        const imageUrlPromises = transformedImages.map(async (img) => {
+          try {
+            // Check if imageUrl is a full URL or just an S3 key
+            if (img.imageUrl && !img.imageUrl.startsWith('http')) {
+              // It's an S3 key, generate a fresh presigned URL
+              console.log('🔄 Regenerating presigned URL for S3 key:', img.imageUrl);
+              const freshUrl = await generateFileAccessUrl(img.imageUrl);
+              img.imageUrl = freshUrl;
+              console.log('✅ Presigned URL regenerated');
+            } else if (img.imageUrl && img.imageUrl.includes('googleapis.com')) {
+              // It's a Google Cloud Storage URL, skip regeneration
+              console.log('⏭️ Google Cloud Storage URL, skipping regeneration');
+            }
+            return img;
+          } catch (error) {
+            console.error('❌ Error regenerating presigned URL for image', img.id, ':', error.message);
+            // Return image with original URL if regeneration fails
+            return img;
+          }
+        });
+
+        const imagesWithFreshUrls = await Promise.all(imageUrlPromises);
+
         // Attach images to projects
         const imagesByProjectId = {};
-        transformedImages.forEach(img => {
+        imagesWithFreshUrls.forEach(img => {
           if (!imagesByProjectId[img.portfolioProjectId]) {
             imagesByProjectId[img.portfolioProjectId] = [];
           }
