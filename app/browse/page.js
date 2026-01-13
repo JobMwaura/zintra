@@ -280,8 +280,8 @@ export default function BrowseVendors() {
               >
                 {/* Vendor Logo/Image Banner */}
                 {vendor.logo_url && (
-                  <div className="h-32 bg-gray-100 flex items-center justify-center border-b border-gray-200 p-4">
-                    <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-24 max-w-full object-contain" />
+                  <div className="h-48 bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center border-b border-gray-200 p-6">
+                    <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-40 max-w-full object-contain" />
                   </div>
                 )}
                 
