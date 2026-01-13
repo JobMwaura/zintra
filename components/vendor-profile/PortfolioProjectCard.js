@@ -33,6 +33,7 @@ export default function PortfolioProjectCard({
 }) {
   const [isHovering, setIsHovering] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
 
   // Get cover image (first "after" image, or any image)
   const coverImage = project.images?.find(img => img.imageType === 'after')?.imageUrl ||
@@ -73,15 +74,26 @@ export default function PortfolioProjectCard({
     >
       {/* Cover Image */}
       <div className="relative aspect-square overflow-hidden bg-slate-100">
-        {coverImage ? (
+        {coverImage && !imageErrors.cover ? (
           <img
             src={coverImage}
             alt={project.title}
             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+            onError={(e) => {
+              console.warn('❌ Portfolio image failed to load:', coverImage);
+              setImageErrors(prev => ({ ...prev, cover: true }));
+              // Fallback SVG for broken images
+              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"%3E%3Crect fill="%23e2e8f0" width="400" height="400"/%3E%3Cg fill="%23999"%3E%3Ccircle cx="100" cy="100" r="30"/%3E%3Cpath d="M 50 250 L 150 150 L 250 250 L 350 100 L 350 350 Q 350 350 350 350 L 50 350 Z"/%3E%3C/g%3E%3C/svg%3E';
+            }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">
-            <span className="text-slate-500 font-medium">No Image</span>
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 gap-2">
+            <div className="text-slate-500">
+              <svg className="w-12 h-12 mx-auto opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span className="text-slate-500 font-medium text-sm">Image Unavailable</span>
           </div>
         )}
 
