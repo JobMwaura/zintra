@@ -95,17 +95,6 @@ export async function POST(request) {
       );
     }
 
-    let supabase;
-    try {
-      supabase = await createClient();
-    } catch (clientError) {
-      console.error('❌ Failed to create Supabase client:', clientError);
-      return NextResponse.json(
-        { message: 'Failed to initialize database', error: clientError.message },
-        { status: 500 }
-      );
-    }
-
     // Get current user
     let currentUserId = userId; // Use passed userId if provided
     
@@ -135,7 +124,25 @@ export async function POST(request) {
       .eq('comment_id', commentId)
       .eq('user_id', currentUserId)
       .eq('emoji', emoji)
-      .single();
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('❌ Error checking reaction:', checkError);
+      
+      // If table doesn't exist, return gracefully
+      if (checkError.message?.includes('relation') || checkError.message?.includes('does not exist')) {
+        console.log('⚠️ vendor_status_update_comment_reactions table does not exist yet');
+        return NextResponse.json({
+          message: 'Comment reactions table not yet created',
+          action: 'skipped',
+        }, { status: 200 });
+      }
+      
+      return NextResponse.json(
+        { message: 'Failed to check reaction', error: checkError.message },
+        { status: 400 }
+      );
+    }
 
     if (existingReaction) {
       // Already reacted, delete it (toggle off)
@@ -172,6 +179,16 @@ export async function POST(request) {
 
     if (reactionError) {
       console.error('❌ Failed to create reaction:', reactionError);
+      
+      // If table doesn't exist, return gracefully
+      if (reactionError.message?.includes('relation') || reactionError.message?.includes('does not exist')) {
+        console.log('⚠️ vendor_status_update_comment_reactions table does not exist yet');
+        return NextResponse.json({
+          message: 'Comment reactions table not yet created',
+          action: 'skipped',
+        }, { status: 200 });
+      }
+      
       return NextResponse.json(
         { message: 'Failed to add reaction', error: reactionError.message },
         { status: 400 }
