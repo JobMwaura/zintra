@@ -276,9 +276,16 @@ export default function BrowseVendors() {
             {filteredVendors.map((vendor) => (
               <div
                 key={vendor.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col"
               >
-                <div className="p-6">
+                {/* Vendor Logo/Image Banner */}
+                {vendor.logo_url && (
+                  <div className="h-32 bg-gray-100 flex items-center justify-center border-b border-gray-200 p-4">
+                    <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-24 max-w-full object-contain" />
+                  </div>
+                )}
+                
+                <div className="p-6 flex-1 flex flex-col">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {vendor.company_name}
                   </h3>
@@ -315,7 +322,7 @@ export default function BrowseVendors() {
                   </div>
 
                   {/* ✅ Navigation to redesigned Vendor Profile */}
-                  <Link href={`/vendor-profile/${vendor.id}`}>
+                  <Link href={`/vendor-profile/${vendor.id}`} className="mt-auto">
                     <button
                       className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium transition-colors"
                     >
