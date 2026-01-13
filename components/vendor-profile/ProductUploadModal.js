@@ -76,6 +76,15 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess, editing
       if (imageFile) {
         console.log('📸 Uploading product image to AWS S3:', imageFile.name);
         
+        // Get FRESH session right before API call (not from mount state)
+        const { data: { session: freshSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !freshSession?.access_token) {
+          throw new Error('Session expired - please refresh the page and try again');
+        }
+        
+        console.log('✅ Got fresh session token');
+        
         // Step 1: Get presigned URL from API
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
@@ -85,7 +94,7 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess, editing
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`,
+            'Authorization': `Bearer ${freshSession.access_token}`,
           },
           body: JSON.stringify({
             fileName: filename,
