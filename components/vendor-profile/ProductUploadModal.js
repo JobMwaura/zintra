@@ -204,8 +204,8 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess }) {
             >
               <option value="">Select a category...</option>
               {ALL_CATEGORIES_FLAT.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+                <option key={cat.label} value={cat.label}>
+                  {cat.label}
                 </option>
               ))}
             </select>
