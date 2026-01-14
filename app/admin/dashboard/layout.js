@@ -66,6 +66,7 @@ const navSections = [
     title: 'USER MANAGEMENT',
     items: [
       { name: 'Users', icon: Users, href: '/admin/users' },
+      { name: 'Admin Management', icon: ShieldCheck, href: '/admin/dashboard/admins' },
       { name: 'Roles & Permissions', icon: KeyRound, href: '/admin/roles' },
     ],
   },
