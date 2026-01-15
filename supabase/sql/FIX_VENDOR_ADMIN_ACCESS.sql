@@ -59,9 +59,15 @@ WHERE company_name ILIKE '%narok%' OR company_name ILIKE '%cement%';
 -- SECTION 2: ADD ADMIN POLICIES FOR VENDORS TABLE
 -- ============================================================================
 
+-- Drop existing policies if they exist (to allow re-running this migration)
+DROP POLICY IF EXISTS "admins_select_all_vendors" ON public.vendors;
+DROP POLICY IF EXISTS "admins_update_all_vendors" ON public.vendors;
+DROP POLICY IF EXISTS "super_admins_delete_vendors" ON public.vendors;
+DROP POLICY IF EXISTS "admins_insert_vendors" ON public.vendors;
+
 -- Policy 1: Allow admins to SELECT all vendors
 -- This is the critical fix for the visibility issue
-CREATE POLICY IF NOT EXISTS "admins_select_all_vendors" ON public.vendors
+CREATE POLICY "admins_select_all_vendors" ON public.vendors
   FOR SELECT
   USING (
     EXISTS (
@@ -75,7 +81,7 @@ COMMENT ON POLICY "admins_select_all_vendors" ON public.vendors IS
 'Allows active admin users to view all vendor profiles in the admin panel';
 
 -- Policy 2: Allow admins to UPDATE any vendor profile
-CREATE POLICY IF NOT EXISTS "admins_update_all_vendors" ON public.vendors
+CREATE POLICY "admins_update_all_vendors" ON public.vendors
   FOR UPDATE
   USING (
     EXISTS (
@@ -96,7 +102,7 @@ COMMENT ON POLICY "admins_update_all_vendors" ON public.vendors IS
 'Allows active admin users to update any vendor profile';
 
 -- Policy 3: Allow super admins to DELETE vendors
-CREATE POLICY IF NOT EXISTS "super_admins_delete_vendors" ON public.vendors
+CREATE POLICY "super_admins_delete_vendors" ON public.vendors
   FOR DELETE
   USING (
     EXISTS (
@@ -111,7 +117,7 @@ COMMENT ON POLICY "super_admins_delete_vendors" ON public.vendors IS
 'Allows only super admin users to delete vendor profiles';
 
 -- Policy 4: Allow admins to INSERT vendors (for manual vendor creation)
-CREATE POLICY IF NOT EXISTS "admins_insert_vendors" ON public.vendors
+CREATE POLICY "admins_insert_vendors" ON public.vendors
   FOR INSERT
   WITH CHECK (
     EXISTS (
@@ -252,20 +258,14 @@ DROP POLICY IF EXISTS "admins_insert_vendors" ON public.vendors;
 -- SECTION 7: PERFORMANCE OPTIMIZATION
 -- ============================================================================
 
--- Add index on admin_users for faster policy checks (if not exists)
+-- Add index on admin_users for faster policy checks
 CREATE INDEX IF NOT EXISTS idx_admin_users_user_id_status 
 ON public.admin_users(user_id, status)
 WHERE status = 'active';
 
-COMMENT ON INDEX idx_admin_users_user_id_status IS 
-'Optimizes RLS policy checks for active admin users';
-
--- Add index on vendors status (if not exists)
+-- Add index on vendors status
 CREATE INDEX IF NOT EXISTS idx_vendors_status 
 ON public.vendors(status);
-
-COMMENT ON INDEX idx_vendors_status IS 
-'Optimizes filtering vendors by status';
 
 -- ============================================================================
 -- SECTION 8: MIGRATION SUMMARY
