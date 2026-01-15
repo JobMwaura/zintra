@@ -33,6 +33,7 @@ import CertificationManager from '@/components/vendor-profile/CertificationManag
 import HighlightsManager from '@/components/vendor-profile/HighlightsManager';
 import CategoryManagement from '@/components/vendor-profile/CategoryManagement';
 import SubscriptionPanel from '@/components/vendor-profile/SubscriptionPanel';
+import VerificationStatusCard from '@/components/vendor-profile/VerificationStatusCard';
 import ReviewResponses from '@/components/vendor-profile/ReviewResponses';
 import StatusUpdateModal from '@/components/vendor-profile/StatusUpdateModal';
 import StatusUpdateCard from '@/components/vendor-profile/StatusUpdateCard';
@@ -1729,6 +1730,14 @@ export default function VendorProfilePage() {
                 )}
               </div>
             </section>
+          )}
+
+          {/* Verification Status Card */}
+          {canEdit && (
+            <VerificationStatusCard 
+              vendor={vendor}
+              canEdit={canEdit}
+            />
           )}
 
           {/* Subscription Info */}

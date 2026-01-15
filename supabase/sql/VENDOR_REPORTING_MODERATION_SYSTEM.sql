@@ -358,12 +358,6 @@ AFTER UPDATE ON public.vendor_reports
 FOR EACH ROW
 EXECUTE FUNCTION public.log_moderation_action();
 
--- Step 17: Insert report type enum values
-INSERT INTO public.vendor_reports (id, reporter_user_id, reported_vendor_id, report_type, title, description) 
-VALUES ('00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID, '00000000-0000-0000-0000-000000000001'::UUID, 'inappropriate_images', 'temp', 'temp') 
-ON CONFLICT DO NOTHING;
-DELETE FROM public.vendor_reports WHERE id = '00000000-0000-0000-0000-000000000001'::UUID;
-
 -- ============================================================================
 -- SUMMARY OF CHANGES
 -- ============================================================================

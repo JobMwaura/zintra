@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT, filterVendorsByCategory } from '@/lib/constructionCategories';
+import { VerificationBadgeWithTooltip, VerificationMini } from '@/app/components/VerificationBadge';
 
 export default function BrowseVendors() {
   const [vendors, setVendors] = useState([]);
@@ -121,7 +122,7 @@ export default function BrowseVendors() {
     };
   }, []);
 
-  // ✅ Filtering logic with improved category matching
+  // ✅ Filtering logic with improved category matching and priority sorting
   const filteredVendors = vendors
     .filter((vendor) => {
       const matchesSearch =
@@ -143,10 +144,20 @@ export default function BrowseVendors() {
       return matchesSearch && matchesCategory && matchesCounty && matchesTown;
     })
     .sort((a, b) => {
-      // Sort: vendors with logo_url first, then without
-      const aHasLogo = a.logo_url ? 1 : 0;
-      const bHasLogo = b.logo_url ? 1 : 0;
-      return bHasLogo - aHasLogo;
+      // Priority Tier 1: Verified vendors (highest priority)
+      const aVerified = a.is_verified ? 3 : 0;
+      const bVerified = b.is_verified ? 3 : 0;
+      if (aVerified !== bVerified) return bVerified - aVerified;
+      
+      // Priority Tier 2: Vendors with profile images (logo or cover)
+      const aHasImage = (a.business_logo || a.logo_url || a.cover_image) ? 2 : 0;
+      const bHasImage = (b.business_logo || b.logo_url || b.cover_image) ? 2 : 0;
+      if (aHasImage !== bHasImage) return bHasImage - aHasImage;
+      
+      // Priority Tier 3: Sort by rating and reviews
+      const aRating = (a.rating || 0) * 100 + (a.total_reviews || 0);
+      const bRating = (b.rating || 0) * 100 + (b.total_reviews || 0);
+      return bRating - aRating;
     });
 
   const clearFilters = () => {
@@ -304,9 +315,28 @@ export default function BrowseVendors() {
                 </div>
                 
                 <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {vendor.company_name}
-                  </h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                      {vendor.company_name}
+                    </h3>
+                    {vendor.is_verified && (
+                      <VerificationBadgeWithTooltip 
+                        type="business" 
+                        size="md" 
+                        className="flex-shrink-0 ml-2"
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Show verification status badge for unverified vendors */}
+                  {!vendor.is_verified && (
+                    <div className="mb-2">
+                      <span className="inline-flex items-center text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                        ⚠️ Not Verified
+                      </span>
+                    </div>
+                  )}
+                  
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                     {vendor.description || 'No description available.'}
                   </p>
