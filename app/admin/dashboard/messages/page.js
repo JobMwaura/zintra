@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { MessageSquare, Search, ArrowLeft, X, CheckCircle, AlertCircle, Loader, Eye, Users, Clock, Mail } from 'lucide-react';
+import { MessageSquare, Search, ArrowLeft, X, CheckCircle, AlertCircle, Loader, Eye, Users, Clock, Mail, Trash2, Archive } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MessagesAdmin() {
@@ -81,6 +81,27 @@ export default function MessagesAdmin() {
   const handleViewDetails = async (conversation) => {
     setSelectedConversation(conversation);
     setShowDetailModal(true);
+    
+    // Mark all messages in this conversation as read
+    try {
+      const { data: conversationMessages } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('conversation_id', conversation.id)
+        .eq('is_read', false);
+
+      if (conversationMessages && conversationMessages.length > 0) {
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('conversation_id', conversation.id)
+          .eq('is_read', false);
+        
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
   };
 
   const handleCloseModal = () => {
@@ -104,6 +125,54 @@ export default function MessagesAdmin() {
     }
   };
 
+  const handleDeleteConversation = async (conversationId) => {
+    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Delete all messages in the conversation first
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      if (messagesError) throw messagesError;
+
+      // Delete the conversation
+      const { error: convError } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId);
+
+      if (convError) throw convError;
+
+      showMessage('Conversation deleted successfully!', 'success');
+      handleCloseModal();
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      showMessage(error.message || 'Failed to delete conversation', 'error');
+    }
+  };
+
+  const handleArchiveConversation = async (conversationId, isActive) => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ is_active: false })
+        .eq('id', conversationId);
+
+      if (error) throw error;
+      showMessage('Conversation archived successfully!', 'success');
+      handleCloseModal();
+      fetchData();
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+      showMessage(error.message || 'Failed to archive conversation', 'error');
+    }
+  };
+
   // Helper function to get vendor details
   const getVendorDetails = (vendorId) => {
     const vendor = vendors.find(v => v.user_id === vendorId || v.id === vendorId);
@@ -123,16 +192,16 @@ export default function MessagesAdmin() {
 
   const filteredConversations = conversations.filter(conv => {
     // Search filter
-    const vendor = getVendorDetails(conv.vendor_id);
-    const admin = getAdminDetails(conv.admin_id);
+    const vendor = getVendorDetails(conv.participant_2_id);
+    const admin = getAdminDetails(conv.participant_1_id);
     
     const matchesSearch = 
       conv.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vendor.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vendor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       admin.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.admin_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.vendor_id?.toLowerCase().includes(searchQuery.toLowerCase());
+      conv.participant_1_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.participant_2_id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Status filter
     const matchesStatus = 
@@ -321,8 +390,8 @@ export default function MessagesAdmin() {
               <tbody className="divide-y divide-gray-200">
                 {filteredConversations.map((conversation) => {
                   const conversationMessages = getConversationMessages(conversation.id);
-                  const vendor = getVendorDetails(conversation.vendor_id);
-                  const admin = getAdminDetails(conversation.admin_id);
+                  const vendor = getVendorDetails(conversation.participant_2_id);
+                  const admin = getAdminDetails(conversation.participant_1_id);
                   
                   return (
                     <tr key={conversation.id} className="hover:bg-gray-50 transition">
@@ -436,13 +505,13 @@ export default function MessagesAdmin() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Admin</label>
-                  <p className="text-sm font-medium text-gray-900">{getAdminDetails(selectedConversation.admin_id).email}</p>
-                  <p className="text-xs text-gray-500 mt-1">Role: {getAdminDetails(selectedConversation.admin_id).role}</p>
+                  <p className="text-sm font-medium text-gray-900">{getAdminDetails(selectedConversation.participant_1_id).email}</p>
+                  <p className="text-xs text-gray-500 mt-1">Role: {getAdminDetails(selectedConversation.participant_1_id).role}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Vendor</label>
-                  <p className="text-sm font-medium text-gray-900">{getVendorDetails(selectedConversation.vendor_id).company_name}</p>
-                  <p className="text-xs text-gray-500 mt-1">{getVendorDetails(selectedConversation.vendor_id).email}</p>
+                  <p className="text-sm font-medium text-gray-900">{getVendorDetails(selectedConversation.participant_2_id).company_name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{getVendorDetails(selectedConversation.participant_2_id).email}</p>
                 </div>
               </div>
 
@@ -469,7 +538,32 @@ export default function MessagesAdmin() {
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Read</span>
                         )}
                       </div>
-                      <p className="text-gray-700 whitespace-pre-wrap">{msg.body}</p>
+                      <p className="text-gray-700 whitespace-pre-wrap mb-3">{msg.body}</p>
+                      
+                      {/* Display Attachments */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-300">
+                          <p className="text-xs font-semibold text-gray-600 mb-2">Attachments ({msg.attachments.length})</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {msg.attachments.map((attachment, idx) => (
+                              <a
+                                key={idx}
+                                href={attachment.url || attachment}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 bg-white rounded border border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition text-sm text-blue-600"
+                              >
+                                <span>📎</span>
+                                <span className="truncate">
+                                  {typeof attachment === 'string' 
+                                    ? attachment.split('/').pop() 
+                                    : attachment.name || `Image ${idx + 1}`}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {getConversationMessages(selectedConversation.id).length === 0 && (
@@ -495,14 +589,20 @@ export default function MessagesAdmin() {
                 Close
               </button>
               <button
-                onClick={() => handleToggleActive(selectedConversation.id, selectedConversation.is_active)}
-                className={`px-6 py-2 rounded-lg transition font-medium ${
-                  selectedConversation.is_active
-                    ? 'bg-gray-600 text-white hover:bg-gray-700'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
+                onClick={() => handleArchiveConversation(selectedConversation.id, selectedConversation.is_active)}
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-300 rounded-lg hover:bg-yellow-100 transition font-medium"
+                title="Archive this conversation"
               >
-                {selectedConversation.is_active ? 'Deactivate Conversation' : 'Activate Conversation'}
+                <Archive className="w-4 h-4" />
+                Archive
+              </button>
+              <button
+                onClick={() => handleDeleteConversation(selectedConversation.id)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 transition font-medium"
+                title="Delete this conversation permanently"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
               </button>
             </div>
           </div>

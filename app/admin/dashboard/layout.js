@@ -88,6 +88,7 @@ export default function AdminDashboardLayout({ children }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Check auth on mount
   useEffect(() => {
@@ -107,6 +108,21 @@ export default function AdminDashboardLayout({ children }) {
           setUserEmail(user.email || '');
           setIsAuthenticated(true);
         }
+
+        // Fetch unread messages count
+        try {
+          const { data: unreadMessages, error } = await supabase
+            .from('messages')
+            .select('id')
+            .eq('is_read', false)
+            .eq('message_type', 'vendor_to_admin');
+
+          if (!error && unreadMessages) {
+            setUnreadMessageCount(unreadMessages.length);
+          }
+        } catch (error) {
+          console.error('Error fetching unread messages:', error);
+        }
       } catch (error) {
         console.error('Auth check error:', error);
         router.push('/admin/login');
@@ -124,7 +140,32 @@ export default function AdminDashboardLayout({ children }) {
       }
     });
 
-    return () => subscription?.unsubscribe();
+    // Subscribe to real-time message updates
+    const messageSubscription = supabase
+      .channel('messages')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages'
+      }, () => {
+        // Refetch unread count when messages change
+        supabase
+          .from('messages')
+          .select('id')
+          .eq('is_read', false)
+          .eq('message_type', 'vendor_to_admin')
+          .then(({ data: unreadMessages }) => {
+            if (unreadMessages) {
+              setUnreadMessageCount(unreadMessages.length);
+            }
+          });
+      })
+      .subscribe();
+
+    return () => {
+      subscription?.unsubscribe();
+      messageSubscription?.unsubscribe();
+    };
   }, [router]);
 
   const handleLogout = async () => {
@@ -182,19 +223,32 @@ export default function AdminDashboardLayout({ children }) {
               <div className="space-y-1">
                 {section.items.map(({ name, icon: Icon, href }) => {
                   const active = pathname.startsWith(href);
+                  const isMessagesLink = href === '/admin/dashboard/messages';
+                  
                   return (
                     <Link
                       key={name}
                       href={href}
                       title={!sidebarOpen ? name : ''}
-                      className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                         active
                           ? 'bg-orange-500 text-white'
                           : 'text-gray-700 hover:bg-gray-100 hover:text-orange-500'
                       }`}
                     >
-                      <Icon className="w-5 h-5 mr-3" />
-                      {sidebarOpen && name}
+                      <div className="flex items-center">
+                        <Icon className="w-5 h-5 mr-3" />
+                        {sidebarOpen && name}
+                      </div>
+                      {isMessagesLink && unreadMessageCount > 0 && (
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                          active 
+                            ? 'bg-white text-orange-500' 
+                            : 'bg-red-500 text-white'
+                        }`}>
+                          {unreadMessageCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
