@@ -302,17 +302,18 @@ export default function ConsolidatedVendors() {
         vendorName: selectedVendor.company_name
       });
 
-      // First, try to find existing conversation (use maybeSingle instead of single)
+      // First, try to find existing conversation using participant columns
+      // (Database uses participant_1_id and participant_2_id)
       const { data: existingConv, error: convError } = await supabase
         .from('conversations')
         .select('id')
-        .eq('admin_id', adminId)
-        .eq('vendor_id', vendorUserId)
+        .eq('participant_1_id', adminId)
+        .eq('participant_2_id', vendorUserId)
         .maybeSingle();
 
       if (convError) {
         console.error('Error checking conversation:', convError);
-        throw convError;
+        // Don't throw - just create new conversation
       }
 
       let conversationId;
@@ -322,11 +323,12 @@ export default function ConsolidatedVendors() {
         conversationId = existingConv.id;
       } else {
         console.log('Creating new conversation...');
+        // Use participant_1_id and participant_2_id to match database schema
         const { data: newConv, error: createConvError } = await supabase
           .from('conversations')
           .insert([{
-            admin_id: adminId,
-            vendor_id: vendorUserId,
+            participant_1_id: adminId,
+            participant_2_id: vendorUserId,
             subject: messageSubject || `Message to ${selectedVendor.company_name}`
           }])
           .select('id')

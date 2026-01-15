@@ -1,5 +1,6 @@
 -- Fix RLS Policies for Conversations Table
 -- This allows admins to create and view conversations with vendors
+-- NOTE: Database uses participant_1_id and participant_2_id columns
 
 -- Enable RLS on conversations table (if not already enabled)
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
@@ -44,14 +45,15 @@ USING (
 );
 
 -- Policy 4: Vendors can view their own conversations
+-- Uses participant_2_id which stores vendor user_id
 CREATE POLICY vendors_select_own_conversations ON public.conversations
 FOR SELECT
 TO authenticated
 USING (
-  vendor_id = auth.uid() OR 
+  participant_2_id = auth.uid() OR 
   EXISTS (
     SELECT 1 FROM public.vendors 
-    WHERE user_id = auth.uid() AND id = conversations.vendor_id
+    WHERE user_id = auth.uid() AND user_id = conversations.participant_2_id
   )
 );
 
