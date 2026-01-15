@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Star, Search, ArrowLeft, X, CheckCircle, AlertCircle, Loader, Eye, MessageSquare, Award, TrendingUp } from 'lucide-react';
+import { Star, Search, ArrowLeft, X, CheckCircle, AlertCircle, Loader, Eye, MessageSquare, Award, TrendingUp, Flag, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TestimonialsAdmin() {
@@ -12,6 +12,7 @@ export default function TestimonialsAdmin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [ratingFilter, setRatingFilter] = useState('all'); // 'all' | '5' | '4' | '3' | '2' | '1'
   const [responseFilter, setResponseFilter] = useState('all'); // 'all' | 'responded' | 'pending'
+  const [flagFilter, setFlagFilter] = useState('all'); // 'all' | 'flagged' | 'unflagged'
   const [selectedReview, setSelectedReview] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [message, setMessage] = useState('');
@@ -102,6 +103,34 @@ export default function TestimonialsAdmin() {
     }
   };
 
+  const handleFlagReview = async (review) => {
+    const newFlaggedState = !review.is_flagged;
+    const action = newFlaggedState ? 'flag' : 'unflag';
+    
+    if (!confirm(`Are you sure you want to ${action} this review?`)) {
+      return;
+    }
+
+    try {
+      const updateData = {
+        is_flagged: newFlaggedState,
+        flagged_at: newFlaggedState ? new Date().toISOString() : null
+      };
+
+      const { error } = await supabase
+        .from('reviews')
+        .update(updateData)
+        .eq('id', review.id);
+
+      if (error) throw error;
+      showMessage(`Review ${action}ged successfully!`, 'success');
+      fetchData();
+    } catch (error) {
+      console.error(`Error ${action}ging review:`, error);
+      showMessage(error.message || `Failed to ${action} review`, 'error');
+    }
+  };
+
   const filteredReviews = reviews.filter(review => {
     // Search filter
     const matchesSearch = 
@@ -118,7 +147,13 @@ export default function TestimonialsAdmin() {
       (responseFilter === 'responded' && review.vendor_response) ||
       (responseFilter === 'pending' && !review.vendor_response);
 
-    return matchesSearch && matchesRating && matchesResponse;
+    // Flag filter
+    const matchesFlag = 
+      flagFilter === 'all' ||
+      (flagFilter === 'flagged' && review.is_flagged) ||
+      (flagFilter === 'unflagged' && !review.is_flagged);
+
+    return matchesSearch && matchesRating && matchesResponse && matchesFlag;
   });
 
   const stats = {
@@ -128,7 +163,7 @@ export default function TestimonialsAdmin() {
       : 0,
     fiveStars: reviews.filter(r => r.rating === 5).length,
     responded: reviews.filter(r => r.vendor_response).length,
-    pending: reviews.filter(r => !r.vendor_response).length,
+    flagged: reviews.filter(r => r.is_flagged).length,
   };
 
   const renderStars = (rating) => {
@@ -236,12 +271,12 @@ export default function TestimonialsAdmin() {
 
           <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-orange-600" />
+              <div className="bg-red-100 p-3 rounded-lg">
+                <Flag className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 font-medium">Pending</p>
-                <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.pending}</p>
+                <p className="text-sm text-gray-600 font-medium">Flagged</p>
+                <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.flagged}</p>
               </div>
             </div>
           </div>
@@ -281,6 +316,15 @@ export default function TestimonialsAdmin() {
                 <option value="all">All Status</option>
                 <option value="responded">Responded</option>
                 <option value="pending">Pending Response</option>
+              </select>
+              <select
+                value={flagFilter}
+                onChange={(e) => setFlagFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="all">All Reviews</option>
+                <option value="unflagged">Normal</option>
+                <option value="flagged">🚩 Flagged</option>
               </select>
             </div>
           </div>
@@ -354,25 +398,46 @@ export default function TestimonialsAdmin() {
                   </p>
                 </div>
 
-                {/* Response Status */}
+                {/* Response Status & Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  {review.vendor_response ? (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="text-xs font-medium">Vendor Responded</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-orange-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="text-xs font-medium">Awaiting Response</span>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handleDeleteReview(review.id, review.author)}
-                    className="text-xs text-red-600 hover:text-red-700 font-medium"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {review.vendor_response ? (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-xs font-medium">Vendor Responded</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-orange-600">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-xs font-medium">Awaiting Response</span>
+                      </div>
+                    )}
+                    {review.is_flagged && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
+                        <Flag className="w-3 h-3" />
+                        Flagged
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleFlagReview(review)}
+                      className={`text-xs font-medium flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition ${
+                        review.is_flagged ? 'text-orange-600' : 'text-gray-600'
+                      }`}
+                      title={review.is_flagged ? 'Unflag review' : 'Flag as fake/spam'}
+                    >
+                      <Flag className="w-3 h-3" />
+                      {review.is_flagged ? 'Unflag' : 'Flag'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteReview(review.id, review.author)}
+                      className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
