@@ -15,6 +15,8 @@ export default function MessagesAdmin() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [vendors, setVendors] = useState([]);
+  const [admins, setAdmins] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -36,12 +38,28 @@ export default function MessagesAdmin() {
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true});
 
       if (messagesError) throw messagesError;
 
+      // Fetch vendors to get company names
+      const { data: vendorsData, error: vendorsError } = await supabase
+        .from('vendors')
+        .select('id, user_id, company_name, email');
+
+      if (vendorsError) throw vendorsError;
+
+      // Fetch admin users to get admin names/emails
+      const { data: adminsData, error: adminsError } = await supabase
+        .from('admin_users')
+        .select('user_id, email, role');
+
+      if (adminsError) throw adminsError;
+
       setConversations(conversationsData || []);
       setMessages(messagesData || []);
+      setVendors(vendorsData || []);
+      setAdmins(adminsData || []);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -86,10 +104,33 @@ export default function MessagesAdmin() {
     }
   };
 
+  // Helper function to get vendor details
+  const getVendorDetails = (vendorId) => {
+    const vendor = vendors.find(v => v.user_id === vendorId || v.id === vendorId);
+    return vendor || { company_name: 'Unknown Vendor', email: vendorId };
+  };
+
+  // Helper function to get admin details
+  const getAdminDetails = (adminId) => {
+    const admin = admins.find(a => a.user_id === adminId);
+    return admin || { email: adminId, role: 'admin' };
+  };
+
+  // Helper function to get messages for a conversation
+  const getConversationMessages = (conversationId) => {
+    return messages.filter(msg => msg.conversation_id === conversationId);
+  };
+
   const filteredConversations = conversations.filter(conv => {
     // Search filter
+    const vendor = getVendorDetails(conv.vendor_id);
+    const admin = getAdminDetails(conv.admin_id);
+    
     const matchesSearch = 
       conv.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      vendor.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      vendor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      admin.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.admin_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.vendor_id?.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -108,10 +149,6 @@ export default function MessagesAdmin() {
     inactive: conversations.filter(c => !c.is_active).length,
     totalMessages: messages.length,
     unread: messages.filter(m => !m.is_read).length,
-  };
-
-  const getConversationMessages = (conversationId) => {
-    return messages.filter(m => m.conversation_id === conversationId);
   };
 
   return (
@@ -284,6 +321,9 @@ export default function MessagesAdmin() {
               <tbody className="divide-y divide-gray-200">
                 {filteredConversations.map((conversation) => {
                   const conversationMessages = getConversationMessages(conversation.id);
+                  const vendor = getVendorDetails(conversation.vendor_id);
+                  const admin = getAdminDetails(conversation.admin_id);
+                  
                   return (
                     <tr key={conversation.id} className="hover:bg-gray-50 transition">
                       <td className="px-6 py-4">
@@ -299,12 +339,13 @@ export default function MessagesAdmin() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-1">
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Admin:</span> {conversation.admin_id?.slice(0, 8)}...
+                          <p className="text-sm text-gray-900">
+                            <span className="font-medium text-gray-600">Admin:</span> {admin.email}
                           </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Vendor:</span> {conversation.vendor_id?.slice(0, 8)}...
+                          <p className="text-sm text-gray-900">
+                            <span className="font-medium text-gray-600">Vendor:</span> {vendor.company_name}
                           </p>
+                          <p className="text-xs text-gray-500">{vendor.email}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -394,16 +435,14 @@ export default function MessagesAdmin() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Admin ID</label>
-                  <code className="text-sm bg-gray-100 px-3 py-1 rounded text-gray-700">
-                    {selectedConversation.admin_id}
-                  </code>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Admin</label>
+                  <p className="text-sm font-medium text-gray-900">{getAdminDetails(selectedConversation.admin_id).email}</p>
+                  <p className="text-xs text-gray-500 mt-1">Role: {getAdminDetails(selectedConversation.admin_id).role}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vendor ID</label>
-                  <code className="text-sm bg-gray-100 px-3 py-1 rounded text-gray-700">
-                    {selectedConversation.vendor_id}
-                  </code>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vendor</label>
+                  <p className="text-sm font-medium text-gray-900">{getVendorDetails(selectedConversation.vendor_id).company_name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{getVendorDetails(selectedConversation.vendor_id).email}</p>
                 </div>
               </div>
 
