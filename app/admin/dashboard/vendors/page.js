@@ -9,7 +9,7 @@ import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import {
   Search, Filter, MapPin, Star, CheckCircle, AlertTriangle, Eye, X, 
   Mail, Shield, User, Download, MessageSquare, ArrowLeft, TrendingUp,
-  AlertCircle, Phone, Building2, ArrowUpDown, Trash2, PauseCircle
+  AlertCircle, Phone, Building2, ArrowUpDown, Trash2, PauseCircle, Image as ImageIcon, Upload, Loader
 } from 'lucide-react';
 
 export default function ConsolidatedVendors() {
@@ -34,6 +34,8 @@ export default function ConsolidatedVendors() {
   const [messageSubject, setMessageSubject] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageImages, setMessageImages] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Bulk selection
   const [selectedVendorIds, setSelectedVendorIds] = useState([]);
@@ -190,6 +192,87 @@ export default function ConsolidatedVendors() {
     }
   };
 
+  // Handle image upload for messages
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Limit to 5 images
+    if (messageImages.length + files.length > 5) {
+      setMessage('Maximum 5 images allowed per message');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+
+      for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          setMessage(`${file.name} is not an image file`);
+          continue;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          setMessage(`${file.name} is too large (max 5MB)`);
+          continue;
+        }
+
+        // Get presigned URL from API
+        const response = await fetch('/api/messages/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get upload URL');
+        }
+
+        const { uploadUrl, fileUrl } = await response.json();
+
+        // Upload file directly to S3
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image to S3');
+        }
+
+        // Add to message images
+        setMessageImages(prev => [
+          ...prev,
+          {
+            type: 'image',
+            url: fileUrl,
+            name: file.name,
+            size: file.size,
+            uploaded_at: new Date().toISOString(),
+          }
+        ]);
+      }
+
+      setMessage('✓ Images uploaded successfully');
+    } catch (error) {
+      console.error('Image upload error:', error);
+      setMessage(`Error uploading images: ${error.message}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Remove image from message
+  const removeMessageImage = (index) => {
+    setMessageImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const sendMessage = async () => {
     if (!messageBody.trim()) {
       setMessage('Please enter a message');
@@ -230,7 +313,7 @@ export default function ConsolidatedVendors() {
         conversationId = newConv.id;
       }
 
-      // Insert message
+      // Insert message with attachments
       const recipientId = selectedVendor.user_id || selectedVendor.id;
       const { error: messageError } = await supabase
         .from('messages')
@@ -239,7 +322,8 @@ export default function ConsolidatedVendors() {
           recipient_id: recipientId,
           conversation_id: conversationId,
           body: messageBody,
-          message_type: 'admin_to_vendor'
+          message_type: 'admin_to_vendor',
+          attachments: messageImages.length > 0 ? messageImages : []
         }]);
 
       if (messageError) throw messageError;
@@ -247,6 +331,7 @@ export default function ConsolidatedVendors() {
       setMessage('✓ Message sent successfully');
       setMessageSubject('');
       setMessageBody('');
+      setMessageImages([]);
       setShowMessageModal(false);
     } catch (error) {
       setMessage(`Error sending message: ${error.message}`);
@@ -1248,14 +1333,17 @@ export default function ConsolidatedVendors() {
       {/* Message Modal */}
       {showMessageModal && selectedVendor && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="border-b border-gray-200 p-6 flex items-center justify-between">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="border-b border-gray-200 p-6 flex items-center justify-between sticky top-0 bg-white">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Send Message</h2>
                 <p className="text-sm text-gray-600">{selectedVendor.company_name}</p>
               </div>
               <button
-                onClick={() => setShowMessageModal(false)}
+                onClick={() => {
+                  setShowMessageModal(false);
+                  setMessageImages([]);
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
                 <X className="w-5 h-5" />
@@ -1286,17 +1374,81 @@ export default function ConsolidatedVendors() {
                   rows={6}
                 />
               </div>
-              <div className="flex gap-3">
+
+              {/* Image Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Attach Images (optional)
+                </label>
+                <div className="space-y-3">
+                  {/* Upload Button */}
+                  <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage || messageImages.length >= 5}
+                      className="hidden"
+                    />
+                    {uploadingImage ? (
+                      <>
+                        <Loader className="w-5 h-5 text-purple-600 animate-spin" />
+                        <span className="text-sm text-purple-600">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5 text-gray-600" />
+                        <span className="text-sm text-gray-600">
+                          {messageImages.length >= 5 
+                            ? 'Maximum 5 images reached' 
+                            : 'Click to upload images (max 5, 5MB each)'}
+                        </span>
+                      </>
+                    )}
+                  </label>
+
+                  {/* Image Previews */}
+                  {messageImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {messageImages.map((img, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => removeMessageImage(index)}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <div className="mt-1 text-xs text-gray-500 truncate">
+                            {img.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowMessageModal(false)}
+                  onClick={() => {
+                    setShowMessageModal(false);
+                    setMessageImages([]);
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition"
-                  disabled={sendingMessage}
+                  disabled={sendingMessage || uploadingImage}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={sendMessage}
-                  disabled={sendingMessage || !messageBody.trim()}
+                  disabled={sendingMessage || uploadingImage || !messageBody.trim()}
                   className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {sendingMessage ? (
@@ -1307,7 +1459,7 @@ export default function ConsolidatedVendors() {
                   ) : (
                     <>
                       <MessageSquare className="w-4 h-4" />
-                      Send Message
+                      Send Message {messageImages.length > 0 && `(${messageImages.length} ${messageImages.length === 1 ? 'image' : 'images'})`}
                     </>
                   )}
                 </button>
