@@ -287,53 +287,91 @@ export default function ConsolidatedVendors() {
     try {
       setSendingMessage(true);
 
-      // First, create or get conversation
+      // Get current admin user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Not authenticated');
+      }
+
+      const adminId = user.id;
+      const vendorUserId = selectedVendor.user_id || selectedVendor.id;
+
+      console.log('Sending message:', {
+        adminId,
+        vendorUserId,
+        vendorName: selectedVendor.company_name
+      });
+
+      // First, try to find existing conversation (use maybeSingle instead of single)
       const { data: existingConv, error: convError } = await supabase
         .from('conversations')
         .select('id')
-        .eq('vendor_id', selectedVendor.id)
-        .single();
+        .eq('admin_id', adminId)
+        .eq('vendor_id', vendorUserId)
+        .maybeSingle();
+
+      if (convError) {
+        console.error('Error checking conversation:', convError);
+        throw convError;
+      }
 
       let conversationId;
 
       if (existingConv) {
+        console.log('Found existing conversation:', existingConv.id);
         conversationId = existingConv.id;
       } else {
+        console.log('Creating new conversation...');
         const { data: newConv, error: createConvError } = await supabase
           .from('conversations')
           .insert([{
-            admin_id: (await supabase.auth.getUser()).data.user.id,
-            vendor_id: selectedVendor.id,
+            admin_id: adminId,
+            vendor_id: vendorUserId,
             subject: messageSubject || `Message to ${selectedVendor.company_name}`
           }])
           .select('id')
           .single();
 
-        if (createConvError) throw createConvError;
+        if (createConvError) {
+          console.error('Error creating conversation:', createConvError);
+          throw createConvError;
+        }
+        
+        console.log('Created new conversation:', newConv.id);
         conversationId = newConv.id;
       }
 
       // Insert message with attachments
-      const recipientId = selectedVendor.user_id || selectedVendor.id;
+      console.log('Inserting message...', {
+        conversationId,
+        hasAttachments: messageImages.length > 0,
+        attachmentCount: messageImages.length
+      });
+
       const { error: messageError } = await supabase
         .from('messages')
         .insert([{
-          sender_id: (await supabase.auth.getUser()).data.user.id,
-          recipient_id: recipientId,
+          sender_id: adminId,
+          recipient_id: vendorUserId,
           conversation_id: conversationId,
           body: messageBody,
           message_type: 'admin_to_vendor',
           attachments: messageImages.length > 0 ? messageImages : []
         }]);
 
-      if (messageError) throw messageError;
+      if (messageError) {
+        console.error('Error inserting message:', messageError);
+        throw messageError;
+      }
 
+      console.log('✅ Message sent successfully');
       setMessage('✓ Message sent successfully');
       setMessageSubject('');
       setMessageBody('');
       setMessageImages([]);
       setShowMessageModal(false);
     } catch (error) {
+      console.error('❌ Send message error:', error);
       setMessage(`Error sending message: ${error.message}`);
     } finally {
       setSendingMessage(false);
