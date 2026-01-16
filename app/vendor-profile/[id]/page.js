@@ -136,20 +136,30 @@ export default function VendorProfilePage() {
 
     fetchUnreadMessages();
 
-    // Subscribe to real-time updates for this vendor's messages
+    // Set up polling as PRIMARY mechanism (every 3 seconds)
+    // This ensures notifications work even if real-time subscription fails
+    const pollInterval = setInterval(() => {
+      fetchUnreadMessages();
+    }, 3000);
+
+    // Set up real-time subscription as BACKUP for instant updates
     const subscription = supabase
       .channel(`vendor_messages_${vendorId}`)
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',  // Only listen to new messages
         schema: 'public',
         table: 'vendor_messages',
         filter: `vendor_id=eq.${vendorId}`
       }, (payload) => {
-        fetchUnreadMessages(); // Refresh on any change
+        console.log('🔔 New message received:', payload);
+        fetchUnreadMessages(); // Refresh immediately
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Vendor profile subscription status:', status);
+      });
 
     return () => {
+      clearInterval(pollInterval);
       subscription?.unsubscribe();
     };
   }, [vendorId, supabase]);

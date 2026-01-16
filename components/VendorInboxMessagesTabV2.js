@@ -89,19 +89,29 @@ export default function VendorInboxMessagesTabV2() {
 
     loadConversations();
 
-    // Subscribe to real-time changes
+    // Set up polling as PRIMARY mechanism (every 2 seconds)
+    // This ensures messages update even if real-time subscription has issues
+    const pollInterval = setInterval(() => {
+      loadConversations();
+    }, 2000);
+
+    // Set up real-time subscription as BACKUP for instant updates
     const subscription = supabase
       .channel('vendor_inbox_v2')
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',  // Only listen to new messages
         schema: 'public',
         table: 'vendor_messages'
       }, () => {
-        loadConversations();
+        console.log('🔔 New message detected in inbox');
+        loadConversations(); // Refresh conversation list immediately
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Inbox subscription status:', status);
+      });
 
     return () => {
+      clearInterval(pollInterval);
       subscription?.unsubscribe();
     };
   }, []);
@@ -188,6 +198,27 @@ export default function VendorInboxMessagesTabV2() {
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
+  };
+
+  // Helper function to show message age (e.g., "2m ago", "1h ago")
+  const getMessageAge = (createdAt) => {
+    const now = new Date();
+    const msgTime = new Date(createdAt);
+    const diffSeconds = Math.floor((now - msgTime) / 1000);
+
+    if (diffSeconds < 60) return 'just now';
+    if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+    if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+    if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
+    return formatTime(createdAt);
+  };
+
+  // Check if message is "new" (less than 30 seconds old)
+  const isNewMessage = (createdAt) => {
+    const now = new Date();
+    const msgTime = new Date(createdAt);
+    const diffSeconds = Math.floor((now - msgTime) / 1000);
+    return diffSeconds < 30;
   };
 
   const handleSendMessage = async () => {
@@ -401,13 +432,20 @@ export default function VendorInboxMessagesTabV2() {
                       </p>
                     )}
                     <p className="text-sm whitespace-pre-wrap break-words">{content.body}</p>
-                    <p
-                      className={`text-xs mt-2 ${
-                        isFromAdmin ? 'text-gray-500' : 'text-blue-100'
-                      }`}
-                    >
-                      {formatTime(msg.created_at)}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <p
+                        className={`text-xs ${
+                          isFromAdmin ? 'text-gray-500' : 'text-blue-100'
+                        }`}
+                      >
+                        {getMessageAge(msg.created_at)}
+                      </p>
+                      {isNewMessage(msg.created_at) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full whitespace-nowrap">
+                          🆕 NEW
+                        </span>
+                      )}
+                    </div>
 
                     {/* Attachments */}
                     {content.attachments && content.attachments.length > 0 && (
