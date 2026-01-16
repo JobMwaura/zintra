@@ -280,9 +280,20 @@ export default function VendorProfilePage() {
     if (vendorId) fetchData();
   }, [vendorId, authLoading, authUser]);
 
-  const canEdit =
-    !!currentUser &&
-    (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
+  const canEdit = useMemo(() => {
+    const result = !!currentUser &&
+      (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
+    
+    console.log('🔐 canEdit check:', {
+      currentUser: currentUser?.id,
+      currentUserEmail: currentUser?.email,
+      vendorUserId: vendor?.user_id,
+      vendorEmail: vendor?.email,
+      canEdit: result
+    });
+    
+    return result;
+  }, [currentUser, vendor]);
 
   // Fetch RFQ Inbox data for vendor
   useEffect(() => {
