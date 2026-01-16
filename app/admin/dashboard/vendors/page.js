@@ -287,113 +287,58 @@ export default function ConsolidatedVendors() {
     try {
       setSendingMessage(true);
 
-      // Get current admin user
+      // Get current admin user and session
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         throw new Error('Not authenticated');
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('No valid session');
       }
 
       const adminId = user.id;
       const vendorUserId = selectedVendor.user_id || selectedVendor.id;
       const vendorId = selectedVendor.id;
 
-      console.log('Sending message:', {
+      console.log('Sending message via API:', {
         adminId,
         vendorUserId,
         vendorId,
         vendorName: selectedVendor.company_name
       });
 
-      // Step 1: Find or create conversation
-      let conversationId;
-      const { data: existingConv, error: convError } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('participant_1_id', adminId)
-        .eq('participant_2_id', vendorUserId)
-        .maybeSingle();
-
-      if (convError) {
-        console.error('Error checking conversation:', convError);
-      }
-
-      if (existingConv) {
-        console.log('Found existing conversation:', existingConv.id);
-        conversationId = existingConv.id;
-      } else {
-        console.log('Creating new conversation...');
-        const { data: newConv, error: createConvError } = await supabase
-          .from('conversations')
-          .insert([{
-            participant_1_id: adminId,
-            participant_2_id: vendorUserId,
-            subject: messageSubject || `Message to ${selectedVendor.company_name}`
-          }])
-          .select('id')
-          .single();
-
-        if (createConvError) {
-          console.error('Error creating conversation:', createConvError);
-          throw createConvError;
-        }
-        
-        console.log('Created new conversation:', newConv.id);
-        conversationId = newConv.id;
-      }
-
-      // Step 2: Insert into vendor_messages table (the actual inbox table for vendors)
-      console.log('Inserting message into vendor_messages for vendor inbox...', {
-        vendorId,
-        vendorUserId,
-        conversationId
+      // Call the API endpoint (which bypasses RLS)
+      const response = await fetch('/api/admin/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          vendorId,
+          vendorUserId,
+          messageBody,
+          messageSubject: messageSubject || `Message to ${selectedVendor.company_name}`,
+          attachments: messageImages.length > 0 ? messageImages : []
+        })
       });
 
-      const { data: vendorMessage, error: vendorMessageError } = await supabase
-        .from('vendor_messages')
-        .insert([{
-          vendor_id: vendorId,           // The vendor's UUID (vendors.id)
-          user_id: vendorUserId,         // The vendor user's UUID (auth user)
-          message_text: messageBody,     // The message content
-          sender_type: 'admin',          // Identify as admin message
-          is_read: false,                // Mark as unread
-          sender_name: 'Admin',          // Display name
-        }])
-        .select('id')
-        .single();
+      const result = await response.json();
 
-      if (vendorMessageError) {
-        console.error('Error inserting into vendor_messages:', vendorMessageError);
-        throw vendorMessageError;
+      if (!response.ok) {
+        console.error('❌ API Error:', result);
+        throw new Error(result.error || 'Failed to send message');
       }
 
-      console.log('✅ Message saved to vendor_messages:', vendorMessage.id);
-
-      // Step 3: Also save to messages table for admin view
-      console.log('Also saving to messages table for admin view...');
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert([{
-          sender_id: adminId,
-          recipient_id: vendorUserId,
-          conversation_id: conversationId,
-          body: messageBody,
-          message_type: 'admin_to_vendor',
-          attachments: messageImages.length > 0 ? messageImages : []
-        }]);
-
-      if (messageError) {
-        console.error('Warning: Could not save to messages table:', messageError);
-        // Don't fail - message is already in vendor_messages
-      } else {
-        console.log('✅ Message also saved to messages table');
-      }
-
-      console.log('✅ Message sent successfully to vendor');
+      console.log('✅ Message sent successfully via API:', result);
       setMessage('✓ Message sent successfully');
       setMessageSubject('');
       setMessageBody('');
       setMessageImages([]);
       setShowMessageModal(false);
+
     } catch (error) {
       console.error('❌ Send message error:', error);
       setMessage(`Error sending message: ${error.message}`);
