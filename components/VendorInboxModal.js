@@ -209,32 +209,62 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
 
     try {
       for (const file of files) {
-        // Upload to Supabase Storage
-        const fileName = `${Date.now()}-${file.name}`;
-        const { data, error } = await supabase.storage
-          .from('vendor-messages')
-          .upload(`${vendorId}/${fileName}`, file);
+        // Step 1: Get presigned URL from our API
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) {
+          throw new Error('Not authenticated');
+        }
 
-        if (error) throw error;
+        const presignedResponse = await fetch('/api/vendor-messages/upload-file', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            vendorId: vendorId,
+            conversationId: selectedConversation?.id,
+          }),
+        });
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('vendor-messages')
-          .getPublicUrl(`${vendorId}/${fileName}`);
+        if (!presignedResponse.ok) {
+          const errorData = await presignedResponse.json();
+          throw new Error(errorData.error || 'Failed to get upload URL');
+        }
 
+        const { uploadUrl, fileUrl, fileName: sanitizedName } = await presignedResponse.json();
+
+        // Step 2: Upload file directly to AWS S3 using presigned URL
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type,
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload file to AWS S3');
+        }
+
+        // Step 3: Add to attachments list with the AWS S3 URL
         setAttachments((prev) => [
           ...prev,
           {
             name: file.name,
-            url: urlData.publicUrl,
+            url: fileUrl,
             type: file.type,
             size: file.size,
+            s3Stored: true,
           },
         ]);
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Failed to upload file. Please try again.');
+      alert('Failed to upload file. Please try again: ' + error.message);
     }
   };
 
