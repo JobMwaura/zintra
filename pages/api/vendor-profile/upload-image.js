@@ -66,25 +66,22 @@ export default async function handler(req, res) {
     }
 
     // Generate presigned URL for vendor profile image
-    // Path structure: vendor-profiles/{vendor_id}/profile-images/{timestamp}-{randomId}-{original}
+    // Add timestamp + random to filename to ensure uniqueness
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 8);
-    const fileExt = fileName.split('.').pop();
-    const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-');
-    const finalFileName = `${timestamp}-${randomId}-${sanitizedName}`;
+    const fileWithTimestamp = `${timestamp}-${randomId}-${fileName}`;
 
     const uploadData = await generatePresignedUploadUrl(
-      `vendor-profiles/${vendorId}/profile-images/${finalFileName}`,
+      `vendor-profiles/${vendorId}/profile-images/${fileWithTimestamp}`,
       contentType,
       {
         vendor_id: vendorId,
         user_id: userId,
         upload_type: 'vendor-profile',
         original_name: fileName,
-        uploaded_by: userId,
       },
-      '', // Empty prefix - we already have full path in fileName
-      true // skipFileNameGen - don't add timestamp again
+      '', // Empty keyPrefix since we have the full path
+      true // skipFileNameGen to avoid double timestamping
     );
 
     // Return presigned URL and file info
