@@ -82,7 +82,8 @@ export default async function handler(req, res) {
         upload_type: 'vendor-profile',
         original_name: fileName,
         uploaded_by: userId,
-      }
+      },
+      '' // Empty prefix - we already have full path in fileName
     );
 
     // Return presigned URL and file info
