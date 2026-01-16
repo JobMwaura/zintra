@@ -168,16 +168,22 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
 
             ctx.drawImage(img, 0, 0, width, height);
 
+            // Preserve original format for PNG files (transparency support)
+            // Use JPEG for other formats (better compression)
+            const isPNG = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+            const outputType = isPNG ? 'image/png' : 'image/jpeg';
+            const quality = isPNG ? 0.95 : 0.85; // Higher quality for PNG to preserve detail
+
             canvas.toBlob(
               (blob) => {
                 if (!blob) {
                   reject(new Error('Failed to compress image'));
                   return;
                 }
-                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                resolve(new File([blob], file.name, { type: outputType }));
               },
-              'image/jpeg',
-              0.85
+              outputType,
+              quality
             );
           } catch (error) {
             clearTimeout(timeoutId);
@@ -347,8 +353,17 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
           // Provide more specific error messages based on the error type
           let errorMessage = `Failed to upload image ${i + 1}: ${err.message}`;
           
-          if (err.message.includes('Failed to read file')) {
-            errorMessage = `Failed to read image ${i + 1}. The file might be corrupted, moved, or inaccessible. Please try selecting the file again or use a different image.`;
+          if (err.message.includes('Not readable') || err.message.includes('NotReadableError')) {
+            errorMessage = `Cannot read "${file.name}". This file is locked or has permission issues. 
+
+Try this:
+1. Open the file in Preview/Paint
+2. Save As to Desktop with a simple name (e.g., "logo.png")
+3. Upload the new file
+
+Or try uploading a different image.`;
+          } else if (err.message.includes('Failed to read file')) {
+            errorMessage = `Failed to read "${file.name}". The file might be locked by another program or have permission issues. Try re-saving the file or use a different image.`;
           } else if (err.message.includes('Failed to load image')) {
             errorMessage = `Failed to load image ${i + 1}. The file might not be a valid image or could be corrupted. Please try a different file.`;
           } else if (err.message.includes('Failed to compress image')) {
