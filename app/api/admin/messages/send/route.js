@@ -140,7 +140,7 @@ export async function POST(request) {
         vendor_id: vendorId,
         user_id: actualVendorUserId,
         message_text: messageBody,
-        sender_type: 'admin',
+        sender_type: 'user',  // Use 'user' since admin is communicating like a user to vendor
         is_read: false,
         sender_name: 'Admin'
       })
