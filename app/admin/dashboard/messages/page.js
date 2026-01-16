@@ -17,6 +17,8 @@ export default function MessagesAdmin() {
   const [messageType, setMessageType] = useState('');
   const [vendors, setVendors] = useState([]);
   const [admins, setAdmins] = useState([]);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -196,6 +198,71 @@ export default function MessagesAdmin() {
     } catch (error) {
       console.error('Error archiving conversation:', error);
       showMessage(error.message || 'Failed to archive conversation', 'error');
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim()) {
+      showMessage('Please enter a message to send', 'error');
+      return;
+    }
+
+    if (!selectedConversation) {
+      showMessage('No conversation selected', 'error');
+      return;
+    }
+
+    try {
+      setSendingReply(true);
+
+      // Get current user (admin)
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      // Parse conversation ID to get vendor and admin IDs
+      const [vendorId, userId] = selectedConversation.id.split('__');
+
+      // Prepare message object with proper structure
+      const messagePayload = {
+        body: replyText.trim(),
+        attachments: []
+      };
+
+      // Insert reply into vendor_messages table
+      const { data, error } = await supabase
+        .from('vendor_messages')
+        .insert([
+          {
+            vendor_id: vendorId,
+            user_id: userId,
+            sender_type: 'user', // 'user' = admin, 'vendor' = vendor
+            message_text: JSON.stringify(messagePayload),
+            is_read: true,
+            created_at: new Date().toISOString()
+          }
+        ])
+        .select();
+
+      if (error) throw error;
+
+      showMessage('Reply sent successfully!', 'success');
+      setReplyText('');
+      
+      // Refresh messages to show the new reply
+      fetchData();
+      
+      // Re-fetch the selected conversation to show updated messages
+      setTimeout(() => {
+        const updatedConv = conversations.find(c => c.id === selectedConversation.id);
+        if (updatedConv) {
+          setSelectedConversation(updatedConv);
+        }
+      }, 500);
+
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      showMessage(error.message || 'Failed to send reply', 'error');
+    } finally {
+      setSendingReply(false);
     }
   };
 
@@ -626,32 +693,69 @@ export default function MessagesAdmin() {
                 <p>Last Message: {new Date(selectedConversation.last_message_at).toLocaleString()}</p>
                 <p>Status: {selectedConversation.is_active ? 'Active' : 'Inactive'}</p>
               </div>
+
+              {/* Reply Compose Section */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Send Reply</h3>
+                <div className="space-y-3">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Type your reply here... (This will be sent directly to the vendor)"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows="4"
+                    disabled={sendingReply}
+                  />
+                  <div className="text-xs text-gray-500">
+                    Character count: {replyText.length}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center gap-3 p-6 border-t border-gray-200">
+            {/* Modal Footer - Updated */}
+            <div className="flex flex-col gap-3 p-6 border-t border-gray-200">
               <button
-                onClick={handleCloseModal}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+                onClick={handleSendReply}
+                disabled={sendingReply || !replyText.trim()}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Close
+                {sendingReply ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    Send Reply to Vendor
+                  </>
+                )}
               </button>
-              <button
-                onClick={() => handleArchiveConversation(selectedConversation.id, selectedConversation.is_active)}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-300 rounded-lg hover:bg-yellow-100 transition font-medium"
-                title="Archive this conversation"
-              >
-                <Archive className="w-4 h-4" />
-                Archive
-              </button>
-              <button
-                onClick={() => handleDeleteConversation(selectedConversation.id)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 transition font-medium"
-                title="Delete this conversation permanently"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCloseModal}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => handleArchiveConversation(selectedConversation.id, selectedConversation.is_active)}
+                  className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-300 rounded-lg hover:bg-yellow-100 transition font-medium"
+                  title="Archive this conversation"
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </button>
+                <button
+                  onClick={() => handleDeleteConversation(selectedConversation.id)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 transition font-medium"
+                  title="Delete this conversation permanently"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
