@@ -26,19 +26,14 @@ export default function MessagesAdmin() {
     try {
       setLoading(true);
 
-      // Fetch conversations
-      const { data: conversationsData, error: conversationsError } = await supabase
-        .from('conversations')
-        .select('*')
-        .order('last_message_at', { ascending: false });
+      // Get current user (admin)
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-      if (conversationsError) throw conversationsError;
-
-      // Fetch all messages
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
+      // Fetch all vendor messages (unified messaging system)
+      const { data: vendorMessagesData, error: messagesError } = await supabase
+        .from('vendor_messages')
         .select('*')
-        .order('created_at', { ascending: true});
+        .order('created_at', { ascending: true });
 
       if (messagesError) throw messagesError;
 
@@ -56,8 +51,45 @@ export default function MessagesAdmin() {
 
       if (adminsError) throw adminsError;
 
-      setConversations(conversationsData || []);
-      setMessages(messagesData || []);
+      // Group vendor_messages by conversation (vendor_id + user_id pair)
+      // Convert to conversation format for compatibility with existing UI
+      const conversationMap = new Map();
+      
+      (vendorMessagesData || []).forEach(msg => {
+        // Create unique key for this conversation
+        const conversationKey = `${msg.vendor_id}__${msg.user_id}`;
+        
+        if (!conversationMap.has(conversationKey)) {
+          const vendor = vendorsData.find(v => v.id === msg.vendor_id);
+          const admin = adminsData.find(a => a.user_id === msg.user_id);
+          
+          conversationMap.set(conversationKey, {
+            id: conversationKey,
+            participant_1_id: msg.user_id, // Admin
+            participant_2_id: msg.vendor_id, // Vendor
+            subject: `Message with ${vendor?.company_name || 'Vendor'}`,
+            last_message_at: msg.created_at,
+            is_active: true,
+            // Store extra info for reference
+            vendor_id: msg.vendor_id,
+            user_id: msg.user_id,
+            _vendor: vendor,
+            _admin: admin
+          });
+        }
+        // Update last_message_at to newest
+        const conv = conversationMap.get(conversationKey);
+        if (new Date(msg.created_at) > new Date(conv.last_message_at)) {
+          conv.last_message_at = msg.created_at;
+        }
+      });
+
+      // Sort by last_message_at descending
+      const conversationsArray = Array.from(conversationMap.values())
+        .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+
+      setConversations(conversationsArray);
+      setMessages(vendorMessagesData || []);
       setVendors(vendorsData || []);
       setAdmins(adminsData || []);
 
@@ -175,7 +207,7 @@ export default function MessagesAdmin() {
 
   // Helper function to get vendor details
   const getVendorDetails = (vendorId) => {
-    const vendor = vendors.find(v => v.user_id === vendorId || v.id === vendorId);
+    const vendor = vendors.find(v => v.id === vendorId);
     return vendor || { company_name: 'Unknown Vendor', email: vendorId };
   };
 
@@ -187,7 +219,11 @@ export default function MessagesAdmin() {
 
   // Helper function to get messages for a conversation
   const getConversationMessages = (conversationId) => {
-    return messages.filter(msg => msg.conversation_id === conversationId);
+    // Conversation ID is format: {vendor_id}__{user_id}
+    const [vendorId, userId] = conversationId.split('__');
+    return messages.filter(msg => 
+      msg.vendor_id === vendorId && msg.user_id === userId
+    );
   };
 
   const filteredConversations = conversations.filter(conv => {
@@ -519,53 +555,71 @@ export default function MessagesAdmin() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Messages</label>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {getConversationMessages(selectedConversation.id).map((msg) => (
-                    <div key={msg.id} className={`p-4 rounded-lg ${
-                      msg.message_type === 'admin_to_vendor'
-                        ? 'bg-blue-50 border-l-4 border-blue-500'
-                        : 'bg-green-50 border-l-4 border-green-500'
-                    }`}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-600 uppercase">
-                            {msg.message_type === 'admin_to_vendor' ? 'Admin → Vendor' : 'Vendor → Admin'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(msg.created_at).toLocaleString()}
-                          </p>
+                  {getConversationMessages(selectedConversation.id).map((msg) => {
+                    // Parse message_text which is stored as JSON
+                    let messageContent = { body: msg.message_text, attachments: [] };
+                    try {
+                      if (typeof msg.message_text === 'string') {
+                        messageContent = JSON.parse(msg.message_text);
+                      } else {
+                        messageContent = msg.message_text;
+                      }
+                    } catch (e) {
+                      // If parsing fails, treat as plain text
+                      messageContent = { body: msg.message_text, attachments: [] };
+                    }
+
+                    const isAdmin = msg.sender_type === 'user';
+                    const isSenderAdmin = isAdmin ? 'Admin → Vendor' : 'Vendor → Admin';
+                    
+                    return (
+                      <div key={msg.id} className={`p-4 rounded-lg ${
+                        isAdmin
+                          ? 'bg-blue-50 border-l-4 border-blue-500'
+                          : 'bg-green-50 border-l-4 border-green-500'
+                      }`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-600 uppercase">
+                              {isSenderAdmin}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(msg.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          {msg.is_read && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Read</span>
+                          )}
                         </div>
-                        {msg.is_read && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Read</span>
+                        <p className="text-gray-700 whitespace-pre-wrap mb-3">{messageContent.body}</p>
+                        
+                        {/* Display Attachments */}
+                        {messageContent.attachments && messageContent.attachments.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-300">
+                            <p className="text-xs font-semibold text-gray-600 mb-2">Attachments ({messageContent.attachments.length})</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {messageContent.attachments.map((attachment, idx) => (
+                                <a
+                                  key={idx}
+                                  href={attachment.url || attachment}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 p-2 bg-white rounded border border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition text-sm text-blue-600"
+                                >
+                                  <span>📎</span>
+                                  <span className="truncate">
+                                    {typeof attachment === 'string' 
+                                      ? attachment.split('/').pop() 
+                                      : attachment.name || `Image ${idx + 1}`}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <p className="text-gray-700 whitespace-pre-wrap mb-3">{msg.body}</p>
-                      
-                      {/* Display Attachments */}
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-300">
-                          <p className="text-xs font-semibold text-gray-600 mb-2">Attachments ({msg.attachments.length})</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {msg.attachments.map((attachment, idx) => (
-                              <a
-                                key={idx}
-                                href={attachment.url || attachment}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 p-2 bg-white rounded border border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition text-sm text-blue-600"
-                              >
-                                <span>📎</span>
-                                <span className="truncate">
-                                  {typeof attachment === 'string' 
-                                    ? attachment.split('/').pop() 
-                                    : attachment.name || `Image ${idx + 1}`}
-                                </span>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                   {getConversationMessages(selectedConversation.id).length === 0 && (
                     <p className="text-center text-gray-500 py-8">No messages in this conversation yet</p>
                   )}

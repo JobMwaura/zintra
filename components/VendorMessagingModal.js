@@ -21,7 +21,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
     getUser();
   }, []);
 
-  // Fetch messages
+  // Fetch messages with auto-refresh
   useEffect(() => {
     if (!vendorId || !userId || !currentUser) return;
 
@@ -59,8 +59,8 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
 
     fetchMessages();
 
-    // Set up polling to refresh messages every 3 seconds
-    const interval = setInterval(fetchMessages, 3000);
+    // Set up polling to refresh messages every 2 seconds for real-time updates
+    const interval = setInterval(fetchMessages, 2000);
     return () => clearInterval(interval);
   }, [vendorId, userId, currentUser]);
 
@@ -113,10 +113,10 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl flex flex-col" style={{ height: '600px' }}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Message with {vendorName}</h2>
-            <p className="text-sm text-gray-500">Ask questions or discuss your needs</p>
+            <p className="text-sm text-gray-600">Direct conversation - reply directly here</p>
           </div>
           <button
             onClick={onClose}
@@ -140,29 +140,52 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
               </div>
             </div>
           ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-xs px-4 py-2 rounded-lg ${
-                    msg.sender_type === 'user'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-gray-200 text-gray-900'
-                  }`}
-                >
-                  <p className="text-sm">{msg.message_text}</p>
-                  <p
-                    className={`text-xs mt-1 ${
-                      msg.sender_type === 'user' ? 'text-amber-100' : 'text-gray-500'
-                    }`}
-                  >
-                    {new Date(msg.created_at).toLocaleTimeString()}
-                  </p>
-                </div>
-              </div>
-            ))
+            <>
+              {messages.map((msg, idx) => {
+                // Parse message text if it's JSON
+                let messageContent = msg.message_text;
+                try {
+                  if (typeof msg.message_text === 'string') {
+                    const parsed = JSON.parse(msg.message_text);
+                    messageContent = parsed.body || msg.message_text;
+                  }
+                } catch (e) {
+                  // Keep as is if not JSON
+                }
+
+                return (
+                  <div key={msg.id} className="flex flex-col">
+                    <div
+                      className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-xs px-4 py-3 rounded-lg ${
+                          msg.sender_type === 'user'
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-gray-200 text-gray-900'
+                        }`}
+                      >
+                        <p className="text-sm">{messageContent}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            msg.sender_type === 'user' ? 'text-amber-100' : 'text-gray-500'
+                          }`}
+                        >
+                          {new Date(msg.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                    {msg.sender_type === 'vendor' && idx === messages.length - 1 && (
+                      <div className="flex justify-start mt-2">
+                        <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                          ✓ Vendor replied
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -174,9 +197,10 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your message..."
+              placeholder="Type your reply..."
               className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
               disabled={sending}
+              autoFocus
             />
             <button
               type="submit"
@@ -188,7 +212,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              Send
+              Reply
             </button>
           </form>
         </div>
