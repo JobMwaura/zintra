@@ -315,9 +315,21 @@ export default function VendorInboxMessagesTab() {
 
                   try {
                     setSending(true);
+                    
+                    // Get current session for auth token
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) {
+                      alert('Please login to send message');
+                      setSending(false);
+                      return;
+                    }
+
                     const response = await fetch('/api/vendor/messages/send', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                      },
                       body: JSON.stringify({
                         vendorId: selectedMessage.vendor_id,
                         messageText: newMessage,

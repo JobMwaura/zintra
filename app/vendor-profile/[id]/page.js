@@ -101,6 +101,50 @@ export default function VendorProfilePage() {
   const [reviews, setReviews] = useState([]);
   const [subscription, setSubscription] = useState(null);
   const [daysRemaining, setDaysRemaining] = useState(null);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnreadMessages = async () => {
+      if (!authUser?.id || !canEdit) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('vendor_messages')
+          .select('id')
+          .eq('user_id', authUser.id)
+          .eq('is_read', false);
+
+        if (error) {
+          console.error('Error fetching unread messages:', error);
+          return;
+        }
+
+        setUnreadMessageCount(data?.length || 0);
+      } catch (err) {
+        console.error('Error:', err);
+      }
+    };
+
+    fetchUnreadMessages();
+
+    // Subscribe to real-time updates
+    const subscription = supabase
+      .channel(`vendor_messages_${authUser?.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'vendor_messages',
+        filter: `user_id=eq.${authUser?.id}`
+      }, (payload) => {
+        fetchUnreadMessages(); // Refresh on any change
+      })
+      .subscribe();
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [authUser?.id, canEdit, supabase]);
 
   // Fetch vendor and related data
   useEffect(() => {
@@ -797,9 +841,14 @@ export default function VendorProfilePage() {
                 <>
                   <Link
                     href="/vendor-messages"
-                    className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition"
+                    className="relative inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition"
                   >
                     <MessageSquare className="w-5 h-5" /> Inbox
+                    {unreadMessageCount > 0 && (
+                      <span className="absolute -top-2 -right-2 inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full shadow-lg border-2 border-white">
+                        {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                      </span>
+                    )}
                   </Link>
                   <Link
                     href="/vendor-quotes"
