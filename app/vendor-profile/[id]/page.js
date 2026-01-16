@@ -47,7 +47,7 @@ import PortfolioProjectModal from '@/components/vendor-profile/PortfolioProjectM
 import EditPortfolioProjectModal from '@/components/vendor-profile/EditPortfolioProjectModal';
 import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
 import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
-import VendorInboxMessagesTab from '@/components/VendorInboxMessagesTab';
+import VendorInboxMessagesTabV2 from '@/components/VendorInboxMessagesTabV2';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -1266,7 +1266,7 @@ export default function VendorProfilePage() {
             {activeTab === 'inbox' && (
               <>
                 <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                  <VendorInboxMessagesTab />
+                  <VendorInboxMessagesTabV2 />
                 </section>
               </>
             )}
