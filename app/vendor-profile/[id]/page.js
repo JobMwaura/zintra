@@ -627,44 +627,28 @@ export default function VendorProfilePage() {
         throw new Error('Not authenticated');
       }
 
-      // Step 1: Get presigned URL from our API
-      const presignedResponse = await fetch('/api/vendor-profile/upload-image', {
+      // Upload through server (bypasses CORS)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('vendorId', vendor.id);
+
+      const uploadResponse = await fetch('/api/vendor-profile/upload-direct', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          vendorId: vendor.id,
-        }),
-      });
-
-      if (!presignedResponse.ok) {
-        const errorData = await presignedResponse.json();
-        throw new Error(errorData.error || 'Failed to get upload URL');
-      }
-
-      const { uploadUrl, fileUrl, key } = await presignedResponse.json();
-      console.log('✅ Got presigned URL for vendor profile image');
-
-      // Step 2: Upload file directly to S3 using presigned URL
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type,
-        },
-        body: file,
+        body: formData,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
       }
 
-      console.log('✅ Uploaded vendor profile image to S3');
+      const { fileUrl } = await uploadResponse.json();
+      console.log('✅ Uploaded vendor profile image via server');
 
-      // Step 3: Save S3 URL to database
+      // Save S3 URL to database
       const { error: updateError } = await supabase
         .from('vendors')
         .update({ 
