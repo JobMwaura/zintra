@@ -20,9 +20,16 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         return;
       }
 
+      // Add timeout to prevent indefinite hangs
+      const timeoutId = setTimeout(() => {
+        reject(new Error('File reading timed out. The file might be too large or inaccessible.'));
+      }, 30000); // 30 second timeout
+
       const reader = new FileReader();
       
       reader.onload = (e) => {
+        clearTimeout(timeoutId);
+        
         if (!e.target || !e.target.result) {
           reject(new Error('Failed to read file'));
           return;
@@ -80,14 +87,44 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
           }
         };
         
-        img.onerror = () => reject(new Error('Failed to load image'));
+        img.onerror = () => {
+          clearTimeout(timeoutId);
+          reject(new Error('Failed to load image'));
+        };
       };
       
-      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onerror = (error) => {
+        clearTimeout(timeoutId);
+        
+        let errorMsg = 'Failed to read file';
+        
+        // Check for specific FileReader error codes
+        if (reader.error) {
+          switch (reader.error.name) {
+            case 'NotFoundError':
+              errorMsg = 'File not found. The file may have been moved or deleted.';
+              break;
+            case 'SecurityError':
+              errorMsg = 'Security error reading file. Please try a different file.';
+              break;
+            case 'NotReadableError':
+              errorMsg = 'File is not readable. The file might be corrupted or locked by another program.';
+              break;
+            case 'AbortError':
+              errorMsg = 'File read was aborted. Please try again.';
+              break;
+            default:
+              errorMsg = `Failed to read file: ${reader.error.message || 'Unknown error'}`;
+          }
+        }
+        
+        reject(new Error(errorMsg));
+      };
       
       try {
         reader.readAsDataURL(file);
       } catch (error) {
+        clearTimeout(timeoutId);
         reject(new Error('Failed to read file: ' + error.message));
       }
     });
@@ -173,12 +210,22 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
     setLoading(true);
     setError(null);
 
+    // Small delay to ensure file objects are stable after selection
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     try {
       const uploadedUrls = [];
 
       // Sequential uploads to prevent overload
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        
+        // Double-check file is still valid before processing
+        if (!file || file.size === 0) {
+          setError(`Image ${i + 1} is invalid or empty. Please select a valid image file.`);
+          break;
+        }
+        
         const fileKey = `${Date.now()}-${i}`;
 
         try {
@@ -216,7 +263,21 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
           });
         } catch (err) {
           console.error(`Error uploading file ${i + 1}:`, err);
-          setError(`Failed to upload image ${i + 1}: ${err.message}`);
+          
+          // Provide more specific error messages based on the error type
+          let errorMessage = `Failed to upload image ${i + 1}: ${err.message}`;
+          
+          if (err.message.includes('Failed to read file')) {
+            errorMessage = `Failed to read image ${i + 1}. The file might be corrupted, moved, or inaccessible. Please try selecting the file again or use a different image.`;
+          } else if (err.message.includes('Failed to load image')) {
+            errorMessage = `Failed to load image ${i + 1}. The file might not be a valid image or could be corrupted. Please try a different file.`;
+          } else if (err.message.includes('Failed to compress image')) {
+            errorMessage = `Failed to compress image ${i + 1}. The image might be in an unsupported format. Please try a JPG or PNG file.`;
+          } else if (err.message.includes('Network')) {
+            errorMessage = `Network error while uploading image ${i + 1}. Please check your internet connection and try again.`;
+          }
+          
+          setError(errorMessage);
           setUploadProgress((prev) => {
             const newProgress = { ...prev };
             delete newProgress[fileKey];
