@@ -14,49 +14,82 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
   // Compress image using canvas
   const compressImage = (file) => {
     return new Promise((resolve, reject) => {
+      // Validate file first
+      if (!file || !file.type || !file.type.startsWith('image/')) {
+        reject(new Error('Invalid image file'));
+        return;
+      }
+
       const reader = new FileReader();
-      reader.readAsDataURL(file);
+      
       reader.onload = (e) => {
+        if (!e.target || !e.target.result) {
+          reject(new Error('Failed to read file'));
+          return;
+        }
+
         const img = new Image();
         img.src = e.target.result;
+        
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+          try {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
 
-          // Resize to max 1920x1440
-          const maxWidth = 1920;
-          const maxHeight = 1440;
+            // Resize to max 1920x1440
+            const maxWidth = 1920;
+            const maxHeight = 1440;
 
-          if (width > height) {
-            if (width > maxWidth) {
-              height *= maxWidth / width;
-              width = maxWidth;
+            if (width > height) {
+              if (width > maxWidth) {
+                height *= maxWidth / width;
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width *= maxHeight / height;
+                height = maxHeight;
+              }
             }
-          } else {
-            if (height > maxHeight) {
-              width *= maxHeight / height;
-              height = maxHeight;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              reject(new Error('Failed to create canvas context'));
+              return;
             }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error('Failed to compress image'));
+                  return;
+                }
+                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+              },
+              'image/jpeg',
+              0.85
+            );
+          } catch (error) {
+            reject(new Error('Failed to process image: ' + error.message));
           }
-
-          canvas.width = width;
-          canvas.height = height;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob(
-            (blob) => {
-              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-            },
-            'image/jpeg',
-            0.85
-          );
         };
+        
         img.onerror = () => reject(new Error('Failed to load image'));
       };
+      
       reader.onerror = () => reject(new Error('Failed to read file'));
+      
+      try {
+        reader.readAsDataURL(file);
+      } catch (error) {
+        reject(new Error('Failed to read file: ' + error.message));
+      }
     });
   };
 
@@ -111,9 +144,30 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || []);
 
+    // Reset file input to allow re-selecting the same file
+    if (e.target) {
+      e.target.value = '';
+    }
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
     if (images.length + files.length > 5) {
       setError('Maximum 5 images allowed');
       return;
+    }
+
+    // Validate all files are valid images
+    for (const file of files) {
+      if (!file || !file.type.startsWith('image/')) {
+        setError('Please select only image files');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image files must be less than 10MB');
+        return;
+      }
     }
 
     setLoading(true);
@@ -128,12 +182,15 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         const fileKey = `${Date.now()}-${i}`;
 
         try {
-          // Create preview
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setPreviewUrls((prev) => [...prev, e.target.result]);
-          };
-          reader.readAsDataURL(file);
+          // Create preview with proper error handling
+          const previewUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+          });
+          
+          setPreviewUrls((prev) => [...prev, previewUrl]);
 
           // Compress image
           setUploadProgress((prev) => ({
@@ -165,6 +222,8 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
             delete newProgress[fileKey];
             return newProgress;
           });
+          // Don't continue with remaining files if one fails
+          break;
         }
       }
 
