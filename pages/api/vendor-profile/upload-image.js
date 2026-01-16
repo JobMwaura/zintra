@@ -83,7 +83,8 @@ export default async function handler(req, res) {
         original_name: fileName,
         uploaded_by: userId,
       },
-      '' // Empty prefix - we already have full path in fileName
+      '', // Empty prefix - we already have full path in fileName
+      true // skipFileNameGen - don't add timestamp again
     );
 
     // Return presigned URL and file info
