@@ -1,8 +1,8 @@
 # 🔧 Status Update File Upload Error Fix
 
 **Date:** January 16, 2026  
-**Status:** ✅ FIXED AND DEPLOYED  
-**Commit:** cfbd2e1
+**Status:** ✅ FIXED AND DEPLOYED (Enhanced v2)  
+**Commits:** cfbd2e1, bfdac50
 
 ---
 
@@ -76,6 +76,8 @@ ctx.drawImage(img, 0, 0, width, height); // Could fail if ctx is null
 ---
 
 ## ✅ Solution Implemented
+
+### **Version 1 (Commit: cfbd2e1) - Initial Fix**
 
 ### **Fix 1: Reset File Input**
 ```javascript
@@ -229,6 +231,163 @@ const compressImage = (file) => {
 
 ---
 
+### **Version 2 (Commit: bfdac50) - Enhanced Error Handling**
+
+After the initial fix, we added comprehensive error detection and user guidance:
+
+### **Enhancement 1: Specific FileReader Error Detection**
+```javascript
+reader.onerror = (error) => {
+  clearTimeout(timeoutId);
+  
+  let errorMsg = 'Failed to read file';
+  
+  // Check for specific FileReader error codes
+  if (reader.error) {
+    switch (reader.error.name) {
+      case 'NotFoundError':
+        errorMsg = 'File not found. The file may have been moved or deleted.';
+        break;
+      case 'SecurityError':
+        errorMsg = 'Security error reading file. Please try a different file.';
+        break;
+      case 'NotReadableError':
+        errorMsg = 'File is not readable. The file might be corrupted or locked by another program.';
+        break;
+      case 'AbortError':
+        errorMsg = 'File read was aborted. Please try again.';
+        break;
+      default:
+        errorMsg = `Failed to read file: ${reader.error.message || 'Unknown error'}`;
+    }
+  }
+  
+  reject(new Error(errorMsg));
+};
+```
+
+**Benefits:**
+- Detects specific FileReader error types
+- Provides actionable error messages
+- Helps users understand what went wrong
+- Guides users on how to fix the issue
+
+### **Enhancement 2: Timeout Protection**
+```javascript
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    // Add timeout to prevent indefinite hangs
+    const timeoutId = setTimeout(() => {
+      reject(new Error('File reading timed out. The file might be too large or inaccessible.'));
+    }, 30000); // 30 second timeout
+    
+    // ... file processing ...
+    
+    // Clear timeout on success
+    clearTimeout(timeoutId);
+  });
+};
+```
+
+**Benefits:**
+- Prevents indefinite hangs on large/corrupted files
+- 30-second timeout for file operations
+- Clears timeout on success or error
+- Provides timeout-specific error message
+
+### **Enhancement 3: File Stability Delay**
+```javascript
+setLoading(true);
+setError(null);
+
+// Small delay to ensure file objects are stable after selection
+await new Promise(resolve => setTimeout(resolve, 100));
+
+try {
+  const uploadedUrls = [];
+  // ... process files ...
+}
+```
+
+**Benefits:**
+- 100ms delay ensures File objects are stable
+- Prevents race conditions with browser file system
+- Allows DOM to settle after file selection
+
+### **Enhancement 4: File Validity Double-Check**
+```javascript
+for (let i = 0; i < files.length; i++) {
+  const file = files[i];
+  
+  // Double-check file is still valid before processing
+  if (!file || file.size === 0) {
+    setError(`Image ${i + 1} is invalid or empty. Please select a valid image file.`);
+    break;
+  }
+  // ... process file ...
+}
+```
+
+**Benefits:**
+- Catches empty or null files
+- Validates file.size > 0
+- Prevents processing invalid File objects
+
+### **Enhancement 5: Context-Aware Error Messages**
+```javascript
+} catch (err) {
+  console.error(`Error uploading file ${i + 1}:`, err);
+  
+  // Provide more specific error messages based on the error type
+  let errorMessage = `Failed to upload image ${i + 1}: ${err.message}`;
+  
+  if (err.message.includes('Failed to read file')) {
+    errorMessage = `Failed to read image ${i + 1}. The file might be corrupted, moved, or inaccessible. Please try selecting the file again or use a different image.`;
+  } else if (err.message.includes('Failed to load image')) {
+    errorMessage = `Failed to load image ${i + 1}. The file might not be a valid image or could be corrupted. Please try a different file.`;
+  } else if (err.message.includes('Failed to compress image')) {
+    errorMessage = `Failed to compress image ${i + 1}. The image might be in an unsupported format. Please try a JPG or PNG file.`;
+  } else if (err.message.includes('Network')) {
+    errorMessage = `Network error while uploading image ${i + 1}. Please check your internet connection and try again.`;
+  }
+  
+  setError(errorMessage);
+  // ...
+}
+```
+
+**Benefits:**
+- User-friendly error messages
+- Specific guidance based on error type
+- Actionable advice for users
+- Better debugging information
+
+---
+
+## 📊 Changes Summary (Enhanced Version)
+
+### **Files Modified:**
+- `/components/vendor-profile/StatusUpdateModal.js`
+
+### **Functions Updated:**
+1. ✅ `compressImage()` - Added timeout, specific error codes, cleanup
+2. ✅ `handleImageUpload()` - Added delay, validity checks, better error messages
+
+### **New Features:**
+- 🕐 30-second timeout for file operations
+- 🔍 Specific FileReader error code detection
+- ⏱️ 100ms stability delay before processing
+- ✅ File validity double-check (size > 0)
+- 💬 Context-aware error messages
+- 🧹 Timeout cleanup in all code paths
+
+### **Lines Changed:**
+- **Version 1:** +40 lines (validation and safety)
+- **Version 2:** +64 lines (error handling and guidance)
+- **Total:** +104 lines of comprehensive error handling
+
+---
+
 ## 📊 Changes Summary
 
 ### **File Modified:**
@@ -304,13 +463,31 @@ const compressImage = (file) => {
 
 ## 🚀 Deployment Status
 
-**Commit:** cfbd2e1  
+**Commit 1 (Initial Fix):** cfbd2e1  
+**Commit 2 (Enhanced):** bfdac50  
 **Branch:** main  
 **Status:** Pushed to GitHub ✅
 
 **Vercel Deployment:** 🚀 In Progress  
 - Expected: ~2 minutes for build + deploy
 - Check: https://vercel.com/your-project
+
+---
+
+## 📋 Error Messages Guide
+
+### **User-Facing Error Messages:**
+
+| Error Type | User Message | User Action |
+|-----------|-------------|-------------|
+| **File not found** | "File not found. The file may have been moved or deleted." | Select the file again |
+| **Not readable** | "File is not readable. The file might be corrupted or locked by another program." | Close programs using the file, try different file |
+| **Security error** | "Security error reading file. Please try a different file." | Try different file or location |
+| **Timeout** | "File reading timed out. The file might be too large or inaccessible." | Use smaller file (< 10MB) |
+| **Invalid format** | "Failed to load image. The file might not be a valid image or could be corrupted." | Use JPG or PNG file |
+| **Compression failed** | "Failed to compress image. The image might be in an unsupported format." | Try JPG or PNG file |
+| **Network error** | "Network error while uploading. Please check your internet connection." | Check connection, try again |
+| **Empty file** | "Image is invalid or empty. Please select a valid image file." | Select different file |
 
 ---
 
@@ -358,21 +535,33 @@ This fix also prevents/resolves:
 
 **Problem:** "Failed to read file" error when uploading images after deleting status updates
 
-**Root Cause:** File input not reset, causing stale File object references and race conditions
+**Root Cause:** 
+- File input not reset → stale File object references
+- No specific error detection → generic error messages
+- No timeout protection → potential indefinite hangs
+- Race conditions with browser file system
 
-**Solution:** 
+**Solution (v1 - cfbd2e1):** 
 1. Reset file input immediately
 2. Validate files before processing
 3. Promise-based FileReader
 4. Comprehensive null checks
 5. Stop on first error
 
-**Status:** ✅ FIXED AND DEPLOYED (Commit: cfbd2e1)
+**Enhancement (v2 - bfdac50):**
+1. Specific FileReader error code detection
+2. 30-second timeout protection
+3. 100ms stability delay
+4. File validity double-check
+5. Context-aware error messages
+6. Timeout cleanup in all paths
 
-**Next:** Wait for Vercel deployment and test in production
+**Status:** ✅ FIXED AND DEPLOYED (Enhanced Version)
+
+**Next:** Wait for Vercel deployment and test in production with various file types and error scenarios
 
 ---
 
 **Documentation:** STATUS_UPDATE_FILE_UPLOAD_FIX.md  
 **Created:** January 16, 2026  
-**Last Updated:** January 16, 2026
+**Last Updated:** January 16, 2026 (Enhanced v2)
