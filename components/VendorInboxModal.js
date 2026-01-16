@@ -32,6 +32,7 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
   const [attachments, setAttachments] = useState([]);
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
+  const [adminUsers, setAdminUsers] = useState({}); // Map of user_id to user info
 
   // Load conversations
   const loadConversations = async () => {
@@ -47,8 +48,12 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
 
       // Group messages by user_id (conversation thread)
       const grouped = {};
+      const userIds = new Set();
+      
       messages.forEach((msg) => {
         const userId = msg.user_id;
+        userIds.add(userId);
+        
         if (!grouped[userId]) {
           grouped[userId] = {
             id: userId,
@@ -66,6 +71,20 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
           grouped[userId].unreadCount += 1;
         }
       });
+
+      // Fetch admin user info
+      if (userIds.size > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, full_name, email')
+          .in('id', Array.from(userIds));
+        
+        const userMap = {};
+        users?.forEach(user => {
+          userMap[user.id] = user;
+        });
+        setAdminUsers(userMap);
+      }
 
       // Set last message info
       Object.keys(grouped).forEach((userId) => {
@@ -387,7 +406,9 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-slate-900 text-sm">Admin</p>
+                          <p className="font-semibold text-slate-900 text-sm">
+                            {adminUsers[conv.id]?.full_name || 'Admin'}
+                          </p>
                           <p className="text-xs text-slate-600 truncate">
                             {(() => {
                               const lastMsg = parseMessageContent(conv.lastMessage);
@@ -426,7 +447,9 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div>
-                    <h3 className="font-semibold text-slate-900">Admin Message</h3>
+                    <h3 className="font-semibold text-slate-900">
+                      {adminUsers[selectedConversation.id]?.full_name || 'Admin'}
+                    </h3>
                     <p className="text-xs text-slate-600">
                       {selectedConversation.messages.length} {selectedConversation.messages.length === 1 ? 'message' : 'messages'}
                     </p>
