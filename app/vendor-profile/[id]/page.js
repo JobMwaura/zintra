@@ -106,16 +106,21 @@ export default function VendorProfilePage() {
   const [daysRemaining, setDaysRemaining] = useState(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
-  // Fetch unread message count
+  // Fetch unread message count for this vendor
   useEffect(() => {
     const fetchUnreadMessages = async () => {
-      if (!authUser?.id) return;
+      if (!vendorId) return;
 
       try {
+        // Query for unread admin messages sent TO this vendor
+        // vendor_id = recipient (the vendor viewing the profile)
+        // sender_type = 'user' means message from admin
+        // is_read = false means not yet read by vendor
         const { data, error } = await supabase
           .from('vendor_messages')
           .select('id')
-          .eq('user_id', authUser.id)
+          .eq('vendor_id', vendorId)
+          .eq('sender_type', 'user')
           .eq('is_read', false);
 
         if (error) {
@@ -131,14 +136,14 @@ export default function VendorProfilePage() {
 
     fetchUnreadMessages();
 
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates for this vendor's messages
     const subscription = supabase
-      .channel(`vendor_messages_${authUser?.id}`)
+      .channel(`vendor_messages_${vendorId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'vendor_messages',
-        filter: `user_id=eq.${authUser?.id}`
+        filter: `vendor_id=eq.${vendorId}`
       }, (payload) => {
         fetchUnreadMessages(); // Refresh on any change
       })
@@ -147,7 +152,7 @@ export default function VendorProfilePage() {
     return () => {
       subscription?.unsubscribe();
     };
-  }, [authUser?.id, supabase]);
+  }, [vendorId, supabase]);
 
   // Fetch vendor and related data
   useEffect(() => {
