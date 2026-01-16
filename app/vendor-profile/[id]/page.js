@@ -48,6 +48,7 @@ import EditPortfolioProjectModal from '@/components/vendor-profile/EditPortfolio
 import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
 import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
 import VendorInboxMessagesTabV2 from '@/components/VendorInboxMessagesTabV2';
+import VendorInboxModal from '@/components/VendorInboxModal';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -72,6 +73,7 @@ export default function VendorProfilePage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showInboxModal, setShowInboxModal] = useState(false);
   const [showHoursEditor, setShowHoursEditor] = useState(false);
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [showCertManager, setShowCertManager] = useState(false);
@@ -840,8 +842,8 @@ export default function VendorProfilePage() {
               {/* Show Inbox & Quotes buttons when vendor is logged into their own profile */}
               {canEdit ? (
                 <>
-                  <Link
-                    href="/vendor-messages"
+                  <button
+                    onClick={() => setShowInboxModal(true)}
                     className="relative inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition"
                   >
                     <MessageSquare className="w-5 h-5" /> Inbox
@@ -850,7 +852,7 @@ export default function VendorProfilePage() {
                         {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
                       </span>
                     )}
-                  </Link>
+                  </button>
                   <Link
                     href="/vendor-quotes"
                     className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100 transition"
@@ -949,7 +951,7 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
-          {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['inbox', 'categories', 'rfqs'] : [])].map((tab) => (
+          {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1258,15 +1260,6 @@ export default function VendorProfilePage() {
                       )}
                     </div>
                   )}
-                </section>
-              </>
-            )}
-
-            {/* Inbox Tab - Messages from Admin */}
-            {activeTab === 'inbox' && (
-              <>
-                <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                  <VendorInboxMessagesTabV2 />
                 </section>
               </>
             )}
@@ -2030,6 +2023,16 @@ export default function VendorProfilePage() {
           vendorName={vendor.company_name}
           userId={currentUser.id}
           onClose={() => setShowMessaging(false)}
+        />
+      )}
+
+      {/* Vendor Inbox Modal */}
+      {canEdit && (
+        <VendorInboxModal
+          isOpen={showInboxModal}
+          onClose={() => setShowInboxModal(false)}
+          vendorId={vendorId}
+          currentUser={currentUser}
         />
       )}
     </div>
