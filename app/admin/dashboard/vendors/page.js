@@ -302,8 +302,8 @@ export default function ConsolidatedVendors() {
         vendorName: selectedVendor.company_name
       });
 
-      // First, try to find existing conversation using participant columns
-      // (Database uses participant_1_id and participant_2_id)
+      // Step 1: Find or create conversation
+      let conversationId;
       const { data: existingConv, error: convError } = await supabase
         .from('conversations')
         .select('id')
@@ -313,17 +313,13 @@ export default function ConsolidatedVendors() {
 
       if (convError) {
         console.error('Error checking conversation:', convError);
-        // Don't throw - just create new conversation
       }
-
-      let conversationId;
 
       if (existingConv) {
         console.log('Found existing conversation:', existingConv.id);
         conversationId = existingConv.id;
       } else {
         console.log('Creating new conversation...');
-        // Use participant_1_id and participant_2_id to match database schema
         const { data: newConv, error: createConvError } = await supabase
           .from('conversations')
           .insert([{
@@ -343,14 +339,13 @@ export default function ConsolidatedVendors() {
         conversationId = newConv.id;
       }
 
-      // Insert message with attachments
-      console.log('Inserting message...', {
+      // Step 2: Insert message into messages table
+      console.log('Inserting message into messages table...', {
         conversationId,
-        hasAttachments: messageImages.length > 0,
-        attachmentCount: messageImages.length
+        hasAttachments: messageImages.length > 0
       });
 
-      const { error: messageError } = await supabase
+      const { data: newMessage, error: messageError } = await supabase
         .from('messages')
         .insert([{
           sender_id: adminId,
@@ -359,11 +354,35 @@ export default function ConsolidatedVendors() {
           body: messageBody,
           message_type: 'admin_to_vendor',
           attachments: messageImages.length > 0 ? messageImages : []
-        }]);
+        }])
+        .select('id')
+        .single();
 
       if (messageError) {
         console.error('Error inserting message:', messageError);
         throw messageError;
+      }
+
+      console.log('Message inserted successfully:', newMessage.id);
+
+      // Step 3: Also insert into vendor_messages table so vendor sees it in their inbox
+      console.log('Inserting into vendor_messages for vendor inbox...');
+      const { error: vendorMessageError } = await supabase
+        .from('vendor_messages')
+        .insert([{
+          vendor_id: vendorUserId,
+          message: messageBody,
+          subject: messageSubject || `Message from Admin`,
+          is_read: false,
+          conversation_id: conversationId,
+          sender_id: adminId
+        }]);
+
+      if (vendorMessageError) {
+        console.warn('Warning: Could not sync to vendor_messages:', vendorMessageError);
+        // Don't throw - message was already sent to messages table
+      } else {
+        console.log('✅ Message also synced to vendor_messages');
       }
 
       console.log('✅ Message sent successfully');
