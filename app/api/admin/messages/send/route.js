@@ -134,12 +134,19 @@ export async function POST(request) {
     // Step 2: Insert into vendor_messages (for vendor inbox)
     // Use service role client to bypass RLS
     console.log('📨 Saving to vendor_messages...');
+    
+    // Store message and attachments as JSON for proper display
+    const messagePayload = {
+      body: messageBody,
+      attachments: attachments || []
+    };
+    
     const { data: vendorMsg, error: vendorMsgError } = await supabase
       .from('vendor_messages')
       .insert({
         vendor_id: vendorId,
         user_id: actualVendorUserId,
-        message_text: messageBody,
+        message_text: JSON.stringify(messagePayload),
         sender_type: 'user',  // Use 'user' since admin is communicating like a user to vendor
         is_read: false,
         sender_name: 'Admin'

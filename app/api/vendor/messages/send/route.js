@@ -117,6 +117,12 @@ export async function POST(request) {
       }
     }
 
+    // Prepare message payload with attachments
+    const messagePayload = {
+      body: messageText,
+      attachments: []
+    };
+
     // Insert message
     const { data, error } = await supabase
       .from('vendor_messages')
@@ -124,7 +130,7 @@ export async function POST(request) {
         vendor_id: vendorId,
         user_id: actualUserId,
         sender_type: senderType,
-        message_text: messageText,
+        message_text: JSON.stringify(messagePayload),
         is_read: false,
         sender_name: senderType === 'vendor' ? 'You' : senderName,
       })
