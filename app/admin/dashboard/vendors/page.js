@@ -295,10 +295,12 @@ export default function ConsolidatedVendors() {
 
       const adminId = user.id;
       const vendorUserId = selectedVendor.user_id || selectedVendor.id;
+      const vendorId = selectedVendor.id;
 
       console.log('Sending message:', {
         adminId,
         vendorUserId,
+        vendorId,
         vendorName: selectedVendor.company_name
       });
 
@@ -339,13 +341,36 @@ export default function ConsolidatedVendors() {
         conversationId = newConv.id;
       }
 
-      // Step 2: Insert message into messages table
-      console.log('Inserting message into messages table...', {
-        conversationId,
-        hasAttachments: messageImages.length > 0
+      // Step 2: Insert into vendor_messages table (the actual inbox table for vendors)
+      console.log('Inserting message into vendor_messages for vendor inbox...', {
+        vendorId,
+        vendorUserId,
+        conversationId
       });
 
-      const { data: newMessage, error: messageError } = await supabase
+      const { data: vendorMessage, error: vendorMessageError } = await supabase
+        .from('vendor_messages')
+        .insert([{
+          vendor_id: vendorId,           // The vendor's UUID (vendors.id)
+          user_id: vendorUserId,         // The vendor user's UUID (auth user)
+          message_text: messageBody,     // The message content
+          sender_type: 'admin',          // Identify as admin message
+          is_read: false,                // Mark as unread
+          sender_name: 'Admin',          // Display name
+        }])
+        .select('id')
+        .single();
+
+      if (vendorMessageError) {
+        console.error('Error inserting into vendor_messages:', vendorMessageError);
+        throw vendorMessageError;
+      }
+
+      console.log('✅ Message saved to vendor_messages:', vendorMessage.id);
+
+      // Step 3: Also save to messages table for admin view
+      console.log('Also saving to messages table for admin view...');
+      const { error: messageError } = await supabase
         .from('messages')
         .insert([{
           sender_id: adminId,
@@ -354,38 +379,16 @@ export default function ConsolidatedVendors() {
           body: messageBody,
           message_type: 'admin_to_vendor',
           attachments: messageImages.length > 0 ? messageImages : []
-        }])
-        .select('id')
-        .single();
-
-      if (messageError) {
-        console.error('Error inserting message:', messageError);
-        throw messageError;
-      }
-
-      console.log('Message inserted successfully:', newMessage.id);
-
-      // Step 3: Also insert into vendor_messages table so vendor sees it in their inbox
-      console.log('Inserting into vendor_messages for vendor inbox...');
-      const { error: vendorMessageError } = await supabase
-        .from('vendor_messages')
-        .insert([{
-          vendor_id: vendorUserId,
-          message: messageBody,
-          subject: messageSubject || `Message from Admin`,
-          is_read: false,
-          conversation_id: conversationId,
-          sender_id: adminId
         }]);
 
-      if (vendorMessageError) {
-        console.warn('Warning: Could not sync to vendor_messages:', vendorMessageError);
-        // Don't throw - message was already sent to messages table
+      if (messageError) {
+        console.error('Warning: Could not save to messages table:', messageError);
+        // Don't fail - message is already in vendor_messages
       } else {
-        console.log('✅ Message also synced to vendor_messages');
+        console.log('✅ Message also saved to messages table');
       }
 
-      console.log('✅ Message sent successfully');
+      console.log('✅ Message sent successfully to vendor');
       setMessage('✓ Message sent successfully');
       setMessageSubject('');
       setMessageBody('');
