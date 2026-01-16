@@ -47,6 +47,7 @@ import PortfolioProjectModal from '@/components/vendor-profile/PortfolioProjectM
 import EditPortfolioProjectModal from '@/components/vendor-profile/EditPortfolioProjectModal';
 import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
 import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
+import VendorInboxMessagesTab from '@/components/VendorInboxMessagesTab';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -948,11 +949,11 @@ export default function VendorProfilePage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
-          {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'rfqs'] : [])].map((tab) => (
+          {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['inbox', 'categories', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap ${
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-2 ${
                 activeTab === tab
                   ? 'border-amber-600 text-amber-700'
                   : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -960,6 +961,17 @@ export default function VendorProfilePage() {
             >
               {tab === 'updates'
                 ? 'Updates'
+                : tab === 'inbox'
+                ? (
+                  <>
+                    📧 Inbox
+                    {unreadMessageCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                        {unreadMessageCount}
+                      </span>
+                    )}
+                  </>
+                )
                 : tab === 'rfqs'
                 ? 'RFQ Inbox'
                 : tab === 'categories'
@@ -1246,6 +1258,15 @@ export default function VendorProfilePage() {
                       )}
                     </div>
                   )}
+                </section>
+              </>
+            )}
+
+            {/* Inbox Tab - Messages from Admin */}
+            {activeTab === 'inbox' && (
+              <>
+                <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                  <VendorInboxMessagesTab />
                 </section>
               </>
             )}
