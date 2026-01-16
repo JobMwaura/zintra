@@ -106,7 +106,7 @@ export default function VendorProfilePage() {
   // Fetch unread message count
   useEffect(() => {
     const fetchUnreadMessages = async () => {
-      if (!authUser?.id || !canEdit) return;
+      if (!authUser?.id) return;
 
       try {
         const { data, error } = await supabase
@@ -144,7 +144,7 @@ export default function VendorProfilePage() {
     return () => {
       subscription?.unsubscribe();
     };
-  }, [authUser?.id, canEdit, supabase]);
+  }, [authUser?.id, supabase]);
 
   // Fetch vendor and related data
   useEffect(() => {
