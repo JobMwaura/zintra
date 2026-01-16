@@ -66,17 +66,42 @@ export async function POST(request) {
     console.log('📨 Admin sending message:', {
       adminId,
       vendorId,
-      vendorUserId,
+      vendorUserId: vendorUserId,
       messageLength: messageBody.length
     });
 
-    // Step 1: Find or create conversation
+    // Step 1: Verify vendor exists and get correct user_id if needed
+    console.log('📋 Verifying vendor...');
+    let actualVendorUserId = vendorUserId;
+    
+    // If vendorUserId looks like a vendor.id instead of auth.users.id, fetch the correct user_id
+    if (vendorUserId === vendorId) {
+      console.log('⚠️ vendorUserId matches vendorId, fetching correct user_id from vendors table...');
+      const { data: vendor, error: vendorError } = await supabase
+        .from('vendors')
+        .select('user_id')
+        .eq('id', vendorId)
+        .single();
+
+      if (vendorError || !vendor) {
+        console.error('❌ Error fetching vendor:', vendorError);
+        return new Response(
+          JSON.stringify({ error: 'Vendor not found: ' + (vendorError?.message || 'Unknown error') }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      actualVendorUserId = vendor.user_id;
+      console.log('✅ Found vendor user_id:', actualVendorUserId);
+    }
+
+    // Step 2: Find or create conversation
     let conversationId;
     const { data: existingConv, error: convError } = await supabase
       .from('conversations')
       .select('id')
       .eq('participant_1_id', adminId)
-      .eq('participant_2_id', vendorUserId)
+      .eq('participant_2_id', actualVendorUserId)
       .maybeSingle();
 
     if (existingConv) {
@@ -88,7 +113,7 @@ export async function POST(request) {
         .from('conversations')
         .insert({
           participant_1_id: adminId,
-          participant_2_id: vendorUserId,
+          participant_2_id: actualVendorUserId,
           subject: messageSubject || `Message to vendor ${vendorId}`,
           is_active: true
         })
@@ -113,7 +138,7 @@ export async function POST(request) {
       .from('vendor_messages')
       .insert({
         vendor_id: vendorId,
-        user_id: vendorUserId,
+        user_id: actualVendorUserId,
         message_text: messageBody,
         sender_type: 'admin',
         is_read: false,
@@ -139,7 +164,7 @@ export async function POST(request) {
       .from('messages')
       .insert({
         sender_id: adminId,
-        recipient_id: vendorUserId,
+        recipient_id: actualVendorUserId,
         conversation_id: conversationId,
         body: messageBody,
         message_type: 'admin_to_vendor',
