@@ -11,6 +11,33 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Helper function to create a fresh File object copy
+  // This works around browser quirks where File objects become unreadable
+  const cloneFile = async (file) => {
+    try {
+      console.log(`📋 Cloning file to work around browser quirks: ${file.name}`);
+      
+      // Read the file as ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Create a new Blob from the ArrayBuffer
+      const blob = new Blob([arrayBuffer], { type: file.type });
+      
+      // Create a new File object from the Blob
+      const clonedFile = new File([blob], file.name, {
+        type: file.type,
+        lastModified: file.lastModified,
+      });
+      
+      console.log(`✅ File cloned successfully: ${clonedFile.name}`);
+      return clonedFile;
+    } catch (error) {
+      console.error(`❌ Failed to clone file: ${error.message}`);
+      // Return original file if cloning fails
+      return file;
+    }
+  };
+
   // Helper function to read file with retry logic
   const readFileAsDataURL = (file, retries = 2) => {
     return new Promise((resolve, reject) => {
@@ -271,7 +298,7 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
 
       // Sequential uploads to prevent overload
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        let file = files[i];
         
         // Double-check file is still valid before processing
         if (!file || file.size === 0) {
@@ -282,6 +309,10 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         const fileKey = `${Date.now()}-${i}`;
 
         try {
+          // Clone file to work around browser File object quirks
+          // This creates a fresh File object that's more reliably readable
+          file = await cloneFile(file);
+          
           // Create preview with retry logic
           console.log(`🖼️ Creating preview for file ${i + 1}: ${file.name}`);
           const previewUrl = await readFileAsDataURL(file);
