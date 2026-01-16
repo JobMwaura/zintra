@@ -11,6 +11,81 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Helper function to read file with retry logic
+  const readFileAsDataURL = (file, retries = 2) => {
+    return new Promise((resolve, reject) => {
+      const attemptRead = (attemptsLeft) => {
+        console.log(`📖 Reading file: ${file.name} (${attemptsLeft} attempts left)`);
+        
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          if (!e.target || !e.target.result) {
+            if (attemptsLeft > 0) {
+              console.warn(`⚠️ Read succeeded but no result, retrying...`);
+              setTimeout(() => attemptRead(attemptsLeft - 1), 200);
+            } else {
+              reject(new Error('Failed to read file: No data returned'));
+            }
+            return;
+          }
+          console.log(`✅ Successfully read file: ${file.name}`);
+          resolve(e.target.result);
+        };
+        
+        reader.onerror = (error) => {
+          let errorMsg = 'Failed to read file';
+          
+          if (reader.error) {
+            console.error(`❌ FileReader error:`, {
+              name: reader.error.name,
+              message: reader.error.message,
+              code: reader.error.code
+            });
+            
+            switch (reader.error.name) {
+              case 'NotFoundError':
+                errorMsg = 'File not found. The file may have been moved or deleted.';
+                break;
+              case 'SecurityError':
+                errorMsg = 'Security error reading file. Please try a different file.';
+                break;
+              case 'NotReadableError':
+                errorMsg = 'File is not readable. The file might be corrupted or locked by another program.';
+                break;
+              case 'AbortError':
+                errorMsg = 'File read was aborted. Please try again.';
+                break;
+              default:
+                errorMsg = `Failed to read file: ${reader.error.message || 'Unknown error'}`;
+            }
+          }
+          
+          // Retry on failure
+          if (attemptsLeft > 0 && reader.error?.name !== 'SecurityError') {
+            console.warn(`⚠️ Read failed, retrying in 200ms... (${attemptsLeft} attempts left)`);
+            setTimeout(() => attemptRead(attemptsLeft - 1), 200);
+          } else {
+            reject(new Error(errorMsg));
+          }
+        };
+        
+        try {
+          reader.readAsDataURL(file);
+        } catch (error) {
+          if (attemptsLeft > 0) {
+            console.warn(`⚠️ Exception reading file, retrying...`);
+            setTimeout(() => attemptRead(attemptsLeft - 1), 200);
+          } else {
+            reject(new Error('Failed to read file: ' + error.message));
+          }
+        }
+      };
+      
+      attemptRead(retries);
+    });
+  };
+
   // Compress image using canvas
   const compressImage = (file) => {
     return new Promise((resolve, reject) => {
@@ -20,26 +95,21 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         return;
       }
 
+      console.log(`🔄 Compressing image: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+
       // Add timeout to prevent indefinite hangs
       const timeoutId = setTimeout(() => {
         reject(new Error('File reading timed out. The file might be too large or inaccessible.'));
       }, 30000); // 30 second timeout
 
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        clearTimeout(timeoutId);
-        
-        if (!e.target || !e.target.result) {
-          reject(new Error('Failed to read file'));
-          return;
-        }
-
-        const img = new Image();
-        img.src = e.target.result;
-        
-        img.onload = () => {
-          try {
+      // Use the retry helper to read the file
+      readFileAsDataURL(file)
+        .then((dataUrl) => {
+          const img = new Image();
+          img.src = dataUrl;
+          
+          img.onload = () => {
+            try {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
@@ -83,6 +153,7 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
               0.85
             );
           } catch (error) {
+            clearTimeout(timeoutId);
             reject(new Error('Failed to process image: ' + error.message));
           }
         };
@@ -91,42 +162,11 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
           clearTimeout(timeoutId);
           reject(new Error('Failed to load image'));
         };
-      };
-      
-      reader.onerror = (error) => {
+      })
+      .catch((error) => {
         clearTimeout(timeoutId);
-        
-        let errorMsg = 'Failed to read file';
-        
-        // Check for specific FileReader error codes
-        if (reader.error) {
-          switch (reader.error.name) {
-            case 'NotFoundError':
-              errorMsg = 'File not found. The file may have been moved or deleted.';
-              break;
-            case 'SecurityError':
-              errorMsg = 'Security error reading file. Please try a different file.';
-              break;
-            case 'NotReadableError':
-              errorMsg = 'File is not readable. The file might be corrupted or locked by another program.';
-              break;
-            case 'AbortError':
-              errorMsg = 'File read was aborted. Please try again.';
-              break;
-            default:
-              errorMsg = `Failed to read file: ${reader.error.message || 'Unknown error'}`;
-          }
-        }
-        
-        reject(new Error(errorMsg));
-      };
-      
-      try {
-        reader.readAsDataURL(file);
-      } catch (error) {
-        clearTimeout(timeoutId);
-        reject(new Error('Failed to read file: ' + error.message));
-      }
+        reject(error);
+      });
     });
   };
 
@@ -195,14 +235,27 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
       return;
     }
 
-    // Validate all files are valid images
-    for (const file of files) {
+    // Validate all files are valid images with detailed logging
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
+      console.log(`🔍 Validating file ${idx + 1}:`, {
+        name: file?.name,
+        type: file?.type,
+        size: file?.size,
+        lastModified: file?.lastModified,
+        exists: !!file
+      });
+      
       if (!file || !file.type.startsWith('image/')) {
         setError('Please select only image files');
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
         setError('Image files must be less than 10MB');
+        return;
+      }
+      if (file.size === 0) {
+        setError(`File "${file.name}" is empty. Please select a valid image file.`);
         return;
       }
     }
@@ -229,15 +282,11 @@ export default function StatusUpdateModal({ vendor, onClose, onSuccess }) {
         const fileKey = `${Date.now()}-${i}`;
 
         try {
-          // Create preview with proper error handling
-          const previewUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsDataURL(file);
-          });
-          
+          // Create preview with retry logic
+          console.log(`🖼️ Creating preview for file ${i + 1}: ${file.name}`);
+          const previewUrl = await readFileAsDataURL(file);
           setPreviewUrls((prev) => [...prev, previewUrl]);
+          console.log(`✅ Preview created for file ${i + 1}`);
 
           // Compress image
           setUploadProgress((prev) => ({
