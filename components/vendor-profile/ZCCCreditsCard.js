@@ -12,8 +12,6 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
   const supabase = createClient();
 
   useEffect(() => {
-    if (!canEdit) return; // Only show for vendor's own profile
-
     const fetchCredits = async () => {
       try {
         setLoading(true);
@@ -25,7 +23,10 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
           .eq('id', vendorId)
           .single();
 
-        if (!vendor) return;
+        if (!vendor) {
+          console.error('Vendor not found');
+          return;
+        }
 
         // Get credits from zcc_credits table
         const { data, error } = await supabase
@@ -36,6 +37,9 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
 
         if (error) {
           console.error('Error fetching credits:', error);
+          setCredits(0);
+          setFreeCredits(0);
+          setPurchasedCredits(0);
           return;
         }
 
@@ -44,13 +48,16 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
         setPurchasedCredits(data?.purchased_credits || 0);
       } catch (err) {
         console.error('Error fetching credits:', err);
+        setCredits(0);
+        setFreeCredits(0);
+        setPurchasedCredits(0);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCredits();
-  }, [vendorId, canEdit, supabase]);
+  }, [vendorId, supabase]);
 
   if (!canEdit) return null; // Only show to vendor
 
@@ -93,7 +100,7 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
         )}
       </div>
       <p className="text-xs text-slate-600 mt-3">
-        Use your credits to post jobs on Zintra Career Centre. You need 100 credits per job.
+        100 credits required to post a job on Zintra Career Centre.
       </p>
     </div>
   );
