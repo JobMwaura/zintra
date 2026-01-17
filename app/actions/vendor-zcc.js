@@ -3,181 +3,270 @@
 import { createClient } from '@/lib/supabase/server';
 
 /**
- * Detect if a user is an existing vendor
- * Used to show "Career Centre" tab in vendor dashboard
+ * Get user's role status (what they can do)
+ * Returns: candidate, vendor, buyer, employer enabled status + profiles
  */
-export async function detectVendor(userId) {
+export async function getUserRoleStatus(userId) {
   try {
     const supabase = await createClient();
-    
-    // Check if user is a vendor in vendors table
-    const { data: vendor, error } = await supabase
-      .from('vendors')
-      .select('id, name, logo_url')
+
+    // Get candidate profile
+    const { data: candidateProfile } = await supabase
+      .from('candidate_profiles')
+      .select('id, skills, availability')
       .eq('user_id', userId)
       .single();
-    
-    if (error || !vendor) {
-      return {
-        isVendor: false,
-        vendor: null,
-      };
-    }
-    
-    // Check if vendor has employer profile in ZCC
+
+    // Get employer profile
     const { data: employerProfile } = await supabase
       .from('employer_profiles')
-      .select('id, company_name, is_vendor_employer')
-      .eq('vendor_id', vendor.id)
+      .select('id, company_name, is_vendor_employer, vendor_id')
+      .eq('user_id', userId)
       .single();
-    
+
+    // Get vendor info (from vendors table)
+    const { data: vendorInfo } = await supabase
+      .from('vendors')
+      .select('id, name, email, phone, location, logo_url')
+      .eq('user_id', userId)
+      .single();
+
     return {
-      isVendor: true,
-      vendor: {
-        vendorId: vendor.id,
-        vendorName: vendor.name,
-        vendorLogo: vendor.logo_url,
+      success: true,
+      roles: {
+        candidate: !!candidateProfile,
+        employer: !!employerProfile,
+        vendor: !!vendorInfo,
       },
-      hasEmployerProfile: !!employerProfile,
-      employerProfile: employerProfile || null,
+      profiles: {
+        candidateProfile: candidateProfile || null,
+        employerProfile: employerProfile || null,
+        vendorInfo: vendorInfo || null,
+      },
     };
   } catch (error) {
-    console.error('Error detecting vendor:', error);
+    console.error('Error getting user role status:', error);
     return {
-      isVendor: false,
-      error: 'Failed to detect vendor status',
+      success: false,
+      error: 'Failed to get role status',
+      roles: {
+        candidate: false,
+        employer: false,
+        vendor: false,
+      },
+      profiles: {
+        candidateProfile: null,
+        employerProfile: null,
+        vendorInfo: null,
+      },
     };
   }
 }
 
 /**
- * Create employer profile for vendor entering ZCC
+ * Enable candidate role for user
+ * Creates candidate profile if it doesn't exist
  */
-export async function createVendorEmployerProfile(vendorId, userId) {
+export async function enableCandidateRole(userId) {
   try {
     const supabase = await createClient();
-    
-    // Get vendor details
+
+    // Check if candidate profile exists
+    const { data: existing } = await supabase
+      .from('candidate_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      return { success: true, message: 'Candidate role already enabled' };
+    }
+
+    // Create candidate profile
+    const { error } = await supabase
+      .from('candidate_profiles')
+      .insert({
+        user_id: userId,
+        skills: [],
+        availability: 'available',
+        experience_years: 0,
+      });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, message: 'Candidate role enabled' };
+  } catch (error) {
+    console.error('Error enabling candidate role:', error);
+    return { success: false, error: 'Failed to enable candidate role' };
+  }
+}
+
+/**
+ * Enable employer role for user
+ * If user is a vendor, prefill from vendor data
+ * Otherwise, requires manual entry
+ */
+export async function enableEmployerRole(userId, companyData) {
+  try {
+    const supabase = await createClient();
+
+    // Check if employer profile exists
+    const { data: existing } = await supabase
+      .from('employer_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      return { success: true, message: 'Employer role already enabled' };
+    }
+
+    // Get vendor info if exists (for prefilling)
     const { data: vendor } = await supabase
       .from('vendors')
-      .select('name, email, phone, location, logo_url')
-      .eq('id', vendorId)
+      .select('id, name, email, phone, location, logo_url')
+      .eq('user_id', userId)
       .single();
-    
-    if (!vendor) {
-      return { success: false, error: 'Vendor not found' };
-    }
-    
-    // Create employer profile linked to vendor
-    const { data: employerProfile, error } = await supabase
+
+    // Prepare employer profile data
+    const profileData = {
+      user_id: userId,
+      company_name: companyData?.companyName || vendor?.name || '',
+      company_email: companyData?.companyEmail || vendor?.email || '',
+      company_phone: companyData?.companyPhone || vendor?.phone || '',
+      location: companyData?.location || vendor?.location || '',
+      company_description: companyData?.description || '',
+      verification_level: vendor ? 'verified' : 'unverified',
+      is_vendor_employer: !!vendor,
+      vendor_id: vendor?.id || null,
+    };
+
+    // Create employer profile
+    const { error } = await supabase
       .from('employer_profiles')
-      .insert({
-        id: userId, // Use user ID as employer ID (same as profiles.id)
-        vendor_id: vendorId,
-        is_vendor_employer: true,
-        company_name: vendor.name,
-        company_email: vendor.email,
-        company_phone: vendor.phone,
-        county: vendor.location,
-        company_logo_url: vendor.logo_url,
-      })
-      .select()
-      .single();
-    
+      .insert(profileData);
+
     if (error) {
-      console.error('Error creating employer profile:', error);
-      return { success: false, error: 'Failed to create employer profile' };
+      return { success: false, error: error.message };
     }
-    
-    // Auto-create free subscription for vendor
-    await supabase
-      .from('subscriptions')
-      .insert({
-        employer_id: userId,
-        plan: 'free',
-        status: 'active',
-      });
-    
-    return { success: true, employerProfile };
+
+    // Create free subscription for new employer
+    const { data: profile } = await supabase
+      .from('employer_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (profile) {
+      await supabase
+        .from('subscriptions')
+        .insert({
+          employer_id: profile.id,
+          plan: 'free',
+          status: 'active',
+          started_at: new Date().toISOString(),
+        });
+
+      // Give initial credits (100 free credits for new employer)
+      await supabase
+        .from('credits_ledger')
+        .insert({
+          employer_id: profile.id,
+          amount: 100,
+          credit_type: 'plan_allocation',
+          description: 'Welcome bonus: 100 free credits',
+        });
+    }
+
+    return {
+      success: true,
+      message: 'Employer role enabled',
+      isVendorEmployer: !!vendor,
+      vendorInfo: vendor || null,
+    };
   } catch (error) {
-    console.error('Error in createVendorEmployerProfile:', error);
-    return { success: false, error: 'An unexpected error occurred' };
+    console.error('Error enabling employer role:', error);
+    return { success: false, error: 'Failed to enable employer role' };
   }
 }
 
 /**
- * Get vendor employer dashboard stats
+ * Get employer dashboard stats
+ * Single query to view with all metrics
  */
-export async function getVendorEmployerStats(employerId) {
+export async function getEmployerStats(employerId) {
   try {
     const supabase = await createClient();
-    
-    const { data: stats } = await supabase
+
+    const { data, error } = await supabase
       .from('employer_dashboard_stats')
       .select('*')
       .eq('employer_id', employerId)
       .single();
-    
-    return { success: true, stats };
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, stats: data };
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
-    return { success: false, error: 'Failed to load dashboard' };
+    console.error('Error fetching employer stats:', error);
+    return { success: false, error: 'Failed to fetch dashboard stats' };
   }
 }
 
 /**
- * Get vendor's posted jobs
+ * Get employer's active jobs
  */
-export async function getVendorJobs(employerId) {
+export async function getEmployerJobs(employerId, limit = 10) {
   try {
     const supabase = await createClient();
-    
-    const { data: jobs, error } = await supabase
+
+    const { data, error } = await supabase
       .from('listings')
       .select(
         `
         id,
         title,
-        type,
         status,
-        location,
-        pay_min,
-        pay_max,
-        views,
-        applicants_count,
         created_at,
-        featured,
-        featured_until
+        applications(count)
       `
       )
       .eq('employer_id', employerId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    
-    return { success: true, jobs };
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, jobs: data || [] };
   } catch (error) {
-    console.error('Error fetching vendor jobs:', error);
+    console.error('Error fetching employer jobs:', error);
     return { success: false, error: 'Failed to load jobs' };
   }
 }
 
 /**
- * Get vendor's recent applications
+ * Get recent applications for employer's jobs
  */
-export async function getVendorApplications(employerId, limit = 5) {
+export async function getEmployerApplications(employerId, limit = 5) {
   try {
     const supabase = await createClient();
-    
-    const { data: applications, error } = await supabase
+
+    const { data, error } = await supabase
       .from('applications')
       .select(
         `
         id,
         status,
         created_at,
-        listing:listings(id, title),
-        candidate:profiles(id, full_name, avatar_url)
+        candidate_id,
+        listing_id,
+        listings(title)
       `
       )
       .in(
@@ -186,15 +275,50 @@ export async function getVendorApplications(employerId, limit = 5) {
           .from('listings')
           .select('id')
           .eq('employer_id', employerId)
+          .then(res => res.data?.map(l => l.id) || [])
       )
       .order('created_at', { ascending: false })
       .limit(limit);
-    
-    if (error) throw error;
-    
-    return { success: true, applications };
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, applications: data || [] };
   } catch (error) {
     console.error('Error fetching applications:', error);
     return { success: false, error: 'Failed to load applications' };
+  }
+}
+
+/**
+ * Get credits balance for employer
+ */
+export async function getEmployerCredits(employerId) {
+  try {
+    const supabase = await createClient();
+
+    const { data: ledger, error } = await supabase
+      .from('credits_ledger')
+      .select('amount, credit_type')
+      .eq('employer_id', employerId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Calculate balance
+    const balance = ledger.reduce((sum, entry) => {
+      if (['purchase', 'bonus', 'plan_allocation'].includes(entry.credit_type)) {
+        return sum + entry.amount;
+      } else {
+        return sum - Math.abs(entry.amount);
+      }
+    }, 0);
+
+    return { success: true, balance };
+  } catch (error) {
+    console.error('Error fetching credits:', error);
+    return { success: false, error: 'Failed to fetch credits' };
   }
 }
