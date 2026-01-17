@@ -136,6 +136,7 @@ export default function PostJobPage() {
         .from('listings')
         .insert({
           employer_id: employer.id,
+          type: 'job', // Always 'job' for career centre listings
           title: formData.title,
           description: formData.description,
           category: formData.category,
