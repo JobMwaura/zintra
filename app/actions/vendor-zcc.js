@@ -10,18 +10,18 @@ export async function getUserRoleStatus(userId) {
   try {
     const supabase = await createClient();
 
-    // Get candidate profile
+    // Get candidate profile (id = userId, not user_id)
     const { data: candidateProfile } = await supabase
       .from('candidate_profiles')
       .select('id, skills, availability')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
-    // Get employer profile
+    // Get employer profile (id = userId, not user_id)
     const { data: employerProfile } = await supabase
       .from('employer_profiles')
       .select('id, company_name, is_vendor_employer, vendor_id')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     // Get vendor info (from vendors table)
@@ -71,22 +71,22 @@ export async function enableCandidateRole(userId) {
   try {
     const supabase = await createClient();
 
-    // Check if candidate profile exists
+    // Check if candidate profile exists (id = userId, not user_id)
     const { data: existing } = await supabase
       .from('candidate_profiles')
       .select('id')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (existing) {
       return { success: true, message: 'Candidate role already enabled' };
     }
 
-    // Create candidate profile
+    // Create candidate profile (id = userId, not user_id)
     const { error } = await supabase
       .from('candidate_profiles')
       .insert({
-        user_id: userId,
+        id: userId, // Use userId as the primary key
         skills: [],
         availability: 'available',
         experience_years: 0,
