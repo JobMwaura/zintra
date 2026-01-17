@@ -1,14 +1,13 @@
 'use server';
 
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * Update candidate profile
  */
 export async function updateCandidateProfile(candidateId, data) {
   try {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     // Update candidate_profiles
     const { error: candidateError } = await supabase
@@ -60,7 +59,7 @@ export async function updateCandidateProfile(candidateId, data) {
  */
 export async function updateEmployerProfile(employerId, data) {
   try {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     // Update employer_profiles
     const { error: employerError } = await supabase
@@ -113,7 +112,7 @@ export async function updateEmployerProfile(employerId, data) {
  */
 export async function getCandidateProfile(candidateId) {
   try {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     const { data: profile, error } = await supabase
       .from('candidate_profiles')
@@ -143,7 +142,7 @@ export async function getCandidateProfile(candidateId) {
  */
 export async function getEmployerProfile(employerId) {
   try {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     const { data: profile, error } = await supabase
       .from('employer_profiles')
@@ -173,7 +172,7 @@ export async function getEmployerProfile(employerId) {
  */
 export async function enableCandidateRole(userId) {
   try {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     const { error } = await supabase
       .from('profiles')
@@ -197,7 +196,7 @@ export async function enableCandidateRole(userId) {
  */
 export async function enableEmployerRole(userId) {
   try {
-    const supabase = createServerComponentClient({ cookies });
+    const supabase = await createClient();
 
     const { error } = await supabase
       .from('profiles')
