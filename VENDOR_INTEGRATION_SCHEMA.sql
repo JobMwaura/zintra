@@ -29,7 +29,29 @@ CREATE TABLE IF NOT EXISTS employer_payments (
   completed_at TIMESTAMP
 );
 
--- 4. EMPLOYER SPENDING TRACKER
+-- 4. ZCC CREDITS TABLE (Primary credit tracking)
+CREATE TABLE IF NOT EXISTS zcc_credits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+  vendor_id UUID REFERENCES vendors(id) ON DELETE SET NULL,
+  
+  -- Credit balance tracking
+  total_credits INT DEFAULT 0, -- Total credits ever added (purchased + bonuses)
+  used_credits INT DEFAULT 0, -- Total credits used (deducted)
+  balance INT GENERATED ALWAYS AS (total_credits - used_credits) STORED, -- Available balance
+  
+  -- Breakdown of how credits were obtained
+  purchased_credits INT DEFAULT 0, -- Credits purchased with cash
+  free_credits INT DEFAULT 0, -- Free/bonus credits (initial 2000 for new vendors)
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE (employer_id)
+);
+
+-- 4B. EMPLOYER SPENDING TRACKER (Monthly analytics)
 CREATE TABLE IF NOT EXISTS employer_spending (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
@@ -39,11 +61,11 @@ CREATE TABLE IF NOT EXISTS employer_spending (
   period_month DATE NOT NULL, -- First day of month
   
   -- Spending breakdown
-  posting_spent DECIMAL(10, 2) DEFAULT 0, -- Job postings
-  unlocks_spent DECIMAL(10, 2) DEFAULT 0, -- Contact unlocks
-  boosts_spent DECIMAL(10, 2) DEFAULT 0, -- Featured/Urgent/Extra Reach
-  messaging_spent DECIMAL(10, 2) DEFAULT 0, -- Outreach messages (future)
-  total_spent DECIMAL(10, 2) DEFAULT 0,
+  posting_spent INT DEFAULT 0, -- Job postings
+  unlocks_spent INT DEFAULT 0, -- Contact unlocks
+  boosts_spent INT DEFAULT 0, -- Featured/Urgent/Extra Reach
+  messaging_spent INT DEFAULT 0, -- Outreach messages (future)
+  total_spent INT DEFAULT 0,
   
   -- Timestamps
   created_at TIMESTAMP DEFAULT NOW(),
@@ -92,10 +114,30 @@ GROUP BY ep.id, ep.company_name, ep.verification_level, ep.vendor_id, es.total_s
 CREATE INDEX IF NOT EXISTS idx_employer_payments_employer ON employer_payments(employer_id);
 CREATE INDEX IF NOT EXISTS idx_employer_payments_vendor ON employer_payments(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_employer_payments_status ON employer_payments(status);
+CREATE INDEX IF NOT EXISTS idx_zcc_credits_employer ON zcc_credits(employer_id);
+CREATE INDEX IF NOT EXISTS idx_zcc_credits_vendor ON zcc_credits(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_employer_spending_employer ON employer_spending(employer_id);
 CREATE INDEX IF NOT EXISTS idx_employer_spending_period ON employer_spending(employer_id, period_month);
 
--- 7. RLS POLICIES for employer payments
+-- 7. RLS POLICIES for ZCC Credits
+ALTER TABLE zcc_credits ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Employers can view their own credits
+DROP POLICY IF EXISTS "employers_read_own_zcc_credits" ON zcc_credits;
+CREATE POLICY "employers_read_own_zcc_credits" ON zcc_credits
+  FOR SELECT USING (auth.uid() = employer_id);
+
+-- Policy: Employers can update their own credits (deduct when using)
+DROP POLICY IF EXISTS "employers_update_own_zcc_credits" ON zcc_credits;
+CREATE POLICY "employers_update_own_zcc_credits" ON zcc_credits
+  FOR UPDATE USING (auth.uid() = employer_id);
+
+-- Policy: Allow insert (for when employer profile is created with initial credits)
+DROP POLICY IF EXISTS "employers_insert_zcc_credits" ON zcc_credits;
+CREATE POLICY "employers_insert_zcc_credits" ON zcc_credits
+  FOR INSERT WITH CHECK (auth.uid() = employer_id);
+
+-- 7B. RLS POLICIES for employer payments
 ALTER TABLE employer_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employer_spending ENABLE ROW LEVEL SECURITY;
 

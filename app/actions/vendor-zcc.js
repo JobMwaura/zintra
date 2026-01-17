@@ -169,14 +169,20 @@ export async function enableEmployerRole(userId, companyData) {
           started_at: new Date().toISOString(),
         });
 
-      // Give initial credits (100 free credits for new employer)
+      // Give initial ZCC credits
+      // Vendors get 2000 free credits, regular employers get 100
+      const initialCredits = vendor ? 2000 : 100;
+      const creditType = vendor ? 'free_credits' : 'purchased_credits';
+      
       await supabase
-        .from('credits_ledger')
+        .from('zcc_credits')
         .insert({
           employer_id: profile.id,
-          amount: 100,
-          credit_type: 'plan_allocation',
-          description: 'Welcome bonus: 100 free credits',
+          vendor_id: vendor?.id || null,
+          total_credits: initialCredits,
+          used_credits: 0,
+          free_credits: initialCredits,
+          purchased_credits: 0,
         });
     }
 
@@ -298,25 +304,24 @@ export async function getEmployerCredits(employerId) {
   try {
     const supabase = await createClient();
 
-    const { data: ledger, error } = await supabase
-      .from('credits_ledger')
-      .select('amount, credit_type')
-      .eq('employer_id', employerId);
+    const { data, error } = await supabase
+      .from('zcc_credits')
+      .select('total_credits, used_credits, balance, free_credits, purchased_credits')
+      .eq('employer_id', employerId)
+      .single();
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    // Calculate balance
-    const balance = ledger.reduce((sum, entry) => {
-      if (['purchase', 'bonus', 'plan_allocation'].includes(entry.credit_type)) {
-        return sum + entry.amount;
-      } else {
-        return sum - Math.abs(entry.amount);
-      }
-    }, 0);
-
-    return { success: true, balance };
+    return {
+      success: true,
+      balance: data?.balance || 0,
+      totalCredits: data?.total_credits || 0,
+      usedCredits: data?.used_credits || 0,
+      freeCredits: data?.free_credits || 0,
+      purchasedCredits: data?.purchased_credits || 0,
+    };
   } catch (error) {
     console.error('Error fetching credits:', error);
     return { success: false, error: 'Failed to fetch credits' };
@@ -325,7 +330,7 @@ export async function getEmployerCredits(employerId) {
 
 /**
  * Add test credits for development/testing
- * Creates a fake payment record and adds credits to ledger
+ * Updates zcc_credits table directly
  */
 export async function addTestCredits(employerId, creditAmount = 500) {
   try {
@@ -350,18 +355,42 @@ export async function addTestCredits(employerId, creditAmount = 500) {
       return { success: false, error: 'Failed to create test payment: ' + paymentError.message };
     }
 
-    // Add credits to ledger
-    const { error: ledgerError } = await supabase
-      .from('credits_ledger')
-      .insert({
-        employer_id: employerId,
-        credit_type: 'purchase',
-        amount: creditAmount,
-        reference_id: payment.id,
-      });
+    // Get current credits
+    const { data: currentCredits } = await supabase
+      .from('zcc_credits')
+      .select('total_credits, used_credits, purchased_credits, free_credits')
+      .eq('employer_id', employerId)
+      .single();
 
-    if (ledgerError) {
-      return { success: false, error: 'Failed to add credits: ' + ledgerError.message };
+    if (currentCredits) {
+      // Update existing credits
+      const { error: updateError } = await supabase
+        .from('zcc_credits')
+        .update({
+          total_credits: currentCredits.total_credits + creditAmount,
+          purchased_credits: currentCredits.purchased_credits + creditAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('employer_id', employerId);
+
+      if (updateError) {
+        return { success: false, error: 'Failed to update credits: ' + updateError.message };
+      }
+    } else {
+      // Create new credits record if it doesn't exist
+      const { error: createError } = await supabase
+        .from('zcc_credits')
+        .insert({
+          employer_id: employerId,
+          total_credits: creditAmount,
+          used_credits: 0,
+          purchased_credits: creditAmount,
+          free_credits: 0,
+        });
+
+      if (createError) {
+        return { success: false, error: 'Failed to create credits: ' + createError.message };
+      }
     }
 
     return { 
@@ -380,6 +409,7 @@ export async function addTestCredits(employerId, creditAmount = 500) {
  * Add credits to a vendor's employer account
  * Can be called with vendor UUID directly (for admin purposes)
  * Creates employer profile if it doesn't exist
+ * For vendors: if no zcc_credits record exists, create with 2000 free credits
  */
 export async function addCreditsToVendor(vendorId, creditAmount = 1000) {
   try {
@@ -405,7 +435,7 @@ export async function addCreditsToVendor(vendorId, creditAmount = 1000) {
       .eq('id', userId)
       .single();
 
-    // If employer profile doesn't exist, create it
+    // If employer profile doesn't exist, create it with initial credits
     if (!existingEmployer) {
       const { error: createError } = await supabase
         .from('employer_profiles')
@@ -421,10 +451,60 @@ export async function addCreditsToVendor(vendorId, creditAmount = 1000) {
       if (createError) {
         return { success: false, error: 'Failed to create employer profile: ' + createError.message };
       }
-    }
 
-    // Add credits using the test credits function
-    return await addTestCredits(userId, creditAmount);
+      // Create zcc_credits with 2000 free credits for new vendor employer
+      const { error: creditsError } = await supabase
+        .from('zcc_credits')
+        .insert({
+          employer_id: userId,
+          vendor_id: vendorId,
+          total_credits: 2000,
+          used_credits: 0,
+          free_credits: 2000,
+          purchased_credits: 0,
+        });
+
+      if (creditsError) {
+        return { success: false, error: 'Failed to create credits: ' + creditsError.message };
+      }
+
+      return {
+        success: true,
+        message: `Vendor employer account created with 2000 free ZCC credits`,
+        vendorName: vendor.name,
+        creditsAdded: 2000,
+      };
+    } else {
+      // Employer already exists, add additional credits
+      const { data: currentCredits } = await supabase
+        .from('zcc_credits')
+        .select('total_credits, purchased_credits, free_credits, used_credits')
+        .eq('employer_id', userId)
+        .single();
+
+      if (currentCredits) {
+        // Update existing credits
+        const { error: updateError } = await supabase
+          .from('zcc_credits')
+          .update({
+            total_credits: currentCredits.total_credits + creditAmount,
+            free_credits: currentCredits.free_credits + creditAmount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('employer_id', userId);
+
+        if (updateError) {
+          return { success: false, error: 'Failed to update credits: ' + updateError.message };
+        }
+      }
+
+      return {
+        success: true,
+        message: `Added ${creditAmount} free ZCC credits to vendor`,
+        vendorName: vendor.name,
+        creditsAdded: creditAmount,
+      };
+    }
   } catch (error) {
     console.error('Error adding credits to vendor:', error);
     return { success: false, error: 'Failed to add credits to vendor' };

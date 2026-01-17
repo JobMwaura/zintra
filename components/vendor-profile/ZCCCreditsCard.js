@@ -6,6 +6,8 @@ import { Zap, ArrowRight } from 'lucide-react';
 
 export default function ZCCCreditsCard({ vendorId, canEdit }) {
   const [credits, setCredits] = useState(null);
+  const [freeCredits, setFreeCredits] = useState(null);
+  const [purchasedCredits, setPurchasedCredits] = useState(null);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
@@ -25,27 +27,21 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
 
         if (!vendor) return;
 
-        // Get credits from ledger
-        const { data: ledger, error } = await supabase
-          .from('credits_ledger')
-          .select('amount, credit_type')
-          .eq('employer_id', vendor.user_id);
+        // Get credits from zcc_credits table
+        const { data, error } = await supabase
+          .from('zcc_credits')
+          .select('balance, free_credits, purchased_credits')
+          .eq('employer_id', vendor.user_id)
+          .single();
 
         if (error) {
           console.error('Error fetching credits:', error);
           return;
         }
 
-        // Calculate balance
-        const balance = ledger.reduce((sum, entry) => {
-          if (['purchase', 'bonus', 'plan_allocation', 'admin_gift'].includes(entry.credit_type)) {
-            return sum + entry.amount;
-          } else {
-            return sum - Math.abs(entry.amount);
-          }
-        }, 0);
-
-        setCredits(Math.max(0, balance));
+        setCredits(data?.balance || 0);
+        setFreeCredits(data?.free_credits || 0);
+        setPurchasedCredits(data?.purchased_credits || 0);
       } catch (err) {
         console.error('Error fetching credits:', err);
       } finally {
@@ -81,6 +77,20 @@ export default function ZCCCreditsCard({ vendorId, canEdit }) {
           Go to ZCC
           <ArrowRight className="w-4 h-4" />
         </a>
+      </div>
+      <div className="flex gap-4 mt-3">
+        {freeCredits > 0 && (
+          <div className="text-xs">
+            <span className="text-slate-600">Free:</span>
+            <span className="font-semibold text-slate-900 ml-1">{freeCredits}</span>
+          </div>
+        )}
+        {purchasedCredits > 0 && (
+          <div className="text-xs">
+            <span className="text-slate-600">Purchased:</span>
+            <span className="font-semibold text-slate-900 ml-1">{purchasedCredits}</span>
+          </div>
+        )}
       </div>
       <p className="text-xs text-slate-600 mt-3">
         Use your credits to post jobs on Zintra Career Centre. You need 100 credits per job.
