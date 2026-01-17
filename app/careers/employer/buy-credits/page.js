@@ -237,7 +237,7 @@ Status: Pending
   const costPerCredit = (selectedPkg.price / selectedPkg.credits).toFixed(2);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -277,12 +277,12 @@ Status: Pending
               onClick={() => setSelectedPackage(pkg.id)}
               className={`relative rounded-xl border-2 p-6 cursor-pointer transition ${
                 selectedPackage === pkg.id
-                  ? 'border-blue-500 bg-blue-50 shadow-lg'
+                  ? 'border-orange-500 bg-orange-50 shadow-lg'
                   : 'border-slate-200 bg-white hover:border-slate-300'
-              } ${pkg.popular ? 'ring-2 ring-blue-400' : ''}`}
+              } ${pkg.popular ? 'ring-2 ring-orange-400' : ''}`}
             >
               {pkg.popular && (
-                <div className="absolute -top-3 left-6 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <div className="absolute -top-3 left-6 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                   Most Popular
                 </div>
               )}
@@ -323,7 +323,7 @@ Status: Pending
               <button
                 className={`w-full font-semibold py-2 px-4 rounded-lg transition ${
                   selectedPackage === pkg.id
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-orange-500 text-white'
                     : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
                 }`}
               >
@@ -345,7 +345,7 @@ Status: Pending
                   key={method.id}
                   className={`flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition ${
                     selectedPaymentMethod === method.id
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-orange-500 bg-orange-50'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -393,12 +393,12 @@ Status: Pending
           </div>
 
           {/* Right: Confirmation & Submit */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 border border-blue-200">
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl shadow-lg p-8 border border-slate-200">
             <h2 className="text-2xl font-bold text-slate-900 mb-6">Ready to Purchase?</h2>
 
             <div className="space-y-4 mb-8">
               <div className="flex items-start gap-3">
-                <Zap className="text-blue-600 flex-shrink-0 mt-1" size={20} />
+                <Zap className="text-orange-500 flex-shrink-0 mt-1" size={20} />
                 <div>
                   <p className="font-semibold text-slate-900">Instant Credits</p>
                   <p className="text-sm text-slate-600">Credits added to your account immediately after payment</p>
@@ -428,8 +428,8 @@ Status: Pending
                 disabled={processing}
                 className={`w-full font-bold py-4 px-6 rounded-lg transition text-white flex items-center justify-center gap-2 ${
                   processing
-                    ? 'bg-blue-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                    ? 'bg-orange-400 cursor-not-allowed'
+                    : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
                 }`}
               >
                 {processing ? (

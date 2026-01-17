@@ -323,7 +323,7 @@ export default function PostJobPage() {
               value={formData.title}
               onChange={handleChange}
               placeholder="e.g., Experienced Plumber Needed"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
               disabled={submitting}
             />
           </div>
@@ -337,7 +337,7 @@ export default function PostJobPage() {
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
               disabled={submitting}
             >
               <option value="">Select a category</option>
@@ -385,7 +385,7 @@ export default function PostJobPage() {
               value={formData.location}
               onChange={handleChange}
               placeholder="e.g., Westlands, Nairobi"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
               disabled={submitting}
             />
           </div>
@@ -402,7 +402,7 @@ export default function PostJobPage() {
                 value={formData.payMin}
                 onChange={handleChange}
                 placeholder="e.g., 5000"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
                 disabled={submitting}
               />
             </div>
@@ -416,7 +416,7 @@ export default function PostJobPage() {
                 value={formData.payMax}
                 onChange={handleChange}
                 placeholder="e.g., 10000"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
                 disabled={submitting}
               />
             </div>
@@ -432,7 +432,7 @@ export default function PostJobPage() {
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
               disabled={submitting}
             />
           </div>
@@ -448,7 +448,7 @@ export default function PostJobPage() {
               onChange={handleChange}
               placeholder="Describe the job, responsibilities, requirements, etc."
               rows={8}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
               disabled={submitting}
             />
             <p className="text-xs text-slate-500 mt-2">
@@ -465,8 +465,8 @@ export default function PostJobPage() {
                 credits < JOB_POSTING_COST
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : submitting
-                  ? 'bg-blue-400 text-white cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                  ? 'bg-orange-400 text-white cursor-not-allowed'
+                  : 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
               }`}
             >
               {submitting ? (

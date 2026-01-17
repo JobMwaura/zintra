@@ -48,12 +48,15 @@ export default function CareersNavbar() {
   }
 
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/careers" className="text-2xl font-bold text-blue-600">
-            Zintra Career Centre
+          <Link href="/careers" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+              Z
+            </div>
+            <span className="text-xl font-bold text-gray-900 hidden sm:inline">Career Centre</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -62,13 +65,13 @@ export default function CareersNavbar() {
               <>
                 <Link
                   href="/careers/auth/login"
-                  className="text-slate-700 hover:text-slate-900 font-medium transition"
+                  className="text-gray-700 hover:text-orange-500 font-medium transition"
                 >
                   Login
                 </Link>
                 <Link
                   href="/careers/auth/signup"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition"
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition"
                 >
                   Sign Up
                 </Link>
@@ -79,7 +82,7 @@ export default function CareersNavbar() {
                   /* User logged in but no roles enabled */
                   <Link
                     href="/careers/onboarding"
-                    className="text-slate-700 hover:text-slate-900 font-medium transition"
+                    className="text-gray-700 hover:text-orange-500 font-medium transition"
                   >
                     Get Started
                   </Link>
@@ -88,7 +91,7 @@ export default function CareersNavbar() {
                     {roles?.candidate && (
                       <Link
                         href="/careers/me"
-                        className="text-slate-700 hover:text-slate-900 font-medium transition"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
                       >
                         My Profile
                       </Link>
@@ -96,7 +99,7 @@ export default function CareersNavbar() {
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/dashboard"
-                        className="text-slate-700 hover:text-slate-900 font-medium transition"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
                       >
                         Dashboard
                       </Link>
@@ -104,7 +107,7 @@ export default function CareersNavbar() {
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/post-job"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition"
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition"
                       >
                         Post Job
                       </Link>
@@ -114,7 +117,7 @@ export default function CareersNavbar() {
 
                 <button
                   onClick={handleLogout}
-                  className="text-slate-600 hover:text-slate-900 transition flex items-center gap-2"
+                  className="text-gray-600 hover:text-gray-900 transition flex items-center gap-2"
                 >
                   <LogOut size={18} />
                   Logout
@@ -143,13 +146,13 @@ export default function CareersNavbar() {
               <>
                 <Link
                   href="/careers/auth/login"
-                  className="block text-slate-700 hover:text-slate-900 font-medium py-2"
+                  className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                 >
                   Login
                 </Link>
                 <Link
                   href="/careers/auth/signup"
-                  className="block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg text-center transition"
+                  className="block bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg text-center transition"
                 >
                   Sign Up
                 </Link>
@@ -159,7 +162,7 @@ export default function CareersNavbar() {
                 {!roles?.candidate && !roles?.employer ? (
                   <Link
                     href="/careers/onboarding"
-                    className="block text-slate-700 hover:text-slate-900 font-medium py-2"
+                    className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                   >
                     Get Started
                   </Link>
@@ -168,7 +171,7 @@ export default function CareersNavbar() {
                     {roles?.candidate && (
                       <Link
                         href="/careers/me"
-                        className="block text-slate-700 hover:text-slate-900 font-medium py-2"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                       >
                         My Profile
                       </Link>
@@ -176,7 +179,7 @@ export default function CareersNavbar() {
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/dashboard"
-                        className="block text-slate-700 hover:text-slate-900 font-medium py-2"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                       >
                         Dashboard
                       </Link>
@@ -184,7 +187,7 @@ export default function CareersNavbar() {
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/post-job"
-                        className="block bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg text-center transition"
+                        className="block bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg text-center transition"
                       >
                         Post Job
                       </Link>
@@ -194,7 +197,7 @@ export default function CareersNavbar() {
 
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left text-slate-600 hover:text-slate-900 font-medium py-2 transition"
+                  className="block w-full text-left text-gray-600 hover:text-gray-900 font-medium py-2 transition"
                 >
                   Logout
                 </button>
