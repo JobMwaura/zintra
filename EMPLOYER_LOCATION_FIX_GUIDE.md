@@ -17,12 +17,7 @@ location: companyData?.location || vendor?.location || '',
 But the `location` column doesn't exist in the `employer_profiles` table schema.
 
 ## Solution
-Run this SQL in Supabase SQL Editor to add the missing column:
-
-```sql
-ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS location TEXT;
-CREATE INDEX IF NOT EXISTS idx_employer_profiles_location ON employer_profiles(location);
-```
+Run this SQL in Supabase SQL Editor to add the missing column.
 
 ## Steps to Fix
 
@@ -33,13 +28,20 @@ CREATE INDEX IF NOT EXISTS idx_employer_profiles_location ON employer_profiles(l
 - Click **New Query**
 
 ### 2. Copy and Run the SQL
-Copy the entire content from `FIX_EMPLOYER_LOCATION_COLUMN.sql` and paste it into the SQL editor.
+**⚠️ IMPORTANT:** Copy ONLY the SQL code below (not the markdown file):
+
+```sql
+ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS location TEXT;
+CREATE INDEX IF NOT EXISTS idx_employer_profiles_location ON employer_profiles(location);
+```
+
+Paste these 2 lines exactly into the SQL editor.
 
 ### 3. Click **Run**
 The migration will execute and add the `location` column to `employer_profiles`.
 
 ### 4. Verify Success
-You should see output confirming the column was added. The onboarding flow will now work for vendors enabling their employer role.
+You should see a success message. The onboarding flow will now work for vendors enabling their employer role.
 
 ## What This Fixes
 ✅ Vendors can now enable their employer role from the onboarding page
