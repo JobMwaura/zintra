@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS candidate_profiles (
 
 -- 3. EMPLOYER PROFILES
 CREATE TABLE IF NOT EXISTS employer_profiles (
-  id UUID PRIMARY KEY REFERENCES profiles (id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   
   -- Company info
   company_name TEXT NOT NULL,
@@ -271,22 +272,27 @@ ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can read their own profile
+DROP POLICY IF EXISTS "users_read_own_profile" ON profiles;
 CREATE POLICY "users_read_own_profile" ON profiles
   FOR SELECT USING (auth.uid() = id);
 
 -- Policy: Users can update their own profile
+DROP POLICY IF EXISTS "users_update_own_profile" ON profiles;
 CREATE POLICY "users_update_own_profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- Policy: Anyone can read public listings
+DROP POLICY IF EXISTS "anyone_read_listings" ON listings;
 CREATE POLICY "anyone_read_listings" ON listings
   FOR SELECT USING (status = 'active');
 
 -- Policy: Employers can create listings
+DROP POLICY IF EXISTS "employers_create_listings" ON listings;
 CREATE POLICY "employers_create_listings" ON listings
   FOR INSERT WITH CHECK (auth.uid() = employer_id);
 
 -- Policy: Employers can update own listings
+DROP POLICY IF EXISTS "employers_update_own_listings" ON listings;
 CREATE POLICY "employers_update_own_listings" ON listings
   FOR UPDATE USING (auth.uid() = employer_id);
 
