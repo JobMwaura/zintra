@@ -36,6 +36,11 @@ ALTER TABLE listings ADD COLUMN IF NOT EXISTS job_type TEXT;
 CREATE INDEX IF NOT EXISTS idx_listings_category ON listings(category);
 CREATE INDEX IF NOT EXISTS idx_listings_job_type ON listings(job_type);
 
+-- Fix foreign key: listings.employer_id should reference employer_profiles, not profiles
+ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_employer_id_fkey;
+ALTER TABLE listings ADD CONSTRAINT listings_employer_id_fkey 
+  FOREIGN KEY (employer_id) REFERENCES employer_profiles(id) ON DELETE CASCADE;
+
 -- ============================================================================
 -- STEP 3: CREATE employer_payments TABLE
 -- ============================================================================
