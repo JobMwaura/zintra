@@ -1,49 +1,38 @@
 /**
- * HowItWorks Component
- * Two-column section showing process for workers and employers
+ * HowItWorks Component - Minimalist
+ * Simple two-column process guide
  */
 
 export default function HowItWorks({ workersSteps, employersSteps }) {
-  const stepIcons = ['👤', '🔍', '💼'];
-
   return (
-    <section className="w-full py-12 sm:py-16 lg:py-20">
+    <section className="w-full py-12 sm:py-16 border-b border-gray-200">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            How it Works
-          </h2>
-          <p className="text-gray-600">
-            Simple steps to get started on Zintra
-          </p>
-        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 text-center">
+          How It Works
+        </h2>
 
         <div className="grid lg:grid-cols-2 gap-12">
           {/* For Workers */}
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-3">
-              <span className="text-3xl">👷</span> For Workers
-            </h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-6">👷 For Workers</h3>
 
-            <div className="space-y-8">
+            <div className="space-y-4">
               {workersSteps.map((step, index) => (
                 <div key={step.step} className="flex gap-4">
-                  {/* Step Number Circle */}
                   <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-full bg-[#ea8f1e] text-white font-bold flex items-center justify-center mb-3">
-                      {stepIcons[index] || step.step}
+                    <div className="w-10 h-10 rounded-full bg-[#ea8f1e] text-white font-bold flex items-center justify-center text-sm">
+                      {step.step}
                     </div>
                     {index < workersSteps.length - 1 && (
-                      <div className="w-1 h-12 bg-gradient-to-b from-[#ea8f1e] to-gray-200"></div>
+                      <div className="w-0.5 h-8 bg-gray-300"></div>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="pb-4">
-                    <h4 className="text-lg font-bold text-gray-900 mb-2">
+                  <div className="pb-4 flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">
                       {step.title}
                     </h4>
-                    <p className="text-gray-600 text-sm leading-relaxed">
+                    <p className="text-sm text-gray-600">
                       {step.description}
                     </p>
                   </div>
@@ -54,29 +43,25 @@ export default function HowItWorks({ workersSteps, employersSteps }) {
 
           {/* For Employers */}
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-3">
-              <span className="text-3xl">🏢</span> For Employers
-            </h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-6">🏢 For Employers</h3>
 
-            <div className="space-y-8">
+            <div className="space-y-4">
               {employersSteps.map((step, index) => (
                 <div key={step.step} className="flex gap-4">
-                  {/* Step Number Circle */}
                   <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-full bg-[#f59e0b] text-white font-bold flex items-center justify-center mb-3">
-                      {stepIcons[index] || step.step}
+                    <div className="w-10 h-10 rounded-full bg-[#f59e0b] text-white font-bold flex items-center justify-center text-sm">
+                      {step.step}
                     </div>
                     {index < employersSteps.length - 1 && (
-                      <div className="w-1 h-12 bg-gradient-to-b from-[#f59e0b] to-gray-200"></div>
+                      <div className="w-0.5 h-8 bg-gray-300"></div>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="pb-4">
-                    <h4 className="text-lg font-bold text-gray-900 mb-2">
+                  <div className="pb-4 flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">
                       {step.title}
                     </h4>
-                    <p className="text-gray-600 text-sm leading-relaxed">
+                    <p className="text-sm text-gray-600">
                       {step.description}
                     </p>
                   </div>

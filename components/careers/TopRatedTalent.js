@@ -1,6 +1,6 @@
 /**
- * TopRatedTalent Component
- * Grid of top-rated workers/vendors
+ * TopRatedTalent Component - Minimalist
+ * Grid of top-rated workers
  */
 
 export default function TopRatedTalent({ workers }) {
@@ -17,63 +17,43 @@ export default function TopRatedTalent({ workers }) {
   };
 
   return (
-    <section className="w-full bg-gray-50 py-12 sm:py-16 lg:py-20">
+    <section className="w-full py-12 sm:py-16 border-b border-gray-200">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            Top Rated Workers & Vendors
-          </h2>
-          <p className="text-gray-600">
-            Skilled professionals verified and trusted by employers
-          </p>
-        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+          Top Rated Workers
+        </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {workers.map((worker, index) => (
             <div
               key={worker.id}
-              className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow p-6 flex flex-col items-center text-center"
+              className="bg-white rounded border border-gray-200 hover:border-gray-300 transition-colors p-4 flex flex-col items-center text-center"
             >
               {/* Avatar */}
               <div
                 className={`${getAvatarColor(
                   index
-                )} w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mb-4`}
+                )} w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold mb-3`}
               >
                 {worker.initials}
               </div>
 
               {/* Name & Role */}
-              <h3 className="text-lg font-bold text-gray-900 mb-1">
+              <h3 className="font-semibold text-gray-900 mb-1">
                 {worker.name}
               </h3>
-              <p className="text-sm text-gray-600 mb-3">{worker.role}</p>
-
-              {/* County */}
-              <p className="text-sm text-gray-500 mb-4">📍 {worker.county}</p>
+              <p className="text-sm text-gray-600 mb-2">{worker.role}</p>
 
               {/* Rating */}
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="text-yellow-400">⭐</div>
-                <span className="font-bold text-gray-900">{worker.rating}</span>
-                <span className="text-sm text-gray-600">
-                  ({worker.reviews} reviews)
-                </span>
+              <div className="flex items-center justify-center gap-1 text-sm mb-3">
+                <span>⭐ {worker.rating}</span>
+                <span className="text-gray-600">({worker.reviews})</span>
               </div>
 
-              {/* Tools Ready Badge */}
-              {worker.toolsReady && (
-                <div className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full mb-4">
-                  <span>🛠️</span> Tools Ready
-                </div>
-              )}
-
               {/* View Profile Button */}
-              <button className="w-full px-4 py-2 border-2 border-[#ea8f1e] text-[#ea8f1e] font-semibold rounded-lg hover:bg-[#ea8f1e] hover:text-white transition-colors">
+              <button className="w-full px-4 py-2 border border-[#ea8f1e] text-[#ea8f1e] font-medium text-sm rounded hover:bg-[#ea8f1e] hover:text-white transition-colors">
                 View Profile
               </button>
-
-              {/* TODO: Link to /careers/talent/[id] profile page */}
             </div>
           ))}
         </div>

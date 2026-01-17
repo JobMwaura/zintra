@@ -1,54 +1,47 @@
 /**
- * FeaturedEmployers Component
- * Grid of employer cards with mock data
+ * FeaturedEmployers Component - Minimalist
+ * Clean grid of employer cards
  */
 
 export default function FeaturedEmployers({ employers }) {
   return (
-    <section className="w-full py-12 sm:py-16 lg:py-20">
+    <section className="w-full py-12 sm:py-16 border-b border-gray-200">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+        <div className="mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Featured Employers
           </h2>
-          <p className="text-gray-600">
-            Trusted companies hiring skilled workers on Zintra
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {employers.map((employer) => (
             <div
               key={employer.id}
-              className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow p-6"
+              className="bg-white rounded border border-gray-200 hover:border-gray-300 transition-colors p-4"
             >
               {/* Logo */}
-              <div className="text-5xl mb-4">{employer.logo}</div>
+              <div className="text-3xl mb-3">{employer.logo}</div>
 
               {/* Company Name */}
-              <h3 className="text-lg font-bold text-gray-900 mb-1">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">
                 {employer.name}
               </h3>
 
               {/* Verified Badge */}
               {employer.verified && (
-                <div className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full mb-3">
+                <div className="inline-flex items-center gap-1 text-xs font-medium text-green-700 mb-2">
                   <span>✓</span> Verified
                 </div>
               )}
 
-              {/* Location */}
-              <p className="text-sm text-gray-600 mb-4">📍 {employer.location}</p>
-
-              {/* Job Count */}
-              <div className="text-sm font-semibold text-[#ea8f1e]">
-                {employer.jobCount} jobs open
+              {/* Details */}
+              <div className="text-sm text-gray-600 space-y-1">
+                <p>📍 {employer.location}</p>
+                <p className="font-medium text-[#ea8f1e]">{employer.jobCount} jobs open</p>
               </div>
             </div>
           ))}
         </div>
-
-        {/* TODO: Add pagination or "View All Employers" link */}
       </div>
     </section>
   );
