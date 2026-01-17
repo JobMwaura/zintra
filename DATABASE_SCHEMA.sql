@@ -274,6 +274,9 @@ ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
+-- Note: employer_payments and other monetization tables may be created separately
+-- via VENDOR_INTEGRATION_SCHEMA.sql and need their own RLS policies
+
 -- Policy: Users can read their own profile
 DROP POLICY IF EXISTS "users_read_own_profile" ON profiles;
 CREATE POLICY "users_read_own_profile" ON profiles
