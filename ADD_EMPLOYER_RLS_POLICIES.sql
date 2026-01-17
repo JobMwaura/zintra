@@ -6,18 +6,17 @@
 -- Policy: Users can insert their own employer profile
 DROP POLICY IF EXISTS "users_insert_own_employer_profile" ON employer_profiles;
 CREATE POLICY "users_insert_own_employer_profile" ON employer_profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Policy: Users can read their own employer profile
 DROP POLICY IF EXISTS "users_read_own_employer_profile" ON employer_profiles;
 CREATE POLICY "users_read_own_employer_profile" ON employer_profiles
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (auth.uid() = id);
 
 -- Policy: Users can update their own employer profile
 DROP POLICY IF EXISTS "users_update_own_employer_profile" ON employer_profiles;
 CREATE POLICY "users_update_own_employer_profile" ON employer_profiles
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING (auth.uid() = id);
 
--- Note: The enableEmployerRole function in /app/actions/vendor-zcc.js
--- uses the server-side Supabase client which bypasses RLS when using the service role key
--- However, it's good practice to have these policies in place for consistency
+-- Note: employer_profiles now uses id (auth.users.id) as PRIMARY KEY
+-- This matches the pattern used in candidate_profiles and eliminates need for separate UUID generation

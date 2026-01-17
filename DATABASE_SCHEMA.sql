@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS candidate_profiles (
 
 -- 3. EMPLOYER PROFILES
 CREATE TABLE IF NOT EXISTS employer_profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   
   -- Company info
   company_name TEXT NOT NULL,
@@ -300,17 +299,17 @@ CREATE POLICY "employers_update_own_listings" ON listings
 -- Policy: Users can insert their own employer profile
 DROP POLICY IF EXISTS "users_insert_own_employer_profile" ON employer_profiles;
 CREATE POLICY "users_insert_own_employer_profile" ON employer_profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Policy: Users can read their own employer profile
 DROP POLICY IF EXISTS "users_read_own_employer_profile" ON employer_profiles;
 CREATE POLICY "users_read_own_employer_profile" ON employer_profiles
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (auth.uid() = id);
 
 -- Policy: Users can update their own employer profile
 DROP POLICY IF EXISTS "users_update_own_employer_profile" ON employer_profiles;
 CREATE POLICY "users_update_own_employer_profile" ON employer_profiles
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING (auth.uid() = id);
 
 -- SAMPLE VERIFICATION VIEW (optional, for checking capabilities)
 CREATE OR REPLACE VIEW employer_capabilities AS

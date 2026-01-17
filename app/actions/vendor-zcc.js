@@ -116,7 +116,7 @@ export async function enableEmployerRole(userId, companyData) {
     const { data: existing } = await supabase
       .from('employer_profiles')
       .select('id')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (existing) {
@@ -132,8 +132,7 @@ export async function enableEmployerRole(userId, companyData) {
 
     // Prepare employer profile data
     const profileData = {
-      id: crypto.randomUUID(), // Generate UUID explicitly for RLS compliance
-      user_id: userId,
+      id: userId, // Use userId as the primary key
       company_name: companyData?.companyName || vendor?.name || '',
       company_email: companyData?.companyEmail || vendor?.email || '',
       company_phone: companyData?.companyPhone || vendor?.phone || '',
@@ -157,7 +156,7 @@ export async function enableEmployerRole(userId, companyData) {
     const { data: profile } = await supabase
       .from('employer_profiles')
       .select('id')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (profile) {
