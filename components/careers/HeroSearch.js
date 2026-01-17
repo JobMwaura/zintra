@@ -30,19 +30,19 @@ export default function HeroSearch() {
   };
 
   return (
-    <section className="w-full bg-white border-b border-gray-200 py-16 sm:py-20 lg:py-24">
+    <section className="w-full bg-white border-b border-gray-200 py-12 sm:py-14 lg:py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Hero Text with Proof Points */}
-        <div className="mb-10 text-center max-w-3xl mx-auto">
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-3 leading-tight">
+        <div className="mb-8 text-center max-w-3xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2 leading-tight">
             Career Centre
           </h1>
-          <p className="text-lg sm:text-xl text-gray-700 mb-4">
+          <p className="text-base sm:text-lg text-gray-700 mb-3">
             Find construction jobs and gigs with verified employers across Kenya
           </p>
           
           {/* Proof Points */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm text-gray-600">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 text-xs sm:text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={18} className="text-green-600" />
               <span><strong>2,400+</strong> workers</span>
@@ -59,17 +59,17 @@ export default function HeroSearch() {
         </div>
 
         {/* Search Container - Prominent */}
-        <div className="max-w-3xl mx-auto mb-8">
+        <div className="max-w-3xl mx-auto mb-6">
           <form
             onSubmit={handleSearch}
-            className="bg-gray-50 border-2 border-gray-300 rounded-lg p-6 sm:p-8"
+            className="bg-gray-50 border-2 border-gray-300 rounded-lg p-5 sm:p-6"
           >
             {/* Jobs/Gigs Toggle */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4">
+            <div className="flex gap-2 mb-4 border-b border-gray-200 pb-3">
               <button
                 type="button"
                 onClick={() => setSearchType('jobs')}
-                className={`flex-1 py-2 px-4 font-semibold rounded text-center transition-colors ${
+                className={`flex-1 py-2 px-3 text-sm font-semibold rounded text-center transition-colors ${
                   searchType === 'jobs'
                     ? 'bg-[#ea8f1e] text-white'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
@@ -80,7 +80,7 @@ export default function HeroSearch() {
               <button
                 type="button"
                 onClick={() => setSearchType('gigs')}
-                className={`flex-1 py-2 px-4 font-semibold rounded text-center transition-colors ${
+                className={`flex-1 py-2 px-3 text-sm font-semibold rounded text-center transition-colors ${
                   searchType === 'gigs'
                     ? 'bg-[#ea8f1e] text-white'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
@@ -91,9 +91,9 @@ export default function HeroSearch() {
             </div>
 
             {/* Search Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Role or Skill
                 </label>
                 <input
@@ -102,12 +102,12 @@ export default function HeroSearch() {
                   placeholder="Mason, Electrician, Foreman..."
                   value={searchData.role}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Location
                 </label>
                 <input
@@ -116,7 +116,7 @@ export default function HeroSearch() {
                   placeholder="Nairobi, Kiambu, Mombasa..."
                   value={searchData.location}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm"
                 />
               </div>
             </div>
@@ -124,16 +124,16 @@ export default function HeroSearch() {
             {/* Search Button */}
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm"
             >
-              <Search size={20} />
+              <Search size={18} />
               Search {searchType === 'jobs' ? 'Jobs' : 'Gigs'}
             </button>
           </form>
         </div>
 
         {/* Secondary CTA - Post a Job/Gig */}
-        <div className="text-center text-sm text-gray-600">
+        <div className="text-center text-xs sm:text-sm text-gray-600">
           <span>Are you an employer? </span>
           <Link href="/careers/post-job" className="text-[#ea8f1e] font-semibold hover:underline">
             Post a job
