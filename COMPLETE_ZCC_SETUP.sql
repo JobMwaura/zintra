@@ -28,11 +28,13 @@ ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS vendor_id UUID REFERENCES
 ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS is_vendor_employer BOOLEAN DEFAULT FALSE;
 
 -- ============================================================================
--- STEP 2B: ALTER listings table (add missing category column for job posting)
+-- STEP 2B: ALTER listings table (add missing columns for job posting)
 -- ============================================================================
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS job_type TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_listings_category ON listings(category);
+CREATE INDEX IF NOT EXISTS idx_listings_job_type ON listings(job_type);
 
 -- ============================================================================
 -- STEP 3: CREATE employer_payments TABLE
