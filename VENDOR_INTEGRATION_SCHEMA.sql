@@ -13,7 +13,7 @@ ALTER TABLE employer_profiles ADD COLUMN is_vendor_employer BOOLEAN DEFAULT FALS
 -- 3. EMPLOYER PAYMENTS TABLE
 CREATE TABLE IF NOT EXISTS employer_payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
   vendor_id UUID REFERENCES vendors(id) ON DELETE SET NULL,
   
   -- Payment details
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS employer_payments (
 -- 4. EMPLOYER SPENDING TRACKER
 CREATE TABLE IF NOT EXISTS employer_spending (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
   vendor_id UUID REFERENCES vendors(id) ON DELETE SET NULL,
   
   -- Period tracking
