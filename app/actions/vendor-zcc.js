@@ -375,3 +375,58 @@ export async function addTestCredits(employerId, creditAmount = 500) {
     return { success: false, error: 'Failed to add test credits' };
   }
 }
+
+/**
+ * Add credits to a vendor's employer account
+ * Can be called with vendor UUID directly (for admin purposes)
+ * Creates employer profile if it doesn't exist
+ */
+export async function addCreditsToVendor(vendorId, creditAmount = 1000) {
+  try {
+    const supabase = await createClient();
+
+    // Get vendor info
+    const { data: vendor, error: vendorError } = await supabase
+      .from('vendors')
+      .select('id, user_id, name, email')
+      .eq('id', vendorId)
+      .single();
+
+    if (vendorError || !vendor) {
+      return { success: false, error: 'Vendor not found: ' + vendorError?.message };
+    }
+
+    const userId = vendor.user_id;
+
+    // Check if employer profile exists
+    const { data: existingEmployer } = await supabase
+      .from('employer_profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    // If employer profile doesn't exist, create it
+    if (!existingEmployer) {
+      const { error: createError } = await supabase
+        .from('employer_profiles')
+        .insert({
+          id: userId,
+          company_name: vendor.name || 'Unknown Company',
+          company_email: vendor.email || '',
+          vendor_id: vendorId,
+          is_vendor_employer: true,
+          verification_level: 'verified',
+        });
+
+      if (createError) {
+        return { success: false, error: 'Failed to create employer profile: ' + createError.message };
+      }
+    }
+
+    // Add credits using the test credits function
+    return await addTestCredits(userId, creditAmount);
+  } catch (error) {
+    console.error('Error adding credits to vendor:', error);
+    return { success: false, error: 'Failed to add credits to vendor' };
+  }
+}
