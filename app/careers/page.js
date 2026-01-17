@@ -49,7 +49,7 @@ async function fetchRealGigs() {
         pay_max,
         pay_currency,
         start_date,
-        employer:employer_id(id, company_name, logo_url),
+        employer:employer_id(id, company_name, company_logo_url),
         applications:applications(count)
       `)
       .eq('type', 'gig')

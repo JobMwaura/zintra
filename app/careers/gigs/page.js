@@ -49,7 +49,7 @@ function GigsPageContent() {
           status,
           type,
           created_at,
-          employer:employer_id(id, company_name, logo_url)
+          employer:employer_id(id, company_name, company_logo_url)
         `)
         .eq('type', 'gig')
         .eq('status', 'active')

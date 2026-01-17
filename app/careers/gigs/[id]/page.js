@@ -69,8 +69,8 @@ export default function GigDetailPage() {
           employer:employer_id(
             id,
             company_name,
-            logo_url,
-            description,
+            company_logo_url,
+            company_description,
             location
           ),
           applications(count)
