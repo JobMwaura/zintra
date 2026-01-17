@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getUserRoleStatus, getEmployerCredits } from '@/app/actions/vendor-zcc';
+import { getUserRoleStatus, getEmployerCredits, addTestCredits } from '@/app/actions/vendor-zcc';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, CheckCircle, Zap, TrendingUp, Award } from 'lucide-react';
 
@@ -268,6 +268,29 @@ Status: Pending
             <p className="text-red-700 font-medium">{error}</p>
           </div>
         )}
+
+        {/* Development: Add Test Credits Button */}
+        <div className="mb-8">
+          <button
+            onClick={async () => {
+              setProcessing(true);
+              const result = await addTestCredits(employer.id, 1000);
+              setProcessing(false);
+              if (result.success) {
+                setCredits(credits + 1000);
+                setError(null);
+                alert(`✅ Added 1000 test credits!\nYou can now post jobs.`);
+              } else {
+                setError(result.error);
+              }
+            }}
+            disabled={processing}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition"
+          >
+            {processing ? 'Adding...' : '🧪 Add 1000 Test Credits (Dev)'}
+          </button>
+          <p className="text-sm text-slate-600 mt-2">Temporary button for testing while payment APIs are being integrated</p>
+        </div>
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">

@@ -322,3 +322,56 @@ export async function getEmployerCredits(employerId) {
     return { success: false, error: 'Failed to fetch credits' };
   }
 }
+
+/**
+ * Add test credits for development/testing
+ * Creates a fake payment record and adds credits to ledger
+ */
+export async function addTestCredits(employerId, creditAmount = 500) {
+  try {
+    const supabase = await createClient();
+
+    // Create a fake payment record
+    const { data: payment, error: paymentError } = await supabase
+      .from('employer_payments')
+      .insert({
+        employer_id: employerId,
+        vendor_id: null,
+        amount_kes: creditAmount * 4, // Rough conversion (1 credit ≈ 4 KES for testing)
+        payment_method: 'test',
+        status: 'completed',
+        reference_id: `TEST-${Date.now()}`,
+        completed_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (paymentError) {
+      return { success: false, error: 'Failed to create test payment: ' + paymentError.message };
+    }
+
+    // Add credits to ledger
+    const { error: ledgerError } = await supabase
+      .from('credits_ledger')
+      .insert({
+        employer_id: employerId,
+        credit_type: 'purchase',
+        amount: creditAmount,
+        reference_id: payment.id,
+      });
+
+    if (ledgerError) {
+      return { success: false, error: 'Failed to add credits: ' + ledgerError.message };
+    }
+
+    return { 
+      success: true, 
+      message: `Added ${creditAmount} test credits`,
+      paymentId: payment.id,
+      creditsAdded: creditAmount,
+    };
+  } catch (error) {
+    console.error('Error adding test credits:', error);
+    return { success: false, error: 'Failed to add test credits' };
+  }
+}
