@@ -6,9 +6,20 @@
 -- ============================================================================
 -- STEP 1: CREATE ENUMS
 -- ============================================================================
-CREATE TYPE IF NOT EXISTS payment_method_enum AS ENUM ('mpesa', 'card', 'pesapal');
-CREATE TYPE IF NOT EXISTS payment_status_enum AS ENUM ('pending', 'completed', 'failed');
-CREATE TYPE IF NOT EXISTS job_post_status_enum AS ENUM ('draft', 'active', 'paused', 'closed', 'filled');
+DO $$ BEGIN
+  CREATE TYPE payment_method_enum AS ENUM ('mpesa', 'card', 'pesapal');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status_enum AS ENUM ('pending', 'completed', 'failed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE job_post_status_enum AS ENUM ('draft', 'active', 'paused', 'closed', 'filled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ============================================================================
 -- STEP 2: ALTER employer_profiles (if columns don't exist)
