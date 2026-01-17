@@ -1,20 +1,17 @@
-# Fix: Missing 'location' Column in employer_profiles
+# Fix: Missing Columns in employer_profiles
 
-## Error
+## Errors
 ```
 Could not find the 'location' column of 'employer_profiles' in the schema cache
-https://zintra-sandy.vercel.app/careers/onboarding
+Could not find the 'user_id' column of 'employer_profiles' in the schema cache
 ```
 
 ## Root Cause
-The `employer_profiles` table is missing the `location` column that the `enableEmployerRole()` server action in `/app/actions/vendor-zcc.js` tries to insert.
+The `employer_profiles` table is missing two columns:
+1. **user_id** - Required to link employer profiles to auth users
+2. **location** - Required to store and auto-fill the employer's business location
 
-When a vendor enables their employer role, the code attempts to set:
-```javascript
-location: companyData?.location || vendor?.location || '',
-```
-
-But the `location` column doesn't exist in the `employer_profiles` table schema.
+When a vendor enables their employer role, the code attempts to set both columns, but they don't exist in the table schema.
 
 ## Solution
 Run this SQL in Supabase SQL Editor to add the missing column.
@@ -27,15 +24,23 @@ Run this SQL in Supabase SQL Editor to add the missing column.
 - Click **SQL Editor** in the left sidebar
 - Click **New Query**
 
-### 2. Copy and Run the SQL
-**⚠️ IMPORTANT:** Copy ONLY the SQL code below (not the markdown file):
+### ⚠️ IMPORTANT: Do NOT run the full DATABASE_SCHEMA.sql
+The `DATABASE_SCHEMA.sql` file contains RLS policies and other tables that may already exist. Running the full file will cause errors like:
+```
+ERROR: 42710: policy "users_read_own_profile" for table "profiles" already exists
+```
+
+### 2. Copy and Run ONLY the FIX migration
+**Copy ONLY these 4 lines of SQL** (from `FIX_EMPLOYER_LOCATION_COLUMN.sql`):
 
 ```sql
+ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS location TEXT;
+CREATE INDEX IF NOT EXISTS idx_employer_profiles_user_id ON employer_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_employer_profiles_location ON employer_profiles(location);
 ```
 
-Paste these 2 lines exactly into the SQL editor.
+Paste these exactly into the SQL editor.
 
 ### 3. Click **Run**
 The migration will execute and add the `location` column to `employer_profiles`.
@@ -45,13 +50,14 @@ You should see a success message. The onboarding flow will now work for vendors 
 
 ## What This Fixes
 ✅ Vendors can now enable their employer role from the onboarding page
-✅ Their location from the vendor profile auto-fills
+✅ Their location and user_id from the vendor profile auto-fills correctly
 ✅ The employer_profiles table schema matches the application code
+✅ User queries by user_id work correctly
 
 ## Schema After Fix
 The `employer_profiles` table will now have:
-- `id` (UUID)
-- `user_id` (UUID)
+- `id` (UUID, PRIMARY KEY)
+- `user_id` (UUID) ← **NEW**
 - `company_name` (TEXT)
 - `company_registration` (TEXT)
 - `verification_level` (TEXT)

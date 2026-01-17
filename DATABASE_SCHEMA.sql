@@ -296,7 +296,21 @@ DROP POLICY IF EXISTS "employers_update_own_listings" ON listings;
 CREATE POLICY "employers_update_own_listings" ON listings
   FOR UPDATE USING (auth.uid() = employer_id);
 
--- (More RLS policies as needed for applications, messages, etc)
+-- RLS POLICIES FOR EMPLOYER_PROFILES
+-- Policy: Users can insert their own employer profile
+DROP POLICY IF EXISTS "users_insert_own_employer_profile" ON employer_profiles;
+CREATE POLICY "users_insert_own_employer_profile" ON employer_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can read their own employer profile
+DROP POLICY IF EXISTS "users_read_own_employer_profile" ON employer_profiles;
+CREATE POLICY "users_read_own_employer_profile" ON employer_profiles
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Policy: Users can update their own employer profile
+DROP POLICY IF EXISTS "users_update_own_employer_profile" ON employer_profiles;
+CREATE POLICY "users_update_own_employer_profile" ON employer_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
 
 -- SAMPLE VERIFICATION VIEW (optional, for checking capabilities)
 CREATE OR REPLACE VIEW employer_capabilities AS
