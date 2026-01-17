@@ -132,6 +132,7 @@ export async function enableEmployerRole(userId, companyData) {
 
     // Prepare employer profile data
     const profileData = {
+      id: crypto.randomUUID(), // Generate UUID explicitly for RLS compliance
       user_id: userId,
       company_name: companyData?.companyName || vendor?.name || '',
       company_email: companyData?.companyEmail || vendor?.email || '',
