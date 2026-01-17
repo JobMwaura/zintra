@@ -49,10 +49,10 @@ SELECT
   company_name,
   company_registration,
   verification_level,
-  created_at
+  updated_at
 FROM employer_profiles
 WHERE company_name ILIKE '%narok%' OR company_name ILIKE '%cement%'
-ORDER BY created_at DESC;
+ORDER BY updated_at DESC;
 
 -- Query 5: Show all listings for Narok Cement (whatever type they have)
 SELECT 

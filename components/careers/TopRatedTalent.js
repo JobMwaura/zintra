@@ -35,6 +35,9 @@ export default function TopRatedTalent({ workers }) {
             <div
               key={worker.id}
               className="bg-white rounded border border-gray-300 hover:border-[#ea8f1e] hover:shadow-md transition-all p-4 flex flex-col"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(0deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px)'
+              }}
             >
               {/* Avatar + Name + Role */}
               <div className="flex items-start gap-3 mb-3">
