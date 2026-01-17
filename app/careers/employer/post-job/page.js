@@ -42,6 +42,7 @@ export default function PostJobPage() {
     payMax: '',
     jobType: 'full-time', // full-time, part-time, gig
     startDate: '',
+    isRealOpportunity: false, // Verify job is a real opportunity
   });
 
   useEffect(() => {
@@ -119,6 +120,10 @@ export default function PostJobPage() {
         setError('Minimum pay must be less than maximum pay');
         return;
       }
+      if (!formData.isRealOpportunity) {
+        setError('Please confirm this is a real opportunity');
+        return;
+      }
 
       // Check credits
       if (credits < JOB_POSTING_COST) {
@@ -154,18 +159,24 @@ export default function PostJobPage() {
         throw new Error('Failed to create listing: ' + listingError.message);
       }
 
-      // 2. Deduct credits from credits_ledger
-      const { error: ledgerError } = await supabase
-        .from('credits_ledger')
-        .insert({
-          employer_id: employer.id,
-          amount: -JOB_POSTING_COST,
-          credit_type: 'job_posting',
-          description: `Job posting: "${formData.title}"`,
-        });
+      // 2. Deduct credits from zcc_credits table 
+      // Get current used_credits, then increment it
+      const { data: currentCredits } = await supabase
+        .from('zcc_credits')
+        .select('used_credits')
+        .eq('employer_id', employer.id)
+        .single();
 
-      if (ledgerError) {
-        throw new Error('Failed to deduct credits: ' + ledgerError.message);
+      const newUsedCredits = (currentCredits?.used_credits || 0) + JOB_POSTING_COST;
+      const { error: creditsError } = await supabase
+        .from('zcc_credits')
+        .update({ 
+          used_credits: newUsedCredits
+        })
+        .eq('employer_id', employer.id);
+
+      if (creditsError) {
+        throw new Error('Failed to deduct credits: ' + creditsError.message);
       }
 
       // 3. Update employer_spending for the month
@@ -455,6 +466,28 @@ export default function PostJobPage() {
             <p className="text-xs text-slate-500 mt-2">
               Be clear about what you're looking for. Include requirements, responsibilities, and any special skills needed.
             </p>
+          </div>
+
+          {/* Opportunity Verification Checkbox */}
+          <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="isRealOpportunity"
+                checked={formData.isRealOpportunity}
+                onChange={handleChange}
+                disabled={submitting}
+                className="w-5 h-5 mt-1 text-orange-600 border-slate-300 rounded focus:ring-orange-500 cursor-pointer"
+              />
+              <div>
+                <p className="font-semibold text-slate-900">
+                  This is a real job opportunity
+                </p>
+                <p className="text-sm text-slate-600 mt-1">
+                  I confirm that this is a genuine job opportunity and I am authorized to post it. Fake or misleading job postings violate our terms and may result in account suspension.
+                </p>
+              </div>
+            </label>
           </div>
 
           {/* Submit Button */}

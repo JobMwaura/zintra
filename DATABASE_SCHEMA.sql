@@ -182,13 +182,14 @@ CREATE TABLE IF NOT EXISTS credits_ledger (
   employer_id UUID NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
   
   -- Credit type
-  credit_type TEXT NOT NULL CHECK (credit_type IN ('purchase', 'bonus', 'promotional', 'contact_unlock', 'outreach_message', 'boost', 'boost_refund', 'expired_credits', 'plan_allocation')),
+  credit_type TEXT NOT NULL CHECK (credit_type IN ('purchase', 'bonus', 'promotional', 'contact_unlock', 'outreach_message', 'boost', 'boost_refund', 'expired_credits', 'plan_allocation', 'job_posting', 'admin_gift')),
   
   -- Ledger
   amount INT NOT NULL, -- Positive for additions, negative for deductions
   balance_before INT DEFAULT 0,
   balance_after INT DEFAULT 0,
   reference_id TEXT, -- Link to boost/unlock/etc
+  description TEXT, -- Optional: human-readable description (e.g., "Job posting: Plumber needed")
   
   created_at TIMESTAMP DEFAULT NOW()
 );

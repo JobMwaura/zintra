@@ -42,6 +42,16 @@ ALTER TABLE listings ADD CONSTRAINT listings_employer_id_fkey
   FOREIGN KEY (employer_id) REFERENCES employer_profiles(id) ON DELETE CASCADE;
 
 -- ============================================================================
+-- STEP 2C: ALTER credits_ledger (add description column and job_posting type)
+-- ============================================================================
+ALTER TABLE credits_ledger ADD COLUMN IF NOT EXISTS description TEXT;
+
+-- Update the CHECK constraint to include new credit types
+ALTER TABLE credits_ledger DROP CONSTRAINT IF EXISTS credits_ledger_credit_type_check;
+ALTER TABLE credits_ledger ADD CONSTRAINT credits_ledger_credit_type_check 
+  CHECK (credit_type IN ('purchase', 'bonus', 'promotional', 'contact_unlock', 'outreach_message', 'boost', 'boost_refund', 'expired_credits', 'plan_allocation', 'job_posting', 'admin_gift'));
+
+-- ============================================================================
 -- STEP 3: CREATE employer_payments TABLE
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS employer_payments (
