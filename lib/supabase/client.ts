@@ -1,15 +1,28 @@
 /**
  * Supabase Client Setup
- * Using Supabase for auth, database, and RLS
+ * Using @supabase/ssr for proper session persistence in Next.js App Router
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Cache the client instance to prevent multiple GoTrueClient instances
+let cachedClient: any = null;
 
-// Client-side Supabase instance (in browser)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export function createClient() {
+  // Return cached instance if it exists
+  if (cachedClient) {
+    return cachedClient;
+  }
 
-// For server-side actions, you might want a service role client
-// (create a separate file for that with SUPABASE_SERVICE_ROLE_KEY)
+  // Create and cache the client
+  cachedClient = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  return cachedClient;
+}
+
+// For backward compatibility with old code that imports `supabase` directly
+export const supabase = createClient();
+
