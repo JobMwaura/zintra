@@ -66,6 +66,10 @@ CREATE TABLE IF NOT EXISTS employer_profiles (
   company_logo_url TEXT,
   company_description TEXT,
   
+  -- Vendor integration
+  vendor_id UUID, -- Reference to vendor if employer came from vendor
+  is_vendor_employer BOOLEAN DEFAULT FALSE, -- True if this employer is also a vendor
+  
   -- Metrics
   jobs_posted INT DEFAULT 0,
   gigs_posted INT DEFAULT 0,
