@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import QuoteFormSections from '@/components/vendor/QuoteFormSections';
 import {
   ArrowLeft,
   AlertCircle,
