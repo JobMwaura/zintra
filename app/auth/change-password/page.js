@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Loader, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 /**
- * Page where user actually changes their password
- * This is reached after server-side token verification
+ * Inner component that uses useSearchParams
+ * Wrapped in Suspense boundary to avoid build errors
  */
-export default function ChangePasswordPage() {
+function ChangePasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -293,5 +293,33 @@ export default function ChangePasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Loading fallback component
+ */
+function ChangePasswordLoading() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-xl shadow p-8 max-w-md w-full border border-gray-200">
+        <div className="flex flex-col items-center gap-4">
+          <Loader className="w-8 h-8 animate-spin text-orange-500" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Page wrapper with Suspense boundary
+ * Solves: useSearchParams() should be wrapped in a suspense boundary
+ */
+export default function ChangePasswordPage() {
+  return (
+    <Suspense fallback={<ChangePasswordLoading />}>
+      <ChangePasswordForm />
+    </Suspense>
   );
 }
