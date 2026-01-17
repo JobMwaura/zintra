@@ -12,8 +12,8 @@ INSERT INTO employer_profiles (
 )
 SELECT 
   v.user_id,
-  v.name,
-  v.email,
+  COALESCE(NULLIF(v.name, ''), 'Vendor ' || SUBSTRING(v.id::text, 1, 8)),
+  COALESCE(v.email, ''),
   v.id,
   true,
   'verified'
