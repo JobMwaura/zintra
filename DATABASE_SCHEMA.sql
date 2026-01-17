@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS employer_profiles (
   company_phone TEXT,
   company_email TEXT,
   county TEXT,
+  location TEXT, -- Business location / office location
   
   -- Branding
   company_logo_url TEXT,
