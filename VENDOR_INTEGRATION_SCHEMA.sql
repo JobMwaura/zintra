@@ -58,6 +58,7 @@ SELECT
   ep.id as employer_id,
   ep.company_name,
   ep.verification_level,
+  COALESCE(ep.vendor_id::text, '') as vendor_id,
   
   -- Credits balance (from credits_ledger)
   COALESCE(SUM(CASE WHEN cl.credit_type IN ('purchase', 'bonus', 'plan_allocation') THEN cl.amount ELSE 0 END), 0) -
@@ -79,15 +80,13 @@ SELECT
   (SELECT COUNT(*) FROM applications WHERE listing_id IN (SELECT id FROM listings WHERE employer_id = ep.id) AND status = 'hired') as total_hired,
   COALESCE((SELECT AVG(score) FROM ratings WHERE to_user_id IN (SELECT candidate_id FROM applications WHERE listing_id IN (SELECT id FROM listings WHERE employer_id = ep.id) AND status = 'hired')), 0) as avg_hire_rating,
   
-  -- Plan info
-  s.plan as current_plan,
-  s.status as plan_status
+  -- Plan info (simplified - just get the plan, assume all active plans are active)
+  COALESCE((SELECT plan FROM subscriptions WHERE employer_id = ep.id LIMIT 1), 'free') as current_plan
   
 FROM employer_profiles ep
-LEFT JOIN subscriptions s ON ep.id = s.employer_id
 LEFT JOIN credits_ledger cl ON ep.id = cl.employer_id
 LEFT JOIN employer_spending es ON ep.id = es.employer_id AND es.period_month = DATE_TRUNC('month', NOW())::DATE
-GROUP BY ep.id, ep.company_name, ep.verification_level, es.total_spent, es.posting_spent, es.unlocks_spent, es.boosts_spent, s.plan, s.status;
+GROUP BY ep.id, ep.company_name, ep.verification_level, ep.vendor_id, es.total_spent, es.posting_spent, es.unlocks_spent, es.boosts_spent;
 
 -- 6. INDEXES for performance
 CREATE INDEX IF NOT EXISTS idx_employer_payments_employer ON employer_payments(employer_id);
@@ -104,14 +103,9 @@ ALTER TABLE employer_spending ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "employers_read_own_payments" ON employer_payments
   FOR SELECT USING (auth.uid() = employer_id);
 
--- Policy: Only admins can insert payments (via payment webhook)
-CREATE POLICY "admins_insert_payments" ON employer_payments
-  FOR INSERT WITH CHECK (auth.jwt()->>'role' = 'admin' OR auth.jwt()->>'role' = 'service');
-
 -- Policy: Employers can see their spending
 CREATE POLICY "employers_read_own_spending" ON employer_spending
   FOR SELECT USING (auth.uid() = employer_id);
 
--- Policy: System can update spending
-CREATE POLICY "system_update_spending" ON employer_spending
-  FOR UPDATE USING (auth.jwt()->>'role' = 'service');
+-- Note: Payment insertions and updates should be done via authenticated API endpoints
+-- that verify the user is an admin or service account before allowing writes
