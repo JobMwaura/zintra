@@ -180,14 +180,30 @@ export default function OnboardingPage() {
               </button>
             )}
             {candidate && !employer && (
-              <p className="text-sm text-slate-600">
-                Next: Complete your candidate profile at <span className="font-mono">/careers/me</span>
-              </p>
+              <div className="mt-4">
+                <p className="text-sm text-slate-600 mb-3">
+                  Next: Complete your candidate profile
+                </p>
+                <button
+                  onClick={() => router.push('/careers/me')}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition"
+                >
+                  Go to Candidate Profile
+                </button>
+              </div>
             )}
             {employer && !candidate && (
-              <p className="text-sm text-slate-600">
-                Next: Set up payment to post your first job
-              </p>
+              <div className="mt-4">
+                <p className="text-sm text-slate-600 mb-3">
+                  Next: Set up payment to post your first job
+                </p>
+                <button
+                  onClick={() => router.push('/careers/employer/buy-credits')}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition"
+                >
+                  Buy Credits
+                </button>
+              </div>
             )}
           </div>
         )}
