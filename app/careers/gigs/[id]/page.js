@@ -94,7 +94,7 @@ export default function GigDetailPage() {
 
   async function handleApply() {
     if (!user) {
-      router.push('/careers/auth/login');
+      router.push('/login');
       return;
     }
 
