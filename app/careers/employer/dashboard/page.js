@@ -213,7 +213,17 @@ export default function EmployerDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Jobs */}
           <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-4">Recent Jobs</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-slate-900">Recent Jobs</h2>
+              {jobs.length > 0 && (
+                <button
+                  onClick={() => router.push('/careers/employer/jobs')}
+                  className="text-orange-600 hover:text-orange-700 font-semibold text-sm"
+                >
+                  View All →
+                </button>
+              )}
+            </div>
             {jobs.length === 0 ? (
               <p className="text-slate-600 py-8 text-center">
                 No jobs posted yet.{' '}
