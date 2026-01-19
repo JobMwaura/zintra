@@ -32,39 +32,17 @@ export default function AdminVerificationDashboard() {
         return documentUrls[verification.id];
       }
 
-      // If the document_url is already a presigned URL (starts with https and has query params), use it
-      if (verification.document_url && verification.document_url.includes('X-Amz-Signature')) {
-        return verification.document_url;
-      }
-
-      // Otherwise, generate a presigned URL
+      // Use our proxy endpoint instead of presigned URLs
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/admin/get-document-url', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          s3Key: verification.s3_key || verification.document_url?.split('.com/')[1],
-          documentId: verification.id,
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to get document URL');
-        return null;
-      }
-
-      const data = await response.json();
+      const proxyUrl = `/api/admin/verification-document?documentId=${verification.id}`;
       
-      // Cache the presigned URL
+      // Cache the proxy URL
       setDocumentUrls(prev => ({
         ...prev,
-        [verification.id]: data.presignedUrl,
+        [verification.id]: proxyUrl,
       }));
 
-      return data.presignedUrl;
+      return proxyUrl;
     } catch (error) {
       console.error('Error getting document URL:', error);
       return null;
