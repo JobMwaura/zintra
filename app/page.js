@@ -347,7 +347,6 @@ export default function ZintraHomepage() {
       fetchVendorProfile();
     }
 
-    return () => subscription?.unsubscribe();
     const fetchData = async () => {
       // Use comprehensive construction categories
       setCategories([
@@ -358,20 +357,34 @@ export default function ZintraHomepage() {
         })),
       ]);
 
-      // Featured vendors (top rated, verified) - fetch all and sort
-      const { data: vendors, error: vendorError } = await supabase
+      // Featured vendors - fetch all, prioritize those with images, then sort by rating
+      const { data: allVendors, error: vendorError } = await supabase
         .from('vendors')
-        .select('*')
-        .order('rating', { ascending: false })
-        .limit(6);
+        .select('*');
       
       if (vendorError) {
         console.error('Error fetching vendors:', vendorError);
-      } else if (vendors && vendors.length > 0) {
-        console.log('Fetched vendors:', vendors.length);
-        setFeaturedVendors(vendors);
+        setFeaturedVendors([]);
+      } else if (allVendors && allVendors.length > 0) {
+        console.log('Fetched total vendors:', allVendors.length);
+        
+        // Separate vendors with images and without
+        const vendorsWithImages = allVendors.filter(v => v.logo_url || v.business_logo || v.cover_image);
+        const vendorsWithoutImages = allVendors.filter(v => !v.logo_url && !v.business_logo && !v.cover_image);
+        
+        // Sort each group by rating (descending)
+        const sortByRating = (a, b) => (b.rating || 0) - (a.rating || 0);
+        vendorsWithImages.sort(sortByRating);
+        vendorsWithoutImages.sort(sortByRating);
+        
+        // Combine: with images first, then without
+        const sortedVendors = [...vendorsWithImages, ...vendorsWithoutImages].slice(0, 6);
+        
+        console.log('Featured vendors (prioritized with images):', sortedVendors.length);
+        setFeaturedVendors(sortedVendors);
       } else {
         console.warn('No vendors found');
+        setFeaturedVendors([]);
       }
 
       // Products teaser
@@ -396,8 +409,11 @@ export default function ZintraHomepage() {
         { icon: Clock, value: 'Fast', label: 'Response Time' }
       ]);
     };
+    
     fetchVendorProfile();
     fetchData();
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   // Close menus when clicking outside
