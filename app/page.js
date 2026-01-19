@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock, Bell } from 'lucide-react';
+import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock, Bell, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
@@ -867,28 +867,30 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
+      {/* SECTION 1: CATEGORIES */}
       <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {CATEGORY_CARDS.map((category, index) => {
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Categories</h2>
+            <Link href="/browse">
+              <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
+                View More <ArrowRight className="w-5 h-5 ml-1" />
+              </button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {CATEGORY_CARDS.slice(0, 6).map((category, index) => {
               const IconComponent = category.icon;
               return (
                 <Link key={index} href={`/browse?category=${encodeURIComponent(category.name)}`}>
-                  <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-100 hover:border-orange-200 hover:shadow-lg transition-all cursor-pointer group">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ backgroundColor: '#ca863720' }}>
-                        <IconComponent className="w-7 h-7" style={{ color: '#ca8637' }} />
-                      </div>
-                      <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${
-                        category.type === 'services' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-green-50 text-green-700 border border-green-200'
-                      }`}>
-                        {category.type === 'services' ? 'Service' : 'Materials'}
-                      </span>
+                  <div className="bg-white p-4 rounded-lg shadow-sm border-2 border-gray-100 hover:border-orange-200 hover:shadow-lg transition-all cursor-pointer group h-full flex flex-col">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mb-3" style={{ backgroundColor: '#ca863720' }}>
+                      <IconComponent className="w-5 h-5" style={{ color: '#ca8637' }} />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">{category.name}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">{category.description}</p>
-                    <div className="mt-4 flex items-center text-sm font-medium group-hover:translate-x-1 transition-transform" style={{ color: '#ca8637' }}>
-                      Browse <ArrowRight className="w-4 h-4 ml-1" />
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">{category.name}</h3>
+                    <p className="text-gray-600 text-xs leading-relaxed flex-grow line-clamp-2">{category.description}</p>
+                    <div className="mt-3 flex items-center text-xs font-medium group-hover:translate-x-1 transition-transform" style={{ color: '#ca8637' }}>
+                      Browse <ArrowRight className="w-3 h-3 ml-1" />
                     </div>
                   </div>
                 </Link>
@@ -898,53 +900,155 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      <section className="bg-white py-12">
+      {/* SECTION 2: FEATURED VENDORS */}
+      <section className="bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-4xl font-bold mb-2" style={{ color: '#535554' }}>Featured Vendors</h2>
-              <p className="text-gray-600 text-lg">Top-rated construction professionals in Kenya</p>
-            </div>
+            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Featured Vendors</h2>
             <Link href="/browse">
               <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
-                View All <ArrowRight className="w-5 h-5 ml-1" />
+                View More <ArrowRight className="w-5 h-5 ml-1" />
               </button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredVendors.map((vendor) => (
-              <div key={vendor.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all">
-                <div className="relative h-40 bg-gray-50 flex items-center justify-center overflow-hidden">
-                  {vendor.logo_url ? (
-                    <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain p-6" />
-                  ) : (
-                    <Building2 className="w-16 h-16 text-gray-300" />
-                  )}
-                  {vendor.verified && (
-                    <span className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
-                      <Shield className="w-3 h-3" /> Verified
-                    </span>
-                  )}
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{vendor.company_name || 'Vendor'}</h3>
-                  <p className="text-xs text-gray-500 mb-3">{vendor.category || '—'}</p>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-sm font-bold text-gray-900 ml-1.5">{vendor.rating || '—'}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      {vendor.county || 'Location'}
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredVendors.length > 0 ? (
+              featuredVendors.map((vendor) => (
+                <div key={vendor.id} className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg transition-all flex flex-col">
+                  <div className="relative h-24 bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center overflow-hidden">
+                    {vendor.logo_url ? (
+                      <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain p-3" />
+                    ) : (
+                      <Building2 className="w-8 h-8 text-gray-300" />
+                    )}
+                    {vendor.verified && (
+                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Shield className="w-3 h-3 text-white" />
+                      </span>
+                    )}
                   </div>
-                  <Link href={`/vendor-profile/${vendor.id}`}>
-                    <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all shadow-sm" style={{ backgroundColor: '#ca8637' }}>
-                      View Profile
-                    </button>
-                  </Link>
+                  <div className="p-3 flex-grow flex flex-col">
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{vendor.company_name || 'Vendor'}</h3>
+                    <p className="text-xs text-gray-500 mb-2 line-clamp-1">{vendor.category || '—'}</p>
+                    <div className="flex items-center justify-between text-xs mb-3 flex-grow">
+                      <div className="flex items-center">
+                        <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                        <span className="font-bold text-gray-900 ml-1">{vendor.rating?.toFixed(1) || '—'}</span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <MapPin className="w-3 h-3 mr-0.5" />
+                        <span className="text-xs">{vendor.county || 'Location'}</span>
+                      </div>
+                    </div>
+                    <Link href={`/vendor-profile/${vendor.id}`}>
+                      <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
+                        Profile
+                      </button>
+                    </Link>
+                  </div>
                 </div>
+              ))
+            ) : (
+              // Test data when no real vendors exist
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={`test-vendor-${i}`} className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 flex flex-col">
+                  <div className="relative h-24 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center overflow-hidden">
+                    <Building2 className="w-8 h-8 text-gray-300" />
+                    <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                      <Shield className="w-3 h-3 text-white" />
+                    </span>
+                  </div>
+                  <div className="p-3 flex-grow flex flex-col">
+                    <h3 className="text-sm font-bold text-gray-900 mb-1">Test Vendor {i + 1}</h3>
+                    <p className="text-xs text-gray-500 mb-2">Construction Services</p>
+                    <div className="flex items-center justify-between text-xs mb-3 flex-grow">
+                      <div className="flex items-center">
+                        <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                        <span className="font-bold text-gray-900 ml-1">4.8</span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <MapPin className="w-3 h-3 mr-0.5" />
+                        <span className="text-xs">Nairobi</span>
+                      </div>
+                    </div>
+                    <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
+                      Profile
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 3: FEATURED RFQs */}
+      <section className="py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Featured RFQs</h2>
+            <Link href="/post-rfq">
+              <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
+                View More <ArrowRight className="w-5 h-5 ml-1" />
+              </button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Test data for RFQs */}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={`test-rfq-${i}`} className="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-lg transition-all p-4 flex flex-col">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-5 h-5" style={{ color: '#ca8637' }} />
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">Active</span>
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">RFQ Project {i + 1}</h3>
+                <p className="text-xs text-gray-600 mb-3 line-clamp-2">Looking for construction services and materials</p>
+                <div className="mb-3 flex-grow">
+                  <p className="text-xs text-gray-500 mb-1"><strong>Budget:</strong> KES 500,000 - 1,000,000</p>
+                  <p className="text-xs text-gray-500"><strong>Location:</strong> Nairobi</p>
+                </div>
+                <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
+                  View Details
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 4: FEATURED GIGS/JOBS */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Featured Gigs & Jobs</h2>
+            <Link href="/careers/gigs">
+              <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
+                View More <ArrowRight className="w-5 h-5 ml-1" />
+              </button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Test data for Gigs */}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={`test-gig-${i}`} className="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-lg transition-all p-4 flex flex-col">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-5 h-5" style={{ color: '#ca8637' }} />
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Gig</span>
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">Job Title {i + 1}</h3>
+                <p className="text-xs text-gray-600 mb-3 line-clamp-2">Short term opportunity at a great company</p>
+                <div className="mb-3 flex-grow">
+                  <p className="text-xs text-gray-500 mb-1"><strong>Pay:</strong> KES {2000 * (i + 1)} - {3000 * (i + 1)}</p>
+                  <p className="text-xs text-gray-500"><strong>Location:</strong> Nairobi</p>
+                  <p className="text-xs text-gray-500"><strong>Duration:</strong> 1-2 weeks</p>
+                </div>
+                <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
+                  Apply Now
+                </button>
               </div>
             ))}
           </div>
