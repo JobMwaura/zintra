@@ -359,12 +359,18 @@ export default function ZintraHomepage() {
       ]);
 
       // Featured vendors (top rated, verified)
-      const { data: vendors } = await supabase
+      const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
-        .select('id, company_name, category, county, rating, logo_url, verified')
+        .select('id, company_name, category, county, rating, logo_url, is_verified')
         .order('rating', { ascending: false })
         .limit(6);
-      if (vendors) setFeaturedVendors(vendors);
+      
+      if (vendorError) {
+        console.error('Error fetching vendors:', vendorError);
+      } else if (vendors) {
+        console.log('Fetched vendors:', vendors.length);
+        setFeaturedVendors(vendors);
+      }
 
       // Products teaser
       const { data: products } = await supabase
@@ -921,7 +927,7 @@ export default function ZintraHomepage() {
                     ) : (
                       <Building2 className="w-8 h-8 text-gray-300" />
                     )}
-                    {vendor.verified && (
+                    {vendor.is_verified && (
                       <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
                         <Shield className="w-3 h-3 text-white" />
                       </span>
@@ -949,34 +955,9 @@ export default function ZintraHomepage() {
                 </div>
               ))
             ) : (
-              // Test data when no real vendors exist
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={`test-vendor-${i}`} className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 flex flex-col">
-                  <div className="relative h-24 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center overflow-hidden">
-                    <Building2 className="w-8 h-8 text-gray-300" />
-                    <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                      <Shield className="w-3 h-3 text-white" />
-                    </span>
-                  </div>
-                  <div className="p-3 flex-grow flex flex-col">
-                    <h3 className="text-sm font-bold text-gray-900 mb-1">Test Vendor {i + 1}</h3>
-                    <p className="text-xs text-gray-500 mb-2">Construction Services</p>
-                    <div className="flex items-center justify-between text-xs mb-3 flex-grow">
-                      <div className="flex items-center">
-                        <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                        <span className="font-bold text-gray-900 ml-1">4.8</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <MapPin className="w-3 h-3 mr-0.5" />
-                        <span className="text-xs">Nairobi</span>
-                      </div>
-                    </div>
-                    <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
-                      Profile
-                    </button>
-                  </div>
-                </div>
-              ))
+              <div className="col-span-3 text-center py-12">
+                <p className="text-gray-500 font-medium">No vendors available yet. Check back soon!</p>
+              </div>
             )}
           </div>
         </div>
