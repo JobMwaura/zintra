@@ -229,6 +229,7 @@ export default function ZintraHomepage() {
   const [categories, setCategories] = useState([]);
   const [featuredVendors, setFeaturedVendors] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
+  const [featuredRFQs, setFeaturedRFQs] = useState([]);
   const [showSignUpDropdown, setShowSignUpDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [stats, setStats] = useState([
@@ -394,6 +395,32 @@ export default function ZintraHomepage() {
         .order('created_at', { ascending: false })
         .limit(4);
       if (products) setTopProducts(products);
+
+      // Featured RFQs - fetch active public RFQs
+      try {
+        const { data: rfqs, error: rfqError } = await supabase
+          .from('rfqs')
+          .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
+          .eq('rfq_type', 'public')
+          .eq('visibility', 'public')
+          .eq('status', 'open')
+          .order('created_at', { ascending: false })
+          .limit(6);
+        
+        if (rfqError) {
+          console.error('Error fetching RFQs:', rfqError);
+          setFeaturedRFQs([]);
+        } else if (rfqs && rfqs.length > 0) {
+          console.log('Fetched RFQs:', rfqs.length);
+          setFeaturedRFQs(rfqs);
+        } else {
+          console.warn('No public RFQs found');
+          setFeaturedRFQs([]);
+        }
+      } catch (rfqErr) {
+        console.error('Error in RFQ fetch:', rfqErr);
+        setFeaturedRFQs([]);
+      }
 
       // Stats
       const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true });
@@ -993,26 +1020,46 @@ export default function ZintraHomepage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Test data for RFQs */}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={`test-rfq-${i}`} className="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-lg transition-all p-4 flex flex-col">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-5 h-5" style={{ color: '#ca8637' }} />
+            {featuredRFQs.length > 0 ? (
+              featuredRFQs.map((rfq) => (
+                <Link key={rfq.id} href={`/rfq/${rfq.id}`}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-100 hover:border-orange-300 hover:shadow-lg transition-all p-4 flex flex-col cursor-pointer">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">{rfq.title}</h3>
+                        <p className="text-xs text-gray-600 line-clamp-1">{rfq.description}</p>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium ml-2 flex-shrink-0 whitespace-nowrap">Open</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                      <div>
+                        <p className="text-gray-500 font-semibold text-xs">Budget</p>
+                        <p className="font-bold text-gray-900 text-xs">{rfq.budget_range || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 font-semibold text-xs">Location</p>
+                        <p className="font-bold text-gray-900 text-xs">{rfq.county || 'Not specified'}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-gray-500 font-semibold text-xs">Category</p>
+                        <p className="font-bold text-gray-900 text-xs line-clamp-1">{rfq.category || 'General'}</p>
+                      </div>
+                    </div>
+                    
+                    <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all mt-auto" style={{ backgroundColor: '#ca8637' }}>
+                      View & Quote
+                    </button>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">Active</span>
-                </div>
-                <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">RFQ Project {i + 1}</h3>
-                <p className="text-xs text-gray-600 mb-3 line-clamp-2">Looking for construction services and materials</p>
-                <div className="mb-3 flex-grow">
-                  <p className="text-xs text-gray-500 mb-1"><strong>Budget:</strong> KES 500,000 - 1,000,000</p>
-                  <p className="text-xs text-gray-500"><strong>Location:</strong> Nairobi</p>
-                </div>
-                <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
-                  View Details
-                </button>
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-12">
+                <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No active RFQs at the moment</p>
+                <p className="text-gray-400 text-sm mt-1">Check back soon or post your own RFQ</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
