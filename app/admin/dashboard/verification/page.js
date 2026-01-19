@@ -272,16 +272,23 @@ export default function AdminVerificationDashboard() {
               )}
 
               <div className="flex items-center gap-3 flex-wrap">
-                <a
-                  href={verification.document_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-                >
-                  <Eye className="w-4 h-4" />
-                  View Document
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {verification.document_url ? (
+                  <a
+                    href={verification.document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Document
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg cursor-not-allowed opacity-50">
+                    <Eye className="w-4 h-4" />
+                    No Document
+                  </div>
+                )}
 
                 {verification.status === 'pending' && (
                   <>
@@ -362,6 +369,69 @@ export default function AdminVerificationDashboard() {
             </div>
 
             <div className="p-6 space-y-4">
+              {/* Document Preview Section */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Document Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-600">Document Type</p>
+                    <p className="font-medium text-gray-900 capitalize">
+                      {selectedVerification.document_type?.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Registered Business Name</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedVerification.registered_business_name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Registration Number</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedVerification.registration_number || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Country</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedVerification.country_of_registration}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedVerification.business_address && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-600">Business Address</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedVerification.business_address}
+                    </p>
+                  </div>
+                )}
+
+                {/* Document Preview / Link */}
+                {selectedVerification.document_url ? (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-600 mb-2">Document File</p>
+                    <a
+                      href={selectedVerification.document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download/View Document
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ No document file available for this verification
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {reviewAction === 'reject' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
