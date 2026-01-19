@@ -358,18 +358,20 @@ export default function ZintraHomepage() {
         })),
       ]);
 
-      // Featured vendors (top rated, verified)
+      // Featured vendors (top rated, verified) - fetch all and sort
       const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
-        .select('id, company_name, category, county, rating, logo_url, is_verified')
+        .select('*')
         .order('rating', { ascending: false })
         .limit(6);
       
       if (vendorError) {
         console.error('Error fetching vendors:', vendorError);
-      } else if (vendors) {
+      } else if (vendors && vendors.length > 0) {
         console.log('Fetched vendors:', vendors.length);
         setFeaturedVendors(vendors);
+      } else {
+        console.warn('No vendors found');
       }
 
       // Products teaser
