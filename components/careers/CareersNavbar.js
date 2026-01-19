@@ -61,16 +61,39 @@ export default function CareersNavbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
+            {/* Main Site Links */}
+            <div className="flex items-center gap-4 pr-4 border-r border-gray-200">
+              <Link
+                href="/"
+                className="text-gray-700 hover:text-orange-500 font-medium transition text-sm"
+              >
+                Home
+              </Link>
+              <Link
+                href="/browse"
+                className="text-gray-700 hover:text-orange-500 font-medium transition text-sm"
+              >
+                Find Vendors
+              </Link>
+              <Link
+                href="/post-rfq"
+                className="text-gray-700 hover:text-orange-500 font-medium transition text-sm"
+              >
+                Post RFQ
+              </Link>
+            </div>
+
+            {/* Career Centre Links */}
             {!user ? (
               <>
                 <Link
-                  href="/careers/auth/login"
+                  href="/login"
                   className="text-gray-700 hover:text-orange-500 font-medium transition"
                 >
                   Login
                 </Link>
                 <Link
-                  href="/careers/auth/signup"
+                  href="/signup"
                   className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition"
                 >
                   Sign Up
@@ -142,16 +165,39 @@ export default function CareersNavbar() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-3">
+            {/* Main Site Links */}
+            <div className="pb-3 border-b border-gray-200">
+              <Link
+                href="/"
+                className="block text-gray-700 hover:text-orange-500 font-medium py-2 text-sm"
+              >
+                ← Back to Home
+              </Link>
+              <Link
+                href="/browse"
+                className="block text-gray-700 hover:text-orange-500 font-medium py-2 text-sm"
+              >
+                Find Vendors
+              </Link>
+              <Link
+                href="/post-rfq"
+                className="block text-gray-700 hover:text-orange-500 font-medium py-2 text-sm"
+              >
+                Post RFQ
+              </Link>
+            </div>
+
+            {/* Career Centre Links */}
             {!user ? (
               <>
                 <Link
-                  href="/careers/auth/login"
+                  href="/login"
                   className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                 >
                   Login
                 </Link>
                 <Link
-                  href="/careers/auth/signup"
+                  href="/signup"
                   className="block bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg text-center transition"
                 >
                   Sign Up
