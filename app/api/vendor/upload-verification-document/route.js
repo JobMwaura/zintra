@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { supabase } from '@/lib/supabaseClient';
 
 // Initialize S3 Client (shared with portfolio images and business updates)
@@ -97,13 +98,18 @@ export async function POST(request) {
     const command = new PutObjectCommand(uploadParams);
     await s3Client.send(command);
 
-    // Generate the public URL (store S3 key for presigned URLs later)
-    const fileUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${fileName}`;
+    // Generate a presigned URL for viewing the document (valid for 7 days)
+    const getObjectCommand = new GetObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: fileName,
+    });
+    
+    const presignedUrl = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 604800 }); // 7 days
 
-    // Return success with file URL and S3 key
+    // Return success with presigned URL and S3 key
     return NextResponse.json({
       success: true,
-      fileUrl: fileUrl,
+      fileUrl: presignedUrl, // Presigned URL that will work
       s3Key: fileName, // Store S3 key for generating presigned URLs later
       fileName: file.name,
       fileSize: file.size,

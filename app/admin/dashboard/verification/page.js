@@ -18,10 +18,58 @@ export default function AdminVerificationDashboard() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [requestedInfo, setRequestedInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [documentUrls, setDocumentUrls] = useState({}); // Cache for presigned URLs
 
   useEffect(() => {
     fetchVerifications();
   }, [filter]);
+
+  // Get a presigned URL for viewing a document
+  const getDocumentUrl = async (verification) => {
+    try {
+      // Check if we already have a cached URL
+      if (documentUrls[verification.id]) {
+        return documentUrls[verification.id];
+      }
+
+      // If the document_url is already a presigned URL (starts with https and has query params), use it
+      if (verification.document_url && verification.document_url.includes('X-Amz-Signature')) {
+        return verification.document_url;
+      }
+
+      // Otherwise, generate a presigned URL
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/admin/get-document-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          s3Key: verification.s3_key || verification.document_url?.split('.com/')[1],
+          documentId: verification.id,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to get document URL');
+        return null;
+      }
+
+      const data = await response.json();
+      
+      // Cache the presigned URL
+      setDocumentUrls(prev => ({
+        ...prev,
+        [verification.id]: data.presignedUrl,
+      }));
+
+      return data.presignedUrl;
+    } catch (error) {
+      console.error('Error getting document URL:', error);
+      return null;
+    }
+  };
 
   const fetchVerifications = async () => {
     try {
@@ -412,16 +460,19 @@ export default function AdminVerificationDashboard() {
                 {selectedVerification.document_url ? (
                   <div className="mt-4">
                     <p className="text-xs text-gray-600 mb-2">Document File</p>
-                    <a
-                      href={selectedVerification.document_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={async () => {
+                        const url = await getDocumentUrl(selectedVerification);
+                        if (url) {
+                          window.open(url, '_blank');
+                        }
+                      }}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
                     >
                       <Download className="w-4 h-4" />
                       Download/View Document
                       <ExternalLink className="w-3 h-3" />
-                    </a>
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
