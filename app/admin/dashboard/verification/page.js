@@ -299,16 +299,19 @@ export default function AdminVerificationDashboard() {
 
               <div className="flex items-center gap-3 flex-wrap">
                 {verification.document_url ? (
-                  <a
-                    href={verification.document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={async () => {
+                      const url = await getDocumentUrl(verification);
+                      if (url) {
+                        window.open(url, '_blank');
+                      }
+                    }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
                   >
                     <Eye className="w-4 h-4" />
                     View Document
                     <ExternalLink className="w-3 h-3" />
-                  </a>
+                  </button>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg cursor-not-allowed opacity-50">
                     <Eye className="w-4 h-4" />
