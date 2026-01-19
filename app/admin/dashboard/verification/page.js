@@ -34,11 +34,10 @@ export default function AdminVerificationDashboard() {
           vendors (
             id,
             company_name,
-            business_name,
-            business_logo,
+            logo_url,
             location,
-            contact_email,
-            contact_phone
+            email,
+            phone
           )
         `)
         .order('submitted_at', { ascending: false });
