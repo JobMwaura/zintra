@@ -36,6 +36,33 @@ export default function VendorVerificationPage() {
     fetchVerificationStatus();
   }, []);
 
+  const handleBackToDashboard = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      // Get vendor profile to redirect to their vendor profile
+      const { data: vendor, error: vendorError } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (vendor?.id) {
+        router.push(`/vendor-profile/${vendor.id}`);
+      } else {
+        // Fallback to browse if no vendor profile found
+        router.push('/browse');
+      }
+    } catch (error) {
+      console.error('Error navigating back:', error);
+      router.push('/browse');
+    }
+  };
+
   const fetchVerificationStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -231,7 +258,7 @@ export default function VendorVerificationPage() {
 
           <div className="mt-8 text-center">
             <button
-              onClick={() => router.push('/vendor/dashboard')}
+              onClick={handleBackToDashboard}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Back to Dashboard
@@ -279,7 +306,7 @@ export default function VendorVerificationPage() {
 
           <div className="mt-8 text-center">
             <button
-              onClick={() => router.push('/vendor/dashboard')}
+              onClick={handleBackToDashboard}
               className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
             >
               Back to Dashboard

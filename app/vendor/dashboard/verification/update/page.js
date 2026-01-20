@@ -41,6 +41,33 @@ export default function UpdateVerificationPage() {
     fetchDocumentHistory();
   }, []);
 
+  const handleBackToDashboard = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      // Get vendor profile to redirect to their vendor profile
+      const { data: vendor, error: vendorError } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (vendor?.id) {
+        router.push(`/vendor-profile/${vendor.id}`);
+      } else {
+        // Fallback to browse if no vendor profile found
+        router.push('/browse');
+      }
+    } catch (error) {
+      console.error('Error navigating back:', error);
+      router.push('/browse');
+    }
+  };
+
   const checkUpdateEligibility = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -176,7 +203,7 @@ export default function UpdateVerificationPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push('/vendor/dashboard');
+        handleBackToDashboard();
       }, 3000);
 
     } catch (err) {
@@ -205,7 +232,7 @@ export default function UpdateVerificationPage() {
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <button
-              onClick={() => router.push('/vendor/dashboard')}
+              onClick={handleBackToDashboard}
               className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
@@ -252,7 +279,7 @@ export default function UpdateVerificationPage() {
 
               <div className="flex gap-4 justify-center mt-8">
                 <button
-                  onClick={() => router.push('/vendor/dashboard')}
+                  onClick={handleBackToDashboard}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
                   Back to Dashboard
@@ -321,7 +348,7 @@ export default function UpdateVerificationPage() {
         <div className="bg-white rounded-lg shadow-lg p-8">
           {/* Header */}
           <button
-            onClick={() => router.push('/vendor/dashboard')}
+            onClick={handleBackToDashboard}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
@@ -627,7 +654,7 @@ export default function UpdateVerificationPage() {
             <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6 border-t">
               <button
                 type="button"
-                onClick={() => router.push('/vendor/dashboard')}
+                onClick={handleBackToDashboard}
                 className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
