@@ -18,35 +18,14 @@ export default function AdminVerificationDashboard() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [requestedInfo, setRequestedInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [documentUrls, setDocumentUrls] = useState({}); // Cache for presigned URLs
 
   useEffect(() => {
     fetchVerifications();
   }, [filter]);
 
-  // Get a presigned URL for viewing a document
-  const getDocumentUrl = async (verification) => {
-    try {
-      // Check if we already have a cached URL
-      if (documentUrls[verification.id]) {
-        return documentUrls[verification.id];
-      }
-
-      // Use our proxy endpoint instead of presigned URLs
-      const { data: { session } } = await supabase.auth.getSession();
-      const proxyUrl = `/api/admin/verification-document?documentId=${verification.id}`;
-      
-      // Cache the proxy URL
-      setDocumentUrls(prev => ({
-        ...prev,
-        [verification.id]: proxyUrl,
-      }));
-
-      return proxyUrl;
-    } catch (error) {
-      console.error('Error getting document URL:', error);
-      return null;
-    }
+  // Get the proxy URL for viewing a document
+  const getDocumentUrl = (verification) => {
+    return `/api/admin/verification-document?documentId=${verification.id}`;
   };
 
   const fetchVerifications = async () => {
@@ -300,11 +279,9 @@ export default function AdminVerificationDashboard() {
               <div className="flex items-center gap-3 flex-wrap">
                 {verification.document_url ? (
                   <button
-                    onClick={async () => {
-                      const url = await getDocumentUrl(verification);
-                      if (url) {
-                        window.open(url, '_blank');
-                      }
+                    onClick={() => {
+                      const url = getDocumentUrl(verification);
+                      window.open(url, '_blank');
                     }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
                   >
@@ -442,11 +419,9 @@ export default function AdminVerificationDashboard() {
                   <div className="mt-4">
                     <p className="text-xs text-gray-600 mb-2">Document File</p>
                     <button
-                      onClick={async () => {
-                        const url = await getDocumentUrl(selectedVerification);
-                        if (url) {
-                          window.open(url, '_blank');
-                        }
+                      onClick={() => {
+                        const url = getDocumentUrl(selectedVerification);
+                        window.open(url, '_blank');
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
                     >
