@@ -146,7 +146,7 @@ export default function EditUserProfilePage() {
                 </button>
               </Link>
               <Link href="/" className="flex items-center">
-                <img src="/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
+                <img src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
               </Link>
             </div>
             <h1 className="text-xl font-bold text-gray-900">Edit Profile</h1>

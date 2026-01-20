@@ -210,7 +210,7 @@ export default function UserDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <img src="/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
+              <img src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
             </Link>
 
             <div className="hidden md:flex items-center space-x-8">

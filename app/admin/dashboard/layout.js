@@ -203,7 +203,7 @@ export default function AdminDashboardLayout({ children }) {
         sidebarOpen ? 'w-72' : 'w-20'
       } bg-white border-r border-gray-200 flex flex-col transition-all duration-300`}>
         <div className="p-6 flex items-center space-x-3 border-b">
-          <img src="/logo.svg" alt="Zintra Logo" className="w-10 h-10 object-contain" />
+          <img src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/logo.png" alt="Zintra Logo" className="w-10 h-10 object-contain" />
           {sidebarOpen && (
             <div>
               <h1 className="text-2xl font-bold text-orange-500 tracking-wide">ZINTRA</h1>

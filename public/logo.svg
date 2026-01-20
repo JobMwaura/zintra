@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80">
+  <!-- Orange background -->
+  <rect width="200" height="80" fill="#ea8f1e" rx="8"/>
+  
+  <!-- White Z -->
+  <text x="30" y="55" font-size="48" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">Z</text>
+  
+  <!-- White text "intra" -->
+  <text x="60" y="55" font-size="32" font-weight="normal" text-anchor="start" fill="white" font-family="Arial, sans-serif">intra</text>
+</svg>
