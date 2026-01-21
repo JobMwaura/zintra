@@ -18,6 +18,8 @@
 
 **URL**: `https://zintra-sandy.vercel.app/test-registration-email-otp`
 
+*Note: This page should be accessible after Vercel deployment completes (usually 1-2 minutes after git push)*
+
 This demo shows exactly how the Email OTP choice would work in the registration flow.
 
 ## 🔧 **Implementation Steps**

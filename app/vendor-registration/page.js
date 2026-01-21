@@ -10,6 +10,8 @@ import CategorySelector from '@/components/vendor-profile/CategorySelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { isValidCategorySlug } from '@/lib/vendors/vendorCategoryValidation';
 import useOTP from '@/components/hooks/useOTP';
+import VerificationMethodToggle from '@/components/VerificationMethodToggle';
+import EmailOTPVerification from '@/components/EmailOTPVerification';
 
 const brand = {
   primary: '#c28a3a',
@@ -143,6 +145,10 @@ export default function VendorRegistration() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpMessage, setOtpMessage] = useState('');
   const { sendOTP, verifyOTP, loading: otpHookLoading } = useOTP();
+
+  // Email OTP states
+  const [verificationMethod, setVerificationMethod] = useState('sms'); // 'sms' or 'email'
+  const [emailVerified, setEmailVerified] = useState(false);
 
   // Determine which fields are required based on selected categories
   const selectedCategoryObjects = categories.filter(c => formData.selectedCategories.includes(c.name));
@@ -351,11 +357,19 @@ export default function VendorRegistration() {
       if (!formData.location.trim()) {
         newErrors.location = 'Location is required';
       }
-      if (!formData.phone.trim()) {
-        newErrors.phone = 'Phone number is required';
-      }
-      if (!phoneVerified) {
-        newErrors.phoneVerification = 'Phone number must be verified via OTP';
+      
+      // Verification method validation
+      if (verificationMethod === 'sms') {
+        if (!formData.phone.trim()) {
+          newErrors.phone = 'Phone number is required for SMS verification';
+        }
+        if (!phoneVerified) {
+          newErrors.phoneVerification = 'Phone number must be verified via SMS';
+        }
+      } else if (verificationMethod === 'email') {
+        if (!emailVerified) {
+          newErrors.emailVerification = 'Email must be verified';
+        }
       }
     }
 
@@ -725,102 +739,154 @@ export default function VendorRegistration() {
             </div>
           </div>
 
-          {/* Phone Verification with OTP */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 ${phoneVerified ? 'bg-green-500' : 'bg-amber-500'}`}>
-                  {phoneVerified ? (
-                    <Check className="h-4 w-4 text-white" />
-                  ) : (
-                    <span className="text-white text-sm font-bold">!</span>
+          {/* Verification Method Choice */}
+          <div className="space-y-4">
+            <VerificationMethodToggle
+              currentMethod={verificationMethod}
+              onMethodChange={(method) => {
+                setVerificationMethod(method);
+                setOtpMessage('');
+                setShowPhoneVerification(false);
+              }}
+              showEmailVerified={true}
+              emailVerified={emailVerified}
+            />
+
+            {/* SMS Verification Section */}
+            {verificationMethod === 'sms' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 ${phoneVerified ? 'bg-green-500' : 'bg-amber-500'}`}>
+                      {phoneVerified ? (
+                        <Check className="h-4 w-4 text-white" />
+                      ) : (
+                        <span className="text-white text-sm font-bold">📱</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">
+                        {phoneVerified ? '✓ Phone Verified' : 'Verify Your Phone Number'}
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        {phoneVerified 
+                          ? `Phone verified at ${formData.phone}` 
+                          : 'We\'ll send an SMS code to verify your business phone number'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {!phoneVerified && !showPhoneVerification && (
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOTP}
+                      disabled={!formData.phone.trim() || otpLoading}
+                      className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm transition ${
+                        formData.phone.trim() && !otpLoading
+                          ? 'bg-[#c28a3a] text-white hover:bg-[#a9742f]'
+                          : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {otpLoading ? 'Sending SMS...' : 'Send SMS Code'}
+                    </button>
+                  )}
+
+                  {showPhoneVerification && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-800 mb-2">Enter 6-Digit Code*</label>
+                        <input
+                          type="text"
+                          maxLength="6"
+                          value={otpCode}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setOtpCode(val.slice(0, 6));
+                          }}
+                          placeholder="000000"
+                          className="w-full text-center text-2xl tracking-widest font-mono rounded-lg border border-amber-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
+                        />
+                        <p className="text-xs text-slate-600 mt-2">Check your SMS for the code</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleVerifyPhoneOTP}
+                        disabled={otpCode.length !== 6 || otpLoading}
+                        className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm transition ${
+                          otpCode.length === 6 && !otpLoading
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {otpLoading ? 'Verifying...' : 'Verify SMS Code'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPhoneVerification(false);
+                          setOtpCode('');
+                          setOtpMessage('');
+                        }}
+                        className="w-full px-4 py-2 rounded-lg border border-slate-300 font-medium text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        ← Use Different Number
+                      </button>
+                    </div>
+                  )}
+
+                  {otpMessage && (
+                    <p className={`text-xs mt-2 ${
+                      otpMessage.startsWith('✓') ? 'text-green-600' : 
+                      otpMessage.startsWith('✗') ? 'text-red-600' :
+                      'text-red-500'
+                    }`}>
+                      {otpMessage}
+                    </p>
+                  )}
+
+                  {errors.phoneVerification && (
+                    <p className="text-xs text-red-500 mt-2">{errors.phoneVerification}</p>
                   )}
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900">
-                    {phoneVerified ? '✓ Phone Verified' : 'Verify Your Phone Number'}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    {phoneVerified 
-                      ? `Phone verified at ${formData.phone}` 
-                      : 'We\'ll send an SMS code to verify your business phone number'
-                    }
-                  </p>
-                </div>
               </div>
+            )}
 
-              {!phoneVerified && !showPhoneVerification && (
-                <button
-                  type="button"
-                  onClick={handleSendPhoneOTP}
-                  disabled={!formData.phone.trim() || otpLoading}
-                  className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm transition ${
-                    formData.phone.trim() && !otpLoading
-                      ? 'bg-[#c28a3a] text-white hover:bg-[#a9742f]'
-                      : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  }`}
-                >
-                  {otpLoading ? 'Sending OTP...' : 'Send Verification Code'}
-                </button>
-              )}
-
-              {showPhoneVerification && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-800 mb-2">Enter 6-Digit Code*</label>
-                    <input
-                      type="text"
-                      maxLength="6"
-                      value={otpCode}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        setOtpCode(val.slice(0, 6));
-                      }}
-                      placeholder="000000"
-                      className="w-full text-center text-2xl tracking-widest font-mono rounded-lg border border-amber-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c28a3a]"
-                    />
-                    <p className="text-xs text-slate-600 mt-2">Check your SMS for the code</p>
+            {/* Email Verification Section */}
+            {verificationMethod === 'email' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 ${emailVerified ? 'bg-green-500' : 'bg-blue-500'}`}>
+                    {emailVerified ? (
+                      <Check className="h-4 w-4 text-white" />
+                    ) : (
+                      <span className="text-white text-sm font-bold">📧</span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleVerifyPhoneOTP}
-                    disabled={otpCode.length !== 6 || otpLoading}
-                    className={`w-full px-4 py-2.5 rounded-lg font-medium text-sm transition ${
-                      otpCode.length === 6 && !otpLoading
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {otpLoading ? 'Verifying...' : 'Verify Code'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPhoneVerification(false);
-                      setOtpCode('');
-                      setOtpMessage('');
-                    }}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 font-medium text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-900">
+                      {emailVerified ? '✓ Email Verified' : 'Verify Your Email Address'}
+                    </p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {emailVerified 
+                        ? `Email verified at ${formData.email || user?.email}` 
+                        : 'We\'ll send a verification code to your email address'
+                      }
+                    </p>
+                  </div>
                 </div>
-              )}
 
-              {otpMessage && (
-                <p className={`text-xs mt-2 ${
-                  otpMessage.startsWith('✓') ? 'text-green-600' : 
-                  otpMessage.startsWith('✗') ? 'text-red-600' :
-                  'text-red-500'
-                }`}>
-                  {otpMessage}
-                </p>
-              )}
+                <EmailOTPVerification
+                  email={formData.email || user?.email}
+                  onVerified={setEmailVerified}
+                  isVerified={emailVerified}
+                />
 
-              {errors.phoneVerification && (
-                <p className="text-xs text-red-500 mt-2">{errors.phoneVerification}</p>
-              )}
-            </div>
+                {errors.emailVerification && (
+                  <p className="text-xs text-red-500 mt-2">{errors.emailVerification}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

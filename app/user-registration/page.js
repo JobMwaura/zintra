@@ -6,6 +6,8 @@ import { Check, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import PhoneInput from '@/components/PhoneInput';
 import useOTP from '@/components/hooks/useOTP';
+import VerificationMethodToggle from '@/components/VerificationMethodToggle';
+import EmailOTPVerification from '@/components/EmailOTPVerification';
 
 export default function UserRegistration() {
   const supabase = createClient();
@@ -23,6 +25,10 @@ export default function UserRegistration() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [currentUser, setCurrentUser] = useState(null); // Store user after signup
   
+  // Email OTP states
+  const [verificationMethod, setVerificationMethod] = useState('sms'); // 'sms' or 'email'
+  const [emailVerified, setEmailVerified] = useState(false);
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -38,7 +44,7 @@ export default function UserRegistration() {
   // Step definitions
   const steps = [
     { number: 1, name: 'Account' },
-    { number: 2, name: 'Phone OTP' },
+    { number: 2, name: 'Verify' },
     { number: 3, name: 'Profile' },
     { number: 4, name: 'Complete' },
   ];
@@ -69,12 +75,20 @@ export default function UserRegistration() {
 
   const validateStep2 = () => {
     const newErrors = {};
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+    
+    if (verificationMethod === 'sms') {
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'Phone number is required for SMS verification';
+      }
+      if (!phoneVerified) {
+        newErrors.verification = 'Phone must be verified via SMS';
+      }
+    } else if (verificationMethod === 'email') {
+      if (!emailVerified) {
+        newErrors.verification = 'Email must be verified';
+      }
     }
-    if (!phoneVerified) {
-      newErrors.phoneVerification = 'Phone must be verified via OTP';
-    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -440,114 +454,143 @@ export default function UserRegistration() {
             </div>
           )}
 
-          {/* Step 2: Phone OTP Verification */}
+          {/* Step 2: Verification Method Choice */}
           {currentStep === 2 && (
             <div>
-              <h2 className="text-2xl font-bold mb-2 text-gray-800">Verify Your Phone</h2>
-              <p className="text-gray-600 mb-8 text-sm">We'll send an SMS code to verify your phone number</p>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800">Verify Your Account</h2>
+              <p className="text-gray-600 mb-6 text-sm">Choose your preferred verification method</p>
 
-              <div className="mb-7">
-                <PhoneInput
-                  label="Phone Number"
-                  value={formData.phone}
-                  onChange={(phone) => setFormData({ ...formData, phone })}
-                  country="KE"
-                  required
-                  error={errors.phone}
-                  placeholder="721345678"
-                />
-              </div>
+              <VerificationMethodToggle
+                currentMethod={verificationMethod}
+                onMethodChange={(method) => {
+                  setVerificationMethod(method);
+                  setOtpMessage('');
+                  setShowPhoneOTP(false);
+                }}
+                showEmailVerified={true}
+                emailVerified={emailVerified}
+              />
 
-              {!showPhoneOTP && !phoneVerified && (
-                <button
-                  type="button"
-                  onClick={handleSendPhoneOTP}
-                  disabled={!formData.phone.trim() || otpLoading}
-                  className={`w-full px-4 py-2.5 rounded-lg font-semibold text-sm transition ${
-                    formData.phone.trim() && !otpLoading
-                      ? 'bg-orange-500 text-white hover:bg-orange-600'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {otpLoading ? 'Sending OTP...' : 'Send Verification Code'}
-                </button>
-              )}
-
-              {showPhoneOTP && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">Enter 6-Digit Code *</label>
-                    <input
-                      type="text"
-                      maxLength="6"
-                      value={otpCode}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        setOtpCode(val.slice(0, 6));
-                      }}
-                      placeholder="000000"
-                      className="w-full text-center text-3xl tracking-widest font-mono rounded-lg border-2 border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+              {/* SMS Verification Section */}
+              {verificationMethod === 'sms' && (
+                <div>
+                  <div className="mb-7">
+                    <PhoneInput
+                      label="Phone Number"
+                      value={formData.phone}
+                      onChange={(phone) => setFormData({ ...formData, phone })}
+                      country="KE"
+                      required
+                      error={errors.phone}
+                      placeholder="721345678"
                     />
-                    <p className="text-xs text-gray-600 mt-2">Check your SMS for the code</p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleVerifyPhoneOTP}
-                    disabled={otpCode.length !== 6 || otpLoading}
-                    className={`w-full px-4 py-2.5 rounded-lg font-semibold text-sm transition ${
-                      otpCode.length === 6 && !otpLoading
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {otpLoading ? 'Verifying...' : 'Verify Code'}
-                  </button>
+                  {!showPhoneOTP && !phoneVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOTP}
+                      disabled={!formData.phone.trim() || otpLoading}
+                      className={`w-full px-4 py-2.5 rounded-lg font-semibold text-sm transition ${
+                        formData.phone.trim() && !otpLoading
+                          ? 'bg-orange-500 text-white hover:bg-orange-600'
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {otpLoading ? 'Sending SMS...' : 'Send SMS Code'}
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPhoneOTP(false);
-                      setOtpCode('');
-                      setOtpMessage('');
-                    }}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 font-semibold text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    Cancel
-                  </button>
+                  {showPhoneOTP && !phoneVerified && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-800 mb-2">Enter 6-Digit Code *</label>
+                        <input
+                          type="text"
+                          maxLength="6"
+                          value={otpCode}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setOtpCode(val.slice(0, 6));
+                          }}
+                          placeholder="000000"
+                          className="w-full text-center text-3xl tracking-widest font-mono rounded-lg border-2 border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+                        />
+                        <p className="text-xs text-gray-600 mt-2">Check your SMS for the code</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleVerifyPhoneOTP}
+                        disabled={!otpCode.trim() || otpLoading}
+                        className={`w-full px-4 py-2.5 rounded-lg font-semibold text-sm transition ${
+                          otpCode.trim() && !otpLoading
+                            ? 'bg-green-500 text-white hover:bg-green-600'
+                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {otpLoading ? 'Verifying...' : 'Verify SMS Code'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPhoneOTP(false);
+                          setOtpCode('');
+                          setOtpMessage('');
+                        }}
+                        className="w-full text-orange-600 text-sm hover:text-orange-700 transition"
+                      >
+                        ← Use Different Number
+                      </button>
+                    </div>
+                  )}
+
+                  {phoneVerified && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
+                      <Check className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">Phone Verified!</p>
+                        <p className="text-xs text-green-600">Your phone number has been successfully verified</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
+              {/* Email Verification Section */}
+              {verificationMethod === 'email' && (
+                <EmailOTPVerification
+                  email={formData.email}
+                  onVerified={setEmailVerified}
+                  isVerified={emailVerified}
+                />
+              )}
+
+              {/* Messages */}
               {otpMessage && (
-                <div
-                  className={`mt-5 p-3 rounded-lg text-sm font-medium ${
-                    otpMessage.includes('✓') || otpMessage.includes('successfully')
-                      ? 'bg-green-50 text-green-800 border border-green-200'
-                      : 'bg-red-50 text-red-800 border border-red-200'
-                  }`}
-                >
+                <div className={`mt-4 p-3 rounded-lg text-sm ${
+                  otpMessage.startsWith('✓') 
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
                   {otpMessage}
                 </div>
               )}
 
-              {phoneVerified && (
-                <>
-                  <div className="mt-5 p-3 rounded-lg bg-green-50 border border-green-200">
-                    <p className="text-green-800 text-sm font-medium">✓ Phone verified successfully!</p>
-                  </div>
-
-                  <button
-                    onClick={handleStep2Continue}
-                    className="w-full mt-5 text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition"
-                    style={{ backgroundColor: '#ea8f1e' }}
-                  >
-                    Continue to Profile Setup
-                  </button>
-                </>
+              {errors.verification && (
+                <p className="text-red-500 text-xs mt-2">{errors.verification}</p>
               )}
 
-              {errors.phoneVerification && (
-                <p className="text-red-500 text-xs mt-2">{errors.phoneVerification}</p>
+              {/* Continue Button */}
+              {(phoneVerified || emailVerified) && (
+                <button
+                  onClick={handleStep2Continue}
+                  className="w-full mt-5 text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition"
+                  style={{ backgroundColor: '#ea8f1e' }}
+                >
+                  Continue to Profile Setup →
+                </button>
               )}
             </div>
           )}
