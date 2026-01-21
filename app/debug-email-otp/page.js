@@ -29,8 +29,8 @@ export default function DebugEmailOTP() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email,
-          method: 'email',
-          purpose: 'debugging',
+          channel: 'email',  // Fixed: was 'method'
+          type: 'debugging', // Fixed: was 'purpose'
         }),
       });
 

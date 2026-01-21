@@ -533,8 +533,8 @@ function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: phone,
-          method: 'sms',
-          purpose: 'verification',
+          channel: 'sms',     // Fixed: was 'method'
+          type: 'verification', // Fixed: was 'purpose'
         }),
       });
 
@@ -745,8 +745,8 @@ function EmailVerificationModal({ userEmail, onClose, onSuccess, supabase }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: userEmail,
-          method: 'email',
-          purpose: 'verification',
+          channel: 'email',     // Fixed: was 'method'
+          type: 'verification', // Fixed: was 'purpose'
         }),
       });
 
