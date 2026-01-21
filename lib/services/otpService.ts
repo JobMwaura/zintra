@@ -321,7 +321,7 @@ export async function sendSMSOTPCustom(
 // ============================================================================
 
 /**
- * Send OTP via Email using Supabase Auth (EventsGear SMTP)
+ * Send OTP via Email using internal email API
  */
 export async function sendEmailOTP(
   email: string,
@@ -343,34 +343,146 @@ export async function sendEmailOTP(
       };
     }
 
-    // Use Supabase Auth with Magic Link for OTP delivery
-    // This will use your configured EventsGear SMTP
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
-
-    const { error } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-      options: {
-        data: {
-          otp_code: otp,
-          verification_type: 'email_otp'
+    // Create professional email template with OTP code
+    const emailSubject = `Your verification code: ${otp}`;
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Email Verification Code</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5;
         }
-      }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { 
+            background: linear-gradient(135deg, #5f6466, #4a5053); 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+            border-radius: 8px 8px 0 0; 
+        }
+        .content { background: white; padding: 40px 30px; }
+        .otp-code { 
+            background: linear-gradient(135deg, #007bff, #0056b3); 
+            color: white; 
+            font-size: 32px; 
+            font-weight: bold; 
+            text-align: center; 
+            padding: 20px; 
+            border-radius: 12px; 
+            letter-spacing: 4px; 
+            margin: 30px 0; 
+            box-shadow: 0 4px 8px rgba(0,123,255,0.2);
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+        .footer { 
+            background: #f8f9fa; 
+            padding: 20px 30px; 
+            text-align: center; 
+            font-size: 14px; 
+            color: #666; 
+            border-radius: 0 0 8px 8px; 
+        }
+        .warning { 
+            background: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 25px 0; 
+        }
+        .highlight { color: #007bff; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 28px;">🔐 Email Verification</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Zintra Platform</p>
+        </div>
+        <div class="content">
+            <h2 style="color: #333; margin-bottom: 20px;">Your Verification Code</h2>
+            <p>Hello,</p>
+            <p>You requested an email verification code for your Zintra account. Please use the following code to complete your verification:</p>
+            
+            <div class="otp-code">${otp}</div>
+            
+            <p><strong class="highlight">✅ Enter this code in the verification form to complete the process.</strong></p>
+            
+            <div class="warning">
+                <strong style="color: #856404;">⚠️ Security Notice:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>This code expires in <strong>10 minutes</strong></li>
+                    <li>Never share this code with anyone</li>
+                    <li>If you didn't request this verification, please ignore this email</li>
+                    <li>For security, this code can only be used once</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px;">If you're having trouble with verification, please contact our support team.</p>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Best regards,<br>
+                The Zintra Team
+            </p>
+        </div>
+        <div class="footer">
+            <p style="margin: 0;">© 2026 Zintra Platform. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px;">This is an automated email, please do not reply directly to this address.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
+    const emailText = `
+Your Zintra Platform verification code: ${otp}
+
+Enter this code in the verification form to complete your email verification.
+
+⚠️ Security Notice:
+- This code expires in 10 minutes
+- Never share this code with anyone  
+- If you didn't request this verification, please ignore this email
+- For security, this code can only be used once
+
+Best regards,
+The Zintra Team
+
+© 2026 Zintra Platform. All rights reserved.
+This is an automated email, please do not reply directly to this address.
+`;
+
+    // Send to our internal email API endpoint
+    console.log(`[OTP Email] Sending email to: ${email}, OTP: ${otp}`);
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/send-email-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: emailSubject,
+        html: emailHtml,
+        text: emailText
+      })
     });
 
-    if (error) {
-      console.error(`[OTP Email Error] ${error.message}`);
-      return {
-        success: false,
-        error: 'Failed to send email OTP: ' + error.message
-      };
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    console.log(`[OTP Email] Successfully sent to: ${email}, OTP: ${otp}`);
-    
+    const result = await response.json();
+    console.log(`[OTP Email] API Response:`, result);
+
     return {
       success: true,
       messageId: `email_otp_${Date.now()}`,
