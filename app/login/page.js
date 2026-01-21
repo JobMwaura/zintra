@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Smartphone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { isSafari } from '@/lib/safariCompat';
@@ -11,11 +11,19 @@ export default function Login() {
   const { signIn } = useAuth();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('user');
+  const [loginMethod, setLoginMethod] = useState('password'); // 'password' | 'email-otp'
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false
+  });
+  const [otpData, setOtpData] = useState({
+    email: '',
+    code: '',
+    step: 1, // 1: Enter email, 2: Enter OTP
+    loading: false,
+    message: ''
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -165,6 +173,74 @@ export default function Login() {
     }
   };
 
+  // Email OTP Login Functions
+  const handleSendEmailOTP = async (e) => {
+    e.preventDefault();
+    
+    if (!otpData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpData.email)) {
+      setOtpData(prev => ({ ...prev, message: '❌ Please enter a valid email address' }));
+      return;
+    }
+
+    setOtpData(prev => ({ ...prev, loading: true, message: '' }));
+
+    try {
+      // Send magic link for login
+      const { error } = await supabase.auth.signInWithOtp({
+        email: otpData.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) throw error;
+
+      setOtpData(prev => ({ 
+        ...prev, 
+        step: 2, 
+        loading: false,
+        message: `✅ Login link sent to ${otpData.email}! Check your inbox.`
+      }));
+
+    } catch (error) {
+      console.error('Email OTP error:', error);
+      setOtpData(prev => ({ 
+        ...prev, 
+        loading: false,
+        message: `❌ Failed to send login link: ${error.message}`
+      }));
+    }
+  };
+
+  const handleVerifyEmailOTP = async (e) => {
+    e.preventDefault();
+    
+    if (!otpData.code.trim()) {
+      setOtpData(prev => ({ ...prev, message: '❌ Please enter the code from your email' }));
+      return;
+    }
+
+    setOtpData(prev => ({ ...prev, loading: true, message: '' }));
+
+    try {
+      // For magic link, we don't verify codes manually
+      // The user should click the link in their email
+      setOtpData(prev => ({
+        ...prev,
+        loading: false,
+        message: '📧 Please click the login link in your email to complete login'
+      }));
+
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      setOtpData(prev => ({ 
+        ...prev, 
+        loading: false,
+        message: `❌ Verification failed: ${error.message}`
+      }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200">
@@ -234,6 +310,45 @@ export default function Login() {
               </button>
             </div>
 
+            {/* Login Method Toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('password');
+                  setOtpData({ email: '', code: '', step: 1, loading: false, message: '' });
+                  setMessage('');
+                }}
+                className={`flex-1 flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  loginMethod === 'password'
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Password Login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('email-otp');
+                  setFormData({ email: '', password: '', rememberMe: false });
+                  setErrors({});
+                  setMessage('');
+                }}
+                className={`flex-1 flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  loginMethod === 'email-otp'
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Email Link
+              </button>
+            </div>
+
+            {/* Password Login Form */}
+            {loginMethod === 'password' && (
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div>
@@ -319,6 +434,111 @@ export default function Login() {
                 </button>
               </div>
             </form>
+            )}
+
+            {/* Email OTP Login Form */}
+            {loginMethod === 'email-otp' && (
+              <div className="space-y-6">
+                {otpData.step === 1 ? (
+                  // Step 1: Enter Email for OTP
+                  <form onSubmit={handleSendEmailOTP}>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: '#5f6466' }}>
+                          Email Address*
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                          <input
+                            type="email"
+                            value={otpData.email}
+                            onChange={(e) => setOtpData(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="Enter your email to receive login link"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {otpData.message && (
+                        <div className={`p-3 rounded-lg text-sm ${
+                          otpData.message.includes('✅') 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {otpData.message}
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={otpData.loading}
+                        className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                        style={{ backgroundColor: '#ea8f1e' }}
+                      >
+                        {otpData.loading ? 'Sending...' : 'Send Login Link'}
+                      </button>
+
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">
+                          We'll send a secure login link to your email
+                        </p>
+                      </div>
+                    </div>
+                  </form>
+                ) : (
+                  // Step 2: Check Email Message
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
+                      <Mail className="w-8 h-8 text-orange-600" />
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Check Your Email</h3>
+                      <p className="text-gray-600 text-sm mb-4">
+                        We sent a login link to <strong>{otpData.email}</strong>
+                      </p>
+                    </div>
+
+                    {otpData.message && (
+                      <div className={`p-3 rounded-lg text-sm ${
+                        otpData.message.includes('✅') || otpData.message.includes('📧')
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {otpData.message}
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      <button
+                        onClick={handleSendEmailOTP}
+                        disabled={otpData.loading}
+                        className="w-full border border-orange-500 text-orange-600 py-2 rounded-lg font-medium hover:bg-orange-50 transition disabled:opacity-50"
+                      >
+                        {otpData.loading ? 'Resending...' : 'Resend Link'}
+                      </button>
+
+                      <button
+                        onClick={() => setOtpData({ email: '', code: '', step: 1, loading: false, message: '' })}
+                        className="w-full text-gray-600 py-2 rounded-lg font-medium hover:text-gray-800 transition"
+                      >
+                        ← Use Different Email
+                      </button>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                      <h4 className="font-medium text-blue-800 mb-2">📧 Email Login Instructions:</h4>
+                      <ol className="text-blue-700 text-sm space-y-1 list-decimal list-inside">
+                        <li>Check your email inbox (and spam folder)</li>
+                        <li>Click the "Login to Zintra" button</li>
+                        <li>You'll be automatically logged in</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">

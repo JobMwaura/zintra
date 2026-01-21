@@ -2,8 +2,11 @@
 -- Problem: Admin users get 403 Forbidden when trying to update vendor_verification_documents
 -- Solution: Ensure admin policy has both USING and WITH CHECK clauses
 
--- Drop the existing admin policy if it exists
+-- Drop ALL existing admin policies to ensure clean slate
 DROP POLICY IF EXISTS "admins_manage_verification" ON public.vendor_verification_documents;
+DROP POLICY IF EXISTS "admins_select_all_verification" ON public.vendor_verification_documents;
+DROP POLICY IF EXISTS "admins_update_all_verification" ON public.vendor_verification_documents;
+DROP POLICY IF EXISTS "admins_insert_verification" ON public.vendor_verification_documents;
 
 -- Create a more specific admin policy for SELECT
 CREATE POLICY "admins_select_all_verification" 

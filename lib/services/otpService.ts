@@ -6,7 +6,7 @@
  * 
  * Features:
  * - SMS OTP via TextSMS Kenya API
- * - Email OTP (placeholder for SendGrid/Resend integration)
+ * - Email OTP via Supabase Auth (EventsGear SMTP)
  * - OTP generation (secure random 6-digit codes)
  * - Rate limiting support
  * - Error handling and logging
@@ -16,6 +16,8 @@
  *   const result = await sendEmailOTP('user@example.com', '123456');
  * ============================================================================
  */
+
+import { createClient } from '@supabase/supabase-js';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -319,8 +321,7 @@ export async function sendSMSOTPCustom(
 // ============================================================================
 
 /**
- * Send OTP via Email
- * Currently a placeholder - implement with SendGrid or Resend
+ * Send OTP via Email using Supabase Auth (EventsGear SMTP)
  */
 export async function sendEmailOTP(
   email: string,
@@ -342,31 +343,40 @@ export async function sendEmailOTP(
       };
     }
 
-    // TODO: Implement with SendGrid or Resend
-    // For now, return placeholder response
-    console.log(`[OTP Email] Email: ${email}, OTP: ${otp}`);
+    // Use Supabase Auth with Magic Link for OTP delivery
+    // This will use your configured EventsGear SMTP
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
 
+    const { error } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+      options: {
+        data: {
+          otp_code: otp,
+          verification_type: 'email_otp'
+        }
+      }
+    });
+
+    if (error) {
+      console.error(`[OTP Email Error] ${error.message}`);
+      return {
+        success: false,
+        error: 'Failed to send email OTP: ' + error.message
+      };
+    }
+
+    console.log(`[OTP Email] Successfully sent to: ${email}, OTP: ${otp}`);
+    
     return {
-      success: false,
-      error: 'Email OTP service not yet implemented. Please use SMS instead.'
+      success: true,
+      messageId: `email_otp_${Date.now()}`,
+      timestamp: new Date().toISOString()
     };
 
-    // Example SendGrid implementation:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // 
-    // const msg = {
-    //   to: email,
-    //   from: process.env.SENDGRID_FROM_EMAIL || 'noreply@zintra.co.ke',
-    //   subject: 'Your Zintra Verification Code',
-    //   html: `<p>Your verification code is: <strong>${otp}</strong></p>`,
-    // };
-    //
-    // const result = await sgMail.send(msg);
-    // return {
-    //   success: true,
-    //   messageId: result[0].headers['x-message-id']
-    // };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[OTP Email Error] ${errorMessage}`);
