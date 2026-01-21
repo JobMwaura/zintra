@@ -364,11 +364,11 @@ export default function VendorRegistration() {
           newErrors.phone = 'Phone number is required for SMS verification';
         }
         if (!phoneVerified) {
-          newErrors.phoneVerification = 'Phone number must be verified via SMS';
+          newErrors.verification = 'Phone must be verified via SMS';
         }
       } else if (verificationMethod === 'email') {
         if (!emailVerified) {
-          newErrors.emailVerification = 'Email must be verified';
+          newErrors.verification = 'Email must be verified';
         }
       }
     }
@@ -845,8 +845,8 @@ export default function VendorRegistration() {
                     </p>
                   )}
 
-                  {errors.phoneVerification && (
-                    <p className="text-xs text-red-500 mt-2">{errors.phoneVerification}</p>
+                  {errors.verification && (
+                    <p className="text-xs text-red-500 mt-2">{errors.verification}</p>
                   )}
                 </div>
               </div>
@@ -882,8 +882,8 @@ export default function VendorRegistration() {
                   isVerified={emailVerified}
                 />
 
-                {errors.emailVerification && (
-                  <p className="text-xs text-red-500 mt-2">{errors.emailVerification}</p>
+                {errors.verification && verificationMethod === 'email' && (
+                  <p className="text-xs text-red-500 mt-2">{errors.verification}</p>
                 )}
               </div>
             )}

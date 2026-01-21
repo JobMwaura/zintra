@@ -127,7 +127,7 @@ export default function UserRegistration() {
         // Store user data for use in later steps
         setCurrentUser(data.user);
 
-        // Account created, move to phone verification
+        // Account created, move to verification step
         setCurrentStep(2);
       } catch (err) {
         alert('Error creating account: ' + err.message);
@@ -442,7 +442,7 @@ export default function UserRegistration() {
                 className="w-full text-white py-2.5 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 transition"
                 style={{ backgroundColor: '#ea8f1e' }}
               >
-                {loading ? 'Creating Account...' : 'Continue to Phone Verification'}
+                {loading ? 'Creating Account...' : 'Continue to Verification'}
               </button>
 
               <p className="text-center text-gray-600 text-sm mt-5">
