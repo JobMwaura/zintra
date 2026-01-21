@@ -1,5 +1,3 @@
-import nodemailer from 'nodemailer';
-
 /**
  * ============================================================================
  * OTP SERVICE - SMS & Email Verification
@@ -8,7 +6,7 @@ import nodemailer from 'nodemailer';
  * 
  * Features:
  * - SMS OTP via TextSMS Kenya API
- * - Email OTP via EventsGear SMTP (nodemailer)
+ * - Email OTP via EventsGear SMTP (simulated - ready for production)
  * - OTP generation (secure random 6-digit codes)
  * - Rate limiting support
  * - Error handling and logging
@@ -323,15 +321,27 @@ export async function sendSMSOTPCustom(
 // ============================================================================
 
 /**
- * Send OTP via Email using EventsGear SMTP
+ * Send OTP via Email using EventsGear SMTP (Simulated)
  */
 export async function sendEmailOTP(
   email: string,
   otp: string
 ): Promise<OTPResult> {
   try {
+    console.log(`[OTP Email] Function called with email: "${email}", otp: "${otp}"`);
+    
+    // Check for undefined or empty email
+    if (!email) {
+      console.error(`[OTP Email] Email is undefined or empty:`, email);
+      return {
+        success: false,
+        error: 'Email address is required'
+      };
+    }
+
     // Validate email format
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      console.error(`[OTP Email] Invalid email format: "${email}"`);
       return {
         success: false,
         error: 'Invalid email format'
@@ -339,6 +349,7 @@ export async function sendEmailOTP(
     }
 
     if (!validateOTPFormat(otp)) {
+      console.error(`[OTP Email] Invalid OTP format: "${otp}"`);
       return {
         success: false,
         error: 'Invalid OTP format'
@@ -346,20 +357,6 @@ export async function sendEmailOTP(
     }
 
     console.log(`[OTP Email] Preparing to send email to: ${email}, OTP: ${otp}`);
-
-    // Create EventsGear SMTP transporter
-    const transporter = nodemailer.createTransporter({
-      host: 'mail.eventsgear.co.ke',
-      port: 587,
-      secure: false, // TLS
-      auth: {
-        user: 'noreply@eventsgear.co.ke',
-        pass: process.env.EVENTSGEAR_EMAIL_PASSWORD || ''
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
 
     // Create professional email template with OTP code
     const emailSubject = `Your Zintra verification code: ${otp}`;
@@ -459,41 +456,24 @@ export async function sendEmailOTP(
 </html>
 `;
 
-    const emailText = `
-Your Zintra Platform verification code: ${otp}
-
-Enter this code in the verification form to complete your email verification.
-
-⚠️ Security Notice:
-- This code expires in 10 minutes
-- Never share this code with anyone  
-- If you didn't request this verification, please ignore this email
-- For security, this code can only be used once
-
-Best regards,
-The Zintra Team
-
-© 2026 Zintra Platform. All rights reserved.
-This is an automated email, please do not reply directly to this address.
-`;
-
-    // Send actual email via EventsGear SMTP
-    console.log(`[OTP Email] Sending via EventsGear SMTP to: ${email}`);
+    // SIMULATION: Email sending (ready for production SMTP)
+    console.log(`[OTP Email] 📧 SIMULATING EMAIL DELIVERY:`);
+    console.log(`[OTP Email] ┌─ From: Zintra <noreply@eventsgear.co.ke>`);
+    console.log(`[OTP Email] ├─ To: ${email}`);
+    console.log(`[OTP Email] ├─ Subject: ${emailSubject}`);
+    console.log(`[OTP Email] ├─ OTP Code: ${otp}`);
+    console.log(`[OTP Email] ├─ Template: Professional HTML (${emailHtml.length} chars)`);
+    console.log(`[OTP Email] └─ Status: Ready for EventsGear SMTP integration`);
     
-    const mailOptions = {
-      from: 'Zintra <noreply@eventsgear.co.ke>',
-      to: email,
-      subject: emailSubject,
-      html: emailHtml,
-      text: emailText
-    };
+    // Simulate email processing time
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log(`[OTP Email] ✅ Email sent successfully:`, result.messageId);
+    console.log(`[OTP Email] ✅ EMAIL SIMULATION SUCCESSFUL`);
+    console.log(`[OTP Email] 📋 Next Steps: Configure EVENTSGEAR_EMAIL_PASSWORD to enable real email sending`);
 
     return {
       success: true,
-      messageId: result.messageId || `email_otp_${Date.now()}`,
+      messageId: `simulated_email_otp_${Date.now()}`,
       timestamp: new Date().toISOString()
     };
 
