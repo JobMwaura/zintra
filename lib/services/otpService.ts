@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 /**
  * ============================================================================
  * OTP SERVICE - SMS & Email Verification
@@ -6,7 +8,7 @@
  * 
  * Features:
  * - SMS OTP via TextSMS Kenya API
- * - Email OTP via Supabase Auth (EventsGear SMTP)
+ * - Email OTP via EventsGear SMTP (nodemailer)
  * - OTP generation (secure random 6-digit codes)
  * - Rate limiting support
  * - Error handling and logging
@@ -321,7 +323,7 @@ export async function sendSMSOTPCustom(
 // ============================================================================
 
 /**
- * Send OTP via Email using simulated email service
+ * Send OTP via Email using EventsGear SMTP
  */
 export async function sendEmailOTP(
   email: string,
@@ -345,8 +347,22 @@ export async function sendEmailOTP(
 
     console.log(`[OTP Email] Preparing to send email to: ${email}, OTP: ${otp}`);
 
+    // Create EventsGear SMTP transporter
+    const transporter = nodemailer.createTransporter({
+      host: 'mail.eventsgear.co.ke',
+      port: 587,
+      secure: false, // TLS
+      auth: {
+        user: 'noreply@eventsgear.co.ke',
+        pass: process.env.EVENTSGEAR_EMAIL_PASSWORD || ''
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
     // Create professional email template with OTP code
-    const emailSubject = `Your verification code: ${otp}`;
+    const emailSubject = `Your Zintra verification code: ${otp}`;
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -443,23 +459,41 @@ export async function sendEmailOTP(
 </html>
 `;
 
-    // For now, we'll simulate successful email sending
-    // In production, you would integrate with SendGrid, Resend, or EventsGear SMTP here
-    console.log(`[OTP Email] EMAIL TEMPLATE GENERATED:`);
-    console.log(`Subject: ${emailSubject}`);
-    console.log(`To: ${email}`);
-    console.log(`OTP: ${otp}`);
-    console.log(`HTML Template: ${emailHtml.length} characters`);
-    
-    // Simulate email processing delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const emailText = `
+Your Zintra Platform verification code: ${otp}
 
-    console.log(`[OTP Email] ✅ Email simulated successfully for: ${email}`);
-    console.log(`[OTP Email] In production, user would receive email with OTP: ${otp}`);
+Enter this code in the verification form to complete your email verification.
+
+⚠️ Security Notice:
+- This code expires in 10 minutes
+- Never share this code with anyone  
+- If you didn't request this verification, please ignore this email
+- For security, this code can only be used once
+
+Best regards,
+The Zintra Team
+
+© 2026 Zintra Platform. All rights reserved.
+This is an automated email, please do not reply directly to this address.
+`;
+
+    // Send actual email via EventsGear SMTP
+    console.log(`[OTP Email] Sending via EventsGear SMTP to: ${email}`);
+    
+    const mailOptions = {
+      from: 'Zintra <noreply@eventsgear.co.ke>',
+      to: email,
+      subject: emailSubject,
+      html: emailHtml,
+      text: emailText
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`[OTP Email] ✅ Email sent successfully:`, result.messageId);
 
     return {
       success: true,
-      messageId: `email_otp_${Date.now()}`,
+      messageId: result.messageId || `email_otp_${Date.now()}`,
       timestamp: new Date().toISOString()
     };
 
