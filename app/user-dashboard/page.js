@@ -16,6 +16,7 @@ export default function UserDashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [authTimeout, setAuthTimeout] = useState(false);
 
@@ -256,12 +257,13 @@ export default function UserDashboard() {
               <p className="text-gray-600 mb-8">Here's your dashboard</p>
 
               {/* Phone Verification Status */}
-              <div className="mb-8">
+              <div className="mb-6">
                 <h2 className="text-xl font-bold mb-4" style={{ color: '#5f6466' }}>
                   Account Status
                 </h2>
 
-                <div className={`p-4 rounded-lg border-2 ${
+                {/* Phone Verification */}
+                <div className={`p-4 rounded-lg border-2 mb-4 ${
                   userData?.phone_verified
                     ? 'bg-green-50 border-green-200'
                     : 'bg-yellow-50 border-yellow-200'
@@ -294,6 +296,45 @@ export default function UserDashboard() {
                         className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition flex-shrink-0 ml-4"
                       >
                         Verify Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email Verification */}
+                <div className={`p-4 rounded-lg border-2 ${
+                  userData?.email_verified
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-yellow-50 border-yellow-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {userData?.email_verified ? (
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      ) : (
+                        <AlertCircle className="w-6 h-6 text-yellow-600" />
+                      )}
+                      <div>
+                        <h3 className={`font-semibold ${
+                          userData?.email_verified ? 'text-green-900' : 'text-yellow-900'
+                        }`}>
+                          {userData?.email_verified ? 'Email Verified' : 'Email Not Verified'}
+                        </h3>
+                        <p className={`text-sm ${
+                          userData?.email_verified ? 'text-green-700' : 'text-yellow-700'
+                        }`}>
+                          {userData?.email_verified
+                            ? `Your email address (${user?.email || 'N/A'}) has been verified`
+                            : 'Please verify your email address to complete your account setup'}
+                        </p>
+                      </div>
+                    </div>
+                    {!userData?.email_verified && (
+                      <button
+                        onClick={() => setShowEmailVerification(true)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition flex-shrink-0 ml-4"
+                      >
+                        Verify Email
                       </button>
                     )}
                   </div>
@@ -439,6 +480,21 @@ export default function UserDashboard() {
           onClose={() => setShowPhoneVerification(false)}
           onSuccess={() => {
             setShowPhoneVerification(false);
+            // Refresh user data to show updated verification status
+            setLoading(true);
+            fetchUserData();
+          }}
+          supabase={supabase}
+        />
+      )}
+
+      {/* Email Verification Modal */}
+      {showEmailVerification && (
+        <EmailVerificationModal
+          userEmail={user?.email}
+          onClose={() => setShowEmailVerification(false)}
+          onSuccess={() => {
+            setShowEmailVerification(false);
             // Refresh user data to show updated verification status
             setLoading(true);
             fetchUserData();
@@ -640,6 +696,212 @@ function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supa
             >
               {loading && <Loader className="w-4 h-4 animate-spin" />}
               <span>{loading ? 'Verifying...' : 'Verify OTP'}</span>
+            </button>
+            <button
+              onClick={() => setStep(1)}
+              disabled={loading}
+              className="w-full mt-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+            >
+              Back
+            </button>
+          </div>
+        )}
+
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="w-full mt-4 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Email Verification Modal Component
+ */
+function EmailVerificationModal({ userEmail, onClose, onSuccess, supabase }) {
+  const [step, setStep] = useState(1); // 1: Send OTP, 2: Verify OTP
+  const [otpCode, setOtpCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+
+  const handleSendEmailOTP = async () => {
+    if (!userEmail) {
+      setMessage('No email address found');
+      setMessageType('error');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          method: 'email',
+          purpose: 'verification',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('✓ Verification email sent! Check your inbox');
+        setMessageType('success');
+        setStep(2);
+      } else {
+        setMessage(data.error || 'Failed to send verification email');
+        setMessageType('error');
+      }
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOTP = async () => {
+    if (!otpCode.trim() || otpCode.length !== 6) {
+      setMessage('Please enter a valid 6-digit code');
+      setMessageType('error');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          code: otpCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.verified) {
+        // Get current user ID
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser?.id) {
+          setMessage('Error: Could not get user ID');
+          setMessageType('error');
+          return;
+        }
+
+        // Update user profile with verified email
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            email_verified: true,
+            email_verified_at: new Date().toISOString(),
+          })
+          .eq('id', authUser.id);
+
+        if (updateError) {
+          console.error('Error updating email_verified:', updateError);
+          setMessage(`Failed to update profile: ${updateError.message}`);
+          setMessageType('error');
+          return;
+        }
+
+        console.log('✅ Email verified and saved for user:', authUser.id);
+
+        setMessage('✓ Email verified successfully!');
+        setMessageType('success');
+        
+        setTimeout(() => {
+          onSuccess();
+        }, 1500);
+      } else {
+        setMessage(data.error || 'Invalid verification code');
+        setMessageType('error');
+      }
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {step === 1 ? 'Verify Your Email' : 'Enter Verification Code'}
+          </h2>
+          <p className="text-gray-600">
+            {step === 1 
+              ? `We'll send a verification code to ${userEmail}`
+              : 'Enter the 6-digit code sent to your email'}
+          </p>
+        </div>
+
+        {/* Message Display */}
+        {message && (
+          <div className={`p-3 rounded-lg mb-4 ${
+            messageType === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {message}
+          </div>
+        )}
+
+        {/* Step 1: Send Email OTP */}
+        {step === 1 && (
+          <div>
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <p className="text-gray-900 font-medium">{userEmail}</p>
+            </div>
+            <button
+              onClick={handleSendEmailOTP}
+              disabled={loading}
+              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <span>{loading ? 'Sending...' : 'Send Verification Email'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Enter OTP */}
+        {step === 2 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Verification Code
+            </label>
+            <input
+              type="text"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              maxLength="6"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-center text-2xl tracking-widest"
+              disabled={loading}
+            />
+            <button
+              onClick={handleVerifyEmailOTP}
+              disabled={loading}
+              className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <span>{loading ? 'Verifying...' : 'Verify Email'}</span>
             </button>
             <button
               onClick={() => setStep(1)}
