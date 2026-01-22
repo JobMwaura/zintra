@@ -115,11 +115,28 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyOTP
     const { otpId, otpCode, phoneNumber, email } = body;
 
     // Validate OTP code format
-    if (!otpCode || !isValidOTPCode(otpCode)) {
+    console.log('[OTP Verify] Raw otpCode received:', {
+      otpCode,
+      type: typeof otpCode,
+      length: otpCode?.length,
+      chars: otpCode?.split('').map(c => ({ char: c, code: c.charCodeAt(0) }))
+    });
+
+    // Clean the OTP code (remove any whitespace)
+    const cleanOtpCode = otpCode?.toString().trim();
+    
+    console.log('[OTP Verify] Cleaned otpCode:', {
+      cleanOtpCode,
+      type: typeof cleanOtpCode,
+      length: cleanOtpCode?.length,
+      isValid: isValidOTPCode(cleanOtpCode)
+    });
+
+    if (!cleanOtpCode || !isValidOTPCode(cleanOtpCode)) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid OTP format. Must be 6 digits.'
+          error: `Invalid OTP format. Must be 6 digits. Received: "${cleanOtpCode}" (length: ${cleanOtpCode?.length})`
         },
         { status: 400 }
       );
@@ -254,7 +271,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<VerifyOTP
     }
 
     // Verify OTP code
-    const isValid = compareOTP(otpCode, otpRecord.otp_code);
+    const isValid = compareOTP(cleanOtpCode, otpRecord.otp_code);
 
     console.log('[OTP Verify]', {
       provided: otpCode,
