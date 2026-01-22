@@ -332,17 +332,18 @@ export async function sendEmailOTP(
     console.log(`[OTP Email] Function called with email: "${email}", otp: "${otp}"`);
     
     // Check for undefined or empty email
-    if (!email) {
-      console.error(`[OTP Email] Email is undefined or empty:`, email);
+    if (!email || typeof email !== 'string') {
+      console.error(`[OTP Email] Email is invalid:`, { email, type: typeof email });
       return {
         success: false,
-        error: 'Email address is required'
+        error: 'Email address is required and must be a string'
       };
     }
 
-    // Validate email format
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      console.error(`[OTP Email] Invalid email format: "${email}"`);
+    // Trim and validate email format
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      console.error(`[OTP Email] Invalid email format: "${trimmedEmail}"`);
       return {
         success: false,
         error: 'Invalid email format'
@@ -357,7 +358,7 @@ export async function sendEmailOTP(
       };
     }
 
-    console.log(`[OTP Email] Preparing to send email to: ${email}, OTP: ${otp}`);
+    console.log(`[OTP Email] Preparing to send email to: ${trimmedEmail}, OTP: ${otp}`);
 
     // Check if production email is enabled
     const emailPassword = process.env.EVENTSGEAR_EMAIL_PASSWORD;
@@ -366,7 +367,7 @@ export async function sendEmailOTP(
       // Simulation mode - no real email configured
       console.log(`[OTP Email] 📧 SIMULATING EMAIL (no EVENTSGEAR_EMAIL_PASSWORD):`);
       console.log(`[OTP Email] ┌─ From: Zintra <noreply@eventsgear.co.ke>`);
-      console.log(`[OTP Email] ├─ To: ${email}`);
+      console.log(`[OTP Email] ├─ To: ${trimmedEmail}`);
       console.log(`[OTP Email] ├─ Subject: Your Zintra verification code: ${otp}`);
       console.log(`[OTP Email] ├─ OTP Code: ${otp}`);
       console.log(`[OTP Email] └─ Status: Simulation mode (configure EVENTSGEAR_EMAIL_PASSWORD)`);
@@ -438,7 +439,7 @@ export async function sendEmailOTP(
     // Send email
     const info = await transporter.sendMail({
       from: 'Zintra <noreply@eventsgear.co.ke>',
-      to: email,
+      to: trimmedEmail,
       subject: emailSubject,
       html: htmlContent,
       text: `Your Zintra verification code is: ${otp}. This code expires in 10 minutes. Never share this code with anyone.`
@@ -447,7 +448,7 @@ export async function sendEmailOTP(
     console.log(`[OTP Email] ✅ EMAIL SENT SUCCESSFULLY`);
     console.log(`[OTP Email] ├─ Message ID: ${info.messageId}`);
     console.log(`[OTP Email] ├─ From: Zintra <noreply@eventsgear.co.ke>`);
-    console.log(`[OTP Email] ├─ To: ${email}`);
+    console.log(`[OTP Email] ├─ To: ${trimmedEmail}`);
     console.log(`[OTP Email] └─ OTP: ${otp}`);
 
     return {
@@ -459,6 +460,7 @@ export async function sendEmailOTP(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[OTP Email Error] ${errorMessage}`);
+    console.error(`[OTP Email Error] Full error:`, error);
     return {
       success: false,
       error: 'Failed to send email OTP: ' + errorMessage
