@@ -172,13 +172,35 @@ export default function VendorInboxMessagesTabV2() {
 
   const parseMessageContent = (messageText) => {
     try {
+      // If it's already an object, return it
+      if (typeof messageText === 'object' && messageText !== null) {
+        if (messageText.body && Array.isArray(messageText.attachments)) {
+          return messageText;
+        }
+        // If it's an object but not our format, wrap it
+        return {
+          body: JSON.stringify(messageText),
+          attachments: []
+        };
+      }
+      
+      // If it's a string, try to parse it
       if (typeof messageText === 'string') {
         const parsed = JSON.parse(messageText);
-        if (parsed.body) return parsed;
+        if (parsed.body && Array.isArray(parsed.attachments)) {
+          return parsed;
+        }
+        // If it parsed to something else, wrap it
+        return {
+          body: typeof parsed === 'string' ? parsed : JSON.stringify(parsed),
+          attachments: []
+        };
       }
     } catch (e) {
-      // Not JSON
+      // Not JSON or parse error
     }
+    
+    // Fallback: treat as plain text
     return {
       body: messageText || '',
       attachments: []

@@ -243,10 +243,15 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
                 let messageContent = msg.message_text;
                 let attachments = [];
                 try {
+                  // Handle both string and object types
                   if (typeof msg.message_text === 'string') {
                     const parsed = JSON.parse(msg.message_text);
                     messageContent = parsed.body || msg.message_text;
                     attachments = parsed.attachments || [];
+                  } else if (typeof msg.message_text === 'object' && msg.message_text !== null) {
+                    // Already parsed object from Supabase
+                    messageContent = msg.message_text.body || '';
+                    attachments = msg.message_text.attachments || [];
                   }
                 } catch (e) {
                   // Keep as is if not JSON
