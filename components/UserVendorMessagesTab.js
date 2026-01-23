@@ -307,17 +307,25 @@ export default function UserVendorMessages() {
         }))
       };
 
+      const requestBody = {
+        vendorId: selectedVendor.vendor_id,
+        messageText: JSON.stringify(messagePayload),
+        senderType: 'user',
+      };
+      
+      console.log('📤 Sending message:', {
+        messagePayload,
+        messageTextType: typeof requestBody.messageText,
+        messageTextPreview: requestBody.messageText.substring(0, 100),
+      });
+
       const response = await fetch('/api/vendor/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          vendorId: selectedVendor.vendor_id,
-          messageText: JSON.stringify(messagePayload),
-          senderType: 'user',
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
@@ -355,12 +363,28 @@ export default function UserVendorMessages() {
 
   // Parse message content from JSON or plain text
   const parseMessageContent = (messageText) => {
+    // Handle null/undefined
+    if (!messageText) return '';
+    
+    // If it's already an object, extract body
+    if (typeof messageText === 'object') {
+      return messageText.body || JSON.stringify(messageText);
+    }
+    
+    // Try to parse as JSON string
     try {
       const parsed = JSON.parse(messageText);
-      return parsed.body || messageText;
-    } catch {
-      return messageText;
+      // If parsed successfully and has body, return body
+      if (parsed && typeof parsed === 'object' && parsed.body) {
+        return parsed.body;
+      }
+      // If it parsed to something else, return it
+      if (parsed) return parsed;
+    } catch (e) {
+      // Not JSON, return as-is
     }
+    
+    return messageText;
   };
 
   // Filter conversations

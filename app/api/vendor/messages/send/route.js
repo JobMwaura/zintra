@@ -119,26 +119,47 @@ export async function POST(request) {
 
     // Parse message text if it's JSON, otherwise wrap it
     let finalMessageText = messageText;
+    console.log('📝 Raw messageText received:', { 
+      type: typeof messageText,
+      length: messageText?.length,
+      first50chars: messageText?.substring(0, 50)
+    });
+    
     try {
       // Try to parse as JSON (from frontend with attachments)
       const parsed = JSON.parse(messageText);
+      console.log('✅ Successfully parsed JSON:', { 
+        hasBody: !!parsed.body,
+        hasAttachments: Array.isArray(parsed.attachments),
+        bodyPreview: parsed.body?.substring(0, 30)
+      });
+      
       if (parsed.body && Array.isArray(parsed.attachments)) {
         // Already properly formatted from frontend
+        console.log('✅ Message already properly formatted, using as-is');
         finalMessageText = messageText;
       } else {
         // Has JSON but not our format, re-wrap it
+        console.log('⚠️ JSON has wrong format, re-wrapping');
         finalMessageText = JSON.stringify({
           body: messageText,
           attachments: []
         });
       }
-    } catch {
+    } catch (e) {
       // Not JSON, wrap it
+      console.log('⚠️ Not valid JSON, wrapping as plain text:', e.message);
       finalMessageText = JSON.stringify({
         body: messageText,
         attachments: []
       });
     }
+    
+    console.log('📦 Final messageText to store:', {
+      type: typeof finalMessageText,
+      length: finalMessageText?.length,
+      first50chars: finalMessageText?.substring(0, 50)
+    });
 
     // Insert message
     const { data, error } = await supabase
