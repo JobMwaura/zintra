@@ -8,6 +8,7 @@ import { CountySelect } from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { getUserProfile } from '@/app/actions/getUserProfile';
 import RFQFileUpload from '@/components/RFQModal/RFQFileUpload';
+import { useRfqFormPersistence } from '@/hooks/useRfqFormPersistence';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -39,6 +40,9 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // 🔧 Form persistence hook for clearing form after successful submission
+  const { clearFormData } = useRfqFormPersistence();
 
   /** 🧩 Fetch user profile to check phone_verified status */
   useEffect(() => {
@@ -110,7 +114,23 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     checkQuota();
   }, [isOpen, user?.id]);
 
-  /** 📨 Handle submit (with Supabase insert + optional upload) */
+  /** � Helper to reset form state */
+  const resetForm = () => {
+    setForm({
+      title: '',
+      description: '',
+      category: '',
+      custom_category: '',
+      custom_details: '',
+      budget: '',
+      location: '',
+      attachments: [],
+      confirmed: false,
+    });
+    setStatus('');
+  };
+
+  /** �📨 Handle submit (with Supabase insert + optional upload) */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -216,6 +236,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
       setStatus('✅ Request sent successfully! Redirecting...');
       setSubmitting(false);
+      resetForm();
       setTimeout(() => {
         onClose();
         window.location.href = '/my-rfqs';

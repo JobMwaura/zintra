@@ -390,30 +390,61 @@ export default function VendorProfilePage() {
 
   // Fetch RFQ Inbox data for vendor
   useEffect(() => {
-    // RFQ inbox feature disabled - requires get_vendor_rfq_inbox RPC function
-    // This feature will be re-enabled once the RPC function is properly created in Supabase
     const fetchRFQData = async () => {
       if (!canEdit || !vendor?.id) return;
       
       try {
         setRfqLoading(true);
-        // Commented out until get_vendor_rfq_inbox RPC function is created
-        // const { data: rfqs, error } = await supabase.rpc('get_vendor_rfq_inbox', {
-        //   p_vendor_id: vendor.id
-        // });
+        
+        // Query from rfq_requests table (direct RFQs sent to this vendor)
+        const { data: directRfqs, error: directError } = await supabase
+          .from('rfq_requests')
+          .select('*')
+          .eq('vendor_id', vendor.id)
+          .order('created_at', { ascending: false });
 
-        // Set empty data to prevent errors
-        setRfqInboxData([]);
-        setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
+        if (directError) {
+          console.error('Error loading RFQ data:', directError);
+          setRfqInboxData([]);
+          setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
+          return;
+        }
+
+        // Map rfq_requests data to display format
+        const rfqs = (directRfqs || []).map(rfq => ({
+          id: rfq.id,
+          title: rfq.project_title,
+          category: 'Unknown', // rfq_requests doesn't have category
+          county: 'Unknown',   // rfq_requests doesn't have county
+          rfq_type: 'direct',
+          rfq_type_label: 'Direct RFQ',
+          quote_count: 0,
+          total_quotes: 0,
+          viewed_at: null,
+          created_at: rfq.created_at,
+          status: rfq.status
+        }));
+
+        setRfqInboxData(rfqs);
+        
+        // Calculate stats
+        const stats = {
+          total: rfqs.length,
+          unread: rfqs.filter(r => r.viewed_at === null).length,
+          pending: rfqs.filter(r => r.status === 'pending').length,
+          with_quotes: 0
+        };
+        setRfqStats(stats);
       } catch (err) {
         console.error('Error loading RFQ data:', err);
+        setRfqInboxData([]);
+        setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
       } finally {
         setRfqLoading(false);
       }
     };
 
     fetchRFQData();
-    // Removed setInterval to prevent repeated connection errors
     return () => {};
   }, [vendor?.id, canEdit]);
 
