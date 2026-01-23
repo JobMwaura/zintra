@@ -1356,21 +1356,40 @@ export default function VendorProfilePage() {
                 {products.map((product) => (
                   <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden bg-white group">
                     {/* Image Container */}
-                    {product.image_url && (
-                      <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {/* Status Badge */}
-                        <div className="absolute top-3 right-3">
-                          <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
-                            {product.status || 'In Stock'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden flex items-center justify-center">
+                      {product.image_url ? (
+                        <>
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              console.warn('❌ Product image failed to load:', product.image_url);
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = '<svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" /></svg>';
+                            }}
+                          />
+                          {/* Status Badge */}
+                          <div className="absolute top-3 right-3">
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
+                              {product.status || 'In Stock'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-16 h-16 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" />
+                          </svg>
+                          {/* Status Badge */}
+                          <div className="absolute top-3 right-3">
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
+                              {product.status || 'In Stock'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     
                     {/* Content */}
                     <div className="p-4">
@@ -1407,7 +1426,7 @@ export default function VendorProfilePage() {
                           </div>
                         ) : (
                           <span className="text-lg font-bold text-slate-900">
-                            KSh {Number(product.price).toLocaleString()}
+                            KSh {Number(product.price || 0).toLocaleString()}
                           </span>
                         )}
                         
