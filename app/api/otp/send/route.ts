@@ -222,7 +222,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
       console.log(`[OTP Send - ${requestId}] SMS result:`, smsResult);
     }
 
-    if (channels.includes('email') && validatedEmail) {
+    // If SMS failed and we have an email, try email as fallback
+    if (channels.includes('sms') && !smsResult?.success && validatedEmail) {
+      console.log(`[OTP Send - ${requestId}] SMS failed, trying email as fallback`);
+      emailResult = await sendEmailOTP(validatedEmail, otp);
+    } else if (channels.includes('email') && validatedEmail) {
       emailResult = await sendEmailOTP(validatedEmail, otp);
     }
 
@@ -236,10 +240,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
       if (smsResult?.error) errors.push(`SMS: ${smsResult.error}`);
       if (emailResult?.error) errors.push(`Email: ${emailResult.error}`);
 
+      const errorMessage = errors.join(' | ') || 'Failed to send OTP via all channels';
+      console.error(`[OTP Send - ${requestId}] All channels failed:`, { errors, smsResult, emailResult });
+
       return NextResponse.json(
         {
           success: false,
-          error: errors.join(' | ') || 'Failed to send OTP via all channels'
+          error: errorMessage
         },
         { status: 500 }
       );
