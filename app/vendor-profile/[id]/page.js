@@ -210,7 +210,40 @@ export default function VendorProfilePage() {
                 .select('*')
                 .eq('vendor_id', vendorId)
                 .order('created_at', { ascending: false });
-              if (isMounted && productData) setProducts(productData);
+              
+              if (isMounted && productData) {
+                // Regenerate presigned URLs for product images
+                // (stored as S3 keys, not full URLs, to prevent expiration)
+                const productsWithFreshUrls = await Promise.all(
+                  (productData || []).map(async (product) => {
+                    if (product.image_url && !product.image_url.startsWith('http')) {
+                      try {
+                        // image_url contains S3 key, regenerate presigned URL
+                        const response = await fetch('/api/products/get-images', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            imageKeys: [product.image_url],
+                          }),
+                        });
+
+                        if (response.ok) {
+                          const { presignedUrls } = await response.json();
+                          return {
+                            ...product,
+                            image_url: presignedUrls[product.image_url] || product.image_url,
+                          };
+                        }
+                      } catch (err) {
+                        console.warn('⚠️ Failed to regenerate presigned URL for product:', product.id, err);
+                      }
+                    }
+                    return product;
+                  })
+                );
+                
+                setProducts(productsWithFreshUrls);
+              }
 
               // Fetch services
               const { data: serviceData } = await supabase

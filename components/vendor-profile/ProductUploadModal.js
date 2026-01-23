@@ -107,8 +107,9 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess, editing
           throw new Error(result.error || 'Failed to get presigned URL');
         }
 
-        const { uploadUrl, fileUrl } = await presignedResponse.json();
+        const { uploadUrl, fileUrl, key } = await presignedResponse.json();
         console.log('✅ Got presigned URL for product image');
+        console.log('📍 S3 Key:', key);
 
         // Step 2: Upload file directly to S3
         const uploadResult = await fetch(uploadUrl, {
@@ -121,8 +122,11 @@ export default function ProductUploadModal({ vendor, onClose, onSuccess, editing
           throw new Error(`S3 upload failed with status ${uploadResult.status}`);
         }
 
-        imageUrl = fileUrl;
-        console.log('✅ Product image uploaded to S3:', imageUrl);
+        // IMPORTANT: Store only the S3 key, NOT the full URL
+        // Presigned URLs expire after 7 days, but S3 keys are permanent
+        // We'll regenerate fresh URLs when displaying products
+        imageUrl = key;
+        console.log('✅ Product image uploaded to S3 with key:', imageUrl);
       }
 
       const productData = {
