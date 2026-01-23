@@ -30,8 +30,8 @@ export default async function handler(req, res) {
 
       try {
         // Check if this is a presigned URL (old format) or S3 key (new format)
-        if (typeof url === 'string' && (url.startsWith('https://') || url.includes('X-Amz-'))) {
-          // Old format: presigned URL, try to extract key and regenerate
+        if (typeof url === 'string' && url.includes('amazonaws.com')) {
+          // It's an S3 URL (either presigned or direct), try to extract key and regenerate
           try {
             const urlObj = new URL(url);
             let path = urlObj.pathname.replace(/^\//, ''); // Remove leading slash
@@ -44,21 +44,32 @@ export default async function handler(req, res) {
               }
             }
 
-            const extractedKey = path;
-            console.log('🔄 Regenerating vendor image from old presigned URL format');
+            // Decode URI component (handle %20 for spaces, etc)
+            const extractedKey = decodeURIComponent(path);
+            console.log('🔄 Regenerating vendor image from S3 URL (extracted key)');
             const freshUrl = await generateFileAccessUrl(extractedKey);
             regeneratedUrls[url] = freshUrl;
-            console.log('✅ Successfully regenerated vendor image URL from old format');
+            console.log('✅ Successfully regenerated vendor image URL from S3 URL');
           } catch (parseError) {
-            console.warn('⚠️ Failed to extract key from old vendor image URL, keeping original:', parseError.message);
+            console.warn('⚠️ Failed to extract key from vendor image S3 URL, keeping original:', parseError.message);
             // Fallback: keep original
             regeneratedUrls[url] = url;
           }
+        } else if (typeof url === 'string' && !url.startsWith('http')) {
+          // It's an S3 key (relative path), generate fresh presigned URL
+          try {
+            console.log('🔄 Regenerating vendor image from S3 key');
+            const freshUrl = await generateFileAccessUrl(url);
+            regeneratedUrls[url] = freshUrl;
+            console.log('✅ Generated fresh URL for vendor image S3 key');
+          } catch (error) {
+            console.error('❌ Failed to generate URL for vendor image S3 key:', error.message);
+            regeneratedUrls[url] = url; // Fallback to original
+          }
         } else {
-          // New format: S3 key, generate fresh presigned URL
-          const freshUrl = await generateFileAccessUrl(url);
-          regeneratedUrls[url] = freshUrl;
-          console.log('✅ Generated fresh URL for vendor image S3 key');
+          // Unknown format, keep original
+          console.warn('⚠️ Unknown vendor image URL format');
+          regeneratedUrls[url] = url;
         }
       } catch (error) {
         console.error('❌ Failed to regenerate vendor image URL:', error.message);

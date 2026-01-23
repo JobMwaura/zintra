@@ -27,9 +27,9 @@ export default async function handler(req, res) {
       if (!key) continue;
       
       try {
-        // Check if this is a presigned URL (old format) or S3 key (new format)
-        if (typeof key === 'string' && (key.startsWith('https://') || key.includes('X-Amz-'))) {
-          // Old format: presigned URL, try to extract key and regenerate
+        // Check if this is a presigned URL (old format), direct S3 URL, or S3 key (new format)
+        if (typeof key === 'string' && key.includes('amazonaws.com')) {
+          // It's an S3 URL (either presigned or direct), try to extract key and regenerate
           try {
             const urlObj = new URL(key);
             let path = urlObj.pathname.replace(/^\//, ''); // Remove leading slash
@@ -42,24 +42,28 @@ export default async function handler(req, res) {
               }
             }
             
-            const extractedKey = path;
-            console.log('🔄 Regenerating presigned URL from old format (extracted key):', extractedKey);
+            // Decode URI component (handle %20 for spaces, etc)
+            const extractedKey = decodeURIComponent(path);
+            console.log('🔄 Regenerating presigned URL from S3 URL (extracted key):', extractedKey.substring(0, 50));
             const freshUrl = await generateFileAccessUrl(extractedKey);
             presignedUrls[key] = freshUrl;
-            console.log('✅ Successfully regenerated URL from old presigned URL format');
+            console.log('✅ Successfully regenerated URL from S3 URL');
           } catch (parseError) {
-            console.warn('⚠️ Failed to extract key from old presigned URL, will use original:', parseError.message);
-            // Fallback: use the key as-is (it might still work if not yet expired)
+            console.warn('⚠️ Failed to extract key from S3 URL, using original:', parseError.message);
             presignedUrls[key] = key;
           }
-        } else {
-          // New format: S3 key, generate fresh presigned URL
+        } else if (typeof key === 'string' && !key.startsWith('http')) {
+          // It's an S3 key (relative path), generate fresh presigned URL
           const presignedUrl = await generateFileAccessUrl(key);
           presignedUrls[key] = presignedUrl;
-          console.log('✅ Generated presigned URL for S3 key:', key);
+          console.log('✅ Generated presigned URL for S3 key:', key.substring(0, 50));
+        } else {
+          // Unknown format or already a presigned URL, keep as-is
+          console.warn('⚠️ Unknown URL format, keeping original:', key.substring(0, 50));
+          presignedUrls[key] = key;
         }
       } catch (error) {
-        console.error('❌ Failed to generate presigned URL for:', key, error.message);
+        console.error('❌ Failed to generate presigned URL for:', key.substring(0, 50), error.message);
         presignedUrls[key] = null; // Return null for failed URLs
       }
     }
