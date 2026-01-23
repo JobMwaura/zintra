@@ -1,5 +1,5 @@
 import { generatePresignedUploadUrl, validateFile, sanitizeFileName } from '@/lib/aws-s3';
-import { createClient } from '@/lib/supabase/client';
+import { createServerClient } from '@supabase/ssr';
 
 /**
  * API Endpoint: POST /api/vendor-messages/upload-file
@@ -54,12 +54,19 @@ export default async function handler(req, res) {
 
     const token = authHeader.substring('Bearer '.length);
 
-    // Create Supabase client for server-side auth
-    const supabase = createClient();
+    // Create Supabase server client with service role for token verification
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        cookies: {},
+      }
+    );
     
-    // Verify user is authenticated
+    // Verify user is authenticated using the token
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
+      console.error('❌ Auth verification failed:', userError?.message || 'No user');
       return res.status(401).json({ error: 'Invalid or expired authentication token' });
     }
 
