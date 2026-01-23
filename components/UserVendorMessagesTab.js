@@ -376,12 +376,27 @@ export default function UserVendorMessages() {
       const parsed = JSON.parse(messageText);
       // If parsed successfully and has body, return body
       if (parsed && typeof parsed === 'object' && parsed.body) {
+        console.log('✅ Successfully parsed message, extracted body');
         return parsed.body;
       }
+      // If it parsed to a string, that might be double-encoded
+      if (typeof parsed === 'string') {
+        console.log('⚠️ Parsed to string, might be double-encoded, trying again');
+        try {
+          const doubleParsed = JSON.parse(parsed);
+          if (doubleParsed && doubleParsed.body) {
+            console.log('✅ Double-encoded! Extracted body');
+            return doubleParsed.body;
+          }
+        } catch {
+          return parsed;
+        }
+      }
       // If it parsed to something else, return it
-      if (parsed) return parsed;
+      if (parsed) return String(parsed);
     } catch (e) {
       // Not JSON, return as-is
+      console.log('❌ Could not parse message:', e.message, 'Message preview:', messageText.substring(0, 100));
     }
     
     return messageText;
@@ -533,7 +548,14 @@ export default function UserVendorMessages() {
                       {/* Display attachments if any */}
                       {(() => {
                         try {
-                          const parsed = JSON.parse(msg.message_text);
+                          // Handle both string and object types
+                          let parsed;
+                          if (typeof msg.message_text === 'string') {
+                            parsed = JSON.parse(msg.message_text);
+                          } else {
+                            parsed = msg.message_text;
+                          }
+                          
                           if (parsed.attachments && parsed.attachments.length > 0) {
                             return (
                               <div className="mt-2 space-y-2">
