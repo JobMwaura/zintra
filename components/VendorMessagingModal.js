@@ -50,7 +50,102 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
 
         const result = await response.json();
         if (response.ok) {
-          setMessages(result.data || []);
+          // Regenerate presigned URLs for message images
+          const messagesData = result.data || [];
+          
+          if (messagesData.length > 0) {
+            // Collect all image URLs from attachments
+            const imageUrlsToRegenerate = [];
+            messagesData.forEach(msg => {
+              try {
+                let attachments = [];
+                if (typeof msg.message_text === 'string') {
+                  const parsed = JSON.parse(msg.message_text);
+                  attachments = parsed.attachments || [];
+                } else if (typeof msg.message_text === 'object' && msg.message_text !== null) {
+                  attachments = msg.message_text.attachments || [];
+                }
+                
+                attachments.forEach(att => {
+                  if (att.url && att.type && att.type.startsWith('image/')) {
+                    imageUrlsToRegenerate.push(att.url);
+                  }
+                });
+              } catch (e) {
+                // Ignore parsing errors
+              }
+            });
+
+            // Regenerate URLs if there are any images
+            if (imageUrlsToRegenerate.length > 0) {
+              try {
+                console.log('🔄 Regenerating presigned URLs for', imageUrlsToRegenerate.length, 'message images');
+                const urlResponse = await fetch('/api/messages/regenerate-image-urls', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    imageUrls: imageUrlsToRegenerate,
+                  }),
+                });
+
+                if (urlResponse.ok) {
+                  const { regeneratedUrls } = await urlResponse.json();
+                  console.log('✅ Regenerated message image URLs');
+
+                  // Update messages with fresh image URLs
+                  const updatedMessages = messagesData.map(msg => {
+                    try {
+                      let messageContent = msg.message_text;
+                      let attachments = [];
+                      
+                      if (typeof msg.message_text === 'string') {
+                        const parsed = JSON.parse(msg.message_text);
+                        messageContent = parsed.body || msg.message_text;
+                        attachments = parsed.attachments || [];
+                      } else if (typeof msg.message_text === 'object' && msg.message_text !== null) {
+                        messageContent = msg.message_text.body || '';
+                        attachments = msg.message_text.attachments || [];
+                      }
+
+                      // Update attachment URLs with fresh ones
+                      const updatedAttachments = attachments.map(att => {
+                        if (att.url && regeneratedUrls[att.url]) {
+                          return { ...att, url: regeneratedUrls[att.url] };
+                        }
+                        return att;
+                      });
+
+                      // Rebuild message_text with updated attachments
+                      if (typeof msg.message_text === 'string' || typeof msg.message_text === 'object') {
+                        return {
+                          ...msg,
+                          message_text: JSON.stringify({
+                            body: messageContent,
+                            attachments: updatedAttachments,
+                          }),
+                        };
+                      }
+                      return msg;
+                    } catch (e) {
+                      return msg;
+                    }
+                  });
+
+                  setMessages(updatedMessages);
+                } else {
+                  console.warn('⚠️ Failed to regenerate message image URLs, using originals');
+                  setMessages(messagesData);
+                }
+              } catch (err) {
+                console.warn('⚠️ Error regenerating message image URLs:', err);
+                setMessages(messagesData);
+              }
+            } else {
+              setMessages(messagesData);
+            }
+          } else {
+            setMessages([]);
+          }
         } else {
           console.error('Failed to fetch messages:', result.error);
         }

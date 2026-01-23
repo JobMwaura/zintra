@@ -200,8 +200,50 @@ export default function VendorProfilePage() {
                 return;
               }
 
+              // Regenerate presigned URLs for vendor profile images (logo, cover)
+              let processedVendorData = vendorData;
+              const vendorImagesToRegenerate = [];
+              
+              if (vendorData.logo_url) {
+                vendorImagesToRegenerate.push(vendorData.logo_url);
+              }
+              if (vendorData.cover_image_url) {
+                vendorImagesToRegenerate.push(vendorData.cover_image_url);
+              }
+
+              if (vendorImagesToRegenerate.length > 0) {
+                try {
+                  console.log('🔄 Regenerating', vendorImagesToRegenerate.length, 'vendor profile image URLs');
+                  
+                  const response = await fetch('/api/vendor-profile/regenerate-image-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      imageUrls: vendorImagesToRegenerate,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    const { regeneratedUrls } = await response.json();
+                    console.log('✅ Received fresh presigned URLs for vendor images');
+                    
+                    // Update vendor data with fresh URLs
+                    if (vendorData.logo_url && regeneratedUrls[vendorData.logo_url]) {
+                      processedVendorData.logo_url = regeneratedUrls[vendorData.logo_url];
+                    }
+                    if (vendorData.cover_image_url && regeneratedUrls[vendorData.cover_image_url]) {
+                      processedVendorData.cover_image_url = regeneratedUrls[vendorData.cover_image_url];
+                    }
+                  } else {
+                    console.warn('⚠️ Failed to regenerate vendor image URLs, using originals');
+                  }
+                } catch (err) {
+                  console.warn('⚠️ Error regenerating vendor image URLs:', err);
+                }
+              }
+
               if (isMounted) {
-                setVendor(vendorData);
+                setVendor(processedVendorData);
               }
 
               // Fetch products
@@ -213,36 +255,53 @@ export default function VendorProfilePage() {
               
               if (isMounted && productData) {
                 // Regenerate presigned URLs for product images
-                // (stored as S3 keys, not full URLs, to prevent expiration)
-                const productsWithFreshUrls = await Promise.all(
-                  (productData || []).map(async (product) => {
-                    if (product.image_url && !product.image_url.startsWith('http')) {
-                      try {
-                        // image_url contains S3 key, regenerate presigned URL
-                        const response = await fetch('/api/products/get-images', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            imageKeys: [product.image_url],
-                          }),
-                        });
+                // Handles both old (full presigned URLs) and new (S3 keys) formats
+                // Only regenerate if images exist
+                const productsWithImages = productData.filter(p => p.image_url);
+                
+                if (productsWithImages.length > 0) {
+                  try {
+                    // Collect all image URLs to regenerate (both formats)
+                    const imageUrlsToRegenerate = productsWithImages.map(p => p.image_url);
+                    
+                    console.log('🔄 Regenerating', imageUrlsToRegenerate.length, 'product image URLs');
+                    
+                    // Call API to regenerate all URLs at once
+                    const response = await fetch('/api/products/get-images', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        imageKeys: imageUrlsToRegenerate,
+                      }),
+                    });
 
-                        if (response.ok) {
-                          const { presignedUrls } = await response.json();
+                    if (response.ok) {
+                      const { presignedUrls } = await response.json();
+                      console.log('✅ Received fresh presigned URLs for products');
+                      
+                      // Update products with fresh URLs
+                      const productsWithFreshUrls = productData.map(product => {
+                        if (product.image_url && presignedUrls[product.image_url]) {
                           return {
                             ...product,
-                            image_url: presignedUrls[product.image_url] || product.image_url,
+                            image_url: presignedUrls[product.image_url],
                           };
                         }
-                      } catch (err) {
-                        console.warn('⚠️ Failed to regenerate presigned URL for product:', product.id, err);
-                      }
+                        return product;
+                      });
+                      
+                      setProducts(productsWithFreshUrls);
+                    } else {
+                      console.warn('⚠️ Failed to regenerate product image URLs, using originals');
+                      setProducts(productData);
                     }
-                    return product;
-                  })
-                );
-                
-                setProducts(productsWithFreshUrls);
+                  } catch (err) {
+                    console.warn('⚠️ Error regenerating product image URLs:', err);
+                    setProducts(productData);
+                  }
+                } else {
+                  setProducts(productData);
+                }
               }
 
               // Fetch services
