@@ -95,9 +95,15 @@ WHERE rfq_id = '22fe030d-836b-41a9-987f-1be378ec863d';
 ```sql
 SELECT id, project_title, vendor_id, status, created_at 
 FROM rfq_requests 
-WHERE vendor_id = '[VENDOR_ID_HERE]'
+WHERE vendor_id = 'YOUR_ACTUAL_VENDOR_UUID'
 ORDER BY created_at DESC LIMIT 10;
 ```
+**How to get VENDOR_ID:**
+1. Go to the vendor's profile URL in browser
+2. URL will look like: `https://zintra.co.ke/vendor-profile/[VENDOR_ID]`
+3. Copy that UUID and paste into the query above
+4. Replace `YOUR_ACTUAL_VENDOR_UUID` with the copied ID
+
 **Expected:** Your new RFQ should appear in this list ✅
 
 ---
@@ -238,7 +244,10 @@ All three should work after submission completes successfully. If any don't appe
 ## Questions to Answer
 
 1. **Which vendor did you send the RFQ to?**
-   - Get their ID from URL when viewing their profile
+   - Go to vendor's profile URL
+   - URL format: `https://zintra.co.ke/vendor-profile/[VENDOR_ID]`
+   - Copy the VENDOR_ID from the URL
+   - This is what you need for the SQL queries
 
 2. **Can you see the RFQ on your `/my-rfqs` page?**
    - If yes → data insertion worked for buyer side
@@ -254,4 +263,62 @@ All three should work after submission completes successfully. If any don't appe
 
 ---
 
-Report back with answers to the questions above, and I can help debug! 🚀
+## 🔐 Finding Your Vendor ID
+
+The issue might be that `vendor_id` in the `rfq_requests` table expects a specific format. Here's how to find it:
+
+### Method 1: From Browser URL
+1. Navigate to vendor's profile
+2. Look at the URL: `https://zintra.co.ke/vendor-profile/[VENDOR_ID]`
+3. The UUID in the URL is the vendor ID to use in queries
+
+### Method 2: Check All Vendors in Database
+```sql
+SELECT id, company_name, user_id 
+FROM vendors 
+LIMIT 20;
+```
+This shows you all vendors and their IDs so you can identify which one you sent to.
+
+### Method 3: Find RFQ by RFQ ID (if already in database)
+```sql
+SELECT * FROM rfqs 
+WHERE id = '22fe030d-836b-41a9-987f-1be378ec863d';
+```
+This will show you the RFQ exists. If it exists, the issue is the `rfq_requests` insert.
+
+---
+
+## 🐛 The Real Issue: rfq_requests Insert Failed
+
+Since:
+- ✅ RFQ was created successfully in `rfqs` table (you got the ID back)
+- ❌ RFQ ID NOT found in `rfq_requests` table
+
+**This means:** The insert into `rfq_requests` failed silently
+
+### Possible Causes:
+
+1. **Wrong vendor_id format**
+   - `rfq_requests.vendor_id` is a foreign key to `vendors.id`
+   - The code might be passing `user_id` instead of `vendors.id`
+   - Check: Does the vendor object have both `user_id` and `id`?
+
+2. **Foreign Key Constraint Violation**
+   - The `vendor_id` you're passing doesn't exist in the `vendors` table
+   - Supabase silently fails the insert due to FK constraint
+
+3. **RLS Policy Blocking Insert**
+   - Row-level security policy might be blocking the insert
+   - Check Supabase logs for RLS errors
+
+### How to Debug:
+
+Open browser Developer Tools (F12) and look at the Console tab:
+- After you submit an RFQ, check for any error messages
+- Look for messages starting with "❌" or in red
+- The detailed error will tell us exactly what went wrong
+
+---
+
+Report back with:
