@@ -223,28 +223,53 @@ export async function sendSMSOTPCustom(
       password_reset: `Your Zintra password reset code is: ${otp}. Valid for 30 minutes.`
     };
 
-    const normalizedPhone = phoneNumber.startsWith('+254')
-      ? phoneNumber
-      : '+254' + phoneNumber.slice(1);
+    // TextSMS Kenya expects phone number without + sign or with it
+    // Try both formats but prefer the one without +
+    let normalizedPhone = phoneNumber;
+    
+    // Remove + if present
+    if (normalizedPhone.startsWith('+')) {
+      normalizedPhone = normalizedPhone.slice(1);
+    }
+    
+    // Ensure it starts with 254 (Kenya country code)
+    if (!normalizedPhone.startsWith('254')) {
+      // If it starts with 0, replace with 254
+      if (normalizedPhone.startsWith('0')) {
+        normalizedPhone = '254' + normalizedPhone.slice(1);
+      } else {
+        // Otherwise prepend 254
+        normalizedPhone = '254' + normalizedPhone;
+      }
+    }
 
-    const payload: TextSMSPayload = {
+    console.log('[OTP SMS] Phone normalization:', {
+      original: phoneNumber,
+      normalized: normalizedPhone
+    });
+
+    // Message should be simple and not too long
+    const message = messages[type];
+    
+    // TextSMS Kenya /sendotp/ endpoint payload
+    // Based on API: https://sms.textsms.co.ke/api/services/sendotp/
+    const payload = {
       apikey: apiKey,
       partnerID: partnerId,
-      mobile: normalizedPhone,
-      message: messages[type],
-      shortcode: shortcode,
-      pass_type: 'plain'
+      mobile: normalizedPhone,  // Phone without + sign
+      message: message,
+      shortcode: shortcode
     };
 
-    // Use /sendotp/ endpoint (for sensitive transaction traffic like OTP)
-    // instead of /sendsms/ endpoint
     console.log('[OTP SMS] Sending request to TextSMS Kenya:', {
       endpoint: 'https://sms.textsms.co.ke/api/services/sendotp/',
       phone: normalizedPhone,
       hasApiKey: !!apiKey,
       hasPartnerId: !!partnerId,
       hasShortcode: !!shortcode,
-      message: payload.message
+      messageLength: message.length,
+      messagePreview: message.substring(0, 50),
+      payloadKeys: Object.keys(payload)
     });
 
     const response = await fetch(
