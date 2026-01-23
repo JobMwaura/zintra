@@ -8,7 +8,7 @@ import { CountySelect } from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { getUserProfile } from '@/app/actions/getUserProfile';
 import RFQFileUpload from '@/components/RFQModal/RFQFileUpload';
-import { useRfqFormPersistence } from '@/hooks/useRfqFormPersistence';
+
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -42,7 +42,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // 🔧 Form persistence hook for clearing form after successful submission
-  const { clearFormData } = useRfqFormPersistence();
+
 
   /** 🧩 Debug: Log vendor object when modal opens */
   useEffect(() => {
@@ -263,7 +263,8 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
       setStatus('✅ Request sent successfully! Redirecting...');
       setSubmitting(false);
-      resetForm();
+      // Form will be cleared by modal close
+      setForm({ title: '', description: '', category: '', custom_category: '', custom_details: '', budget: '', location: '', attachments: [], confirmed: false });
       setTimeout(() => {
         onClose();
         window.location.href = '/my-rfqs';
