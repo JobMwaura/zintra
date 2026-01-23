@@ -609,8 +609,15 @@ function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supa
         setMessage('✓ Phone verified successfully!');
         setMessageType('success');
         
+        // Close modal and call onSuccess callback after showing success message
         setTimeout(() => {
-          onSuccess();
+          if (onSuccess && typeof onSuccess === 'function') {
+            try {
+              onSuccess();
+            } catch (err) {
+              console.warn('Error in onSuccess callback:', err);
+            }
+          }
         }, 1500);
       } else {
         setMessage(data.error || 'Invalid OTP code');
@@ -820,8 +827,15 @@ function EmailVerificationModal({ userEmail, onClose, onSuccess, supabase }) {
         setMessage('✓ Email verified successfully!');
         setMessageType('success');
         
+        // Close modal and call onSuccess callback after showing success message
         setTimeout(() => {
-          onSuccess();
+          if (onSuccess && typeof onSuccess === 'function') {
+            try {
+              onSuccess();
+            } catch (err) {
+              console.warn('Error in onSuccess callback:', err);
+            }
+          }
         }, 1500);
       } else {
         setMessage(data.error || 'Invalid verification code');

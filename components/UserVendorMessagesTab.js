@@ -256,6 +256,16 @@ export default function UserVendorMessages() {
     }
   };
 
+  // Parse message content from JSON or plain text
+  const parseMessageContent = (messageText) => {
+    try {
+      const parsed = JSON.parse(messageText);
+      return parsed.body || messageText;
+    } catch {
+      return messageText;
+    }
+  };
+
   // Filter conversations
   const filteredByType = conversations.filter(conv => {
     if (messageType === 'all') return true;
@@ -353,7 +363,7 @@ export default function UserVendorMessages() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 truncate">{conv.last_message}</p>
+                    <p className="text-sm text-gray-600 truncate">{parseMessageContent(conv.last_message)}</p>
                     <p className="text-xs text-gray-500 mt-1">
                       {new Date(conv.last_message_time).toLocaleDateString()}
                     </p>
@@ -397,7 +407,7 @@ export default function UserVendorMessages() {
                           : 'bg-gray-200 text-gray-900'
                       }`}
                     >
-                      <p className="text-sm">{msg.message_text}</p>
+                      <p className="text-sm">{parseMessageContent(msg.message_text)}</p>
                       <p
                         className={`text-xs mt-1 ${
                           msg.sender_type === 'user'
