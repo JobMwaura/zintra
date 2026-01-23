@@ -17,7 +17,7 @@ export default function StepGeneral({
   useEffect(() => {
     if (formData.projectTitle && formData.projectTitle.trim().length > 2) {
       try {
-        const suggestions = suggestCategories(formData.projectTitle, 4);
+        const suggestions = suggestCategories(formData.projectTitle, '', { maxSuggestions: 4 });
         setCategorySuggestions(suggestions || []);
         setShowSuggestions(suggestions && suggestions.length > 0);
       } catch (error) {

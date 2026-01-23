@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import useRfqFormPersistence from '@/hooks/useRfqFormPersistence';
 import ModalHeader from './ModalHeader';
 import ModalFooter from './ModalFooter';
 import StepIndicator from './StepIndicator';
@@ -74,6 +75,9 @@ export default function RFQModal({
   const [vendors, setVendors] = useState([]);
   const [categoryNeedsJobType, setCategoryNeedsJobType] = useState(false);
   const [rfqId, setRfqId] = useState(null);
+
+  // Form persistence hook
+  const { clearFormData } = useRfqFormPersistence();
 
   // Determine if this is a single-category vendor request
   const isSingleCategoryVendorRequest = 
