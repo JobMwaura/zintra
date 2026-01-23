@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { X, Send, Loader } from 'lucide-react';
+import { X, Send, Loader, Paperclip } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function VendorMessagingModal({ vendorId, vendorName, userId, onClose }) {
@@ -10,7 +10,10 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Get current user
   useEffect(() => {
@@ -69,9 +72,91 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle image upload to AWS S3
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    try {
+      setUploading(true);
+      const newImages = [];
+
+      for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          alert('Please select only image files');
+          continue;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image size must be less than 5MB');
+          continue;
+        }
+
+        try {
+          // Get presigned URL from our backend API
+          const getUrlResponse = await fetch('/api/aws/upload-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${file.name}`,
+              fileType: file.type,
+              folder: 'vendor-messages'
+            })
+          });
+
+          if (!getUrlResponse.ok) {
+            throw new Error('Failed to get upload URL');
+          }
+
+          const { uploadUrl, fileUrl } = await getUrlResponse.json();
+
+          // Upload directly to S3 using presigned URL
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': file.type,
+            },
+            body: file
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload to S3');
+          }
+
+          newImages.push({
+            name: file.name,
+            url: fileUrl,
+            size: file.size,
+            type: file.type,
+          });
+        } catch (fileError) {
+          console.error('Error uploading file:', fileError);
+          alert(`Failed to upload ${file.name}`);
+        }
+      }
+
+      setUploadedImages(prev => [...prev, ...newImages]);
+    } catch (error) {
+      console.error('Image upload error:', error);
+      alert('Failed to upload images. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Remove uploaded image
+  const removeUploadedImage = (index) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentUser) return;
+    if ((!newMessage.trim() && uploadedImages.length === 0) || !currentUser) return;
 
     try {
       setSending(true);
@@ -81,6 +166,17 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
         return;
       }
 
+      // Prepare message with attachments
+      const messagePayload = {
+        body: newMessage.trim(),
+        attachments: uploadedImages.map(img => ({
+          name: img.name,
+          url: img.url,
+          type: img.type,
+          size: img.size,
+        }))
+      };
+
       const response = await fetch('/api/vendor/messages/send', {
         method: 'POST',
         headers: {
@@ -89,7 +185,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
         },
         body: JSON.stringify({
           vendorId,
-          messageText: newMessage,
+          messageText: JSON.stringify(messagePayload),
           senderType: 'user',
         }),
       });
@@ -98,6 +194,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
       if (response.ok) {
         setMessages([...messages, result.data[0]]);
         setNewMessage('');
+        setUploadedImages([]);
       } else {
         alert(`Error: ${result.error}`);
       }
@@ -144,10 +241,12 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
               {messages.map((msg, idx) => {
                 // Parse message text if it's JSON
                 let messageContent = msg.message_text;
+                let attachments = [];
                 try {
                   if (typeof msg.message_text === 'string') {
                     const parsed = JSON.parse(msg.message_text);
                     messageContent = parsed.body || msg.message_text;
+                    attachments = parsed.attachments || [];
                   }
                 } catch (e) {
                   // Keep as is if not JSON
@@ -166,6 +265,35 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
                         }`}
                       >
                         <p className="text-sm">{messageContent}</p>
+                        
+                        {/* Display attachments if any */}
+                        {attachments && attachments.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {attachments.map((att, attIdx) => (
+                              <div key={attIdx}>
+                                {att.type && att.type.startsWith('image/') ? (
+                                  <a href={att.url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <img 
+                                      src={att.url} 
+                                      alt={att.name}
+                                      className="max-w-xs rounded-lg cursor-pointer hover:opacity-80 transition"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a 
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs underline"
+                                  >
+                                    📎 {att.name}
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
                         <p
                           className={`text-xs mt-1 ${
                             msg.sender_type === 'user' ? 'text-amber-100' : 'text-gray-500'
@@ -192,7 +320,51 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
 
         {/* Message Input */}
         <div className="border-t border-gray-200 px-6 py-4">
+          {/* Uploaded Images Preview */}
+          {uploadedImages.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {uploadedImages.map((img, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={img.url}
+                    alt={img.name}
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedImage(idx)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <form onSubmit={handleSendMessage} className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              multiple
+              disabled={sending || uploading}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading}
+              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+              title="Attach image"
+            >
+              {uploading ? (
+                <Loader className="w-5 h-5 animate-spin" />
+              ) : (
+                <Paperclip className="w-5 h-5" />
+              )}
+            </button>
             <input
               type="text"
               value={newMessage}
@@ -204,7 +376,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
             />
             <button
               type="submit"
-              disabled={sending || !newMessage.trim()}
+              disabled={sending || uploading || (!newMessage.trim() && uploadedImages.length === 0)}
               className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sending ? (
