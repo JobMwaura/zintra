@@ -22,35 +22,66 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Initialize S3 client
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-});
+// Lazy load AWS SDK only when needed
+let s3Client: any = null;
+let getSignedUrl: any = null;
+
+async function initializeS3() {
+  if (s3Client && getSignedUrl) return;
+  
+  const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+  const { getSignedUrl: getSignedUrlFn } = await import('@aws-sdk/s3-request-presigner');
+  
+  getSignedUrl = getSignedUrlFn;
+  
+  s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    },
+  });
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // Validate environment variables
-    if (!process.env.AWS_BUCKET_NAME) {
-      console.error('AWS_BUCKET_NAME not configured');
+    // Validate environment variables first
+    const awsAccessKey = process.env.AWS_ACCESS_KEY_ID;
+    const awsSecretKey = process.env.AWS_SECRET_ACCESS_KEY;
+    const awsBucket = process.env.AWS_BUCKET_NAME;
+    const awsRegion = process.env.AWS_REGION || 'us-east-1';
+
+    console.log('[AWS Upload URL] Environment check:', {
+      hasAccessKey: !!awsAccessKey,
+      hasSecretKey: !!awsSecretKey,
+      hasBucket: !!awsBucket,
+      region: awsRegion,
+    });
+
+    if (!awsAccessKey || !awsSecretKey || !awsBucket) {
+      console.error('[AWS Upload URL] Missing AWS credentials:', {
+        AWS_ACCESS_KEY_ID: !!awsAccessKey,
+        AWS_SECRET_ACCESS_KEY: !!awsSecretKey,
+        AWS_BUCKET_NAME: !!awsBucket,
+      });
       return NextResponse.json(
-        { error: 'AWS S3 not configured' },
+        { 
+          error: 'AWS S3 not configured. Please set AWS environment variables.',
+          missing: {
+            AWS_ACCESS_KEY_ID: !awsAccessKey,
+            AWS_SECRET_ACCESS_KEY: !awsSecretKey,
+            AWS_BUCKET_NAME: !awsBucket,
+          }
+        },
         { status: 500 }
       );
     }
 
     const body = await request.json();
     const { fileName, fileType, folder } = body;
+
+    console.log('[AWS Upload URL] Request received:', { fileName, fileType, folder });
 
     // Validate required fields
     if (!fileName || !fileType || !folder) {
@@ -86,18 +117,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Initialize S3
+    await initializeS3();
+
     // Construct S3 key (file path in bucket)
     const s3Key = `${folder}/${fileName}`;
 
-    console.log('📤 Generating presigned URL for S3:', {
-      bucket: process.env.AWS_BUCKET_NAME,
+    console.log('[AWS Upload URL] Generating presigned URL:', {
+      bucket: awsBucket,
       key: s3Key,
       contentType: fileType,
     });
 
+    // Import PutObjectCommand
+    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+
     // Generate presigned upload URL (valid for 15 minutes)
     const uploadCommand = new PutObjectCommand({
-      Bucket: process.env.AWS_BUCKET_NAME,
+      Bucket: awsBucket,
       Key: s3Key,
       ContentType: fileType,
     });
@@ -107,11 +144,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     // Construct public file URL
-    const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${
-      process.env.AWS_REGION || 'us-east-1'
-    }.amazonaws.com/${s3Key}`;
+    const fileUrl = `https://${awsBucket}.s3.${awsRegion}.amazonaws.com/${s3Key}`;
 
-    console.log('✅ Presigned URL generated:', {
+    console.log('[AWS Upload URL] Success:', {
       uploadUrl: uploadUrl.substring(0, 50) + '...',
       fileUrl,
     });
@@ -123,10 +158,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('❌ Error generating presigned URL:', error);
+  } catch (error: any) {
+    console.error('[AWS Upload URL] Error:', error);
+    console.error('[AWS Upload URL] Error details:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+    });
+    
     return NextResponse.json(
-      { error: 'Failed to generate upload URL' },
+      { 
+        error: 'Failed to generate upload URL',
+        details: error?.message || 'Unknown error',
+      },
       { status: 500 }
     );
   }
