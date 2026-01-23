@@ -33,22 +33,41 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
-      // RFQ inbox feature disabled - requires get_vendor_rfq_inbox RPC function
-      // This will be re-enabled once the RPC function is properly created in Supabase
-      // const { data, error } = await supabase.rpc('get_vendor_rfq_inbox', {
-      //   p_vendor_id: vendor.id
-      // });
+      // Query from rfq_requests table (direct RFQs sent to vendor)
+      const { data: directRfqs, error: directError } = await supabase
+        .from('rfq_requests')
+        .select('*')
+        .eq('vendor_id', vendor.id)
+        .order('created_at', { ascending: false });
 
-      // Set empty data to prevent errors
-      const data = [];
-      setRfqs(data || []);
+      if (directError) {
+        console.error('Error fetching direct RFQs:', directError);
+      }
+
+      // Combine results and format for display
+      const allRfqs = (directRfqs || []).map(rfq => ({
+        id: rfq.id,
+        rfq_id: rfq.rfq_id,
+        requester_id: rfq.user_id,
+        vendor_id: rfq.vendor_id,
+        title: rfq.project_title,
+        description: rfq.project_description,
+        created_at: rfq.created_at,
+        status: rfq.status,
+        rfq_type: 'direct',
+        rfq_type_label: 'Direct RFQ',
+        requester_name: rfq.requester_name || 'Unknown',
+        requester_email: rfq.requester_email || 'unknown@zintra.co.ke'
+      }));
+
+      setRfqs(allRfqs);
 
       // Calculate stats
       const statsData = {
-        total: 0,
+        total: allRfqs.length,
         unread: 0,
-        pending: 0,
-        direct: 0,
+        pending: allRfqs.filter(r => r.status === 'pending').length,
+        direct: allRfqs.length,
         matched: 0,
         wizard: 0,
         public: 0,
