@@ -117,11 +117,28 @@ export async function POST(request) {
       }
     }
 
-    // Prepare message payload with attachments
-    const messagePayload = {
-      body: messageText,
-      attachments: []
-    };
+    // Parse message text if it's JSON, otherwise wrap it
+    let finalMessageText = messageText;
+    try {
+      // Try to parse as JSON (from frontend with attachments)
+      const parsed = JSON.parse(messageText);
+      if (parsed.body && Array.isArray(parsed.attachments)) {
+        // Already properly formatted from frontend
+        finalMessageText = messageText;
+      } else {
+        // Has JSON but not our format, re-wrap it
+        finalMessageText = JSON.stringify({
+          body: messageText,
+          attachments: []
+        });
+      }
+    } catch {
+      // Not JSON, wrap it
+      finalMessageText = JSON.stringify({
+        body: messageText,
+        attachments: []
+      });
+    }
 
     // Insert message
     const { data, error } = await supabase
@@ -130,7 +147,7 @@ export async function POST(request) {
         vendor_id: vendorId,
         user_id: actualUserId,
         sender_type: senderType,
-        message_text: JSON.stringify(messagePayload),
+        message_text: finalMessageText,
         is_read: false,
         sender_name: senderType === 'vendor' ? 'You' : senderName,
       })
