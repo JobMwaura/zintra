@@ -280,13 +280,30 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
                                 {att.type && att.type.startsWith('image/') ? (
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedImage(att)}
-                                    className="block"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setSelectedImage(att);
+                                    }}
+                                    onDoubleClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    className="block w-full text-left bg-none border-none cursor-pointer"
+                                    style={{ padding: 0 }}
                                   >
                                     <img 
                                       src={att.url} 
                                       alt={att.name}
                                       className="max-w-xs rounded-lg cursor-pointer hover:opacity-80 transition"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                      }}
+                                      onDoubleClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                      }}
                                     />
                                   </button>
                                 ) : (
@@ -403,17 +420,34 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
       {/* Image Modal */}
       {selectedImage && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4"
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[999] p-4"
           onClick={() => setSelectedImage(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedImage(null);
+            }
+          }}
+          style={{ display: 'flex' }}
         >
           <div 
-            className="relative bg-white rounded-lg max-w-3xl max-h-[90vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-lg max-w-3xl max-h-[90vh] overflow-auto shadow-2xl"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           >
             {/* Close Button */}
             <button
-              onClick={() => setSelectedImage(null)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedImage(null);
+              }}
               className="absolute top-4 right-4 bg-gray-900 text-white rounded-full p-2 hover:bg-gray-700 transition z-10"
+              type="button"
+              title="Close image"
             >
               <X className="w-6 h-6" />
             </button>
@@ -422,7 +456,12 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
             <img
               src={selectedImage.url}
               alt={selectedImage.name}
-              className="w-full h-auto"
+              className="w-full h-auto cursor-default"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onContextMenu={(e) => e.preventDefault()}
             />
 
             {/* Image Info */}

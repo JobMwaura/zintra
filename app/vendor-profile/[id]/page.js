@@ -960,13 +960,6 @@ export default function VendorProfilePage() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* ZCC Credits Card - Only show to vendor */}
-        {canEdit && (
-          <div className="mb-8">
-            <ZCCCreditsCard vendorId={vendorId} canEdit={canEdit} />
-          </div>
-        )}
-
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
           {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'rfqs'] : [])].map((tab) => (
@@ -1811,6 +1804,11 @@ export default function VendorProfilePage() {
                 )}
               </div>
             </section>
+          )}
+
+          {/* ZCC Credits Card - Only show to vendor */}
+          {canEdit && (
+            <ZCCCreditsCard vendorId={vendorId} canEdit={canEdit} />
           )}
 
           {/* Verification Status Card */}
