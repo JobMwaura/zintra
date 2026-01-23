@@ -238,6 +238,15 @@ export async function sendSMSOTPCustom(
 
     // Use /sendotp/ endpoint (for sensitive transaction traffic like OTP)
     // instead of /sendsms/ endpoint
+    console.log('[OTP SMS] Sending request to TextSMS Kenya:', {
+      endpoint: 'https://sms.textsms.co.ke/api/services/sendotp/',
+      phone: normalizedPhone,
+      hasApiKey: !!apiKey,
+      hasPartnerId: !!partnerId,
+      hasShortcode: !!shortcode,
+      message: payload.message
+    });
+
     const response = await fetch(
       'https://sms.textsms.co.ke/api/services/sendotp/',
       {
@@ -247,6 +256,8 @@ export async function sendSMSOTPCustom(
       }
     );
 
+    console.log('[OTP SMS] Fetch response status:', response.status, response.statusText);
+    
     const data: TextSMSResponse = await response.json();
 
     console.log('[OTP SendOTP] Request:', { 
@@ -308,10 +319,11 @@ export async function sendSMSOTPCustom(
           error: errorMessage
         };
   } catch (error) {
-    console.error('[OTP SMS Error]', error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[OTP SMS Error]', { error: errorMsg, stack: error instanceof Error ? error.stack : undefined });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: `SMS Error: ${errorMsg}`
     };
   }
 }
