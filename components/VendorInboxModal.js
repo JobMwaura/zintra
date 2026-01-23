@@ -33,6 +33,7 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
   const [adminUsers, setAdminUsers] = useState({}); // Map of user_id to user info
+  const [selectedImage, setSelectedImage] = useState(null); // For image lightbox preview
 
   // Load conversations
   const loadConversations = async () => {
@@ -565,20 +566,36 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
 
                           {/* Attachments */}
                           {content.attachments && content.attachments.length > 0 && (
-                            <div className="mt-2 space-y-1">
+                            <div className="mt-2 space-y-2">
                               {content.attachments.map((att, attIdx) => (
-                                <a
-                                  key={attIdx}
-                                  href={att.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`flex items-center gap-2 text-xs underline mt-2 ${
-                                    isAdmin ? 'text-slate-700' : 'text-blue-100'
-                                  }`}
-                                >
-                                  <Download className="w-4 h-4" />
-                                  {att.name}
-                                </a>
+                                <div key={attIdx}>
+                                  {att.type && att.type.startsWith('image/') ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedImage(att)}
+                                      className="block w-full text-left bg-none border-none cursor-pointer"
+                                      style={{ padding: 0 }}
+                                    >
+                                      <img 
+                                        src={att.url} 
+                                        alt={att.name}
+                                        className="max-w-xs rounded-lg cursor-pointer hover:opacity-80 transition"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <a
+                                      href={att.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`flex items-center gap-2 text-xs underline mt-2 ${
+                                        isAdmin ? 'text-slate-700' : 'text-blue-100'
+                                      }`}
+                                    >
+                                      <Download className="w-4 h-4" />
+                                      {att.name}
+                                    </a>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           )}
@@ -674,6 +691,73 @@ export default function VendorInboxModal({ isOpen, onClose, vendorId, currentUse
           )}
         </div>
       </div>
+
+      {/* Image Lightbox Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[999] p-4"
+          onClick={() => setSelectedImage(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedImage(null);
+            }
+          }}
+          style={{ display: 'flex' }}
+        >
+          <div 
+            className="relative bg-white rounded-lg max-w-3xl max-h-[90vh] overflow-auto shadow-2xl"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedImage(null);
+              }}
+              className="absolute top-4 right-4 bg-slate-900 text-white rounded-full p-2 hover:bg-slate-700 transition z-10"
+              type="button"
+              title="Close image"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Image */}
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.name}
+              className="w-full h-auto cursor-default"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+
+            {/* Image Info */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50">
+              <p className="text-sm font-medium text-slate-900">{selectedImage.name}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Size: {selectedImage.size ? (selectedImage.size / 1024).toFixed(2) : '?'} KB
+              </p>
+              <a 
+                href={selectedImage.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-xs text-amber-600 hover:text-amber-700 mt-3 underline"
+              >
+                <Download className="w-4 h-4" />
+                Download image
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
