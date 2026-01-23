@@ -18,7 +18,6 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import nodemailer from 'nodemailer';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -384,8 +383,11 @@ export async function sendEmailOTP(
     // Production mode - send real email via EventsGear SMTP
     console.log(`[OTP Email] 📧 SENDING REAL EMAIL via EventsGear SMTP...`);
     
+    // Lazy load nodemailer only when needed
+    const nodemailer = await import('nodemailer');
+    
     // Create nodemailer transporter for EventsGear SMTP
-    const transporter = nodemailer.createTransport({
+    const transporter = nodemailer.default.createTransport({
       host: 'mail.eventsgear.co.ke',
       port: 587,
       secure: false, // Use TLS
