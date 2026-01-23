@@ -258,6 +258,21 @@ export async function sendSMSOTPCustom(
 
     console.log('[OTP SMS] Fetch response status:', response.status, response.statusText);
     
+    // Check if response is OK before parsing JSON
+    if (!response.ok) {
+      console.error('[OTP SMS] HTTP error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      const errorText = await response.text();
+      console.error('[OTP SMS] Error response body:', errorText);
+      return {
+        success: false,
+        error: `TextSMS API returned ${response.status}: ${response.statusText}`
+      };
+    }
+    
     const data: TextSMSResponse = await response.json();
 
     console.log('[OTP SendOTP] Request:', { 
@@ -267,6 +282,7 @@ export async function sendSMSOTPCustom(
       timestamp: new Date().toISOString()
     });
     console.log('[OTP SendOTP Response]', JSON.stringify(data, null, 2));
+    console.log('[OTP SendOTP Response Keys]', Object.keys(data));
 
     // Check if response has the expected structure
     // TextSMS Kenya's /sendotp/ endpoint might return different format than /sendsms/
@@ -298,6 +314,10 @@ export async function sendSMSOTPCustom(
       isSuccess = data.code === '200' || data.code === 200 || data.code === '201';
       errorMessage = data.message || `Failed to send OTP (code: ${data.code})`;
       console.log('[OTP SendOTP] Using code-based format response - code:', data.code);
+    } else {
+      // Unknown response format - log it and treat as failure with details
+      console.error('[OTP SendOTP] Unrecognized response format from TextSMS Kenya:', data);
+      errorMessage = 'Unrecognized response from TextSMS API. Check logs.';
     }
 
     console.log('[OTP SendOTP Parsed]', { 
