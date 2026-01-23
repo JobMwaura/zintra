@@ -144,18 +144,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       expiresIn: 15 * 60, // 15 minutes
     });
 
-    // Construct public file URL
-    const fileUrl = `https://${awsBucket}.s3.${awsRegion}.amazonaws.com/${s3Key}`;
+    // Return S3 key instead of direct URL
+    // This allows URLs to be regenerated fresh when displaying messages
+    // (same pattern as products, status-updates, portfolio)
+    const fileKey = s3Key;
 
     console.log('[AWS Upload URL] Success:', {
       uploadUrl: uploadUrl.substring(0, 50) + '...',
-      fileUrl,
+      fileKey,
     });
 
     return NextResponse.json(
       {
         uploadUrl,
-        fileUrl,
+        fileUrl: fileKey, // Return S3 key, not direct URL
+        key: fileKey,
       },
       { status: 200 }
     );
