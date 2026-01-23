@@ -94,6 +94,9 @@ GRANT EXECUTE ON FUNCTION public.get_vendor_rfq_inbox(UUID) TO authenticated;
 ALTER TABLE public.rfq_recipients ENABLE ROW LEVEL SECURITY;
 
 -- Create policy: vendors can only view RFQs sent to them
+-- Drop if exists to avoid duplicate policy error
+DROP POLICY IF EXISTS "vendors_view_own_rfq_recipients" ON public.rfq_recipients;
+
 CREATE POLICY "vendors_view_own_rfq_recipients" ON public.rfq_recipients
 FOR SELECT
 USING (
