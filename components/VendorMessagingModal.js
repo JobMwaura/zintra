@@ -117,7 +117,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
             throw new Error('Failed to get upload URL');
           }
 
-          const { uploadUrl, fileUrl } = await getUrlResponse.json();
+          const { uploadUrl, fileUrl, key } = await getUrlResponse.json();
 
           // Upload directly to S3 using presigned URL
           const uploadResponse = await fetch(uploadUrl, {
@@ -134,7 +134,8 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
 
           newImages.push({
             name: file.name,
-            url: fileUrl,
+            url: key, // Store S3 key, not presigned URL
+            displayUrl: fileUrl, // Use presigned URL for immediate preview display
             size: file.size,
             type: file.type,
           });
@@ -359,7 +360,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
               {uploadedImages.map((img, idx) => (
                 <div key={idx} className="relative group">
                   <img
-                    src={img.url}
+                    src={img.displayUrl || img.url}
                     alt={img.name}
                     className="h-16 w-16 rounded-lg object-cover"
                   />

@@ -144,21 +144,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       expiresIn: 15 * 60, // 15 minutes
     });
 
-    // Return S3 key instead of direct URL
-    // This allows URLs to be regenerated fresh when displaying messages
-    // (same pattern as products, status-updates, portfolio)
-    const fileKey = s3Key;
+    // Generate a presigned GET URL for immediate display in the component
+    // This is temporary for preview - the actual stored URL will be regenerated from the key
+    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+    const getCommand = new GetObjectCommand({
+      Bucket: awsBucket,
+      Key: s3Key,
+    });
+    
+    const presignedGetUrl = await getSignedUrl(s3Client, getCommand, {
+      expiresIn: 7 * 24 * 60 * 60, // 7 days (AWS max)
+    });
 
+    // Return both presigned URL (for display) and S3 key (for storage)
     console.log('[AWS Upload URL] Success:', {
       uploadUrl: uploadUrl.substring(0, 50) + '...',
-      fileKey,
+      s3Key,
+      presignedGetUrl: presignedGetUrl.substring(0, 50) + '...',
     });
 
     return NextResponse.json(
       {
         uploadUrl,
-        fileUrl: fileKey, // Return S3 key, not direct URL
-        key: fileKey,
+        fileUrl: presignedGetUrl, // Presigned GET URL for immediate display
+        key: s3Key, // S3 key for storage and later regeneration
       },
       { status: 200 }
     );
