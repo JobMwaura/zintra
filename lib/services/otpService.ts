@@ -249,7 +249,7 @@ export async function sendSMSOTPCustom(
     });
 
     // Message should be simple and not too long
-    const message = messages[type];
+    const message = messages[type] || messages.registration; // Default to registration if type not found
     
     // TextSMS Kenya /sendotp/ endpoint payload
     // Based on API: https://sms.textsms.co.ke/api/services/sendotp/
@@ -267,8 +267,8 @@ export async function sendSMSOTPCustom(
       hasApiKey: !!apiKey,
       hasPartnerId: !!partnerId,
       hasShortcode: !!shortcode,
-      messageLength: message.length,
-      messagePreview: message.substring(0, 50),
+      messageLength: message?.length || 0,
+      messagePreview: message?.substring(0, 50) || 'undefined',
       payloadKeys: Object.keys(payload)
     });
 
