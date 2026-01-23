@@ -12,6 +12,7 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
   const [currentUser, setCurrentUser] = useState(null);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -277,13 +278,17 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
                             {attachments.map((att, attIdx) => (
                               <div key={attIdx}>
                                 {att.type && att.type.startsWith('image/') ? (
-                                  <a href={att.url} target="_blank" rel="noopener noreferrer" className="block">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedImage(att)}
+                                    className="block"
+                                  >
                                     <img 
                                       src={att.url} 
                                       alt={att.name}
                                       className="max-w-xs rounded-lg cursor-pointer hover:opacity-80 transition"
                                     />
-                                  </a>
+                                  </button>
                                 ) : (
                                   <a 
                                     href={att.url}
@@ -394,6 +399,42 @@ export default function VendorMessagingModal({ vendorId, vendorName, userId, onC
           </form>
         </div>
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div 
+            className="relative bg-white rounded-lg max-w-3xl max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 bg-gray-900 text-white rounded-full p-2 hover:bg-gray-700 transition z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Image */}
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.name}
+              className="w-full h-auto"
+            />
+
+            {/* Image Info */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-sm font-medium text-gray-900">{selectedImage.name}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Size: {(selectedImage.size / 1024).toFixed(2)} KB
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
