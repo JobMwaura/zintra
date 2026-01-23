@@ -49,7 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Validate environment variables first
     const awsAccessKey = process.env.AWS_ACCESS_KEY_ID;
     const awsSecretKey = process.env.AWS_SECRET_ACCESS_KEY;
-    const awsBucket = process.env.AWS_BUCKET_NAME;
+    const awsBucket = process.env.AWS_S3_BUCKET; // Use AWS_S3_BUCKET, not AWS_BUCKET_NAME
     const awsRegion = process.env.AWS_REGION || 'us-east-1';
 
     console.log('[AWS Upload URL] Environment check:', {
@@ -57,13 +57,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       hasSecretKey: !!awsSecretKey,
       hasBucket: !!awsBucket,
       region: awsRegion,
+      bucketEnvVar: 'AWS_S3_BUCKET',
     });
 
     if (!awsAccessKey || !awsSecretKey || !awsBucket) {
       console.error('[AWS Upload URL] Missing AWS credentials:', {
         AWS_ACCESS_KEY_ID: !!awsAccessKey,
         AWS_SECRET_ACCESS_KEY: !!awsSecretKey,
-        AWS_BUCKET_NAME: !!awsBucket,
+        AWS_S3_BUCKET: !!awsBucket,
       });
       return NextResponse.json(
         { 
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           missing: {
             AWS_ACCESS_KEY_ID: !awsAccessKey,
             AWS_SECRET_ACCESS_KEY: !awsSecretKey,
-            AWS_BUCKET_NAME: !awsBucket,
+            AWS_S3_BUCKET: !awsBucket,
           }
         },
         { status: 500 }
