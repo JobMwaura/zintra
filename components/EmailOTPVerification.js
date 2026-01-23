@@ -54,7 +54,8 @@ export default function EmailOTPVerification({
     setMessage('');
 
     try {
-      const result = await verifyOTP(email, otpCode, 'email');
+      // verifyOTP expects (code, identifier) not (email, code, channel)
+      const result = await verifyOTP(otpCode, email);
       if (result.success) {
         setMessage('✓ Email verified successfully!');
         onVerified(true);

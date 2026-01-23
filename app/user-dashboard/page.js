@@ -572,7 +572,7 @@ function PhoneVerificationModal({ userEmail, userPhone, onClose, onSuccess, supa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: phone,
-          code: otpCode,
+          otpCode: otpCode,
         }),
       });
 
@@ -784,7 +784,7 @@ function EmailVerificationModal({ userEmail, onClose, onSuccess, supabase }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: userEmail,
-          code: otpCode,
+          otpCode: otpCode,
         }),
       });
 
