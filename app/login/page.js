@@ -126,11 +126,12 @@ export default function Login() {
       console.log('✅ Session verified:', verifySession.user.email);
 
       // Check if there's a redirect URL stored from before login
-      let redirectUrl = sessionStorage.getItem('redirectAfterLogin') || '/browse';
-      sessionStorage.removeItem('redirectAfterLogin'); // Clear it after use
+      const storedRedirect = sessionStorage.getItem('redirectAfterLogin');
+      let redirectUrl = storedRedirect;
+      sessionStorage.removeItem('redirectAfterLogin'); // Clear it after checking
 
       // If no stored redirect, use default logic based on user type
-      if (!sessionStorage.getItem('redirectAfterLogin')) {
+      if (!storedRedirect) {
         if (activeTab === 'vendor') {
           // VENDOR LOGIN: Fetch vendor ID and redirect to editable vendor profile
           console.log('✓ Vendor login detected, fetching vendor profile...');
@@ -155,6 +156,12 @@ export default function Login() {
           redirectUrl = '/user-dashboard';
           console.log('✓ User login detected, redirecting to user dashboard');
         }
+      }
+
+      // Ensure we have a redirect URL
+      if (!redirectUrl) {
+        console.warn('⚠️ No redirect URL set, using default /browse');
+        redirectUrl = '/browse';
       }
 
       console.log('🔹 Redirecting to:', redirectUrl);
