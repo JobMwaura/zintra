@@ -27,7 +27,7 @@ export function useRFQDashboard() {
   const [sortBy, setSortBy] = useState('latest');
 
   /**
-   * Fetch all RFQs for the current user with quote counts
+   * Fetch all RFQs for the current user with quote counts and vendor info
    */
   const fetchRFQs = useCallback(async () => {
     if (!user?.id) return;
@@ -36,7 +36,7 @@ export function useRFQDashboard() {
       setLoading(true);
       setError(null);
 
-      // Fetch RFQs without embeds to avoid relationship conflicts
+      // Fetch RFQs with assigned_vendor_id for direct RFQs
       const { data: rfqs, error: rfqError } = await supabase
         .from('rfqs')
         .select(`
@@ -46,10 +46,13 @@ export function useRFQDashboard() {
           category,
           budget_min,
           budget_max,
+          budget_range,
           location,
           county,
           expires_at,
           status,
+          type,
+          assigned_vendor_id,
           created_at,
           updated_at,
           is_favorite
@@ -58,6 +61,25 @@ export function useRFQDashboard() {
         .order('created_at', { ascending: false });
 
       if (rfqError) throw rfqError;
+
+      // Fetch vendor info for RFQs that have assigned_vendor_id
+      let vendorMap = {};
+      if (rfqs && rfqs.length > 0) {
+        const vendorIds = rfqs
+          .filter(r => r.assigned_vendor_id)
+          .map(r => r.assigned_vendor_id);
+        
+        if (vendorIds.length > 0) {
+          const { data: vendors, error: vendorError } = await supabase
+            .from('vendors')
+            .select('id, company_name, logo_url, category, rating')
+            .in('id', vendorIds);
+          
+          if (!vendorError && vendors) {
+            vendorMap = Object.fromEntries(vendors.map(v => [v.id, v]));
+          }
+        }
+      }
 
       // Fetch rfq_responses separately to get quote counts
       if (rfqs && rfqs.length > 0) {
@@ -69,14 +91,15 @@ export function useRFQDashboard() {
 
         if (responsesError) {
           console.error('Error fetching responses:', responsesError);
-        } else {
-          // Merge responses into RFQs
-          const rfqsWithResponses = rfqs.map(rfq => ({
-            ...rfq,
-            rfq_responses: responses.filter(r => r.rfq_id === rfq.id) || []
-          }));
-          setAllRFQs(rfqsWithResponses);
         }
+        
+        // Merge responses and vendor info into RFQs
+        const rfqsWithData = rfqs.map(rfq => ({
+          ...rfq,
+          rfq_responses: responses?.filter(r => r.rfq_id === rfq.id) || [],
+          assigned_vendor: rfq.assigned_vendor_id ? vendorMap[rfq.assigned_vendor_id] : null
+        }));
+        setAllRFQs(rfqsWithData);
       } else {
         setAllRFQs(rfqs || []);
       }

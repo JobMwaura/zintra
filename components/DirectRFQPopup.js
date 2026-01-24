@@ -170,8 +170,20 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
       // Determine final category name
       const finalCategory = form.category === 'other' ? form.custom_category : form.category;
+      
+      // Get the vendor record ID (this is the correct ID for rfq_requests.vendor_id FK)
+      const vendorRecipientId = vendor?.id || null;
+      
+      // Debug logging
+      console.log('[DirectRFQPopup] Preparing RFQ submission:', {
+        vendorId: vendorRecipientId,
+        vendorName: vendor?.company_name,
+        rfqTitle: form.title,
+        userId: user?.id,
+        timestamp: new Date().toISOString(),
+      });
 
-      /** Save RFQ in main table */
+      /** Save RFQ in main table - include vendor_id for direct RFQs */
       const { data: rfqData, error: rfqError } = await supabase
         .from('rfqs')
         .insert([{
@@ -184,25 +196,22 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           location: form.location,
           user_id: user?.id || null,
           status: 'submitted',
+          type: 'direct', // Mark as direct RFQ
+          assigned_vendor_id: vendorRecipientId, // Store vendor ID directly on RFQ
           attachments: form.attachments.length > 0 ? form.attachments : null, // Store S3 file URLs
         }])
         .select()
         .maybeSingle();
 
-      if (rfqError) throw rfqError;
+      if (rfqError) {
+        console.error('[DirectRFQPopup] RFQ creation error:', rfqError);
+        throw rfqError;
+      }
+      
+      console.log('[DirectRFQPopup] RFQ created successfully:', rfqData?.id);
 
-      /** Send direct request to vendor */
-      const vendorRecipientId = vendor?.id || null;
-      
-      // Debug logging
-      console.log('[DirectRFQPopup] Sending RFQ to vendor:', {
-        vendorId: vendorRecipientId,
-        vendorName: vendor?.company_name,
-        rfqTitle: form.title,
-        timestamp: new Date().toISOString(),
-      });
-      
-      if (vendorRecipientId) {
+      /** Also insert into rfq_requests for vendor inbox (backward compatibility) */
+      if (vendorRecipientId && rfqData?.id) {
         const { error: requestError } = await supabase.from('rfq_requests').insert([{
           rfq_id: rfqData.id,
           vendor_id: vendorRecipientId,
@@ -214,12 +223,16 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         }]);
 
         if (requestError) {
-          console.error('❌ Error sending RFQ request to vendor:', {
+          // Log but don't fail - the RFQ was created, just the vendor inbox link failed
+          console.error('⚠️ Warning: Could not link RFQ to vendor inbox:', {
             error: requestError.message,
             code: requestError.code,
             details: requestError.details,
+            hint: 'RFQ was created but vendor may not see it in their inbox'
           });
-          throw requestError;
+          // Don't throw - let the user continue since RFQ was created
+        } else {
+          console.log('[DirectRFQPopup] Vendor inbox entry created');
         }
       }
 
