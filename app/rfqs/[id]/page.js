@@ -124,7 +124,13 @@ export default function RFQDetailsPage({ params }) {
   };
 
   const handleAcceptQuote = async (quoteId) => {
+    console.log('DEBUG: handleAcceptQuote called with quoteId:', quoteId);
+    console.log('DEBUG: isCreator:', isCreator);
+    console.log('DEBUG: user:', user);
+    console.log('DEBUG: rfq?.user_id:', rfq?.user_id);
+    
     if (!isCreator) {
+      console.warn('DEBUG: User is not the RFQ creator');
       setActionMessage('Only the RFQ creator can accept quotes');
       return;
     }
@@ -133,28 +139,44 @@ export default function RFQDetailsPage({ params }) {
       setActingQuoteId(quoteId);
       setActionMessage('');
 
-      const { error } = await supabase
+      console.log('DEBUG: Updating quote status in database...');
+      const { data, error } = await supabase
         .from('rfq_responses')
         .update({ status: 'accepted' })
-        .eq('id', quoteId);
+        .eq('id', quoteId)
+        .select();
 
-      if (error) throw error;
+      console.log('DEBUG: Update response - data:', data, 'error:', error);
+      
+      if (error) {
+        console.error('DEBUG: Database error:', error);
+        throw error;
+      }
 
+      console.log('DEBUG: Quote status updated successfully');
       setActionMessage('✅ Quote accepted successfully!');
+      
       setTimeout(() => {
+        console.log('DEBUG: Refetching RFQ details...');
         fetchRFQDetails();
         setActionMessage('');
       }, 2000);
     } catch (err) {
       console.error('Error accepting quote:', err);
-      setActionMessage(`❌ Error: ${err.message}`);
+      const errorMessage = err?.message || 'Unknown error occurred';
+      console.error('DEBUG: Full error object:', err);
+      setActionMessage(`❌ Error: ${errorMessage}`);
     } finally {
       setActingQuoteId(null);
     }
   };
 
   const handleRejectQuote = async (quoteId) => {
+    console.log('DEBUG: handleRejectQuote called with quoteId:', quoteId);
+    console.log('DEBUG: isCreator:', isCreator);
+    
     if (!isCreator) {
+      console.warn('DEBUG: User is not the RFQ creator');
       setActionMessage('Only the RFQ creator can reject quotes');
       return;
     }
@@ -163,21 +185,32 @@ export default function RFQDetailsPage({ params }) {
       setActingQuoteId(quoteId);
       setActionMessage('');
 
-      const { error } = await supabase
+      console.log('DEBUG: Updating quote status to rejected in database...');
+      const { data, error } = await supabase
         .from('rfq_responses')
         .update({ status: 'rejected' })
-        .eq('id', quoteId);
+        .eq('id', quoteId)
+        .select();
 
-      if (error) throw error;
+      console.log('DEBUG: Update response - data:', data, 'error:', error);
+      
+      if (error) {
+        console.error('DEBUG: Database error:', error);
+        throw error;
+      }
 
+      console.log('DEBUG: Quote status updated to rejected successfully');
       setActionMessage('✅ Quote rejected successfully!');
       setTimeout(() => {
+        console.log('DEBUG: Refetching RFQ details...');
         fetchRFQDetails();
         setActionMessage('');
       }, 2000);
     } catch (err) {
       console.error('Error rejecting quote:', err);
-      setActionMessage(`❌ Error: ${err.message}`);
+      const errorMessage = err?.message || 'Unknown error occurred';
+      console.error('DEBUG: Full error object:', err);
+      setActionMessage(`❌ Error: ${errorMessage}`);
     } finally {
       setActingQuoteId(null);
     }
