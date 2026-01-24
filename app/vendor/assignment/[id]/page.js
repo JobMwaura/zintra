@@ -64,48 +64,58 @@ export default function AssignmentDetailPage() {
       }
       setVendor(vendorData);
 
-      // Get the quote/response
+      // Get the quote/response - simplified query
+      console.log('DEBUG: Fetching quote:', quoteId, 'for vendor:', vendorData.id);
+      
       const { data: quoteData, error: quoteError } = await supabase
         .from('rfq_responses')
-        .select(`
-          *,
-          rfqs:rfq_id (
-            id,
-            title,
-            description,
-            category,
-            county,
-            budget,
-            deadline,
-            attachment_url,
-            user_id,
-            created_at,
-            status
-          )
-        `)
+        .select('*')
         .eq('id', quoteId)
         .eq('vendor_id', vendorData.id)
-        .single();
+        .maybeSingle();
 
-      if (quoteError || !quoteData) {
+      console.log('DEBUG: Quote response:', { quoteData, quoteError });
+
+      if (quoteError) {
+        console.error('Quote fetch error:', quoteError);
+        setError(`Error fetching quote: ${quoteError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (!quoteData) {
         setError('Quote not found or access denied');
         setLoading(false);
         return;
       }
 
       setQuote(quoteData);
-      setRfq(quoteData.rfqs);
 
-      // Get buyer information
-      if (quoteData.rfqs?.user_id) {
-        const { data: buyerData } = await supabase
-          .from('profiles')
+      // Fetch RFQ separately
+      if (quoteData.rfq_id) {
+        const { data: rfqData, error: rfqError } = await supabase
+          .from('rfqs')
           .select('*')
-          .eq('id', quoteData.rfqs.user_id)
-          .single();
+          .eq('id', quoteData.rfq_id)
+          .maybeSingle();
 
-        if (buyerData) {
-          setBuyer(buyerData);
+        console.log('DEBUG: RFQ response:', { rfqData, rfqError });
+
+        if (rfqData) {
+          setRfq(rfqData);
+
+          // Get buyer information
+          if (rfqData.user_id) {
+            const { data: buyerData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', rfqData.user_id)
+              .maybeSingle();
+
+            if (buyerData) {
+              setBuyer(buyerData);
+            }
+          }
         }
       }
 
