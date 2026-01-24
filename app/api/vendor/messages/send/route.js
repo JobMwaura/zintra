@@ -183,6 +183,96 @@ export async function POST(request) {
       );
     }
 
+    // Create notification for the recipient (async, don't block response)
+    try {
+      let notificationTitle = '';
+      let notificationBody = '';
+      let notificationType = 'message';
+
+      // Extract plain text message for notification
+      let messagePreview = messageText;
+      try {
+        const parsed = JSON.parse(messageText);
+        messagePreview = parsed.body || messageText;
+      } catch (e) {
+        // Use as-is if not JSON
+      }
+
+      // Truncate message for notification
+      const truncatedMessage = messagePreview.length > 100 
+        ? messagePreview.substring(0, 100) + '...' 
+        : messagePreview;
+
+      if (senderType === 'vendor') {
+        // Vendor sending to buyer
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('company_name')
+          .eq('id', vendorId)
+          .single();
+
+        notificationTitle = `New message from ${vendorData?.company_name || 'A vendor'}`;
+        notificationBody = truncatedMessage;
+        notificationType = 'vendor_message';
+
+        // Create notification in database
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: actualUserId,
+            title: notificationTitle,
+            body: notificationBody,
+            message: notificationBody,
+            type: notificationType,
+            related_id: vendorId,
+            related_type: 'vendor_message',
+            created_at: new Date().toISOString(),
+            read_at: null
+          });
+
+        console.log('[Notification] ✅ Buyer notification created for vendor message');
+      } else {
+        // User sending to vendor
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('user_id')
+          .eq('id', vendorId)
+          .single();
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', currentUserId)
+          .single();
+
+        if (vendorData?.user_id) {
+          notificationTitle = `New message from ${userData?.full_name || 'A buyer'}`;
+          notificationBody = truncatedMessage;
+          notificationType = 'vendor_message';
+
+          // Create notification for vendor owner
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: vendorData.user_id,
+              title: notificationTitle,
+              body: notificationBody,
+              message: notificationBody,
+              type: notificationType,
+              related_id: vendorId,
+              related_type: 'vendor_message',
+              created_at: new Date().toISOString(),
+              read_at: null
+            });
+
+          console.log('[Notification] ✅ Vendor owner notification created for buyer message');
+        }
+      }
+    } catch (notifError) {
+      // Don't fail the request if notification fails
+      console.error('[Notification] ⚠️ Failed to create notification (non-blocking):', notifError);
+    }
+
     // Send email notification (async, don't block response)
     try {
       // Extract plain text message for email preview
