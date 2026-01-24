@@ -2215,6 +2215,7 @@ export default function VendorProfilePage() {
           rfqType="direct"
           isOpen={showDirectRFQ}
           onClose={() => setShowDirectRFQ(false)}
+          vendorId={vendor.id}
           vendorCategories={[
             vendor.primaryCategorySlug,
             ...(vendor.secondaryCategories || [])

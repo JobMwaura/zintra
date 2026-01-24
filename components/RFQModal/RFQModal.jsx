@@ -411,7 +411,13 @@ export default function RFQModal({
           desiredStartDate: formData.desiredStartDate || null,
           directions: formData.directions || null,
         },
-        selectedVendors: rfqType === 'direct' || rfqType === 'wizard' ? formData.selectedVendors : (rfqType === 'vendor-request' && vendorId ? [vendorId] : []),
+        // ✅ FIXED: If vendorId is provided (direct RFQ from vendor profile), use it
+        // Otherwise fall back to formData.selectedVendors (manual selection)
+        selectedVendors: vendorId 
+          ? [vendorId]  // Direct RFQ to specific vendor
+          : (rfqType === 'direct' || rfqType === 'wizard' 
+              ? formData.selectedVendors 
+              : []),
         userId: currentUser.id,
         guestEmail: null,
         guestPhone: null,

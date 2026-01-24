@@ -213,7 +213,11 @@ export async function POST(request) {
     // 6. CREATE RFQ RECORD - USING CORRECT SCHEMA
     // ============================================================================
     // Map to actual rfqs table schema (only fields that exist)
-    // Don't set assigned_vendor_id if we're not sure the vendor exists
+    // Set assigned_vendor_id for direct RFQs sent to a specific vendor
+    const assignedVendorId = (rfqType === 'direct' || rfqType === 'vendor-request') && selectedVendors.length > 0 
+      ? selectedVendors[0]  // Use first selected vendor for direct RFQs
+      : null;
+    
     const rfqData = {
       user_id: userId, // Required, already validated
       title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
@@ -225,7 +229,7 @@ export async function POST(request) {
       budget_min: sharedFields.budgetMin || null,
       budget_max: sharedFields.budgetMax || null,
       type: rfqType, // 'direct' | 'wizard' | 'public' | 'vendor-request'
-      assigned_vendor_id: null, // Don't set here - let rfq_recipients table handle vendor links
+      assigned_vendor_id: assignedVendorId, // ✅ FIXED: Set vendor ID for direct RFQs
       urgency: sharedFields.urgency || 'normal',
       status: 'submitted', // Always submitted when created
       is_paid: false,
@@ -236,7 +240,8 @@ export async function POST(request) {
       title: rfqData.title, 
       type: rfqData.type, 
       category: rfqData.category,
-      user_id: rfqData.user_id 
+      user_id: rfqData.user_id,
+      assigned_vendor_id: rfqData.assigned_vendor_id // Log vendor ID
     });
 
     const { data: createdRfq, error: createError } = await supabase
@@ -263,6 +268,7 @@ export async function POST(request) {
     // For DIRECT RFQ: Add selected vendors to rfq_recipients table
     if (rfqType === 'direct' && selectedVendors.length > 0) {
       try {
+        // Insert into rfq_recipients (new system)
         const recipientRecords = selectedVendors.map(vendorId => ({
           rfq_id: rfqId,
           vendor_id: vendorId,
@@ -276,9 +282,28 @@ export async function POST(request) {
 
         if (recipientError) {
           console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
-          // Continue - vendor assignment is not critical to RFQ creation
         } else {
-          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors);
+          console.log('[RFQ CREATE] Direct RFQ - Added vendors to rfq_recipients:', selectedVendors);
+        }
+
+        // ALSO insert into rfq_requests for backward compatibility with vendor inbox
+        const requestRecords = selectedVendors.map(vendorId => ({
+          rfq_id: rfqId,
+          vendor_id: vendorId,
+          user_id: userId,
+          project_title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
+          project_description: sharedFields.projectSummary?.trim() || '',
+          status: 'pending',
+        }));
+
+        const { error: requestError } = await supabase
+          .from('rfq_requests')
+          .insert(requestRecords);
+
+        if (requestError) {
+          console.error('[RFQ CREATE] rfq_requests insert error (non-critical):', requestError);
+        } else {
+          console.log('[RFQ CREATE] Direct RFQ - Added to rfq_requests for vendor inbox');
         }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
@@ -312,6 +337,7 @@ export async function POST(request) {
     // For VENDOR-REQUEST RFQ: Add the single pre-selected vendor
     if (rfqType === 'vendor-request' && selectedVendors.length > 0) {
       try {
+        // Insert into rfq_recipients (new system)
         const { error: recipientError } = await supabase
           .from('rfq_recipients')
           .insert({
@@ -324,7 +350,25 @@ export async function POST(request) {
         if (recipientError) {
           console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
         } else {
-          console.log('[RFQ CREATE] Vendor-request RFQ - Added vendor:', selectedVendors[0]);
+          console.log('[RFQ CREATE] Vendor-request RFQ - Added vendor to rfq_recipients:', selectedVendors[0]);
+        }
+
+        // ALSO insert into rfq_requests for backward compatibility with vendor inbox
+        const { error: requestError } = await supabase
+          .from('rfq_requests')
+          .insert({
+            rfq_id: rfqId,
+            vendor_id: selectedVendors[0],
+            user_id: userId,
+            project_title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
+            project_description: sharedFields.projectSummary?.trim() || '',
+            status: 'pending',
+          });
+
+        if (requestError) {
+          console.error('[RFQ CREATE] rfq_requests insert error (non-critical):', requestError);
+        } else {
+          console.log('[RFQ CREATE] Vendor-request RFQ - Added to rfq_requests for vendor inbox');
         }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
