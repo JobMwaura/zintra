@@ -103,6 +103,7 @@ export default function RFQDetailsPage({ params }) {
 
       console.log('DEBUG: Responses fetched:', responsesData?.length, 'responses');
       console.log('DEBUG: Response statuses:', responsesData?.map(r => ({ id: r.id, status: r.status })));
+      console.log('DEBUG: FULL response data:', responsesData);
 
       setResponses(responsesData || []);
       console.log('DEBUG: setResponses called');
@@ -450,6 +451,7 @@ export default function RFQDetailsPage({ params }) {
                     const vendor = vendors[response.vendor_id];
                     const isAccepted = response.status === 'accepted';
                     const isRejected = response.status === 'rejected';
+                    console.log('DEBUG: Rendering response:', { id: response.id, status: response.status, isAccepted, isRejected });
 
                     return (
                       <div key={response.id}>
