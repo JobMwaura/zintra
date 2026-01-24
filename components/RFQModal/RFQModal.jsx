@@ -448,7 +448,28 @@ export default function RFQModal({
       setSuccess(true);
       setCurrentStep('success');
       clearFormData(rfqType, formData.selectedCategory, formData.selectedJobType);
-      resetRfq();
+      
+      // Reset form state for next RFQ submission
+      setFormData({
+        selectedCategory: preSelectedCat || '',
+        selectedJobType: '',
+        templateFields: {},
+        referenceImages: [],
+        projectTitle: '',
+        projectSummary: '',
+        county: '',
+        town: '',
+        directions: '',
+        budgetMin: '',
+        budgetMax: '',
+        budgetLevel: '',
+        desiredStartDate: '',
+        selectedVendors: [],
+        allowOtherVendors: false,
+        visibilityScope: 'category',
+        responseLimit: 5,
+      });
+      setErrors({});
     } catch (err) {
       console.error('RFQ submission error:', err);
       setError('Network error. Please try again.');
