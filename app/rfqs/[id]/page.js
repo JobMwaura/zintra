@@ -58,6 +58,7 @@ export default function RFQDetailsPage({ params }) {
       
       setLoading(true);
       setError(null);
+      console.log('DEBUG: Starting fetchRFQDetails...');
 
       // Fetch RFQ
       const { data: rfqData, error: rfqError } = await supabase
@@ -78,13 +79,17 @@ export default function RFQDetailsPage({ params }) {
         throw new Error('RFQ not found');
       }
 
+      console.log('DEBUG: RFQ fetched successfully:', rfqData);
+
       // Check if user is the RFQ creator
       const isOwner = rfqData.user_id === user?.id;
+      console.log('DEBUG: Setting isCreator to:', isOwner);
       setIsCreator(isOwner);
 
       setRfq(rfqData);
 
       // Fetch all responses for this RFQ
+      console.log('DEBUG: Fetching responses for rfqId:', rfqId);
       const { data: responsesData, error: responsesError } = await supabase
         .from('rfq_responses')
         .select('*')
@@ -96,15 +101,28 @@ export default function RFQDetailsPage({ params }) {
         throw responsesError;
       }
 
+      console.log('DEBUG: Responses fetched:', responsesData?.length, 'responses');
+      console.log('DEBUG: Response statuses:', responsesData?.map(r => ({ id: r.id, status: r.status })));
+
       setResponses(responsesData || []);
+      console.log('DEBUG: setResponses called');
 
       // Fetch vendor details for all responses
       if (responsesData && responsesData.length > 0) {
+        console.log('DEBUG: Fetching vendor details for', responsesData.length, 'responses');
         const vendorIds = [...new Set(responsesData.map(r => r.vendor_id))];
+        console.log('DEBUG: Vendor IDs to fetch:', vendorIds);
+        
         const { data: vendorData, error: vendorError } = await supabase
           .from('vendors')
           .select('id, company_name, location, rating, verified, phone, email')
           .in('id', vendorIds);
+
+        if (vendorError) {
+          console.error('DEBUG: Vendor fetch error:', vendorError);
+        } else {
+          console.log('DEBUG: Vendors fetched:', vendorData?.length, 'vendors');
+        }
 
         if (!vendorError && vendorData) {
           const vendorMap = {};
@@ -112,14 +130,17 @@ export default function RFQDetailsPage({ params }) {
             vendorMap[v.id] = v;
           });
           setVendors(vendorMap);
+          console.log('DEBUG: setVendors called with', Object.keys(vendorMap).length, 'vendors');
         }
       }
 
       setLoading(false);
+      console.log('DEBUG: fetchRFQDetails completed - loading set to false');
     } catch (err) {
       console.error('Error fetching RFQ details:', err);
       setError(err.message || 'Failed to load RFQ details');
       setLoading(false);
+      console.log('DEBUG: fetchRFQDetails failed with error:', err.message);
     }
   };
 
