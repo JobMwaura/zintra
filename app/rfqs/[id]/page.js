@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, MessageSquare, DollarSign, Clock, MapPin, User, AlertCircle, Check, X } from 'lucide-react';
 import Link from 'next/link';
+import QuoteDetailCard from '@/components/QuoteDetailCard';
 
 /**
  * RFQ Details Page
@@ -376,13 +377,13 @@ export default function RFQDetailsPage({ params }) {
             </div>
 
             {/* Vendor Responses Section */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div>
               <h2 className="text-xl font-semibold text-slate-900 mb-4">
                 Vendor Responses ({responses.length})
               </h2>
 
               {responses.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="bg-white rounded-lg shadow p-12 text-center">
                   <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">No vendor responses yet</p>
                   {isExpired && (
@@ -397,96 +398,25 @@ export default function RFQDetailsPage({ params }) {
                     const isRejected = response.status === 'rejected';
 
                     return (
-                      <div
-                        key={response.id}
-                        className={`border-2 rounded-lg p-4 transition ${
-                          isAccepted
-                            ? 'border-green-200 bg-green-50'
-                            : isRejected
-                            ? 'border-red-200 bg-red-50'
-                            : 'border-slate-200 hover:border-orange-200'
-                        }`}
-                      >
-                        {/* Vendor Info & Quote Price */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-slate-900">
-                                {vendor?.company_name || 'Unknown Vendor'}
-                              </h3>
-                              {vendor?.verified && (
-                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">✓ Verified</span>
-                              )}
-                            </div>
-                            {vendor?.location && (
-                              <p className="text-sm text-slate-500 mt-1">{vendor.location}</p>
-                            )}
-                          </div>
+                      <div key={response.id}>
+                        {/* Use QuoteDetailCard for comprehensive display */}
+                        <QuoteDetailCard
+                          quote={response}
+                          vendor={vendor}
+                          isSelected={false}
+                          onSelect={() => {}}
+                        />
 
-                          {/* Quote Price */}
-                          <div className="text-right">
-                            <p className="text-xs text-slate-600 font-medium">Quoted Price</p>
-                            <p className="text-2xl font-bold text-orange-600">
-                              {formatCurrency(response.quoted_price)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Status Badge */}
-                        {isAccepted && (
-                          <div className="mb-3 flex items-center gap-2 text-green-700 font-semibold">
-                            <Check className="w-5 h-5" />
-                            Accepted
-                          </div>
-                        )}
-                        {isRejected && (
-                          <div className="mb-3 flex items-center gap-2 text-red-700 font-semibold">
-                            <X className="w-5 h-5" />
-                            Rejected
-                          </div>
-                        )}
-
-                        {/* Response Details */}
-                        <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                          {response.delivery_timeline && (
-                            <div>
-                              <p className="text-xs text-slate-600 font-medium flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                Delivery Timeline
-                              </p>
-                              <p className="text-slate-700">{response.delivery_timeline}</p>
-                            </div>
-                          )}
-                          {vendor?.rating && (
-                            <div>
-                              <p className="text-xs text-slate-600 font-medium">Vendor Rating</p>
-                              <p className="text-slate-700">⭐ {vendor.rating.toFixed(1)}/5</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Description */}
-                        {response.description && (
-                          <div className="mb-3 p-3 bg-white rounded border border-slate-200">
-                            <p className="text-sm text-slate-700">{response.description}</p>
-                          </div>
-                        )}
-
-                        {/* Response Metadata */}
-                        <div className="text-xs text-slate-500 mb-4">
-                          Responded on {formatDate(response.created_at)}
-                        </div>
-
-                        {/* Action Buttons (for creator only) */}
+                        {/* Action Buttons (for creator only) - Positioned below the card */}
                         {isCreator && !isAccepted && !isRejected && (
-                          <div className="flex gap-2 pt-3 border-t border-slate-200">
+                          <div className="mt-3 flex gap-2 px-6 pb-4 bg-orange-50 rounded-b-lg border border-t-0 border-orange-200">
                             <button
                               onClick={() => handleAcceptQuote(response.id)}
                               disabled={actingQuoteId === response.id}
                               className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
                             >
                               <Check className="w-4 h-4" />
-                              Accept
+                              Accept Quote
                             </button>
                             <button
                               onClick={() => handleRejectQuote(response.id)}
@@ -494,8 +424,22 @@ export default function RFQDetailsPage({ params }) {
                               className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
                             >
                               <X className="w-4 h-4" />
-                              Reject
+                              Reject Quote
                             </button>
+                          </div>
+                        )}
+
+                        {isAccepted && (
+                          <div className="mt-2 px-6 py-3 bg-green-50 border border-green-200 rounded-b-lg flex items-center gap-2 text-green-700 font-semibold">
+                            <Check className="w-5 h-5" />
+                            Quote Accepted
+                          </div>
+                        )}
+
+                        {isRejected && (
+                          <div className="mt-2 px-6 py-3 bg-red-50 border border-red-200 rounded-b-lg flex items-center gap-2 text-red-700 font-semibold">
+                            <X className="w-5 h-5" />
+                            Quote Rejected
                           </div>
                         )}
                       </div>
