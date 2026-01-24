@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { Clock, CheckCircle, AlertCircle, TrendingUp, X, Mail, Phone, User, MapPin, Calendar, DollarSign, FileText, Eye } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, TrendingUp, X, Mail, Phone, User, MapPin, Calendar, DollarSign, FileText, Eye, MessageCircle, Send } from 'lucide-react';
 
 const RFQ_TYPE_COLORS = {
   direct: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-800', label: 'Direct RFQ' },
@@ -39,6 +39,12 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const [assignmentRfq, setAssignmentRfq] = useState(null);
   const [loadingModal, setLoadingModal] = useState(false);
   const [assignmentTab, setAssignmentTab] = useState('rfq'); // 'rfq' or 'quote'
+  
+  // Chat states
+  const [showChatMode, setShowChatMode] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
 
   useEffect(() => {
     fetchRFQs();
@@ -83,6 +89,9 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     setSelectedQuote(quote);
     setLoadingModal(true);
     setShowContactModal(true);
+    setShowChatMode(false);
+    setChatMessage('');
+    setMessageSent(false);
     
     try {
       const buyerId = quote.rfqs?.user_id;
@@ -92,24 +101,58 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         return;
       }
 
-      // Fetch from users table (not profiles)
-      const { data: buyerData, error: buyerError } = await supabase
-        .from('users')
-        .select('id, full_name, email, phone')
-        .eq('id', buyerId)
-        .maybeSingle();
+      // Fetch from API that gets email from auth.users
+      const response = await fetch(`/api/user/${buyerId}/details`);
+      const result = await response.json();
 
-      if (buyerError || !buyerData) {
-        console.error('Error fetching buyer from users table:', buyerError);
+      if (!response.ok || !result.success) {
+        console.error('Error fetching buyer details:', result.error);
         setContactBuyer({ error: 'Could not load buyer details' });
       } else {
-        setContactBuyer(buyerData);
+        setContactBuyer(result.user);
       }
     } catch (err) {
       console.error('Error fetching buyer:', err);
       setContactBuyer({ error: 'Error loading buyer details' });
     }
     setLoadingModal(false);
+  };
+
+  // Send message to buyer
+  const handleSendMessage = async () => {
+    if (!chatMessage.trim() || !contactBuyer?.id || !vendor?.id) return;
+    
+    setSendingMessage(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/vendor/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          vendorId: vendor.id,
+          messageText: chatMessage,
+          senderType: 'vendor',
+          userId: contactBuyer.id
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setMessageSent(true);
+        setChatMessage('');
+      } else {
+        alert('Failed to send message: ' + (result.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message');
+    }
+    setSendingMessage(false);
   };
 
   // Handle View Assignment - open modal with full RFQ details
@@ -642,15 +685,15 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6" />
+                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    {showChatMode ? <MessageCircle className="w-5 h-5" /> : <User className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">Contact Buyer</h2>
-                    <p className="text-blue-100 text-sm">{selectedQuote?.rfqs?.title || 'Project'}</p>
+                    <h2 className="text-lg font-bold">{showChatMode ? 'Send Message' : 'Contact Buyer'}</h2>
+                    <p className="text-blue-100 text-sm truncate max-w-[200px]">{selectedQuote?.rfqs?.title || 'Project'}</p>
                   </div>
                 </div>
                 <button
@@ -658,6 +701,9 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                     setShowContactModal(false);
                     setContactBuyer(null);
                     setSelectedQuote(null);
+                    setShowChatMode(false);
+                    setChatMessage('');
+                    setMessageSent(false);
                   }}
                   className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition"
                 >
@@ -667,7 +713,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6">
+            <div className="p-5">
               {loadingModal ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -675,81 +721,157 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                 </div>
               ) : contactBuyer?.error ? (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="w-8 h-8 text-red-500" />
-                  </div>
+                  <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
                   <p className="text-gray-600">{contactBuyer.error}</p>
                 </div>
               ) : contactBuyer ? (
                 <div className="space-y-4">
                   {/* Buyer Profile */}
-                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                    <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
                       {(contactBuyer.full_name || contactBuyer.email || 'B').charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-lg">{contactBuyer.full_name || 'Buyer'}</p>
-                      <p className="text-sm text-gray-500">Project Owner</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900">{contactBuyer.full_name || 'Buyer'}</p>
+                      <p className="text-sm text-gray-500 truncate">Project Owner</p>
                     </div>
                   </div>
 
-                  {/* Contact Options */}
-                  <div className="space-y-3">
-                    {contactBuyer.email && (
-                      <a
-                        href={`mailto:${contactBuyer.email}?subject=Re: ${selectedQuote?.rfqs?.title || 'Project'} - Quote Accepted&body=Hi ${contactBuyer.full_name || 'there'},%0D%0A%0D%0AThank you for accepting my quote.%0D%0A%0D%0AI'm excited to work with you on this project. Let's discuss the next steps.%0D%0A%0D%0ABest regards`}
-                        className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition group"
+                  {/* Chat Mode */}
+                  {showChatMode ? (
+                    <div className="space-y-4">
+                      {messageSent ? (
+                        <div className="text-center py-6">
+                          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <CheckCircle className="w-8 h-8 text-green-600" />
+                          </div>
+                          <p className="font-semibold text-green-900">Message Sent!</p>
+                          <p className="text-sm text-gray-600 mt-1">The buyer will see your message in their inbox</p>
+                          <button
+                            onClick={() => {
+                              setShowChatMode(false);
+                              setMessageSent(false);
+                            }}
+                            className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            ← Back to contact options
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">
+                            💬 Your message will be sent to the buyer's inbox on Zintra
+                          </div>
+                          <textarea
+                            value={chatMessage}
+                            onChange={(e) => setChatMessage(e.target.value)}
+                            placeholder={`Hi ${contactBuyer.full_name || 'there'},\n\nThank you for accepting my quote for "${selectedQuote?.rfqs?.title || 'your project'}".\n\nI'm excited to work with you...`}
+                            className="w-full h-32 p-3 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => setShowChatMode(false)}
+                              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium text-sm transition"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSendMessage}
+                              disabled={!chatMessage.trim() || sendingMessage}
+                              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              {sendingMessage ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-4 h-4" />
+                                  Send Message
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    /* Contact Options */
+                    <div className="space-y-3">
+                      {/* Primary: In-App Message */}
+                      <button
+                        onClick={() => setShowChatMode(true)}
+                        className="w-full flex items-center gap-4 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition group text-left"
                       >
-                        <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-full flex items-center justify-center transition">
-                          <Mail className="w-6 h-6 text-blue-600" />
+                        <div className="w-12 h-12 bg-orange-100 group-hover:bg-orange-200 rounded-full flex items-center justify-center transition">
+                          <MessageCircle className="w-6 h-6 text-orange-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-blue-900">Send Email</p>
-                          <p className="text-sm text-blue-600">{contactBuyer.email}</p>
+                          <p className="font-semibold text-orange-900">Send Message</p>
+                          <p className="text-sm text-orange-600">Chat via Zintra inbox</p>
                         </div>
-                        <span className="text-blue-400">→</span>
-                      </a>
-                    )}
+                        <span className="text-orange-400">→</span>
+                      </button>
 
-                    {contactBuyer.phone && (
-                      <a
-                        href={`tel:${contactBuyer.phone}`}
-                        className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group"
-                      >
-                        <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition">
-                          <Phone className="w-6 h-6 text-green-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-green-900">Call Now</p>
-                          <p className="text-sm text-green-600">{contactBuyer.phone}</p>
-                        </div>
-                        <span className="text-green-400">→</span>
-                      </a>
-                    )}
+                      {contactBuyer.email && (
+                        <a
+                          href={`mailto:${contactBuyer.email}?subject=Re: ${selectedQuote?.rfqs?.title || 'Project'} - Quote Accepted&body=Hi ${contactBuyer.full_name || 'there'},%0D%0A%0D%0AThank you for accepting my quote.%0D%0A%0D%0AI'm excited to work with you on this project.%0D%0A%0D%0ABest regards`}
+                          className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition group"
+                        >
+                          <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-full flex items-center justify-center transition">
+                            <Mail className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-blue-900">Send Email</p>
+                            <p className="text-sm text-blue-600 truncate">{contactBuyer.email}</p>
+                          </div>
+                          <span className="text-blue-400">→</span>
+                        </a>
+                      )}
 
-                    {!contactBuyer.email && !contactBuyer.phone && (
-                      <div className="text-center py-4 text-gray-500">
-                        <p>No contact information available</p>
-                      </div>
-                    )}
-                  </div>
+                      {contactBuyer.phone && (
+                        <a
+                          href={`tel:${contactBuyer.phone}`}
+                          className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group"
+                        >
+                          <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition">
+                            <Phone className="w-6 h-6 text-green-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Call Now</p>
+                            <p className="text-sm text-green-600">{contactBuyer.phone}</p>
+                          </div>
+                          <span className="text-green-400">→</span>
+                        </a>
+                      )}
+
+                      {!contactBuyer.email && !contactBuyer.phone && (
+                        <div className="text-center py-2 text-gray-500 text-sm">
+                          <p>No email or phone available - use the message option above</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 pb-6">
-              <button
-                onClick={() => {
-                  setShowContactModal(false);
-                  setContactBuyer(null);
-                  setSelectedQuote(null);
-                }}
-                className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition"
-              >
-                Close
-              </button>
-            </div>
+            {!showChatMode && (
+              <div className="px-5 pb-5">
+                <button
+                  onClick={() => {
+                    setShowContactModal(false);
+                    setContactBuyer(null);
+                    setSelectedQuote(null);
+                  }}
+                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition"
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
