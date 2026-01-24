@@ -15,6 +15,7 @@ const RFQ_TYPE_COLORS = {
 
 export default function RFQInboxTab({ vendor, currentUser }) {
   const [rfqs, setRfqs] = useState([]);
+  const [myQuotes, setMyQuotes] = useState([]); // Vendor's submitted quotes
   const [stats, setStats] = useState({
     total: 0,
     unread: 0,
@@ -27,10 +28,45 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [activeSection, setActiveSection] = useState('inbox'); // 'inbox' or 'my-quotes'
 
   useEffect(() => {
     fetchRFQs();
+    fetchMyQuotes();
   }, [vendor.id]);
+
+  // Fetch vendor's submitted quotes/responses
+  const fetchMyQuotes = async () => {
+    try {
+      console.log('DEBUG: Fetching quotes for vendor_id:', vendor.id);
+      const { data: quotes, error } = await supabase
+        .from('rfq_responses')
+        .select(`
+          *,
+          rfqs:rfq_id (
+            id,
+            title,
+            description,
+            category,
+            county,
+            user_id
+          )
+        `)
+        .eq('vendor_id', vendor.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching my quotes:', error);
+        return;
+      }
+
+      console.log('DEBUG: Fetched quotes:', quotes?.length, 'quotes');
+      console.log('DEBUG: Quote statuses:', quotes?.map(q => ({ id: q.id, status: q.status })));
+      setMyQuotes(quotes || []);
+    } catch (err) {
+      console.error('Error in fetchMyQuotes:', err);
+    }
+  };
 
   const fetchRFQs = async () => {
     setLoading(true);
@@ -241,10 +277,199 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const filteredRfqs =
     filter === 'all' ? rfqs : rfqs.filter((r) => r.rfq_type === filter);
 
+  // Calculate quote stats
+  const acceptedQuotes = myQuotes.filter(q => q.status === 'accepted');
+  const pendingQuotes = myQuotes.filter(q => q.status === 'submitted');
+  const rejectedQuotes = myQuotes.filter(q => q.status === 'rejected');
+
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* Section Toggle - RFQ Inbox vs My Quotes */}
+      <div className="flex gap-2 border-b border-slate-200 pb-2">
+        <button
+          onClick={() => setActiveSection('inbox')}
+          className={`px-4 py-2 rounded-t-lg font-semibold text-sm transition ${
+            activeSection === 'inbox'
+              ? 'bg-amber-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          📥 RFQ Inbox ({stats.total})
+        </button>
+        <button
+          onClick={() => setActiveSection('my-quotes')}
+          className={`px-4 py-2 rounded-t-lg font-semibold text-sm transition ${
+            activeSection === 'my-quotes'
+              ? 'bg-amber-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          } ${acceptedQuotes.length > 0 ? 'animate-pulse ring-2 ring-green-400' : ''}`}
+        >
+          📝 My Quotes ({myQuotes.length})
+          {acceptedQuotes.length > 0 && (
+            <span className="ml-2 bg-green-500 text-white px-2 py-0.5 rounded-full text-xs">
+              🎉 {acceptedQuotes.length} Accepted!
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ========== MY QUOTES SECTION ========== */}
+      {activeSection === 'my-quotes' && (
+        <div className="space-y-6">
+          {/* Accepted Quotes - CELEBRATION SECTION */}
+          {acceptedQuotes.length > 0 && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-3xl">🎉</span>
+                <h2 className="text-2xl font-bold text-green-900">Accepted Quotes</h2>
+                <span className="ml-auto bg-green-200 text-green-800 px-3 py-1 rounded-full font-semibold text-sm">
+                  {acceptedQuotes.length}
+                </span>
+              </div>
+              <p className="text-green-700 font-medium mb-6">Congratulations! These quotes were accepted by buyers.</p>
+              
+              <div className="space-y-4">
+                {acceptedQuotes.map(quote => (
+                  <div
+                    key={quote.id}
+                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-green-500 p-6"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                          <span className="text-green-600">✓</span>
+                          {quote.rfqs?.title || 'Project'}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Your Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(quote.amount || 0).toLocaleString()}</span>
+                        </p>
+                      </div>
+                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap ml-2">
+                        ✓ Accepted
+                      </span>
+                    </div>
+
+                    <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                      <span className="text-2xl flex-shrink-0">🎉</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-900">Quote Accepted!</p>
+                        <p className="text-sm text-green-700 mt-1">
+                          Great news! The buyer has accepted your quote and will be in touch soon.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700">{quote.message}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
+                      <span>📅 {new Date(quote.created_at).toLocaleDateString()}</span>
+                      {quote.attachment_url && (
+                        <a 
+                          href={quote.attachment_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-orange-600 hover:underline font-medium"
+                        >
+                          View Attachment
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Quotes */}
+          {pendingQuotes.length > 0 && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">⏳</span>
+                <h2 className="text-xl font-bold text-yellow-900">Pending Quotes</h2>
+                <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full font-semibold text-sm">
+                  {pendingQuotes.length}
+                </span>
+              </div>
+              <p className="text-yellow-700 font-medium mb-4">Waiting for buyer review...</p>
+              
+              <div className="space-y-3">
+                {pendingQuotes.map(quote => (
+                  <div
+                    key={quote.id}
+                    className="bg-white rounded-lg border border-yellow-200 p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{quote.rfqs?.title || 'Project'}</h4>
+                        <p className="text-sm text-gray-600">Quote: KSh {parseFloat(quote.amount || 0).toLocaleString()}</p>
+                      </div>
+                      <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-semibold">
+                        ⏳ Pending
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Submitted: {new Date(quote.created_at).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rejected Quotes */}
+          {rejectedQuotes.length > 0 && (
+            <div className="bg-red-50 border-l-4 border-red-400 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">✗</span>
+                <h2 className="text-xl font-bold text-red-900">Rejected Quotes</h2>
+                <span className="ml-auto bg-red-200 text-red-800 px-3 py-1 rounded-full font-semibold text-sm">
+                  {rejectedQuotes.length}
+                </span>
+              </div>
+              
+              <div className="space-y-3">
+                {rejectedQuotes.map(quote => (
+                  <div
+                    key={quote.id}
+                    className="bg-white rounded-lg border border-red-200 p-4 opacity-75"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-700">{quote.rfqs?.title || 'Project'}</h4>
+                        <p className="text-sm text-gray-500">Quote: KSh {parseFloat(quote.amount || 0).toLocaleString()}</p>
+                      </div>
+                      <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-semibold">
+                        ✗ Rejected
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Quotes */}
+          {myQuotes.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
+              <span className="text-4xl mb-4 block">📝</span>
+              <p className="text-slate-600 text-lg font-medium">No Quotes Submitted Yet</p>
+              <p className="text-slate-500 text-sm mt-1">Submit quotes to RFQs in your inbox to see them here</p>
+              <button
+                onClick={() => setActiveSection('inbox')}
+                className="mt-4 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium"
+              >
+                Go to RFQ Inbox
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== RFQ INBOX SECTION ========== */}
+      {activeSection === 'inbox' && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
           title="Total RFQs"
           value={stats.total}
@@ -313,6 +538,8 @@ export default function RFQInboxTab({ vendor, currentUser }) {
             <RFQCard key={rfq.id} rfq={rfq} />
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );
