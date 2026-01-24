@@ -192,7 +192,16 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
       if (rfqError) throw rfqError;
 
       /** Send direct request to vendor */
-      const vendorRecipientId = vendor?.user_id || vendor?.id || null;
+      const vendorRecipientId = vendor?.id || null;
+      
+      // Debug logging
+      console.log('[DirectRFQPopup] Sending RFQ to vendor:', {
+        vendorId: vendorRecipientId,
+        vendorName: vendor?.company_name,
+        rfqTitle: form.title,
+        timestamp: new Date().toISOString(),
+      });
+      
       if (vendorRecipientId) {
         const { error: requestError } = await supabase.from('rfq_requests').insert([{
           rfq_id: rfqData.id,
