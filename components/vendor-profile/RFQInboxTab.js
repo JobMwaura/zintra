@@ -35,8 +35,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
-      // Query ALL RFQ types from rfq_recipients table (includes direct, wizard, matched, vendor-request)
-      // JOIN with rfqs table to get RFQ details
+      // Query 1: RFQs from rfq_recipients table (includes direct, wizard, matched, vendor-request)
       const { data: recipientRfqs, error: recipientError } = await supabase
         .from('rfq_recipients')
         .select(`
@@ -63,7 +62,18 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         console.error('Error fetching RFQs from recipients:', recipientError);
       }
 
-      // Also fetch from rfq_requests for backward compatibility (direct RFQs)
+      // Query 2: RFQs directly assigned to this vendor via assigned_vendor_id
+      const { data: assignedRfqs, error: assignedError } = await supabase
+        .from('rfqs')
+        .select('*')
+        .eq('assigned_vendor_id', vendor.id)
+        .order('created_at', { ascending: false });
+
+      if (assignedError) {
+        console.error('Error fetching assigned RFQs:', assignedError);
+      }
+
+      // Query 3: Legacy rfq_requests for backward compatibility
       const { data: directRfqs, error: directError } = await supabase
         .from('rfq_requests')
         .select('*')
@@ -74,56 +84,92 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         console.error('Error fetching direct RFQs:', directError);
       }
 
-      // Map recipientRfqs (new system)
-      const recipientMappedRfqs = (recipientRfqs || [])
-        .filter(recipient => recipient.rfqs)  // Skip null RFQs
-        .map(recipient => ({
-          id: recipient.id,
-          rfq_id: recipient.rfqs.id,
-          requester_id: recipient.rfqs.user_id,
-          vendor_id: vendor.id,
-          title: recipient.rfqs.title,
-          description: recipient.rfqs.description,
-          category: recipient.rfqs.category,
-          county: recipient.rfqs.county,
-          created_at: recipient.rfqs.created_at,
-          status: recipient.rfqs.status,
-          rfq_type: recipient.recipient_type,
-          rfq_type_label: recipient.recipient_type.charAt(0).toUpperCase() + recipient.recipient_type.slice(1),
-          requester_name: 'Loading...', // Will be fetched separately
-          requester_email: 'Loading...', // Will be fetched separately
-          requester_id_for_fetch: recipient.rfqs.user_id,
-          viewed_at: recipient.viewed_at,
-          quote_count: 0,
-          total_quotes: 0,
-        }));
+      // Track all RFQ IDs to avoid duplicates
+      const allRfqIds = new Set();
 
-      // Map directRfqs (legacy system) - only add if not already in recipients
-      const directRfqIds = new Set(recipientMappedRfqs.map(r => r.rfq_id));
-      const directMappedRfqs = (directRfqs || [])
-        .filter(rfq => !directRfqIds.has(rfq.rfq_id))  // Avoid duplicates
-        .map(rfq => ({
+      // Map assignedRfqs FIRST (most reliable data)
+      const assignedMappedRfqs = (assignedRfqs || []).map(rfq => {
+        allRfqIds.add(rfq.id);
+        return {
           id: rfq.id,
-          rfq_id: rfq.rfq_id,
+          rfq_id: rfq.id,
           requester_id: rfq.user_id,
-          vendor_id: rfq.vendor_id,
-          title: rfq.project_title,
-          description: rfq.project_description,
-          category: rfq.category,
-          county: rfq.county,
+          vendor_id: vendor.id,
+          title: rfq.title || rfq.project_title || 'Untitled RFQ',
+          description: rfq.description,
+          category: rfq.category || 'General',
+          county: rfq.county || rfq.location || 'Not specified',
           created_at: rfq.created_at,
-          status: rfq.status,
-          rfq_type: 'direct',
-          rfq_type_label: 'Direct RFQ',
-          requester_name: rfq.requester_name || 'Unknown',
-          requester_email: rfq.requester_email || 'unknown@zintra.co.ke',
-          viewed_at: null,
-          quote_count: 0,
-          total_quotes: 0,
-        }));
+          status: rfq.status || 'pending',
+          rfq_type: rfq.type || 'direct',
+          rfq_type_label: (rfq.type || 'direct') === 'direct' ? 'Direct RFQ' : 'Public RFQ',
+          requester_name: 'Loading...',
+          requester_email: 'Loading...',
+          requester_id_for_fetch: rfq.user_id,
+          viewed_at: rfq.viewed_at,
+          quote_count: rfq.quote_count || 0,
+          total_quotes: rfq.total_quotes || 0,
+          budget_range: rfq.budget_range,
+          deadline: rfq.deadline,
+        };
+      });
 
-      // Combine both sources (new recipients + legacy direct)
-      const allRfqs = [...recipientMappedRfqs, ...directMappedRfqs];
+      // Map recipientRfqs (new system) - skip if already added
+      const recipientMappedRfqs = (recipientRfqs || [])
+        .filter(recipient => recipient.rfqs && !allRfqIds.has(recipient.rfqs.id))
+        .map(recipient => {
+          allRfqIds.add(recipient.rfqs.id);
+          return {
+            id: recipient.id,
+            rfq_id: recipient.rfqs.id,
+            requester_id: recipient.rfqs.user_id,
+            vendor_id: vendor.id,
+            title: recipient.rfqs.title,
+            description: recipient.rfqs.description,
+            category: recipient.rfqs.category,
+            county: recipient.rfqs.county,
+            created_at: recipient.rfqs.created_at,
+            status: recipient.rfqs.status,
+            rfq_type: recipient.recipient_type,
+            rfq_type_label: recipient.recipient_type.charAt(0).toUpperCase() + recipient.recipient_type.slice(1),
+            requester_name: 'Loading...',
+            requester_email: 'Loading...',
+            requester_id_for_fetch: recipient.rfqs.user_id,
+            viewed_at: recipient.viewed_at,
+            quote_count: 0,
+            total_quotes: 0,
+          };
+        });
+
+      // Map directRfqs (legacy system) - only add if not already present
+      const directMappedRfqs = (directRfqs || [])
+        .filter(rfq => !allRfqIds.has(rfq.rfq_id) && !allRfqIds.has(rfq.id))
+        .map(rfq => {
+          const rfqId = rfq.rfq_id || rfq.id;
+          allRfqIds.add(rfqId);
+          return {
+            id: rfq.id,
+            rfq_id: rfqId,
+            requester_id: rfq.user_id,
+            vendor_id: rfq.vendor_id,
+            title: rfq.project_title,
+            description: rfq.project_description,
+            category: rfq.category,
+            county: rfq.county,
+            created_at: rfq.created_at,
+            status: rfq.status,
+            rfq_type: 'direct',
+            rfq_type_label: 'Direct RFQ',
+            requester_name: rfq.requester_name || 'Unknown',
+            requester_email: rfq.requester_email || 'unknown@zintra.co.ke',
+            viewed_at: null,
+            quote_count: 0,
+            total_quotes: 0,
+          };
+        });
+
+      // Combine all sources: assigned + recipients + legacy direct
+      const allRfqs = [...assignedMappedRfqs, ...recipientMappedRfqs, ...directMappedRfqs];
       allRfqs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       // Fetch buyer information for RFQs that need it

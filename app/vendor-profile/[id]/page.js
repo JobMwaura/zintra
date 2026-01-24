@@ -396,7 +396,7 @@ export default function VendorProfilePage() {
       try {
         setRfqLoading(true);
         
-        // Query from rfq_requests table (direct RFQs sent to this vendor)
+        // Query 1: Get RFQs from rfq_requests table (legacy direct RFQs)
         const { data: directRfqs, error: directError } = await supabase
           .from('rfq_requests')
           .select('*')
@@ -404,35 +404,84 @@ export default function VendorProfilePage() {
           .order('created_at', { ascending: false });
 
         if (directError) {
-          console.error('Error loading RFQ data:', directError);
-          setRfqInboxData([]);
-          setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
-          return;
+          console.error('Error loading rfq_requests:', directError);
         }
 
-        // Map rfq_requests data to display format
-        const rfqs = (directRfqs || []).map(rfq => ({
-          id: rfq.id,
-          title: rfq.project_title,
-          category: 'Unknown', // rfq_requests doesn't have category
-          county: 'Unknown',   // rfq_requests doesn't have county
-          rfq_type: 'direct',
-          rfq_type_label: 'Direct RFQ',
-          quote_count: 0,
-          total_quotes: 0,
-          viewed_at: null,
-          created_at: rfq.created_at,
-          status: rfq.status
-        }));
+        // Query 2: Get RFQs directly assigned to this vendor (new system)
+        const { data: assignedRfqs, error: assignedError } = await supabase
+          .from('rfqs')
+          .select('*')
+          .eq('assigned_vendor_id', vendor.id)
+          .order('created_at', { ascending: false });
 
-        setRfqInboxData(rfqs);
+        if (assignedError) {
+          console.error('Error loading assigned rfqs:', assignedError);
+        }
+
+        // Combine both sources, avoiding duplicates
+        const allRfqIds = new Set();
+        const combinedRfqs = [];
+
+        // Add assigned RFQs first (new system - more complete data)
+        (assignedRfqs || []).forEach(rfq => {
+          if (!allRfqIds.has(rfq.id)) {
+            allRfqIds.add(rfq.id);
+            combinedRfqs.push({
+              id: rfq.id,
+              title: rfq.title || rfq.project_title || 'Untitled RFQ',
+              category: rfq.category || 'General',
+              county: rfq.county || rfq.location || 'Not specified',
+              rfq_type: rfq.type || 'direct',
+              rfq_type_label: rfq.type === 'direct' ? 'Direct RFQ' : 'Public RFQ',
+              quote_count: rfq.quote_count || 0,
+              total_quotes: rfq.total_quotes || 0,
+              viewed_at: rfq.viewed_at,
+              created_at: rfq.created_at,
+              status: rfq.status || 'pending',
+              description: rfq.description,
+              budget_range: rfq.budget_range,
+              deadline: rfq.deadline,
+              user_id: rfq.user_id
+            });
+          }
+        });
+
+        // Add legacy rfq_requests (for backward compatibility)
+        (directRfqs || []).forEach(rfq => {
+          // Check if we already have this RFQ (by rfq_id if present)
+          if (rfq.rfq_id && allRfqIds.has(rfq.rfq_id)) return;
+          if (!rfq.rfq_id && allRfqIds.has(rfq.id)) return;
+          
+          const rfqId = rfq.rfq_id || rfq.id;
+          allRfqIds.add(rfqId);
+          combinedRfqs.push({
+            id: rfqId,
+            title: rfq.project_title || 'Untitled RFQ',
+            category: rfq.category || 'General',
+            county: rfq.county || 'Not specified',
+            rfq_type: 'direct',
+            rfq_type_label: 'Direct RFQ',
+            quote_count: 0,
+            total_quotes: 0,
+            viewed_at: null,
+            created_at: rfq.created_at,
+            status: rfq.status || 'pending',
+            description: rfq.description,
+            user_id: rfq.user_id
+          });
+        });
+
+        // Sort by created_at descending
+        combinedRfqs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        setRfqInboxData(combinedRfqs);
         
         // Calculate stats
         const stats = {
-          total: rfqs.length,
-          unread: rfqs.filter(r => r.viewed_at === null).length,
-          pending: rfqs.filter(r => r.status === 'pending').length,
-          with_quotes: 0
+          total: combinedRfqs.length,
+          unread: combinedRfqs.filter(r => r.viewed_at === null).length,
+          pending: combinedRfqs.filter(r => r.status === 'pending').length,
+          with_quotes: combinedRfqs.filter(r => r.quote_count > 0).length
         };
         setRfqStats(stats);
       } catch (err) {
