@@ -53,11 +53,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
             county,
             created_at,
             status,
-            user_id,
-            users (
-              email,
-              raw_user_meta_data
-            )
+            user_id
           )
         `)
         .eq('vendor_id', vendor.id)
@@ -94,8 +90,9 @@ export default function RFQInboxTab({ vendor, currentUser }) {
           status: recipient.rfqs.status,
           rfq_type: recipient.recipient_type,
           rfq_type_label: recipient.recipient_type.charAt(0).toUpperCase() + recipient.recipient_type.slice(1),
-          requester_name: recipient.rfqs.users?.raw_user_meta_data?.full_name || 'Unknown',
-          requester_email: recipient.rfqs.users?.email || 'unknown@zintra.co.ke',
+          requester_name: 'Loading...', // Will be fetched separately
+          requester_email: 'Loading...', // Will be fetched separately
+          requester_id_for_fetch: recipient.rfqs.user_id,
           viewed_at: recipient.viewed_at,
           quote_count: 0,
           total_quotes: 0,
@@ -128,6 +125,39 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       // Combine both sources (new recipients + legacy direct)
       const allRfqs = [...recipientMappedRfqs, ...directMappedRfqs];
       allRfqs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      // Fetch buyer information for RFQs that need it
+      const requesterIds = [
+        ...new Set(allRfqs.map(r => r.requester_id_for_fetch || r.requester_id).filter(Boolean))
+      ];
+      
+      if (requesterIds.length > 0) {
+        try {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, email, full_name')
+            .in('id', requesterIds);
+          
+          const usersMap = {};
+          (usersData || []).forEach(user => {
+            usersMap[user.id] = {
+              email: user.email || 'unknown@zintra.co.ke',
+              full_name: user.full_name || 'Unknown'
+            };
+          });
+
+          // Update RFQs with fetched buyer info
+          allRfqs.forEach(rfq => {
+            const requesterId = rfq.requester_id_for_fetch || rfq.requester_id;
+            if (usersMap[requesterId]) {
+              rfq.requester_email = usersMap[requesterId].email;
+              rfq.requester_name = usersMap[requesterId].full_name;
+            }
+          });
+        } catch (err) {
+          console.warn('Could not fetch buyer information:', err);
+        }
+      }
 
       setRfqs(allRfqs);
 
