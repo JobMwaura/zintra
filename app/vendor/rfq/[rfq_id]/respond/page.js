@@ -125,9 +125,19 @@ export default function RFQRespond() {
       await Promise.race([
         (async () => {
           try {
+            // Get the session access token (not user ID!)
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+              if (isMounted) {
+                setError('Session expired. Please log in again.');
+              }
+              return;
+            }
+
             const vendorResponse = await fetch('/api/vendor/profile', {
               headers: {
-                'Authorization': `Bearer ${authUser.id}`
+                'Authorization': `Bearer ${session.access_token}`
               }
             });
 
