@@ -747,6 +747,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                           </div>
                           <p className="font-semibold text-green-900">Message Sent!</p>
                           <p className="text-sm text-gray-600 mt-1">The buyer will see your message in their inbox</p>
+                          <p className="text-xs text-blue-600 mt-2">📧 An email notification has been sent to the buyer</p>
                           <button
                             onClick={() => {
                               setShowChatMode(false);
@@ -814,21 +815,16 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                         <span className="text-orange-400">→</span>
                       </button>
 
-                      {contactBuyer.email && (
-                        <a
-                          href={`mailto:${contactBuyer.email}?subject=Re: ${selectedQuote?.rfqs?.title || 'Project'} - Quote Accepted&body=Hi ${contactBuyer.full_name || 'there'},%0D%0A%0D%0AThank you for accepting my quote.%0D%0A%0D%0AI'm excited to work with you on this project.%0D%0A%0D%0ABest regards`}
-                          className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition group"
-                        >
-                          <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-full flex items-center justify-center transition">
-                            <Mail className="w-6 h-6 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-blue-900">Send Email</p>
-                            <p className="text-sm text-blue-600 truncate">{contactBuyer.email}</p>
-                          </div>
-                          <span className="text-blue-400">→</span>
-                        </a>
-                      )}
+                      {/* Email notification info */}
+                      <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Mail className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-blue-900">Email Notification</p>
+                          <p className="text-sm text-blue-600">Buyer will be notified via email when you send a message</p>
+                        </div>
+                      </div>
 
                       {contactBuyer.phone && (
                         <a
@@ -846,9 +842,9 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                         </a>
                       )}
 
-                      {!contactBuyer.email && !contactBuyer.phone && (
+                      {!contactBuyer.phone && (
                         <div className="text-center py-2 text-gray-500 text-sm">
-                          <p>No email or phone available - use the message option above</p>
+                          <p>No phone number available</p>
                         </div>
                       )}
                     </div>

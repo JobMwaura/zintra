@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { notifyBuyerOfNewMessage, notifyVendorOfNewMessage } from '@/lib/services/emailNotificationService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -180,6 +181,78 @@ export async function POST(request) {
         JSON.stringify({ error: error.message || 'Failed to send message' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Send email notification (async, don't block response)
+    try {
+      // Extract plain text message for email preview
+      let messagePreview = messageText;
+      try {
+        const parsed = JSON.parse(messageText);
+        messagePreview = parsed.body || messageText;
+      } catch (e) {
+        // Use as-is if not JSON
+      }
+
+      if (senderType === 'vendor') {
+        // Vendor sending to buyer - notify buyer via email
+        // Get buyer's email from auth.users
+        const { data: { user: buyerAuth } } = await supabase.auth.admin.getUserById(actualUserId);
+        const { data: buyerData } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', actualUserId)
+          .single();
+        
+        // Get vendor name
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('company_name')
+          .eq('id', vendorId)
+          .single();
+
+        if (buyerAuth?.email) {
+          // Send email notification in background (don't await)
+          notifyBuyerOfNewMessage({
+            buyerEmail: buyerAuth.email,
+            buyerName: buyerData?.full_name || 'there',
+            vendorName: vendorData?.company_name || 'A vendor',
+            messagePreview
+          }).catch(err => console.error('Email notification failed:', err));
+        }
+      } else {
+        // User sending to vendor - notify vendor via email
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('user_id, company_name')
+          .eq('id', vendorId)
+          .single();
+        
+        if (vendorData?.user_id) {
+          // Get vendor owner's email from auth.users
+          const { data: { user: vendorAuth } } = await supabase.auth.admin.getUserById(vendorData.user_id);
+          
+          // Get sender name
+          const { data: userData } = await supabase
+            .from('users')
+            .select('full_name')
+            .eq('id', currentUserId)
+            .single();
+
+          if (vendorAuth?.email) {
+            // Send email notification in background (don't await)
+            notifyVendorOfNewMessage({
+              vendorEmail: vendorAuth.email,
+              vendorName: vendorData.company_name || 'there',
+              buyerName: userData?.full_name || 'A user',
+              messagePreview
+            }).catch(err => console.error('Email notification failed:', err));
+          }
+        }
+      }
+    } catch (emailError) {
+      // Don't fail the request if email fails
+      console.error('❌ Email notification error (non-blocking):', emailError);
     }
 
     return new Response(
