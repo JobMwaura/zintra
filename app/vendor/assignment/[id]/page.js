@@ -15,7 +15,6 @@ import {
   DollarSign,
   FileText,
   MessageCircle,
-  Send,
   Clock
 } from 'lucide-react';
 
@@ -29,9 +28,6 @@ export default function AssignmentDetailPage() {
   const [rfq, setRfq] = useState(null);
   const [buyer, setBuyer] = useState(null);
   const [vendor, setVendor] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -119,21 +115,9 @@ export default function AssignmentDetailPage() {
         }
       }
 
-      // Get messages for this assignment (if message table exists)
-      try {
-        const { data: messagesData } = await supabase
-          .from('assignment_messages')
-          .select('*')
-          .eq('quote_id', quoteId)
-          .order('created_at', { ascending: true });
-
-        if (messagesData) {
-          setMessages(messagesData);
-        }
-      } catch (err) {
-        // Message table may not exist yet
-        console.log('Messages table not available');
-      }
+      // Note: assignment_messages table doesn't exist yet
+      // Messages feature will be added in a future update
+      // For now, vendors should use email/phone to contact buyers
 
       setLoading(false);
     } catch (err) {
@@ -141,37 +125,6 @@ export default function AssignmentDetailPage() {
       setError(err.message);
       setLoading(false);
     }
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
-
-    setSendingMessage(true);
-    try {
-      // Try to insert message
-      const { data, error } = await supabase
-        .from('assignment_messages')
-        .insert({
-          quote_id: quoteId,
-          sender_id: vendor.user_id,
-          sender_type: 'vendor',
-          message: newMessage.trim(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        // If table doesn't exist, show alternative contact info
-        alert('Direct messaging coming soon! For now, please contact the buyer using their email or phone below.');
-      } else {
-        setMessages([...messages, data]);
-        setNewMessage('');
-      }
-    } catch (err) {
-      console.error('Error sending message:', err);
-      alert('Unable to send message. Please use the contact information below.');
-    }
-    setSendingMessage(false);
   };
 
   if (loading) {
@@ -364,54 +317,37 @@ export default function AssignmentDetailPage() {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                 <MessageCircle className="w-5 h-5 text-blue-500" />
-                Communication
+                Next Steps
               </h2>
 
-              {/* Messages List */}
-              {messages.length > 0 ? (
-                <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`p-3 rounded-lg ${
-                        msg.sender_type === 'vendor'
-                          ? 'bg-amber-50 ml-8'
-                          : 'bg-slate-100 mr-8'
-                      }`}
-                    >
-                      <p className="text-sm text-slate-700">{msg.message}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {new Date(msg.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-slate-50 rounded-lg p-4 mb-4 text-center">
-                  <p className="text-slate-600 text-sm">
-                    No messages yet. Start a conversation with the buyer using the contact details on the right.
-                  </p>
-                </div>
-              )}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-blue-800 font-medium mb-2">📞 Contact the Buyer</p>
+                <p className="text-blue-700 text-sm">
+                  Use the contact details on the right to reach out to the buyer directly via email or phone. 
+                  Discuss project timeline, deliverables, and payment terms.
+                </p>
+              </div>
 
-              {/* Message Input */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={sendingMessage || !newMessage.trim()}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  Send
-                </button>
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-slate-700">Suggested next steps:</p>
+                <ul className="text-sm text-slate-600 space-y-1">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500">✓</span>
+                    Send an introduction email to the buyer
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500">✓</span>
+                    Discuss project requirements in detail
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500">✓</span>
+                    Agree on timeline and milestones
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500">✓</span>
+                    Confirm payment terms
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
