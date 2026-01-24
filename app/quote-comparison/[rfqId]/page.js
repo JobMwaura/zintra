@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import QuoteDetailCard from '@/components/QuoteDetailCard';
 import QuoteComparisonTable from '@/components/QuoteComparisonTable';
 import { 
   ArrowLeft, 
@@ -16,7 +17,9 @@ import {
   TrendingDown,
   Clock,
   User,
-  Gift
+  Gift,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
@@ -40,6 +43,7 @@ export default function QuoteComparisonPage({ params }) {
   const [error, setError] = useState(null);
   const [acting, setActing] = useState(null);
   const [actionMessage, setActionMessage] = useState('');
+  const [viewMode, setViewMode] = useState('detail'); // 'detail' or 'table'
   
   // Job assignment modal state
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -505,6 +509,30 @@ export default function QuoteComparisonPage({ params }) {
               <MessageCircle className="w-4 h-4" /> Send Messages
             </button>
           )}
+
+          {/* View Toggle */}
+          <div className="ml-auto flex gap-2">
+            <button
+              onClick={() => setViewMode('detail')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                viewMode === 'detail'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-white border border-slate-300 text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" /> Detailed View
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                viewMode === 'table'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-white border border-slate-300 text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <List className="w-4 h-4" /> Table View
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -514,7 +542,21 @@ export default function QuoteComparisonPage({ params }) {
             <p className="text-xl font-semibold text-slate-900">No quotes received yet</p>
             <p className="text-slate-600 mt-2">Vendors will appear here once they submit their quotes</p>
           </div>
+        ) : viewMode === 'detail' ? (
+          // Detailed Card View
+          <div className="space-y-4">
+            {quotes.map((quote) => (
+              <QuoteDetailCard
+                key={quote.id}
+                quote={quote}
+                vendor={vendors[quote.vendor_id]}
+                isSelected={selectedQuoteId === quote.id}
+                onSelect={() => setSelectedQuoteId(quote.id)}
+              />
+            ))}
+          </div>
         ) : (
+          // Table View
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <QuoteComparisonTable
               quotes={quotes}
