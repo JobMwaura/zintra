@@ -9,7 +9,6 @@ import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { getUserProfile } from '@/app/actions/getUserProfile';
 import RFQFileUpload from '@/components/RFQModal/RFQFileUpload';
 
-
 /** 🎨 Brand palette */
 const BRAND = {
   primary: '#ea8f1e',
@@ -40,21 +39,6 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-
-  // 🔧 Form persistence hook for clearing form after successful submission
-
-
-  /** 🧩 Debug: Log vendor object when modal opens */
-  useEffect(() => {
-    if (isOpen && vendor) {
-      console.log('📋 DirectRFQPopup vendor object:', {
-        user_id: vendor?.user_id,
-        id: vendor?.id,
-        name: vendor?.company_name || vendor?.name,
-        all_keys: Object.keys(vendor || {}),
-      });
-    }
-  }, [isOpen, vendor]);
 
   /** 🧩 Fetch user profile to check phone_verified status */
   useEffect(() => {
@@ -126,23 +110,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     checkQuota();
   }, [isOpen, user?.id]);
 
-  /** � Helper to reset form state */
-  const resetForm = () => {
-    setForm({
-      title: '',
-      description: '',
-      category: '',
-      custom_category: '',
-      custom_details: '',
-      budget: '',
-      location: '',
-      attachments: [],
-      confirmed: false,
-    });
-    setStatus('');
-  };
-
-  /** �📨 Handle submit (with Supabase insert + optional upload) */
+  /** 📨 Handle submit (with Supabase insert + optional upload) */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -226,13 +194,6 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
       /** Send direct request to vendor */
       const vendorRecipientId = vendor?.user_id || vendor?.id || null;
       if (vendorRecipientId) {
-        console.log('🚀 Attempting to insert rfq_request with:', {
-          rfq_id: rfqData.id,
-          vendor_id: vendorRecipientId,
-          user_id: user?.id,
-          project_title: form.title,
-        });
-
         const { error: requestError } = await supabase.from('rfq_requests').insert([{
           rfq_id: rfqData.id,
           vendor_id: vendorRecipientId,
@@ -248,23 +209,13 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
             error: requestError.message,
             code: requestError.code,
             details: requestError.details,
-            vendorData: {
-              vendor_id: vendorRecipientId,
-              vendor_user_id: vendor?.user_id,
-              vendor_id_field: vendor?.id,
-            }
           });
           throw requestError;
         }
-        console.log('✅ RFQ request inserted successfully');
-      } else {
-        console.warn('⚠️ No vendor ID found, skipping rfq_requests insert');
       }
 
       setStatus('✅ Request sent successfully! Redirecting...');
       setSubmitting(false);
-      // Form will be cleared by modal close
-      setForm({ title: '', description: '', category: '', custom_category: '', custom_details: '', budget: '', location: '', attachments: [], confirmed: false });
       setTimeout(() => {
         onClose();
         window.location.href = '/my-rfqs';
