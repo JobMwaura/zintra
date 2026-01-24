@@ -161,54 +161,29 @@ export default function RFQDetailsPage({ params }) {
       setActingQuoteId(quoteId);
       setActionMessage('Accepting quote...');
 
-      console.log('DEBUG: Updating quote status in database...');
+      console.log('DEBUG: Calling API to accept quote...');
       
-      // First, verify the quote exists and belongs to this RFQ
-      const { data: existingQuote, error: fetchError } = await supabase
-        .from('rfq_responses')
-        .select('id, status, rfq_id')
-        .eq('id', quoteId)
-        .single();
-      
-      console.log('DEBUG: Existing quote:', existingQuote, 'fetchError:', fetchError);
-      
-      if (fetchError || !existingQuote) {
-        throw new Error('Quote not found or you do not have permission to view it');
-      }
-      
-      // Perform the update
-      const { data, error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'accepted' })
-        .eq('id', quoteId)
-        .select();
+      // Use API route to bypass RLS
+      const response = await fetch('/api/quote/accept', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId: quoteId,
+          rfqId: rfqId,
+          userId: user.id
+        })
+      });
 
-      console.log('DEBUG: Update response - data:', data, 'error:', error);
-      
-      if (error) {
-        console.error('DEBUG: Database error:', error);
-        throw error;
+      const result = await response.json();
+      console.log('DEBUG: API response:', result);
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to accept quote');
       }
 
-      // Check if update actually happened
-      if (!data || data.length === 0) {
-        console.error('DEBUG: Update returned empty data - RLS may be blocking');
-        
-        // Try to verify if the update happened anyway
-        const { data: verifyData } = await supabase
-          .from('rfq_responses')
-          .select('id, status')
-          .eq('id', quoteId)
-          .single();
-        
-        console.log('DEBUG: Verification check:', verifyData);
-        
-        if (verifyData?.status !== 'accepted') {
-          throw new Error('Update was blocked. You may not have permission to accept this quote.');
-        }
-      }
-
-      console.log('DEBUG: Quote status updated successfully');
+      console.log('DEBUG: Quote accepted successfully via API');
       setActionMessage('✅ Quote accepted successfully!');
       
       // Update local state immediately for instant feedback
@@ -243,24 +218,38 @@ export default function RFQDetailsPage({ params }) {
 
     try {
       setActingQuoteId(quoteId);
-      setActionMessage('');
+      setActionMessage('Rejecting quote...');
 
-      console.log('DEBUG: Updating quote status to rejected in database...');
-      const { data, error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'rejected' })
-        .eq('id', quoteId)
-        .select();
-
-      console.log('DEBUG: Update response - data:', data, 'error:', error);
+      console.log('DEBUG: Calling API to reject quote...');
       
-      if (error) {
-        console.error('DEBUG: Database error:', error);
-        throw error;
+      // Use API route to bypass RLS
+      const response = await fetch('/api/quote/accept', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId: quoteId,
+          rfqId: rfqId,
+          userId: user.id
+        })
+      });
+
+      const result = await response.json();
+      console.log('DEBUG: API response:', result);
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reject quote');
       }
 
-      console.log('DEBUG: Quote status updated to rejected successfully');
-      setActionMessage('✅ Quote rejected successfully!');
+      console.log('DEBUG: Quote rejected successfully via API');
+      setActionMessage('✅ Quote rejected!');
+      
+      // Update local state immediately
+      setResponses(prev => prev.map(r => 
+        r.id === quoteId ? { ...r, status: 'rejected' } : r
+      ));
+      
       setTimeout(() => {
         console.log('DEBUG: Refetching RFQ details...');
         fetchRFQDetails();

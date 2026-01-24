@@ -90,20 +90,30 @@ export default function RFQsTab() {
       }
 
       // ===== FETCH MY RESPONSES =====
-      const { data: responses, error: responseError } = await supabase
-        .from('rfq_responses')
-        .select(`
-          *,
-          rfqs:rfq_id (*),
-          rfq_requests:rfq_id (*)
-        `)
-        .eq('vendor_id', currentUser.id)
-        .order('created_at', { ascending: false });
+      // Use vendor.id (from vendors table), not currentUser.id (auth user)
+      if (vendorData?.id) {
+        console.log('DEBUG: Fetching responses for vendor_id:', vendorData.id);
+        const { data: responses, error: responseError } = await supabase
+          .from('rfq_responses')
+          .select(`
+            *,
+            rfqs:rfq_id (*),
+            rfq_requests:rfq_id (*)
+          `)
+          .eq('vendor_id', vendorData.id)
+          .order('created_at', { ascending: false });
 
-      if (responseError) {
-        console.error('Error fetching responses:', responseError);
+        console.log('DEBUG: Responses fetched:', responses?.length, 'responses');
+        console.log('DEBUG: Response statuses:', responses?.map(r => ({ id: r.id, status: r.status })));
+
+        if (responseError) {
+          console.error('Error fetching responses:', responseError);
+        } else {
+          setMyResponses(responses || []);
+        }
       } else {
-        setMyResponses(responses || []);
+        console.log('DEBUG: No vendor profile found, cannot fetch responses');
+        setMyResponses([]);
       }
 
       setLoading(false);
