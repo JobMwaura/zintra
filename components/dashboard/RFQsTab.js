@@ -698,7 +698,7 @@ export default function RFQsTab() {
         </button>
       </div>
 
-      {/* My Responses List */}
+      {/* My Responses List - Organized by Status */}
       {myResponses.length === 0 ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
           <FileText className="w-12 h-12 text-green-600 mx-auto mb-3" />
@@ -714,85 +714,206 @@ export default function RFQsTab() {
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {myResponses.map(response => (
-            <div
-              key={response.id}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 border-green-600 p-6"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {response.rfqs?.title || 'Project'}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(response.amount).toLocaleString()}</span>
-                  </p>
+        <div className="space-y-8">
+          {/* ACCEPTED QUOTES SECTION - Highlighted First */}
+          {(() => {
+            const acceptedQuotes = myResponses.filter(r => r.status === 'accepted');
+            if (acceptedQuotes.length === 0) return null;
+            
+            return (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-3xl">🎉</span>
+                  <h2 className="text-2xl font-bold text-green-900">Accepted Quotes</h2>
+                  <span className="ml-auto bg-green-200 text-green-800 px-3 py-1 rounded-full font-semibold text-sm">
+                    {acceptedQuotes.length}
+                  </span>
                 </div>
-                {/* Dynamic Status Badge - Shows actual quote status */}
-                {(() => {
-                  const statusConfig = {
-                    submitted: {
-                      bg: 'bg-yellow-100',
-                      text: 'text-yellow-700',
-                      label: '⏳ Pending'
-                    },
-                    accepted: {
-                      bg: 'bg-green-100',
-                      text: 'text-green-700',
-                      label: '✓ Accepted'
-                    },
-                    rejected: {
-                      bg: 'bg-red-100',
-                      text: 'text-red-700',
-                      label: '✗ Rejected'
-                    }
-                  };
-                  
-                  const config = statusConfig[response.status] || statusConfig.submitted;
-                  
-                  return (
-                    <span className={`${config.bg} ${config.text} px-3 py-1 rounded-full text-sm font-medium`}>
-                      {config.label}
-                    </span>
-                  );
-                })()}
-              </div>
+                <p className="text-green-700 font-medium mb-6">Congratulations! These quotes were accepted by buyers.</p>
+                
+                <div className="space-y-4">
+                  {acceptedQuotes.map(response => (
+                    <div
+                      key={response.id}
+                      className="bg-white rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-green-500 p-6"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span className="text-green-600">✓</span>
+                            {response.rfqs?.title || 'Project'}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(response.amount).toLocaleString()}</span>
+                          </p>
+                        </div>
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap ml-2">
+                          ✓ Accepted
+                        </span>
+                      </div>
 
-              {/* Show success message when quote is accepted */}
-              {response.status === 'accepted' && (
-                <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-                  <span className="text-2xl">🎉</span>
-                  <div className="flex-1">
-                    <p className="font-semibold text-green-900">Quote Accepted!</p>
-                    <p className="text-sm text-green-700 mt-1">
-                      The buyer has accepted your quote. They will be in touch soon with next steps.
-                    </p>
-                  </div>
+                      <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                        <span className="text-2xl flex-shrink-0">🎉</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-green-900">Quote Accepted!</p>
+                          <p className="text-sm text-green-700 mt-1">
+                            Great news! The buyer has accepted your quote and will be in touch soon with next steps.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-700">{response.message}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200 mb-4">
+                        <span>📅 {new Date(response.created_at).toLocaleDateString()}</span>
+                        {response.attachment_url && (
+                          <a 
+                            href={response.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange-600 hover:underline font-medium"
+                          >
+                            View Portfolio
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition">
+                          View Assignment
+                        </button>
+                        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
+                          Contact Buyer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">{response.message}</p>
               </div>
+            );
+          })()}
 
-              <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
-                <span>
-                  📅 {new Date(response.created_at).toLocaleDateString()}
-                </span>
-                {response.attachment_url && (
-                  <a 
-                    href={response.attachment_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-600 hover:underline font-medium"
-                  >
-                    View Portfolio
-                  </a>
-                )}
+          {/* PENDING QUOTES SECTION */}
+          {(() => {
+            const pendingQuotes = myResponses.filter(r => r.status === 'submitted');
+            if (pendingQuotes.length === 0) return null;
+            
+            return (
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">⏳</span>
+                  <h2 className="text-2xl font-bold text-yellow-900">Pending Responses</h2>
+                  <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full font-semibold text-sm">
+                    {pendingQuotes.length}
+                  </span>
+                </div>
+                <p className="text-yellow-700 font-medium mb-6">Waiting for buyers to review your quotes...</p>
+                
+                <div className="space-y-4">
+                  {pendingQuotes.map(response => (
+                    <div
+                      key={response.id}
+                      className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 border-yellow-400 p-6"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {response.rfqs?.title || 'Project'}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(response.amount).toLocaleString()}</span>
+                          </p>
+                        </div>
+                        <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ml-2">
+                          ⏳ Pending
+                        </span>
+                      </div>
+
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-700">{response.message}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
+                        <span>📅 {new Date(response.created_at).toLocaleDateString()}</span>
+                        {response.attachment_url && (
+                          <a 
+                            href={response.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange-600 hover:underline font-medium"
+                          >
+                            View Portfolio
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })()}
+
+          {/* REJECTED QUOTES SECTION */}
+          {(() => {
+            const rejectedQuotes = myResponses.filter(r => r.status === 'rejected');
+            if (rejectedQuotes.length === 0) return null;
+            
+            return (
+              <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">✗</span>
+                  <h2 className="text-2xl font-bold text-red-900">Rejected</h2>
+                  <span className="ml-auto bg-red-200 text-red-800 px-3 py-1 rounded-full font-semibold text-sm">
+                    {rejectedQuotes.length}
+                  </span>
+                </div>
+                <p className="text-red-700 font-medium mb-6">Better luck next time! You can still submit a new quote.</p>
+                
+                <div className="space-y-4">
+                  {rejectedQuotes.map(response => (
+                    <div
+                      key={response.id}
+                      className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 border-red-300 p-6 opacity-90"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {response.rfqs?.title || 'Project'}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(response.amount).toLocaleString()}</span>
+                          </p>
+                        </div>
+                        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ml-2">
+                          ✗ Rejected
+                        </span>
+                      </div>
+
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-700">{response.message}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
+                        <span>📅 {new Date(response.created_at).toLocaleDateString()}</span>
+                        {response.attachment_url && (
+                          <a 
+                            href={response.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange-600 hover:underline font-medium"
+                          >
+                            View Portfolio
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
