@@ -10,6 +10,7 @@ const RFQ_TYPE_COLORS = {
   matched: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-800', label: 'Admin-Matched' },
   wizard: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-100 text-orange-800', label: 'Wizard' },
   public: { bg: 'bg-cyan-50', border: 'border-cyan-200', badge: 'bg-cyan-100 text-cyan-800', label: 'Public RFQ' },
+  'vendor-request': { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-800', label: 'Vendor Request' },
 };
 
 export default function RFQInboxTab({ vendor, currentUser }) {
@@ -22,6 +23,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     matched: 0,
     wizard: 0,
     public: 0,
+    'vendor-request': 0,
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -33,7 +35,39 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
-      // Query from rfq_requests table (direct RFQs sent to vendor)
+      // Query ALL RFQ types from rfq_recipients table (includes direct, wizard, matched, vendor-request)
+      // JOIN with rfqs table to get RFQ details
+      const { data: recipientRfqs, error: recipientError } = await supabase
+        .from('rfq_recipients')
+        .select(`
+          id,
+          rfq_id,
+          recipient_type,
+          viewed_at,
+          created_at,
+          rfqs (
+            id,
+            title,
+            description,
+            category,
+            county,
+            created_at,
+            status,
+            user_id,
+            users (
+              email,
+              raw_user_meta_data
+            )
+          )
+        `)
+        .eq('vendor_id', vendor.id)
+        .order('created_at', { ascending: false });
+
+      if (recipientError) {
+        console.error('Error fetching RFQs from recipients:', recipientError);
+      }
+
+      // Also fetch from rfq_requests for backward compatibility (direct RFQs)
       const { data: directRfqs, error: directError } = await supabase
         .from('rfq_requests')
         .select('*')
@@ -44,36 +78,73 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         console.error('Error fetching direct RFQs:', directError);
       }
 
-      // Combine results and format for display
-      const allRfqs = (directRfqs || []).map(rfq => ({
-        id: rfq.id,
-        rfq_id: rfq.rfq_id,
-        requester_id: rfq.user_id,
-        vendor_id: rfq.vendor_id,
-        title: rfq.project_title,
-        description: rfq.project_description,
-        created_at: rfq.created_at,
-        status: rfq.status,
-        rfq_type: 'direct',
-        rfq_type_label: 'Direct RFQ',
-        requester_name: rfq.requester_name || 'Unknown',
-        requester_email: rfq.requester_email || 'unknown@zintra.co.ke'
-      }));
+      // Map recipientRfqs (new system)
+      const recipientMappedRfqs = (recipientRfqs || [])
+        .filter(recipient => recipient.rfqs)  // Skip null RFQs
+        .map(recipient => ({
+          id: recipient.id,
+          rfq_id: recipient.rfqs.id,
+          requester_id: recipient.rfqs.user_id,
+          vendor_id: vendor.id,
+          title: recipient.rfqs.title,
+          description: recipient.rfqs.description,
+          category: recipient.rfqs.category,
+          county: recipient.rfqs.county,
+          created_at: recipient.rfqs.created_at,
+          status: recipient.rfqs.status,
+          rfq_type: recipient.recipient_type,
+          rfq_type_label: recipient.recipient_type.charAt(0).toUpperCase() + recipient.recipient_type.slice(1),
+          requester_name: recipient.rfqs.users?.raw_user_meta_data?.full_name || 'Unknown',
+          requester_email: recipient.rfqs.users?.email || 'unknown@zintra.co.ke',
+          viewed_at: recipient.viewed_at,
+          quote_count: 0,
+          total_quotes: 0,
+        }));
+
+      // Map directRfqs (legacy system) - only add if not already in recipients
+      const directRfqIds = new Set(recipientMappedRfqs.map(r => r.rfq_id));
+      const directMappedRfqs = (directRfqs || [])
+        .filter(rfq => !directRfqIds.has(rfq.rfq_id))  // Avoid duplicates
+        .map(rfq => ({
+          id: rfq.id,
+          rfq_id: rfq.rfq_id,
+          requester_id: rfq.user_id,
+          vendor_id: rfq.vendor_id,
+          title: rfq.project_title,
+          description: rfq.project_description,
+          category: rfq.category,
+          county: rfq.county,
+          created_at: rfq.created_at,
+          status: rfq.status,
+          rfq_type: 'direct',
+          rfq_type_label: 'Direct RFQ',
+          requester_name: rfq.requester_name || 'Unknown',
+          requester_email: rfq.requester_email || 'unknown@zintra.co.ke',
+          viewed_at: null,
+          quote_count: 0,
+          total_quotes: 0,
+        }));
+
+      // Combine both sources (new recipients + legacy direct)
+      const allRfqs = [...recipientMappedRfqs, ...directMappedRfqs];
+      allRfqs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       setRfqs(allRfqs);
 
-      // Calculate stats
+      // Calculate stats for ALL types
       const statsData = {
         total: allRfqs.length,
-        unread: 0,
+        unread: allRfqs.filter(r => !r.viewed_at).length,
         pending: allRfqs.filter(r => r.status === 'pending').length,
-        direct: allRfqs.length,
-        matched: 0,
-        wizard: 0,
-        public: 0,
+        direct: allRfqs.filter(r => r.rfq_type === 'direct').length,
+        matched: allRfqs.filter(r => r.rfq_type === 'matched').length,
+        wizard: allRfqs.filter(r => r.rfq_type === 'wizard').length,
+        public: allRfqs.filter(r => r.rfq_type === 'public').length,
+        'vendor-request': allRfqs.filter(r => r.rfq_type === 'vendor-request').length,
       };
 
       setStats(statsData);
+      console.log('RFQInboxTab Stats:', statsData);
     } catch (err) {
       console.error('Failed to fetch RFQs:', err);
     } finally {
@@ -130,7 +201,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {['all', 'direct', 'matched', 'wizard', 'public'].map((type) => (
+        {['all', 'direct', 'matched', 'wizard', 'public', 'vendor-request'].map((type) => (
           <button
             key={type}
             onClick={() => setFilter(type)}
