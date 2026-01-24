@@ -111,52 +111,65 @@ export default function QuoteDetailCard({ quote, vendor, isSelected, onSelect })
           )}
         </button>
         {expandedSections.overview && (
-          <div className="px-6 py-4 bg-slate-50 space-y-3 text-sm">
-            {quote.validity_days && (
-              <div className="flex justify-between">
-                <span className="text-slate-600">Validity Period:</span>
-                <span className="font-semibold text-slate-900">
-                  {quote.validity_days} days
-                  {quote.validity_custom_date && ` (until ${new Date(quote.validity_custom_date).toLocaleDateString()})`}
-                </span>
+          <div className="px-6 py-4 bg-slate-50 space-y-4 text-sm">
+            {/* Vendor's Proposal/Description - Show prominently */}
+            {(quote.description || quote.intro_text) && (
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <p className="font-semibold text-slate-900 mb-2">Vendor's Proposal</p>
+                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {quote.description || quote.intro_text}
+                </p>
               </div>
             )}
-            {quote.earliest_start_date && (
-              <div className="flex justify-between">
-                <span className="text-slate-600">Earliest Start Date:</span>
-                <span className="font-semibold text-slate-900">
-                  {new Date(quote.earliest_start_date).toLocaleDateString()}
-                </span>
-              </div>
-            )}
-            {quote.delivery_timeline && (
-              <div className="flex justify-between">
-                <span className="text-slate-600">Delivery Timeline:</span>
-                <span className="font-semibold text-slate-900">{quote.delivery_timeline}</span>
-              </div>
-            )}
-            {quote.pricing_model && (
-              <div className="flex justify-between">
-                <span className="text-slate-600">Pricing Model:</span>
-                <span className="font-semibold text-slate-900 capitalize">
-                  {quote.pricing_model.replace('_', ' ')}
-                </span>
-              </div>
-            )}
-            {quote.submitted_at && (
-              <div className="flex justify-between">
-                <span className="text-slate-600">Submitted:</span>
-                <span className="font-semibold text-slate-900">
-                  {new Date(quote.submitted_at).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
-              </div>
-            )}
+            
+            {/* Overview Fields */}
+            <div className="bg-white rounded-lg p-4 border border-slate-200 space-y-2">
+              {quote.validity_days && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Validity Period:</span>
+                  <span className="font-semibold text-slate-900">
+                    {quote.validity_days} days
+                    {quote.validity_custom_date && ` (until ${new Date(quote.validity_custom_date).toLocaleDateString()})`}
+                  </span>
+                </div>
+              )}
+              {quote.earliest_start_date && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Earliest Start Date:</span>
+                  <span className="font-semibold text-slate-900">
+                    {new Date(quote.earliest_start_date).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+              {quote.delivery_timeline && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Delivery Timeline:</span>
+                  <span className="font-semibold text-slate-900">{quote.delivery_timeline}</span>
+                </div>
+              )}
+              {quote.pricing_model && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Pricing Model:</span>
+                  <span className="font-semibold text-slate-900 capitalize">
+                    {quote.pricing_model.replace('_', ' ')}
+                  </span>
+                </div>
+              )}
+              {quote.submitted_at && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Submitted:</span>
+                  <span className="font-semibold text-slate-900">
+                    {new Date(quote.submitted_at).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -341,6 +354,16 @@ export default function QuoteDetailCard({ quote, vendor, isSelected, onSelect })
         </button>
         {expandedSections.inclusions && (
           <div className="px-6 py-4 bg-slate-50 space-y-4 text-sm">
+            {/* Main Description/Proposal if exists */}
+            {quote.description && (
+              <div className="bg-white rounded-lg p-4 border border-slate-200 mb-4">
+                <p className="font-semibold text-slate-900 mb-2">📝 Vendor's Detailed Proposal</p>
+                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {quote.description}
+                </p>
+              </div>
+            )}
+
             {quote.inclusions && (
               <div className="bg-white rounded-lg p-4 border-l-4 border-green-500">
                 <p className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
@@ -367,7 +390,7 @@ export default function QuoteDetailCard({ quote, vendor, isSelected, onSelect })
 
             {quote.client_responsibilities && (
               <div className="bg-white rounded-lg p-4 border-l-4 border-amber-500">
-                <p className="font-semibold text-slate-900 mb-2">Client Responsibilities</p>
+                <p className="font-semibold text-slate-900 mb-2">👤 Client Responsibilities</p>
                 <div className="text-slate-700 whitespace-pre-wrap">
                   {quote.client_responsibilities}
                 </div>
@@ -376,7 +399,7 @@ export default function QuoteDetailCard({ quote, vendor, isSelected, onSelect })
 
             {quote.warranty && (
               <div className="bg-white rounded-lg p-4 border-l-4 border-blue-500">
-                <p className="font-semibold text-slate-900 mb-2">Warranty & Support</p>
+                <p className="font-semibold text-slate-900 mb-2">🛡️ Warranty & Support</p>
                 <div className="text-slate-700 whitespace-pre-wrap">
                   {quote.warranty}
                 </div>
@@ -385,9 +408,24 @@ export default function QuoteDetailCard({ quote, vendor, isSelected, onSelect })
 
             {quote.payment_terms && (
               <div className="bg-white rounded-lg p-4 border-l-4 border-indigo-500">
-                <p className="font-semibold text-slate-900 mb-2">Payment Terms</p>
+                <p className="font-semibold text-slate-900 mb-2">💳 Payment Terms</p>
                 <div className="text-slate-700 whitespace-pre-wrap">
                   {quote.payment_terms}
+                </div>
+              </div>
+            )}
+
+            {/* Attachments if any */}
+            {quote.attachments && quote.attachments.length > 0 && (
+              <div className="bg-white rounded-lg p-4 border-l-4 border-orange-500">
+                <p className="font-semibold text-slate-900 mb-2">📎 Attachments</p>
+                <div className="space-y-2">
+                  {quote.attachments.map((attachment, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-slate-600">
+                      <span className="text-orange-600">📄</span>
+                      <span className="truncate">{typeof attachment === 'string' ? attachment : attachment.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
