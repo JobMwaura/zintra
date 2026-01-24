@@ -12,6 +12,7 @@
 
 -- Drop the restrictive INSERT policy
 DROP POLICY IF EXISTS "Allow authenticated to insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow insert notifications" ON public.notifications;
 
 -- Create new INSERT policy that allows:
 -- 1. SERVICE_ROLE (API) to insert ANY notification

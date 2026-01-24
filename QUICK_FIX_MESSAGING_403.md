@@ -1,4 +1,18 @@
-# ⚡ QUICK ACTION - Fix Messaging 403 Error Now
+# ⚡ QUICK ACT### Step 2: Paste This SQL:
+
+```sql
+-- Fix vendor message insert
+DROP POLICY IF EXISTS "Allow vendors to respond to users" ON public.vendor_messages;
+CREATE POLICY "Allow vendors to respond to users" ON public.vendor_messages FOR INSERT WITH CHECK (auth.jwt() ->> 'role' = 'service_role' OR (auth.uid() IN (SELECT user_id FROM public.vendors WHERE id = vendor_id) AND sender_type = 'vendor'));
+
+DROP POLICY IF EXISTS "Allow users to send messages to vendors" ON public.vendor_messages;
+CREATE POLICY "Allow users to send messages to vendors" ON public.vendor_messages FOR INSERT WITH CHECK (auth.jwt() ->> 'role' = 'service_role' OR (auth.uid() = user_id AND sender_type = 'user'));
+
+-- Fix notifications insert
+DROP POLICY IF EXISTS "Allow authenticated to insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow insert notifications" ON public.notifications;
+CREATE POLICY "Allow insert notifications" ON public.notifications FOR INSERT WITH CHECK (auth.jwt() ->> 'role' = 'service_role' OR auth.uid() = user_id);
+```aging 403 Error Now
 
 ## What's Broken
 ```

@@ -70,6 +70,7 @@ CREATE POLICY "Allow users to send messages to vendors" ON public.vendor_message
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Allow authenticated to insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow insert notifications" ON public.notifications;
 
 CREATE POLICY "Allow insert notifications" ON public.notifications
   FOR INSERT

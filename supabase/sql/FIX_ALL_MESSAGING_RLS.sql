@@ -55,6 +55,7 @@ CREATE POLICY "Allow users to send messages to vendors" ON public.vendor_message
 
 -- Drop the restrictive INSERT policy
 DROP POLICY IF EXISTS "Allow authenticated to insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow insert notifications" ON public.notifications;
 
 -- New policy: Allow SERVICE_ROLE OR authenticated user to insert
 CREATE POLICY "Allow insert notifications" ON public.notifications
