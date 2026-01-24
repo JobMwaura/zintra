@@ -38,6 +38,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const [contactBuyer, setContactBuyer] = useState(null);
   const [assignmentRfq, setAssignmentRfq] = useState(null);
   const [loadingModal, setLoadingModal] = useState(false);
+  const [assignmentTab, setAssignmentTab] = useState('rfq'); // 'rfq' or 'quote'
 
   useEffect(() => {
     fetchRFQs();
@@ -91,13 +92,15 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         return;
       }
 
+      // Fetch from users table (not profiles)
       const { data: buyerData, error: buyerError } = await supabase
-        .from('profiles')
-        .select('*')
+        .from('users')
+        .select('id, full_name, email, phone')
         .eq('id', buyerId)
         .maybeSingle();
 
       if (buyerError || !buyerData) {
+        console.error('Error fetching buyer from users table:', buyerError);
         setContactBuyer({ error: 'Could not load buyer details' });
       } else {
         setContactBuyer(buyerData);
@@ -126,10 +129,10 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       if (rfqError || !rfqData) {
         setAssignmentRfq({ error: 'Could not load RFQ details' });
       } else {
-        // Also fetch buyer info
+        // Also fetch buyer info from users table
         const { data: buyerData } = await supabase
-          .from('profiles')
-          .select('*')
+          .from('users')
+          .select('id, full_name, email, phone')
           .eq('id', rfqData.user_id)
           .maybeSingle();
         
@@ -754,17 +757,15 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       {/* ========== VIEW ASSIGNMENT MODAL ========== */}
       {showAssignmentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-8 overflow-hidden">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                    <FileText className="w-6 h-6" />
-                  </div>
+                  <span className="text-2xl">🎉</span>
                   <div>
-                    <h2 className="text-xl font-bold">Assignment Details</h2>
-                    <p className="text-green-100 text-sm">{assignmentRfq?.title || selectedQuote?.rfqs?.title || 'Project'}</p>
+                    <h2 className="text-lg font-bold">Assignment Details</h2>
+                    <p className="text-green-100 text-sm truncate max-w-[250px]">{assignmentRfq?.title || selectedQuote?.rfqs?.title || 'Project'}</p>
                   </div>
                 </div>
                 <button
@@ -772,6 +773,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                     setShowAssignmentModal(false);
                     setAssignmentRfq(null);
                     setSelectedQuote(null);
+                    setAssignmentTab('rfq');
                   }}
                   className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition"
                 >
@@ -780,187 +782,229 @@ export default function RFQInboxTab({ vendor, currentUser }) {
               </div>
             </div>
 
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setAssignmentTab('rfq')}
+                className={`flex-1 py-3 text-sm font-medium transition ${
+                  assignmentTab === 'rfq' 
+                    ? 'text-green-600 border-b-2 border-green-600 bg-green-50' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                📋 RFQ Request
+              </button>
+              <button
+                onClick={() => setAssignmentTab('quote')}
+                className={`flex-1 py-3 text-sm font-medium transition ${
+                  assignmentTab === 'quote' 
+                    ? 'text-green-600 border-b-2 border-green-600 bg-green-50' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                💰 Your Quote
+              </button>
+            </div>
+
             {/* Modal Body */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-5 max-h-[55vh] overflow-y-auto">
               {loadingModal ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading assignment details...</p>
+                  <p className="text-gray-600">Loading details...</p>
                 </div>
               ) : assignmentRfq?.error ? (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="w-8 h-8 text-red-500" />
-                  </div>
+                  <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
                   <p className="text-gray-600">{assignmentRfq.error}</p>
                 </div>
               ) : assignmentRfq ? (
-                <div className="space-y-6">
-                  {/* Celebration Banner */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                    <span className="text-3xl">🎉</span>
-                    <div>
-                      <p className="font-bold text-green-900">Quote Accepted!</p>
-                      <p className="text-sm text-green-700">The buyer has accepted your quote. Review the details below.</p>
-                    </div>
-                  </div>
-
-                  {/* Your Accepted Quote */}
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                    <h3 className="font-bold text-green-900 mb-3 flex items-center gap-2">
-                      <DollarSign className="w-5 h-5" />
-                      Your Accepted Quote
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-green-700">Quoted Amount</span>
-                      <span className="text-2xl font-bold text-green-700">
-                        KSh {parseFloat(selectedQuote?.amount || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    {selectedQuote?.message && (
-                      <div className="mt-3 pt-3 border-t border-green-200">
-                        <p className="text-sm text-green-700">{selectedQuote.message}</p>
+                <>
+                  {/* RFQ Tab Content */}
+                  {assignmentTab === 'rfq' && (
+                    <div className="space-y-4">
+                      {/* Buyer's RFQ Request Details */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-900 mb-3">Project Description</h4>
+                        <p className="text-gray-700 text-sm">{assignmentRfq.description || 'No description provided'}</p>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Project Details */}
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-gray-500" />
-                      Project Details
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-500">Description</p>
-                        <p className="text-gray-900">{assignmentRfq.description || 'No description'}</p>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
-                            <MapPin className="w-3 h-3" /> Location
-                          </p>
-                          <p className="text-gray-900">{assignmentRfq.county || 'Not specified'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Category</p>
-                          <p className="text-gray-900">{assignmentRfq.category || 'General'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" /> Budget
-                          </p>
-                          <p className="text-gray-900">
-                            {assignmentRfq.budget ? `KSh ${parseFloat(assignmentRfq.budget).toLocaleString()}` : 'Not specified'}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">📍 Location</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {assignmentRfq.location && assignmentRfq.county 
+                              ? `${assignmentRfq.location}, ${assignmentRfq.county}`
+                              : assignmentRfq.county || assignmentRfq.location || 'Not specified'}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
-                            <Calendar className="w-3 h-3" /> Deadline
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">📁 Category</p>
+                          <p className="text-sm font-medium text-gray-900">{assignmentRfq.category || assignmentRfq.category_slug || 'General'}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">💰 Budget Range</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {assignmentRfq.budget_min || assignmentRfq.budget_max 
+                              ? `KSh ${(assignmentRfq.budget_min || 0).toLocaleString()} - ${(assignmentRfq.budget_max || 0).toLocaleString()}`
+                              : assignmentRfq.budget 
+                                ? `KSh ${parseFloat(assignmentRfq.budget).toLocaleString()}`
+                                : 'Not specified'}
                           </p>
-                          <p className="text-gray-900">
-                            {assignmentRfq.deadline ? new Date(assignmentRfq.deadline).toLocaleDateString() : 'Not specified'}
-                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">⚡ Urgency</p>
+                          <p className="text-sm font-medium text-gray-900 capitalize">{assignmentRfq.urgency || 'Normal'}</p>
                         </div>
                       </div>
 
-                      {assignmentRfq.attachment_url && (
-                        <div className="pt-3 border-t border-gray-200">
-                          <a 
-                            href={assignmentRfq.attachment_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-amber-600 hover:underline font-medium text-sm"
-                          >
-                            📎 View Project Attachments
-                          </a>
+                      {/* Buyer Info */}
+                      {assignmentRfq.buyer && (
+                        <div className="bg-blue-50 rounded-lg p-4">
+                          <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                            <User className="w-4 h-4" /> Buyer
+                          </h4>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900">{assignmentRfq.buyer.full_name || 'Buyer'}</p>
+                              {assignmentRfq.buyer.email && <p className="text-sm text-gray-600">{assignmentRfq.buyer.email}</p>}
+                              {assignmentRfq.buyer.phone && <p className="text-sm text-gray-600">{assignmentRfq.buyer.phone}</p>}
+                            </div>
+                          </div>
                         </div>
                       )}
-                    </div>
-                  </div>
 
-                  {/* Buyer Info */}
-                  {assignmentRfq.buyer && (
-                    <div className="bg-blue-50 rounded-xl p-4">
-                      <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
-                        <User className="w-5 h-5" />
-                        Buyer Contact
-                      </h3>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {(assignmentRfq.buyer.full_name || 'B').charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">{assignmentRfq.buyer.full_name || 'Buyer'}</p>
-                          {assignmentRfq.buyer.email && (
-                            <p className="text-sm text-gray-600">{assignmentRfq.buyer.email}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => {
-                            setShowAssignmentModal(false);
-                            setContactBuyer(assignmentRfq.buyer);
-                            setShowContactModal(true);
-                          }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-                        >
-                          Contact
-                        </button>
+                      <div className="text-xs text-gray-500 text-center pt-2">
+                        RFQ Created: {new Date(assignmentRfq.created_at).toLocaleDateString()}
                       </div>
                     </div>
                   )}
 
-                  {/* Timeline */}
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-gray-500" />
-                      Timeline
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Quote Accepted</p>
-                          <p className="text-xs text-gray-500">
-                            {selectedQuote?.updated_at ? new Date(selectedQuote.updated_at).toLocaleDateString() : 'Recently'}
-                          </p>
-                        </div>
+                  {/* Quote Tab Content */}
+                  {assignmentTab === 'quote' && (
+                    <div className="space-y-4">
+                      {/* Accepted Quote Amount */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                        <p className="text-sm text-green-700 mb-1">Accepted Amount</p>
+                        <p className="text-3xl font-bold text-green-700">
+                          KSh {parseFloat(selectedQuote?.total_price_calculated || selectedQuote?.quoted_price || selectedQuote?.amount || 0).toLocaleString()}
+                        </p>
+                        <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                          ✓ Accepted
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Quote Submitted</p>
-                          <p className="text-xs text-gray-500">{new Date(selectedQuote?.created_at).toLocaleDateString()}</p>
+
+                      {/* Quote Details */}
+                      {(selectedQuote?.quote_title || selectedQuote?.intro_text) && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          {selectedQuote?.quote_title && (
+                            <h4 className="font-semibold text-gray-900 mb-2">{selectedQuote.quote_title}</h4>
+                          )}
+                          {selectedQuote?.intro_text && (
+                            <p className="text-sm text-gray-700">{selectedQuote.intro_text}</p>
+                          )}
                         </div>
+                      )}
+
+                      {/* Pricing Breakdown */}
+                      {(selectedQuote?.labour_cost || selectedQuote?.transport_cost || selectedQuote?.other_charges) && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">Cost Breakdown</h4>
+                          <div className="space-y-2 text-sm">
+                            {selectedQuote?.labour_cost > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Labour</span>
+                                <span className="font-medium">KSh {parseFloat(selectedQuote.labour_cost).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {selectedQuote?.transport_cost > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Transport</span>
+                                <span className="font-medium">KSh {parseFloat(selectedQuote.transport_cost).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {selectedQuote?.other_charges > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Other Charges</span>
+                                <span className="font-medium">KSh {parseFloat(selectedQuote.other_charges).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {selectedQuote?.vat_amount > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">VAT</span>
+                                <span className="font-medium">KSh {parseFloat(selectedQuote.vat_amount).toLocaleString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Timeline & Delivery */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedQuote?.delivery_timeline && (
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-500 mb-1">📅 Delivery</p>
+                            <p className="text-sm font-medium text-gray-900">{selectedQuote.delivery_timeline}</p>
+                          </div>
+                        )}
+                        {selectedQuote?.validity_days && (
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-500 mb-1">⏰ Valid For</p>
+                            <p className="text-sm font-medium text-gray-900">{selectedQuote.validity_days} days</p>
+                          </div>
+                        )}
+                        {selectedQuote?.warranty && (
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-500 mb-1">🛡️ Warranty</p>
+                            <p className="text-sm font-medium text-gray-900">{selectedQuote.warranty}</p>
+                          </div>
+                        )}
+                        {selectedQuote?.payment_terms && (
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-500 mb-1">💳 Payment</p>
+                            <p className="text-sm font-medium text-gray-900">{selectedQuote.payment_terms}</p>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">RFQ Created</p>
-                          <p className="text-xs text-gray-500">{new Date(assignmentRfq.created_at).toLocaleDateString()}</p>
+
+                      {/* Inclusions/Exclusions */}
+                      {(selectedQuote?.inclusions || selectedQuote?.exclusions) && (
+                        <div className="space-y-3">
+                          {selectedQuote?.inclusions && (
+                            <div className="bg-green-50 rounded-lg p-3">
+                              <p className="text-xs font-medium text-green-800 mb-1">✓ Includes</p>
+                              <p className="text-sm text-green-700">{selectedQuote.inclusions}</p>
+                            </div>
+                          )}
+                          {selectedQuote?.exclusions && (
+                            <div className="bg-red-50 rounded-lg p-3">
+                              <p className="text-xs font-medium text-red-800 mb-1">✗ Excludes</p>
+                              <p className="text-sm text-red-700">{selectedQuote.exclusions}</p>
+                            </div>
+                          )}
                         </div>
+                      )}
+
+                      {/* Message */}
+                      {(selectedQuote?.message || selectedQuote?.description) && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-900 mb-2">Your Message</h4>
+                          <p className="text-sm text-gray-700">{selectedQuote?.message || selectedQuote?.description}</p>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-gray-500 text-center pt-2">
+                        Submitted: {new Date(selectedQuote?.created_at).toLocaleDateString()} • 
+                        Accepted: {selectedQuote?.updated_at ? new Date(selectedQuote.updated_at).toLocaleDateString() : 'Recently'}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Next Steps */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                    <h3 className="font-bold text-amber-900 mb-2">💡 Next Steps</h3>
-                    <ul className="text-sm text-amber-800 space-y-1">
-                      <li>✓ Contact the buyer to introduce yourself</li>
-                      <li>✓ Discuss project requirements in detail</li>
-                      <li>✓ Agree on timeline and milestones</li>
-                      <li>✓ Confirm payment terms</li>
-                    </ul>
-                  </div>
-                </div>
+                  )}
+                </>
               ) : null}
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 pb-6 flex gap-3">
+            <div className="px-5 pb-5 flex gap-3">
               {assignmentRfq?.buyer && (
                 <button
                   onClick={() => {
@@ -979,6 +1023,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                   setShowAssignmentModal(false);
                   setAssignmentRfq(null);
                   setSelectedQuote(null);
+                  setAssignmentTab('rfq');
                 }}
                 className={`${assignmentRfq?.buyer ? 'flex-1' : 'w-full'} px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition`}
               >
