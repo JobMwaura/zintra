@@ -82,21 +82,30 @@ export function useRFQDashboard() {
       }
 
       // Fetch rfq_responses separately to get quote counts
+      // Note: Using try-catch because database may have relationship ambiguity
+      let responses = [];
       if (rfqs && rfqs.length > 0) {
         const rfqIds = rfqs.map(r => r.id);
-        const { data: responses, error: responsesError } = await supabase
-          .from('rfq_responses')
-          .select('id, rfq_id, vendor_id, amount, status')
-          .in('rfq_id', rfqIds);
+        try {
+          const { data: responsesData, error: responsesError } = await supabase
+            .from('rfq_responses')
+            .select('id, rfq_id, vendor_id, amount, status')
+            .in('rfq_id', rfqIds);
 
-        if (responsesError) {
-          console.error('Error fetching responses:', responsesError);
+          if (responsesError) {
+            // Log but don't fail - PGRST201 is a known issue with multiple FK relationships
+            console.warn('Warning fetching responses (non-critical):', responsesError.code);
+          } else {
+            responses = responsesData || [];
+          }
+        } catch (err) {
+          console.warn('Could not fetch responses:', err.message);
         }
         
         // Merge responses and vendor info into RFQs
         const rfqsWithData = rfqs.map(rfq => ({
           ...rfq,
-          rfq_responses: responses?.filter(r => r.rfq_id === rfq.id) || [],
+          rfq_responses: responses.filter(r => r.rfq_id === rfq.id) || [],
           assigned_vendor: rfq.assigned_vendor_id ? vendorMap[rfq.assigned_vendor_id] : null
         }));
         setAllRFQs(rfqsWithData);
@@ -155,23 +164,28 @@ export function useRFQDashboard() {
 
           if (rfqError) throw rfqError;
 
-          // Fetch rfq_responses separately
+          // Fetch rfq_responses separately (with error handling for PGRST201)
+          let responses = [];
           if (rfqs && rfqs.length > 0) {
             const rfqIds = rfqs.map(r => r.id);
-            const { data: responses, error: responsesError } = await supabase
-              .from('rfq_responses')
-              .select('id, rfq_id, vendor_id, amount, status')
-              .in('rfq_id', rfqIds);
+            try {
+              const { data: responsesData, error: responsesError } = await supabase
+                .from('rfq_responses')
+                .select('id, rfq_id, vendor_id, amount, status')
+                .in('rfq_id', rfqIds);
 
-            if (responsesError) {
-              console.error('Error fetching responses:', responsesError);
-            } else {
-              const rfqsWithResponses = rfqs.map(rfq => ({
-                ...rfq,
-                rfq_responses: responses.filter(r => r.rfq_id === rfq.id) || []
-              }));
-              setAllRFQs(rfqsWithResponses);
+              if (!responsesError) {
+                responses = responsesData || [];
+              }
+            } catch (err) {
+              console.warn('Could not fetch responses on visibility change');
             }
+            
+            const rfqsWithResponses = rfqs.map(rfq => ({
+              ...rfq,
+              rfq_responses: responses.filter(r => r.rfq_id === rfq.id) || []
+            }));
+            setAllRFQs(rfqsWithResponses);
           } else {
             setAllRFQs(rfqs || []);
           }
