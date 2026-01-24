@@ -55,6 +55,7 @@ export default function DashboardNotificationsPanel() {
       case 'message':
         return <MessageSquare className="w-5 h-5 text-blue-600" />;
       case 'rfq':
+      case 'rfq_response':
         return <AlertCircle className="w-5 h-5 text-orange-600" />;
       case 'quote':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
@@ -65,11 +66,21 @@ export default function DashboardNotificationsPanel() {
 
   const getNotificationLink = (notification) => {
     try {
+      // Handle by type first (newer notifications)
+      if (notification?.type === 'rfq_response') {
+        // Link to quote comparison page for the RFQ
+        const rfqId = notification?.data?.rfq_id || notification?.related_id;
+        return rfqId ? `/quote-comparison/${rfqId}` : '/my-rfqs';
+      }
+      
+      // Handle by related_type (legacy)
       switch (notification?.related_type) {
         case 'vendor_message':
           return '/user-messages';
         case 'rfq':
-          return `/my-rfqs`;
+          // If there's an rfq_id in data, link to quote comparison
+          const rfqId = notification?.data?.rfq_id;
+          return rfqId ? `/quote-comparison/${rfqId}` : '/my-rfqs';
         case 'quote':
           return `/user-messages`;
         default:

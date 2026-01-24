@@ -208,7 +208,7 @@ export async function POST(request, { params }) {
     // Get vendor profile - query vendors table (not vendor_profiles)
     const { data: vendorProfile } = await supabase
       .from('vendors')
-      .select('id, name, rating')
+      .select('id, company_name, rating')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -373,7 +373,7 @@ export async function POST(request, { params }) {
           warranty: warranty || null,
           payment_terms: payment_terms || null,
           status: 'submitted',
-          vendor_name: vendorProfile?.business_name || 'Vendor',
+          vendor_name: vendorProfile?.company_name || 'Vendor',
           vendor_rating: vendorProfile?.rating || 0
         }
       ])
@@ -413,12 +413,12 @@ export async function POST(request, { params }) {
 
     // Fetch requester info for notification
     const { data: requester } = await supabase
-      .from('users')
-      .select('email, user_metadata->>first_name')
+      .from('profiles')
+      .select('email, first_name')
       .eq('id', rfq.user_id)
-      .single();
+      .maybeSingle();
 
-    // Create notification (can be enhanced with actual email/SMS)
+    // Create notification for buyer
     const { error: notifError } = await supabase
       .from('notifications')
       .insert([
@@ -426,17 +426,23 @@ export async function POST(request, { params }) {
           user_id: rfq.user_id,
           type: 'rfq_response',
           title: 'New Quote Received',
-          message: `${vendorProfile.business_name} submitted a quote for "${rfq.title}"`,
-          resource_type: 'rfq_response',
-          resource_id: response.id,
+          message: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for "${rfq.title}"`,
+          related_type: 'rfq',
+          related_id: rfq_id,
           data: {
             rfq_id: rfq_id,
-            vendor_name: vendorProfile.business_name,
-            quoted_price: quoted_price,
+            response_id: response.id,
+            vendor_name: vendorProfile?.company_name || 'Vendor',
+            quoted_price: total_price_calculated || quoted_price,
             currency: currency
           }
         }
       ]);
+
+    if (notifError) {
+      console.error('Error creating notification:', notifError);
+      // Don't fail the request if notification fails
+    }
 
     // Log audit trail
     await supabase
