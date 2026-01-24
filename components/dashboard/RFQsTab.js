@@ -729,10 +729,48 @@ export default function RFQsTab() {
                     Quote: <span className="font-semibold text-gray-900">KSh {parseFloat(response.amount).toLocaleString()}</span>
                   </p>
                 </div>
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
-                  Submitted
-                </span>
+                {/* Dynamic Status Badge - Shows actual quote status */}
+                {(() => {
+                  const statusConfig = {
+                    submitted: {
+                      bg: 'bg-yellow-100',
+                      text: 'text-yellow-700',
+                      label: '⏳ Pending'
+                    },
+                    accepted: {
+                      bg: 'bg-green-100',
+                      text: 'text-green-700',
+                      label: '✓ Accepted'
+                    },
+                    rejected: {
+                      bg: 'bg-red-100',
+                      text: 'text-red-700',
+                      label: '✗ Rejected'
+                    }
+                  };
+                  
+                  const config = statusConfig[response.status] || statusConfig.submitted;
+                  
+                  return (
+                    <span className={`${config.bg} ${config.text} px-3 py-1 rounded-full text-sm font-medium`}>
+                      {config.label}
+                    </span>
+                  );
+                })()}
               </div>
+
+              {/* Show success message when quote is accepted */}
+              {response.status === 'accepted' && (
+                <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                  <span className="text-2xl">🎉</span>
+                  <div className="flex-1">
+                    <p className="font-semibold text-green-900">Quote Accepted!</p>
+                    <p className="text-sm text-green-700 mt-1">
+                      The buyer has accepted your quote. They will be in touch soon with next steps.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-700">{response.message}</p>
