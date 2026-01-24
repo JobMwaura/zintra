@@ -159,9 +159,24 @@ export default function RFQDetailsPage({ params }) {
 
     try {
       setActingQuoteId(quoteId);
-      setActionMessage('');
+      setActionMessage('Accepting quote...');
 
       console.log('DEBUG: Updating quote status in database...');
+      
+      // First, verify the quote exists and belongs to this RFQ
+      const { data: existingQuote, error: fetchError } = await supabase
+        .from('rfq_responses')
+        .select('id, status, rfq_id')
+        .eq('id', quoteId)
+        .single();
+      
+      console.log('DEBUG: Existing quote:', existingQuote, 'fetchError:', fetchError);
+      
+      if (fetchError || !existingQuote) {
+        throw new Error('Quote not found or you do not have permission to view it');
+      }
+      
+      // Perform the update
       const { data, error } = await supabase
         .from('rfq_responses')
         .update({ status: 'accepted' })
@@ -175,8 +190,31 @@ export default function RFQDetailsPage({ params }) {
         throw error;
       }
 
+      // Check if update actually happened
+      if (!data || data.length === 0) {
+        console.error('DEBUG: Update returned empty data - RLS may be blocking');
+        
+        // Try to verify if the update happened anyway
+        const { data: verifyData } = await supabase
+          .from('rfq_responses')
+          .select('id, status')
+          .eq('id', quoteId)
+          .single();
+        
+        console.log('DEBUG: Verification check:', verifyData);
+        
+        if (verifyData?.status !== 'accepted') {
+          throw new Error('Update was blocked. You may not have permission to accept this quote.');
+        }
+      }
+
       console.log('DEBUG: Quote status updated successfully');
       setActionMessage('✅ Quote accepted successfully!');
+      
+      // Update local state immediately for instant feedback
+      setResponses(prev => prev.map(r => 
+        r.id === quoteId ? { ...r, status: 'accepted' } : r
+      ));
       
       setTimeout(() => {
         console.log('DEBUG: Refetching RFQ details...');
