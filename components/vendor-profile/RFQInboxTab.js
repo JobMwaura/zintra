@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { Clock, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, TrendingUp, X, Mail, Phone, User, MapPin, Calendar, DollarSign, FileText, Eye } from 'lucide-react';
 
 const RFQ_TYPE_COLORS = {
   direct: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-800', label: 'Direct RFQ' },
@@ -14,6 +14,7 @@ const RFQ_TYPE_COLORS = {
 };
 
 export default function RFQInboxTab({ vendor, currentUser }) {
+  const router = useRouter();
   const [rfqs, setRfqs] = useState([]);
   const [myQuotes, setMyQuotes] = useState([]); // Vendor's submitted quotes
   const [stats, setStats] = useState({
@@ -29,6 +30,14 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [activeSection, setActiveSection] = useState('inbox'); // 'inbox' or 'my-quotes'
+
+  // Modal states
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState(null);
+  const [contactBuyer, setContactBuyer] = useState(null);
+  const [assignmentRfq, setAssignmentRfq] = useState(null);
+  const [loadingModal, setLoadingModal] = useState(false);
 
   useEffect(() => {
     fetchRFQs();
@@ -66,6 +75,71 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     } catch (err) {
       console.error('Error in fetchMyQuotes:', err);
     }
+  };
+
+  // Handle Contact Buyer - open modal with buyer details
+  const handleContactBuyer = async (quote) => {
+    setSelectedQuote(quote);
+    setLoadingModal(true);
+    setShowContactModal(true);
+    
+    try {
+      const buyerId = quote.rfqs?.user_id;
+      if (!buyerId) {
+        setContactBuyer({ error: 'Buyer information not available' });
+        setLoadingModal(false);
+        return;
+      }
+
+      const { data: buyerData, error: buyerError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', buyerId)
+        .maybeSingle();
+
+      if (buyerError || !buyerData) {
+        setContactBuyer({ error: 'Could not load buyer details' });
+      } else {
+        setContactBuyer(buyerData);
+      }
+    } catch (err) {
+      console.error('Error fetching buyer:', err);
+      setContactBuyer({ error: 'Error loading buyer details' });
+    }
+    setLoadingModal(false);
+  };
+
+  // Handle View Assignment - open modal with full RFQ details
+  const handleViewAssignment = async (quote) => {
+    setSelectedQuote(quote);
+    setLoadingModal(true);
+    setShowAssignmentModal(true);
+    
+    try {
+      // Fetch full RFQ details
+      const { data: rfqData, error: rfqError } = await supabase
+        .from('rfqs')
+        .select('*')
+        .eq('id', quote.rfq_id)
+        .maybeSingle();
+
+      if (rfqError || !rfqData) {
+        setAssignmentRfq({ error: 'Could not load RFQ details' });
+      } else {
+        // Also fetch buyer info
+        const { data: buyerData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', rfqData.user_id)
+          .maybeSingle();
+        
+        setAssignmentRfq({ ...rfqData, buyer: buyerData });
+      }
+    } catch (err) {
+      console.error('Error fetching RFQ:', err);
+      setAssignmentRfq({ error: 'Error loading RFQ details' });
+    }
+    setLoadingModal(false);
   };
 
   const fetchRFQs = async () => {
@@ -380,15 +454,17 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2">
                       <button
-                        onClick={() => router.push(`/vendor/assignment/${quote.id}`)}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition"
+                        onClick={() => handleViewAssignment(quote)}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
                       >
+                        <Eye className="w-4 h-4" />
                         View Assignment
                       </button>
                       <button
-                        onClick={() => router.push(`/vendor/assignment/${quote.id}`)}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition"
+                        onClick={() => handleContactBuyer(quote)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition flex items-center justify-center gap-2"
                       >
+                        <Mail className="w-4 h-4" />
                         Contact Buyer
                       </button>
                     </div>
@@ -556,6 +632,361 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         </div>
       )}
         </>
+      )}
+
+      {/* ========== CONTACT BUYER MODAL ========== */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">Contact Buyer</h2>
+                    <p className="text-blue-100 text-sm">{selectedQuote?.rfqs?.title || 'Project'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowContactModal(false);
+                    setContactBuyer(null);
+                    setSelectedQuote(null);
+                  }}
+                  className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {loadingModal ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading buyer details...</p>
+                </div>
+              ) : contactBuyer?.error ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-8 h-8 text-red-500" />
+                  </div>
+                  <p className="text-gray-600">{contactBuyer.error}</p>
+                </div>
+              ) : contactBuyer ? (
+                <div className="space-y-4">
+                  {/* Buyer Profile */}
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                      {(contactBuyer.full_name || contactBuyer.email || 'B').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-lg">{contactBuyer.full_name || 'Buyer'}</p>
+                      <p className="text-sm text-gray-500">Project Owner</p>
+                    </div>
+                  </div>
+
+                  {/* Contact Options */}
+                  <div className="space-y-3">
+                    {contactBuyer.email && (
+                      <a
+                        href={`mailto:${contactBuyer.email}?subject=Re: ${selectedQuote?.rfqs?.title || 'Project'} - Quote Accepted&body=Hi ${contactBuyer.full_name || 'there'},%0D%0A%0D%0AThank you for accepting my quote.%0D%0A%0D%0AI'm excited to work with you on this project. Let's discuss the next steps.%0D%0A%0D%0ABest regards`}
+                        className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition group"
+                      >
+                        <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-full flex items-center justify-center transition">
+                          <Mail className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-blue-900">Send Email</p>
+                          <p className="text-sm text-blue-600">{contactBuyer.email}</p>
+                        </div>
+                        <span className="text-blue-400">→</span>
+                      </a>
+                    )}
+
+                    {contactBuyer.phone && (
+                      <a
+                        href={`tel:${contactBuyer.phone}`}
+                        className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group"
+                      >
+                        <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition">
+                          <Phone className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-green-900">Call Now</p>
+                          <p className="text-sm text-green-600">{contactBuyer.phone}</p>
+                        </div>
+                        <span className="text-green-400">→</span>
+                      </a>
+                    )}
+
+                    {!contactBuyer.email && !contactBuyer.phone && (
+                      <div className="text-center py-4 text-gray-500">
+                        <p>No contact information available</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => {
+                  setShowContactModal(false);
+                  setContactBuyer(null);
+                  setSelectedQuote(null);
+                }}
+                className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== VIEW ASSIGNMENT MODAL ========== */}
+      {showAssignmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">Assignment Details</h2>
+                    <p className="text-green-100 text-sm">{assignmentRfq?.title || selectedQuote?.rfqs?.title || 'Project'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAssignmentModal(false);
+                    setAssignmentRfq(null);
+                    setSelectedQuote(null);
+                  }}
+                  className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              {loadingModal ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading assignment details...</p>
+                </div>
+              ) : assignmentRfq?.error ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-8 h-8 text-red-500" />
+                  </div>
+                  <p className="text-gray-600">{assignmentRfq.error}</p>
+                </div>
+              ) : assignmentRfq ? (
+                <div className="space-y-6">
+                  {/* Celebration Banner */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                    <span className="text-3xl">🎉</span>
+                    <div>
+                      <p className="font-bold text-green-900">Quote Accepted!</p>
+                      <p className="text-sm text-green-700">The buyer has accepted your quote. Review the details below.</p>
+                    </div>
+                  </div>
+
+                  {/* Your Accepted Quote */}
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <h3 className="font-bold text-green-900 mb-3 flex items-center gap-2">
+                      <DollarSign className="w-5 h-5" />
+                      Your Accepted Quote
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-green-700">Quoted Amount</span>
+                      <span className="text-2xl font-bold text-green-700">
+                        KSh {parseFloat(selectedQuote?.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    {selectedQuote?.message && (
+                      <div className="mt-3 pt-3 border-t border-green-200">
+                        <p className="text-sm text-green-700">{selectedQuote.message}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Project Details */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-gray-500" />
+                      Project Details
+                    </h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm text-gray-500">Description</p>
+                        <p className="text-gray-900">{assignmentRfq.description || 'No description'}</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> Location
+                          </p>
+                          <p className="text-gray-900">{assignmentRfq.county || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Category</p>
+                          <p className="text-gray-900">{assignmentRfq.category || 'General'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" /> Budget
+                          </p>
+                          <p className="text-gray-900">
+                            {assignmentRfq.budget ? `KSh ${parseFloat(assignmentRfq.budget).toLocaleString()}` : 'Not specified'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Deadline
+                          </p>
+                          <p className="text-gray-900">
+                            {assignmentRfq.deadline ? new Date(assignmentRfq.deadline).toLocaleDateString() : 'Not specified'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {assignmentRfq.attachment_url && (
+                        <div className="pt-3 border-t border-gray-200">
+                          <a 
+                            href={assignmentRfq.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-amber-600 hover:underline font-medium text-sm"
+                          >
+                            📎 View Project Attachments
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Buyer Info */}
+                  {assignmentRfq.buyer && (
+                    <div className="bg-blue-50 rounded-xl p-4">
+                      <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                        <User className="w-5 h-5" />
+                        Buyer Contact
+                      </h3>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {(assignmentRfq.buyer.full_name || 'B').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{assignmentRfq.buyer.full_name || 'Buyer'}</p>
+                          {assignmentRfq.buyer.email && (
+                            <p className="text-sm text-gray-600">{assignmentRfq.buyer.email}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowAssignmentModal(false);
+                            setContactBuyer(assignmentRfq.buyer);
+                            setShowContactModal(true);
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                        >
+                          Contact
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timeline */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-gray-500" />
+                      Timeline
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Quote Accepted</p>
+                          <p className="text-xs text-gray-500">
+                            {selectedQuote?.updated_at ? new Date(selectedQuote.updated_at).toLocaleDateString() : 'Recently'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Quote Submitted</p>
+                          <p className="text-xs text-gray-500">{new Date(selectedQuote?.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">RFQ Created</p>
+                          <p className="text-xs text-gray-500">{new Date(assignmentRfq.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Next Steps */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <h3 className="font-bold text-amber-900 mb-2">💡 Next Steps</h3>
+                    <ul className="text-sm text-amber-800 space-y-1">
+                      <li>✓ Contact the buyer to introduce yourself</li>
+                      <li>✓ Discuss project requirements in detail</li>
+                      <li>✓ Agree on timeline and milestones</li>
+                      <li>✓ Confirm payment terms</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 pb-6 flex gap-3">
+              {assignmentRfq?.buyer && (
+                <button
+                  onClick={() => {
+                    setShowAssignmentModal(false);
+                    setContactBuyer(assignmentRfq.buyer);
+                    setShowContactModal(true);
+                  }}
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition flex items-center justify-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  Contact Buyer
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowAssignmentModal(false);
+                  setAssignmentRfq(null);
+                  setSelectedQuote(null);
+                }}
+                className={`${assignmentRfq?.buyer ? 'flex-1' : 'w-full'} px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
