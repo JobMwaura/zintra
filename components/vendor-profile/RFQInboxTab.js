@@ -363,7 +363,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                       <p className="text-sm text-gray-700">{quote.message}</p>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-200 mb-4">
                       <span>📅 {new Date(quote.created_at).toLocaleDateString()}</span>
                       {quote.attachment_url && (
                         <a 
@@ -375,6 +375,22 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                           View Attachment
                         </a>
                       )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => router.push(`/vendor/assignment/${quote.id}`)}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition"
+                      >
+                        View Assignment
+                      </button>
+                      <button
+                        onClick={() => router.push(`/vendor/assignment/${quote.id}`)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition"
+                      >
+                        Contact Buyer
+                      </button>
                     </div>
                   </div>
                 ))}

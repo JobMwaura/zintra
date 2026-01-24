@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { FileText, Search, Filter, Plus, Eye, Send, DollarSign, Calendar, MapPin, AlertCircle, Check, X, User, Clock } from 'lucide-react';
 
 export default function RFQsTab() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [vendor, setVendor] = useState(null);
   
@@ -791,10 +793,16 @@ export default function RFQsTab() {
                       </div>
 
                       <div className="flex gap-2 pt-2">
-                        <button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition">
+                        <button 
+                          onClick={() => router.push(`/vendor/assignment/${response.id}`)}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition"
+                        >
                           View Assignment
                         </button>
-                        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
+                        <button 
+                          onClick={() => router.push(`/vendor/assignment/${response.id}`)}
+                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition"
+                        >
                           Contact Buyer
                         </button>
                       </div>
