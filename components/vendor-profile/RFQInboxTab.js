@@ -682,8 +682,8 @@ export default function RFQInboxTab({ vendor, currentUser }) {
 
       {/* ========== CONTACT BUYER MODAL ========== */}
       {showContactModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm sm:max-w-md w-full overflow-hidden max-h-[90vh] my-4 sm:my-8">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white">
               <div className="flex items-center justify-between">
@@ -727,13 +727,13 @@ export default function RFQInboxTab({ vendor, currentUser }) {
               ) : contactBuyer ? (
                 <div className="space-y-4">
                   {/* Buyer Profile */}
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                    <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg flex-shrink-0">
                       {(contactBuyer.full_name || contactBuyer.email || 'B').charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900">{contactBuyer.full_name || 'Buyer'}</p>
-                      <p className="text-sm text-gray-500 truncate">Project Owner</p>
+                      <p className="font-semibold text-gray-900 truncate">{contactBuyer.full_name || 'Buyer'}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 truncate">Project Owner</p>
                     </div>
                   </div>
 
@@ -767,19 +767,19 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                             value={chatMessage}
                             onChange={(e) => setChatMessage(e.target.value)}
                             placeholder={`Hi ${contactBuyer.full_name || 'there'},\n\nThank you for accepting my quote for "${selectedQuote?.rfqs?.title || 'your project'}".\n\nI'm excited to work with you...`}
-                            className="w-full h-32 p-3 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full h-32 sm:h-40 px-3 py-2.5 sm:py-3 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm"
                           />
-                          <div className="flex gap-3">
+                          <div className="flex flex-col sm:flex-row gap-3">
                             <button
                               onClick={() => setShowChatMode(false)}
-                              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium text-sm transition"
+                              className="w-full sm:flex-1 px-4 py-2.5 sm:py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium text-sm sm:text-base transition"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={handleSendMessage}
                               disabled={!chatMessage.trim() || sendingMessage}
-                              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              className="w-full sm:flex-1 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm sm:text-base transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                               {sendingMessage ? (
                                 <>
@@ -803,47 +803,47 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                       {/* Primary: In-App Message */}
                       <button
                         onClick={() => setShowChatMode(true)}
-                        className="w-full flex items-center gap-4 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition group text-left"
+                        className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition group text-left"
                       >
-                        <div className="w-12 h-12 bg-orange-100 group-hover:bg-orange-200 rounded-full flex items-center justify-center transition">
-                          <MessageCircle className="w-6 h-6 text-orange-600" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 group-hover:bg-orange-200 rounded-full flex items-center justify-center transition flex-shrink-0">
+                          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                         </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-orange-900">Send Message</p>
-                          <p className="text-sm text-orange-600">Chat via Zintra inbox</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-orange-900 text-sm sm:text-base">Send Message</p>
+                          <p className="text-xs sm:text-sm text-orange-600">Chat via Zintra inbox</p>
                         </div>
-                        <span className="text-orange-400">→</span>
+                        <span className="text-orange-400 flex-shrink-0">→</span>
                       </button>
 
                       {/* Email notification info */}
-                      <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Mail className="w-6 h-6 text-blue-600" />
+                      <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-blue-50 rounded-xl">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                         </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-blue-900">Email Notification</p>
-                          <p className="text-sm text-blue-600">Buyer will be notified via email when you send a message</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-blue-900 text-sm sm:text-base">Email Notification</p>
+                          <p className="text-xs sm:text-sm text-blue-600">Buyer will be notified via email when you send a message</p>
                         </div>
                       </div>
 
                       {contactBuyer.phone && (
                         <a
                           href={`tel:${contactBuyer.phone}`}
-                          className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group"
+                          className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group text-left"
                         >
-                          <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition">
-                            <Phone className="w-6 h-6 text-green-600" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition flex-shrink-0">
+                            <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Call Now</p>
-                            <p className="text-sm text-green-600">{contactBuyer.phone}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-green-900 text-sm sm:text-base">Call Now</p>
+                            <p className="text-xs sm:text-sm text-green-600">{contactBuyer.phone}</p>
                           </div>
-                          <span className="text-green-400">→</span>
+                          <span className="text-green-400 flex-shrink-0">→</span>
                         </a>
                       )}
 
                       {!contactBuyer.phone && (
-                        <div className="text-center py-2 text-gray-500 text-sm">
+                        <div className="text-center py-2 text-gray-500 text-xs sm:text-sm">
                           <p>No phone number available</p>
                         </div>
                       )}
@@ -875,15 +875,15 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       {/* ========== VIEW ASSIGNMENT MODAL ========== */}
       {showAssignmentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-8 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm sm:max-w-lg w-full my-4 sm:my-8 overflow-hidden">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🎉</span>
-                  <div>
-                    <h2 className="text-lg font-bold">Assignment Details</h2>
-                    <p className="text-green-100 text-sm truncate max-w-[250px]">{assignmentRfq?.title || selectedQuote?.rfqs?.title || 'Project'}</p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <span className="text-xl sm:text-2xl flex-shrink-0">🎉</span>
+                  <div className="min-w-0">
+                    <h2 className="text-base sm:text-lg font-bold">Assignment Details</h2>
+                    <p className="text-green-100 text-xs sm:text-sm truncate">{assignmentRfq?.title || selectedQuote?.rfqs?.title || 'Project'}</p>
                   </div>
                 </div>
                 <button
@@ -893,7 +893,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                     setSelectedQuote(null);
                     setAssignmentTab('rfq');
                   }}
-                  className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition"
+                  className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition flex-shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -904,7 +904,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
             <div className="flex border-b border-gray-200">
               <button
                 onClick={() => setAssignmentTab('rfq')}
-                className={`flex-1 py-3 text-sm font-medium transition ${
+                className={`flex-1 py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium transition ${
                   assignmentTab === 'rfq' 
                     ? 'text-green-600 border-b-2 border-green-600 bg-green-50' 
                     : 'text-gray-500 hover:text-gray-700'
@@ -914,7 +914,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
               </button>
               <button
                 onClick={() => setAssignmentTab('quote')}
-                className={`flex-1 py-3 text-sm font-medium transition ${
+                className={`flex-1 py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium transition ${
                   assignmentTab === 'quote' 
                     ? 'text-green-600 border-b-2 border-green-600 bg-green-50' 
                     : 'text-gray-500 hover:text-gray-700'
@@ -943,26 +943,26 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                     <div className="space-y-4">
                       {/* Buyer's RFQ Request Details */}
                       <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 mb-3">Project Description</h4>
-                        <p className="text-gray-700 text-sm">{assignmentRfq.description || 'No description provided'}</p>
+                        <h4 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Project Description</h4>
+                        <p className="text-gray-700 text-xs sm:text-sm leading-relaxed">{assignmentRfq.description || 'No description provided'}</p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                           <p className="text-xs text-gray-500 mb-1">📍 Location</p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm sm:text-base font-medium text-gray-900 break-words">
                             {assignmentRfq.location && assignmentRfq.county 
                               ? `${assignmentRfq.location}, ${assignmentRfq.county}`
                               : assignmentRfq.county || assignmentRfq.location || 'Not specified'}
                           </p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                           <p className="text-xs text-gray-500 mb-1">📁 Category</p>
-                          <p className="text-sm font-medium text-gray-900">{assignmentRfq.category || assignmentRfq.category_slug || 'General'}</p>
+                          <p className="text-sm sm:text-base font-medium text-gray-900 break-words">{assignmentRfq.category || assignmentRfq.category_slug || 'General'}</p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                           <p className="text-xs text-gray-500 mb-1">💰 Budget Range</p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm sm:text-base font-medium text-gray-900 break-words">
                             {assignmentRfq.budget_min || assignmentRfq.budget_max 
                               ? `KSh ${(assignmentRfq.budget_min || 0).toLocaleString()} - ${(assignmentRfq.budget_max || 0).toLocaleString()}`
                               : assignmentRfq.budget 
@@ -970,23 +970,23 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                                 : 'Not specified'}
                           </p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                           <p className="text-xs text-gray-500 mb-1">⚡ Urgency</p>
-                          <p className="text-sm font-medium text-gray-900 capitalize">{assignmentRfq.urgency || 'Normal'}</p>
+                          <p className="text-sm sm:text-base font-medium text-gray-900 capitalize">{assignmentRfq.urgency || 'Normal'}</p>
                         </div>
                       </div>
 
                       {/* Buyer Info */}
                       {assignmentRfq.buyer && (
                         <div className="bg-blue-50 rounded-lg p-4">
-                          <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                          <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2 text-sm sm:text-base">
                             <User className="w-4 h-4" /> Buyer
                           </h4>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-gray-900">{assignmentRfq.buyer.full_name || 'Buyer'}</p>
-                              {assignmentRfq.buyer.email && <p className="text-sm text-gray-600">{assignmentRfq.buyer.email}</p>}
-                              {assignmentRfq.buyer.phone && <p className="text-sm text-gray-600">{assignmentRfq.buyer.phone}</p>}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{assignmentRfq.buyer.full_name || 'Buyer'}</p>
+                              {assignmentRfq.buyer.email && <p className="text-xs sm:text-sm text-gray-600 truncate">{assignmentRfq.buyer.email}</p>}
+                              {assignmentRfq.buyer.phone && <p className="text-xs sm:text-sm text-gray-600">{assignmentRfq.buyer.phone}</p>}
                             </div>
                           </div>
                         </div>
