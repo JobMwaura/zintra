@@ -48,6 +48,7 @@ const CATEGORY_LABELS = {
 
 export function VendorCard({ vendor, className = '' }) {
   const [showRFQModal, setShowRFQModal] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   
   if (!vendor) return null;
 
@@ -123,12 +124,13 @@ export function VendorCard({ vendor, className = '' }) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
           {/* Outer ring around logo (brand color) - centered in header */}
           <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'rgba(234, 143, 30, 0.37)' }}>
-            {logo_url ? (
+            {logo_url && !logoError ? (
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img
                   src={logo_url}
                   alt={company_name}
                   className="w-full h-full object-contain p-2.5"
+                  onError={() => setLogoError(true)}
                 />
               </div>
             ) : (
