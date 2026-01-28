@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import CareersNavbar from '@/components/careers/CareersNavbar';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, MapPin, Briefcase, Star, Mail, Phone, Award, CheckCircle2 } from 'lucide-react';
+import { mockTopRatedWorkers } from '@/lib/careers-mock-data';
 
 export default function TalentProfilePage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function TalentProfilePage() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isMockData, setIsMockData] = useState(false);
 
   useEffect(() => {
     fetchWorkerProfile();
@@ -26,7 +28,44 @@ export default function TalentProfilePage() {
       setLoading(true);
       setError(null);
 
-      // Fetch worker profile
+      // Check if this is a mock worker ID (1-6)
+      const numId = parseInt(workerId);
+      if (numId >= 1 && numId <= 6) {
+        const mockWorker = mockTopRatedWorkers.find(w => w.id === numId);
+        if (mockWorker) {
+          setIsMockData(true);
+          setWorker({
+            id: mockWorker.id,
+            full_name: mockWorker.name,
+            avatar_url: null,
+            city: mockWorker.county,
+            phone: '+254700000000',
+            email: `${mockWorker.initials.toLowerCase()}@zintra.com`,
+            role: mockWorker.role,
+            bio: `Experienced ${mockWorker.role} with excellent track record. Highly skilled and professional.`,
+            skills: ['Masonry', 'Bricklaying', 'Foundation Work', 'Finishing'],
+            experience: 8,
+            certifications: ['Construction Safety', 'Quality Assurance'],
+            average_rating: mockWorker.rating,
+            ratings_count: mockWorker.reviews,
+            account_type: 'worker',
+            created_at: '2024-01-01',
+            reviews: [
+              { id: 1, rating: 5, comment: 'Excellent work quality and very reliable!', created_at: '2025-01-20', reviewer: { full_name: 'John Contractor' } },
+              { id: 2, rating: 5, comment: 'Great attention to detail. Highly recommend!', created_at: '2025-01-15', reviewer: { full_name: 'Sarah Builder' } },
+              { id: 3, rating: 4, comment: 'Good work. Communication could be better.', created_at: '2025-01-10', reviewer: { full_name: 'Mike Developer' } },
+            ],
+            applications: [],
+            completed_projects: 234,
+            success_rate: 98,
+            response_time: '< 1 hour',
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fetch worker profile from database
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select(`
@@ -124,6 +163,26 @@ export default function TalentProfilePage() {
   const skills = typeof worker.skills === 'string' ? worker.skills.split(',').map(s => s.trim()) : (worker.skills || []);
   const certifications = typeof worker.certifications === 'string' ? worker.certifications.split(',').map(c => c.trim()) : (worker.certifications || []);
 
+  // Get avatar color for mock data
+  const getAvatarColor = (id) => {
+    const colors = [
+      'from-blue-400 to-blue-600',
+      'from-purple-400 to-purple-600',
+      'from-pink-400 to-pink-600',
+      'from-green-400 to-green-600',
+      'from-yellow-400 to-yellow-600',
+      'from-red-400 to-red-600',
+    ];
+    return colors[(id - 1) % colors.length];
+  };
+
+  // Get initials for display
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const parts = name.split(' ');
+    return parts.map(p => p.charAt(0)).join('').toUpperCase();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <CareersNavbar />
@@ -148,7 +207,7 @@ export default function TalentProfilePage() {
           <div className="md:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-20">
               {/* Avatar */}
-              <div className="w-full h-40 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+              <div className={`w-full h-40 bg-gradient-to-br ${isMockData ? getAvatarColor(worker.id) : 'from-orange-400 to-orange-600'} rounded-lg mb-4 flex items-center justify-center overflow-hidden`}>
                 {worker.avatar_url ? (
                   <img
                     src={worker.avatar_url}
@@ -157,7 +216,7 @@ export default function TalentProfilePage() {
                   />
                 ) : (
                   <span className="text-6xl text-white font-bold">
-                    {worker.full_name?.charAt(0) || '?'}
+                    {getInitials(worker.full_name)}
                   </span>
                 )}
               </div>
