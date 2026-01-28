@@ -116,7 +116,7 @@ export function VendorCard({ vendor, className = '' }) {
         {/* Logo Circle: Better aspect ratio, proper padding, no cropping */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
           {/* Outer ring around logo (brand color) */}
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 flex items-center justify-center" style={{ borderColor: '#ea8f1e' }}>
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center" style={{ borderColor: '#ea8f1e' }}>
             {logo_url ? (
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img
