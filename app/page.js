@@ -466,10 +466,9 @@ export default function ZintraHomepage() {
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
               <img 
-                src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" 
+                src="/zintrass-new-logo.png" 
                 alt="Zintra" 
                 className="h-32 w-auto"
-                onError={(e) => e.target.style.display = 'none'}
               />
               <span className="text-2xl font-bold text-gray-900">Zintra</span>
             </Link>
@@ -1234,13 +1233,9 @@ export default function ZintraHomepage() {
             <div>
               <div className="bg-white p-4 rounded-lg inline-block mb-4">
                 <img 
-                  src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" 
+                  src="/zintrass-new-logo.png" 
                   alt="Zintra" 
                   className="h-32 w-auto"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = '<span className="text-2xl font-bold text-gray-900">Zintra</span>';
-                  }}
                 />
               </div>
               <p className="text-gray-200 text-lg font-medium mb-4 leading-tight">
