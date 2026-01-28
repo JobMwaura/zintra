@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Star, MapPin, Clock, CheckCircle2 } from 'lucide-react';
+import RFQModal from '@/components/RFQModal/RFQModal';
 
 /**
  * Enhanced VendorCard Component (v2)
@@ -45,6 +47,8 @@ const CATEGORY_LABELS = {
 };
 
 export function VendorCard({ vendor, className = '' }) {
+  const [showRFQModal, setShowRFQModal] = useState(false);
+  
   if (!vendor) return null;
 
   const {
@@ -199,12 +203,16 @@ export function VendorCard({ vendor, className = '' }) {
 
         {/* CTA Buttons: PRIMARY (Request Quote) + SECONDARY (View Profile) */}
         <div className="flex gap-2.5 mt-auto pt-2">
-          {/* PRIMARY: Request Quote (FILLED, dominates) - Opens request quote modal */}
-          <Link href={`/post-rfq?vendor_id=${id}`} className="flex-1">
-            <button className="w-full px-3 py-2 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm" style={{ backgroundColor: '#ea8f1e' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#d47a0b'} onMouseLeave={(e) => e.target.style.backgroundColor = '#ea8f1e'}>
-              Request Quote
-            </button>
-          </Link>
+          {/* PRIMARY: Request Quote (FILLED, dominates) - Opens RFQ modal */}
+          <button
+            onClick={() => setShowRFQModal(true)}
+            className="flex-1 w-full px-3 py-2 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm"
+            style={{ backgroundColor: '#ea8f1e' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#d47a0b'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#ea8f1e'}
+          >
+            Request Quote
+          </button>
 
           {/* SECONDARY: View Profile (Zintra gray) - Opens vendor profile */}
           <Link href={`/vendor-profile/${id}`} className="flex-1">
@@ -214,6 +222,16 @@ export function VendorCard({ vendor, className = '' }) {
           </Link>
         </div>
       </div>
+
+      {/* RFQ Modal */}
+      {showRFQModal && (
+        <RFQModal
+          onClose={() => setShowRFQModal(false)}
+          vendorId={id}
+          vendorCategories={[primary_category_slug].filter(Boolean)}
+          vendorName={company_name}
+        />
+      )}
     </div>
   );
 }
