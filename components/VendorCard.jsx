@@ -96,9 +96,9 @@ export function VendorCard({ vendor, className = '' }) {
   const ratingDisplay = hasReviews ? `${rating.toFixed(1)}` : 'New';
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full ${className}`}>
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-visible flex flex-col h-full ${className}`}>
       {/* COMPACT Header: Reduced from h-32/h-40 to h-20/h-24 */}
-      <div className="relative h-20 sm:h-24 flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'rgba(234, 143, 30, 0.37)' }}>
+      <div className="relative h-20 sm:h-24 flex items-center justify-center" style={{ backgroundColor: 'rgba(234, 143, 30, 0.37)' }}>
         {/* Subtle diagonal pattern (minimal visual noise) */}
         <div
           className="absolute inset-0 opacity-5"
@@ -114,9 +114,11 @@ export function VendorCard({ vendor, className = '' }) {
             <span className="text-xs font-semibold text-blue-600">Verified</span>
           </div>
         )}
+      </div>
 
-        {/* Logo Circle: Better aspect ratio, proper padding, no cropping */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-30">
+      {/* Logo Ring: Positioned to overlap header and content */}
+      <div className="relative h-0 flex justify-center z-30 pointer-events-none">
+        <div className="absolute -top-1/2 left-1/2 -translate-x-1/2">
           {/* Outer ring around logo (brand color) - visible on white area below header */}
           <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'rgba(234, 143, 30, 0.37)' }}>
             {logo_url ? (
