@@ -40,6 +40,13 @@ function extractS3Key(url) {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
     
+    // Check if it's a Supabase URL (keep as-is, it's not S3)
+    if (urlObj.hostname.includes('supabase.co')) {
+      console.log('   ⚠️  Supabase Storage URL - keeping as-is');
+      // Return just the base URL without query params
+      return url.split('?')[0];
+    }
+    
     // Remove leading slash and bucket name if present
     // Format: /bucket-name/key or /key (depending on S3 URL style)
     let key = pathname.replace(/^\//, '');

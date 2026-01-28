@@ -56,6 +56,13 @@ export function VendorCard({ vendor, className = '' }) {
     const generateFreshUrl = async () => {
       if (!vendor?.logo_url) return;
 
+      // Check if this is a Supabase URL (keep as-is)
+      if (vendor.logo_url.includes('supabase.co')) {
+        console.log('📝 Using Supabase Storage URL');
+        setFreshLogoUrl(vendor.logo_url);
+        return;
+      }
+
       // Check if this is an S3 key (not a presigned URL)
       // S3 keys don't have query parameters and don't start with https://
       const isS3Key = !vendor.logo_url.startsWith('http') && !vendor.logo_url.includes('?');
