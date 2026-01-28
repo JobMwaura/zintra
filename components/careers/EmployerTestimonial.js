@@ -147,12 +147,12 @@ export default function EmployerTestimonial() {
                 <p className="text-sm text-gray-600 mb-4">
                   Ready to hire verified construction workers?
                 </p>
-                <Link href="/careers/post-job">
+                <Link href="/vendor-registration">
                   <button className="w-full px-4 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm">
                     Post a Job
                   </button>
                 </Link>
-                <Link href="/careers/post-gig">
+                <Link href="/vendor-registration">
                   <button className="w-full mt-2 px-4 py-2.5 border-2 border-[#ea8f1e] text-[#ea8f1e] font-bold rounded-lg hover:bg-orange-50 transition-colors text-sm">
                     Post a Gig
                   </button>

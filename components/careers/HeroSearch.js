@@ -170,11 +170,11 @@ export default function HeroSearch() {
         {/* Secondary CTA - Post a Job/Gig */}
         <div className="text-center text-xs sm:text-sm text-gray-600">
           <span>Are you an employer? </span>
-          <Link href="/careers/post-job" className="text-[#ea8f1e] font-semibold hover:underline">
+          <Link href="/vendor-registration" className="text-[#ea8f1e] font-semibold hover:underline">
             Post a job
           </Link>
           <span> or </span>
-          <Link href="/careers/post-gig" className="text-[#ea8f1e] font-semibold hover:underline">
+          <Link href="/vendor-registration" className="text-[#ea8f1e] font-semibold hover:underline">
             post a gig
           </Link>
         </div>
