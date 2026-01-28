@@ -34,11 +34,14 @@ export default function HeroSearch() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Hero Text with Proof Points */}
         <div className="mb-8 text-center max-w-3xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2 leading-tight">
-            Career Centre
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 leading-tight">
+            Find Verified Construction Jobs & Gigs Across Kenya
           </h1>
-          <p className="text-base sm:text-lg text-gray-700 mb-3">
-            Find construction jobs and gigs with verified employers across Kenya
+          <p className="text-base sm:text-lg text-gray-700 mb-1 font-semibold">
+            Join 2,400+ workers earning KES 50K-150K monthly
+          </p>
+          <p className="text-sm sm:text-base text-gray-600 mb-4">
+            Work with 180+ trusted employers. Zero upfront fees. Fast, secure payments.
           </p>
           
           {/* Proof Points */}
@@ -90,8 +93,9 @@ export default function HeroSearch() {
               </button>
             </div>
 
-            {/* Search Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {/* Search Inputs - Simplified for Mobile */}
+            {/* Desktop: 2 columns, Mobile: 1 column */}
+            <div className="hidden sm:grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Role or Skill
@@ -102,7 +106,7 @@ export default function HeroSearch() {
                   placeholder="Mason, Electrician, Foreman..."
                   value={searchData.role}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-10"
                 />
               </div>
               
@@ -116,7 +120,38 @@ export default function HeroSearch() {
                   placeholder="Nairobi, Kiambu, Mombasa..."
                   value={searchData.location}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-10"
+                />
+              </div>
+            </div>
+
+            {/* Mobile: Single column (simplified) */}
+            <div className="sm:hidden grid grid-cols-1 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Role or Skill
+                </label>
+                <input
+                  type="text"
+                  name="role"
+                  placeholder="Electrician, Mason, Foreman..."
+                  value={searchData.role}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-11"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Location (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  placeholder="All Locations"
+                  value={searchData.location}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-11"
                 />
               </div>
             </div>

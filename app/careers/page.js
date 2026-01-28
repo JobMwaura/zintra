@@ -7,12 +7,17 @@
 
 import { useState, useEffect } from 'react';
 import HeroSearch from '@/components/careers/HeroSearch';
+import WhyZintra from '@/components/careers/WhyZintra';
 import TrustStrip from '@/components/careers/TrustStrip';
+import LiveJobStats from '@/components/careers/LiveJobStats';
 import FeaturedEmployers from '@/components/careers/FeaturedEmployers';
 import TrendingRoles from '@/components/careers/TrendingRoles';
 import FastHireGigs from '@/components/careers/FastHireGigs';
 import TopRatedTalent from '@/components/careers/TopRatedTalent';
+import SuccessStories from '@/components/careers/SuccessStories';
+import EmployerTestimonial from '@/components/careers/EmployerTestimonial';
 import HowItWorks from '@/components/careers/HowItWorks';
+import FAQ from '@/components/careers/FAQ';
 import SafetyNote from '@/components/careers/SafetyNote';
 import { createClient } from '@/lib/supabase/client';
 
@@ -89,8 +94,14 @@ export default function CareersPage() {
       {/* Hero & Search */}
       <HeroSearch />
 
+      {/* Why Zintra - Differentiators */}
+      <WhyZintra />
+
       {/* Trust Strip */}
       <TrustStrip items={trustItems} />
+
+      {/* Live Job Stats - Real-time activity */}
+      <LiveJobStats />
 
       {/* Featured Employers */}
       <FeaturedEmployers employers={mockEmployers} />
@@ -101,14 +112,23 @@ export default function CareersPage() {
       {/* Fast-Hire Gigs */}
       <FastHireGigs gigs={realGigs} />
 
+      {/* Success Stories - Worker Testimonials */}
+      <SuccessStories />
+
       {/* Top Rated Talent */}
       <TopRatedTalent workers={mockTopRatedWorkers} />
+
+      {/* Employer Testimonial - Case Study */}
+      <EmployerTestimonial />
 
       {/* How It Works */}
       <HowItWorks
         workersSteps={howItWorksWorkers}
         employersSteps={howItWorksEmployers}
       />
+
+      {/* FAQ Section */}
+      <FAQ />
 
       {/* Safety Note */}
       <SafetyNote />
