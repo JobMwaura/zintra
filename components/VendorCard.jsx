@@ -197,17 +197,17 @@ export function VendorCard({ vendor, className = '' }) {
 
         {/* CTA Buttons: PRIMARY (Request Quote) + SECONDARY (View Profile) */}
         <div className="flex gap-2.5 mt-auto pt-2">
-          {/* PRIMARY: Request Quote (FILLED, dominates) */}
+          {/* PRIMARY: Request Quote (FILLED, dominates) - Opens request quote modal */}
           <Link href={`/post-rfq?vendor_id=${id}`} className="flex-1">
             <button className="w-full px-3 py-2 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm" style={{ backgroundColor: '#ea8f1e' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#d47a0b'} onMouseLeave={(e) => e.target.style.backgroundColor = '#ea8f1e'}>
               Request Quote
             </button>
           </Link>
 
-          {/* SECONDARY: View Profile (outline, less prominent) */}
+          {/* SECONDARY: View Profile (Zintra gray) - Opens vendor profile */}
           <Link href={`/vendor-profile/${id}`} className="flex-1">
-            <button className="w-full px-3 py-2 sm:py-2.5 bg-white border-1.5 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors text-xs sm:text-sm">
-              View
+            <button className="w-full px-3 py-2 sm:py-2.5 text-white font-medium rounded-lg transition-colors text-xs sm:text-sm shadow-sm" style={{ backgroundColor: '#aaabaa' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#919192'} onMouseLeave={(e) => e.target.style.backgroundColor = '#aaabaa'}>
+              View Profile
             </button>
           </Link>
         </div>
