@@ -9,6 +9,7 @@ import { CountyTownFilter } from '@/components/LocationSelector';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { useNotifications } from '@/hooks/useNotifications';
+import { VendorCard } from '@/components/VendorCard';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -965,39 +966,7 @@ export default function ZintraHomepage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {featuredVendors.length > 0 ? (
               featuredVendors.map((vendor) => (
-                <div key={vendor.id} className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg transition-all flex flex-col">
-                  <div className="relative h-24 bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center overflow-hidden">
-                    {vendor.logo_url ? (
-                      <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain p-3" />
-                    ) : (
-                      <Building2 className="w-8 h-8 text-gray-300" />
-                    )}
-                    {vendor.is_verified && (
-                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                        <Shield className="w-3 h-3 text-white" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-3 flex-grow flex flex-col">
-                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{vendor.company_name || 'Vendor'}</h3>
-                    <p className="text-xs text-gray-500 mb-2 line-clamp-1">{vendor.category || '—'}</p>
-                    <div className="flex items-center justify-between text-xs mb-3 flex-grow">
-                      <div className="flex items-center">
-                        <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                        <span className="font-bold text-gray-900 ml-1">{vendor.rating?.toFixed(1) || '—'}</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <MapPin className="w-3 h-3 mr-0.5" />
-                        <span className="text-xs">{vendor.county || 'Location'}</span>
-                      </div>
-                    </div>
-                    <Link href={`/vendor-profile/${vendor.id}`}>
-                      <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ca8637' }}>
-                        Profile
-                      </button>
-                    </Link>
-                  </div>
-                </div>
+                <VendorCard key={vendor.id} vendor={vendor} />
               ))
             ) : (
               <div className="col-span-3 text-center py-12">

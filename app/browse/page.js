@@ -7,6 +7,7 @@ import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT, filterVendorsByCategory } from '@/lib/constructionCategories';
 import { VerificationBadgeWithTooltip, VerificationMini } from '@/app/components/VerificationBadge';
+import { VendorCard } from '@/components/VendorCard';
 
 export default function BrowseVendors() {
   const [vendors, setVendors] = useState([]);
@@ -292,93 +293,7 @@ export default function BrowseVendors() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredVendors.map((vendor) => (
-              <div
-                key={vendor.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col"
-              >
-                {/* Vendor Logo/Image Banner with Subtle Faded Lines or Placeholder */}
-                <div className="h-48 flex items-center justify-center border-b border-gray-200 p-6 bg-white" style={{
-                  backgroundImage: 'repeating-linear-gradient(0deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(249, 115, 22, 0.05) 0px, rgba(249, 115, 22, 0.05) 1px, transparent 1px, transparent 3px)'
-                }}>
-                  {vendor.logo_url ? (
-                    <div className="rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
-                      <img src={vendor.logo_url} alt={vendor.company_name} className="max-h-40 max-w-full object-contain p-2" />
-                    </div>
-                  ) : (
-                    <div className="rounded-full overflow-hidden border-4 border-gray-300 bg-gray-100 w-40 h-40 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-4xl text-gray-400 mb-2">📸</div>
-                        <p className="text-xs text-gray-500 font-medium">No logo yet</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                      {vendor.company_name}
-                    </h3>
-                    {vendor.is_verified && (
-                      <VerificationBadgeWithTooltip 
-                        type="business" 
-                        size="md" 
-                        className="flex-shrink-0 ml-2"
-                      />
-                    )}
-                  </div>
-                  
-                  {/* Show verification status badge for unverified vendors */}
-                  {!vendor.is_verified && (
-                    <div className="mb-2">
-                      <span className="inline-flex items-center text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
-                        ⚠️ Not Verified
-                      </span>
-                    </div>
-                  )}
-                  
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {vendor.description || 'No description available.'}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                    <div className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-1" /> {vendor.location}
-                    </div>
-                    {vendor.rating && (
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="ml-1 font-medium">
-                          {vendor.rating.toFixed(1)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Views & Likes Stats */}
-                  <div className="flex gap-3 mb-4 text-xs">
-                    {vendor.views_count > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
-                        👁️ {vendor.views_count.toLocaleString()} {vendor.views_count === 1 ? 'view' : 'views'}
-                      </span>
-                    )}
-                    {vendor.likes_count > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded-full">
-                        ❤️ {vendor.likes_count} {vendor.likes_count === 1 ? 'like' : 'likes'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* ✅ Navigation to redesigned Vendor Profile */}
-                  <Link href={`/vendor-profile/${vendor.id}`} className="mt-auto">
-                    <button
-                      className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium transition-colors"
-                    >
-                      View Profile
-                    </button>
-                  </Link>
-                </div>
-              </div>
+              <VendorCard key={vendor.id} vendor={vendor} />
             ))}
           </div>
         )}
