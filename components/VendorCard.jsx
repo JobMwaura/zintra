@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, MapPin, Clock, CheckCircle2 } from 'lucide-react';
 import RFQModal from '@/components/RFQModal/RFQModal.jsx';
@@ -49,6 +49,42 @@ const CATEGORY_LABELS = {
 export function VendorCard({ vendor, className = '' }) {
   const [showRFQModal, setShowRFQModal] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [freshLogoUrl, setFreshLogoUrl] = useState(null);
+  
+  // Generate fresh presigned URL if logo_url is stored as S3 key
+  useEffect(() => {
+    const generateFreshUrl = async () => {
+      if (!vendor?.logo_url) return;
+
+      // Check if this is an S3 key (not a presigned URL)
+      // S3 keys don't have query parameters and don't start with https://
+      const isS3Key = !vendor.logo_url.startsWith('http') && !vendor.logo_url.includes('?');
+      
+      if (isS3Key) {
+        try {
+          console.log('📝 Generating fresh presigned URL for S3 key:', vendor.logo_url);
+          const response = await fetch(`/api/vendor-profile/get-image-url?key=${encodeURIComponent(vendor.logo_url)}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            setFreshLogoUrl(data.url);
+            console.log('✅ Fresh presigned URL generated');
+          } else {
+            console.warn('⚠️ Failed to generate fresh URL, falling back to stored URL');
+            setFreshLogoUrl(vendor.logo_url);
+          }
+        } catch (error) {
+          console.error('❌ Error generating fresh URL:', error);
+          setFreshLogoUrl(vendor.logo_url);
+        }
+      } else {
+        // Already a full URL (presigned or public)
+        setFreshLogoUrl(vendor.logo_url);
+      }
+    };
+
+    generateFreshUrl();
+  }, [vendor?.logo_url]);
   
   if (!vendor) return null;
 
@@ -124,10 +160,10 @@ export function VendorCard({ vendor, className = '' }) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
           {/* Outer ring around logo (brand color) - centered in header */}
           <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'rgba(234, 143, 30, 0.37)' }}>
-            {logo_url && !logoError ? (
+            {freshLogoUrl && !logoError ? (
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img
-                  src={logo_url}
+                  src={freshLogoUrl}
                   alt={company_name}
                   className="w-full h-full object-contain p-2.5"
                   onError={() => setLogoError(true)}
