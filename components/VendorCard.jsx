@@ -7,7 +7,9 @@ import { Star, MapPin, Clock, CheckCircle2 } from 'lucide-react';
  * Enhanced VendorCard Component (v2)
  * 
  * Improvements:
- * ✓ Reduced header height (compact, not wasted space)
+ * ✓ Reduced header heigh          <Link href={`/post-rfq?vendor_id=${id}`} className="flex-1">
+            <button className="w-full px-3 py-2 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm" style={{ backgroundColor: 'rgba(234, 143, 30, 0.37)' }} onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(212, 122, 11, 0.37)'} onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(234, 143, 30, 0.37)'}}>
+              Request Quotecompact, not wasted space)
  * ✓ Professional category labels (no underscores, humanized)
  * ✓ Better logo display (proper aspect ratio, no cropping)
  * ✓ "New" badge for vendors with no reviews (not "0.0")
@@ -96,7 +98,7 @@ export function VendorCard({ vendor, className = '' }) {
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full ${className}`}>
       {/* COMPACT Header: Reduced from h-32/h-40 to h-20/h-24 */}
-      <div className="relative h-20 sm:h-24 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#ea8f1e' }}>
+      <div className="relative h-20 sm:h-24 flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'rgba(234, 143, 30, 0.37)' }}>
         {/* Subtle diagonal pattern (minimal visual noise) */}
         <div
           className="absolute inset-0 opacity-5"
@@ -116,7 +118,7 @@ export function VendorCard({ vendor, className = '' }) {
         {/* Logo Circle: Better aspect ratio, proper padding, no cropping */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-30">
           {/* Outer ring around logo (brand color) - visible on white area below header */}
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center" style={{ borderColor: '#ea8f1e' }}>
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'rgba(234, 143, 30, 0.37)' }}>
             {logo_url ? (
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img
@@ -126,7 +128,7 @@ export function VendorCard({ vendor, className = '' }) {
                 />
               </div>
             ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0" style={{ color: '#ea8f1e' }}>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0" style={{ color: 'rgba(234, 143, 30, 0.37)' }}>
                 {getInitials()}
               </div>
             )}
