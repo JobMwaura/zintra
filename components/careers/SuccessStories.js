@@ -5,6 +5,7 @@
 
 'use client';
 
+import Link from 'next/link';
 import { Star } from 'lucide-react';
 
 const testimonials = [
@@ -116,9 +117,11 @@ export default function SuccessStories() {
           <p className="text-gray-700 mb-4">
             Ready to start earning? Join our growing community of construction workers.
           </p>
-          <button className="inline-block px-6 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm sm:text-base">
-            Create Your Profile
-          </button>
+          <Link href="/careers/create-profile">
+            <button className="inline-block px-6 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm sm:text-base">
+              Create Your Profile
+            </button>
+          </Link>
         </div>
       </div>
     </section>

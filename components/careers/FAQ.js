@@ -5,6 +5,7 @@
 
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
@@ -180,9 +181,11 @@ export default function FAQ() {
           <p className="text-gray-700 mb-4">
             Can't find the answer you're looking for?
           </p>
-          <button className="px-6 py-2.5 border-2 border-[#ea8f1e] text-[#ea8f1e] font-bold rounded-lg hover:bg-orange-50 transition-colors text-sm">
-            Contact Support
-          </button>
+          <Link href="/contact">
+            <button className="px-6 py-2.5 border-2 border-[#ea8f1e] text-[#ea8f1e] font-bold rounded-lg hover:bg-orange-50 transition-colors text-sm">
+              Contact Support
+            </button>
+          </Link>
         </div>
       </div>
     </section>
