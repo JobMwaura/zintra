@@ -1016,7 +1016,7 @@ export default function ZintraHomepage() {
                       </div>
                     </div>
                     
-                    <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all mt-auto" style={{ backgroundColor: '#aaabaa' }}>
+                    <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all mt-auto" style={{ backgroundColor: '#5f6466' }}>
                       View & Quote
                     </button>
                   </div>
@@ -1061,7 +1061,7 @@ export default function ZintraHomepage() {
                   <p className="text-xs text-gray-500"><strong>Location:</strong> Nairobi</p>
                   <p className="text-xs text-gray-500"><strong>Duration:</strong> 1-2 weeks</p>
                 </div>
-                <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#5f6466' }}>
+                <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ea8f1e' }}>
                   Apply Now
                 </button>
               </div>
