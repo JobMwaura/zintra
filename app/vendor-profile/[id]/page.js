@@ -914,26 +914,6 @@ export default function VendorProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Bar */}
-      {canEdit && (
-        <nav className="bg-white border-b border-slate-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="flex items-center">
-                <img src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
-                <LogOut className="w-5 h-5" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </nav>
-      )}
-
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-4">

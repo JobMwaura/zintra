@@ -74,11 +74,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo & Brand */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold">
+          <Link href="/" className="flex items-center gap-2 group hover:opacity-80 transition">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition">
               Z
             </div>
-            <span className="font-bold text-gray-900 hidden sm:inline">Zintra</span>
+            <span className="font-bold text-gray-900 hidden sm:inline text-lg">Zintra</span>
           </Link>
 
           {/* Desktop Menu */}
@@ -127,20 +127,38 @@ export default function Navbar() {
 
                     {/* User Dropdown Menu */}
                     {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                        {/* User Info Header */}
+                        <div className="px-4 py-3 border-b border-gray-200">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account</p>
+                          <p className="text-sm font-medium text-gray-900 truncate mt-1">
+                            {currentUser.user_metadata?.full_name || 'User'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">
+                            {currentUser.email}
+                          </p>
+                        </div>
+
+                        {/* Menu Items */}
                         <Link
                           href="/my-profile"
-                          className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
+                          onClick={() => setShowUserMenu(false)}
                         >
                           <User className="w-4 h-4" />
-                          <span className="text-sm">My Profile</span>
+                          <span className="text-sm font-medium">My Profile</span>
                         </Link>
+
+                        {/* Divider */}
+                        <div className="border-t border-gray-200 my-2"></div>
+
+                        {/* Sign Out */}
                         <button
                           onClick={handleLogout}
-                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-red-700 hover:bg-red-50 transition"
+                          className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition"
                         >
                           <LogOut className="w-4 h-4" />
-                          <span className="text-sm">Sign Out</span>
+                          <span className="text-sm font-medium">Sign Out</span>
                         </button>
                       </div>
                     )}
