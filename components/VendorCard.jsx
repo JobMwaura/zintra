@@ -96,7 +96,7 @@ export function VendorCard({ vendor, className = '' }) {
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full ${className}`}>
       {/* COMPACT Header: Reduced from h-32/h-40 to h-20/h-24 */}
-      <div className="relative h-20 sm:h-24 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden">
+      <div className="relative h-20 sm:h-24 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#ea8f1e' }}>
         {/* Subtle diagonal pattern (minimal visual noise) */}
         <div
           className="absolute inset-0 opacity-5"
@@ -124,7 +124,7 @@ export function VendorCard({ vendor, className = '' }) {
               />
             </div>
           ) : (
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center font-bold text-base sm:text-lg text-orange-600 flex-shrink-0">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white bg-white shadow-lg flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0" style={{ color: '#ea8f1e' }}>
               {getInitials()}
             </div>
           )}
@@ -140,7 +140,7 @@ export function VendorCard({ vendor, className = '' }) {
 
         {/* Category: Single chip only (cleaner, professional) */}
         <div className="mb-3">
-          <span className="inline-flex items-center px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-xs font-medium text-orange-700">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#fff4e6', borderColor: '#e8dcc8', color: '#b87a1b', border: '1px solid' }}>
             {categoryLabel}
           </span>
         </div>
@@ -196,7 +196,7 @@ export function VendorCard({ vendor, className = '' }) {
         <div className="flex gap-2.5 mt-auto pt-2">
           {/* PRIMARY: Request Quote (FILLED, dominates) */}
           <Link href={`/post-rfq?vendor_id=${id}`} className="flex-1">
-            <button className="w-full px-3 py-2 sm:py-2.5 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 active:bg-orange-800 transition-colors text-xs sm:text-sm shadow-sm">
+            <button className="w-full px-3 py-2 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm" style={{ backgroundColor: '#ea8f1e' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#d47a0b'} onMouseLeave={(e) => e.target.style.backgroundColor = '#ea8f1e'}>
               Request Quote
             </button>
           </Link>
