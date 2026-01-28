@@ -71,9 +71,12 @@ export default function TopRatedTalent({ workers }) {
               </div>
 
               {/* View Profile Button */}
-              <button className="w-full py-1.5 text-xs border-2 border-[#ea8f1e] text-[#ea8f1e] font-bold rounded hover:bg-orange-50 transition-colors">
+              <Link
+                href={`/careers/talent/${worker.id}`}
+                className="block w-full py-1.5 text-xs border-2 border-[#ea8f1e] text-[#ea8f1e] font-bold rounded hover:bg-orange-50 transition-colors text-center"
+              >
                 View Profile
-              </button>
+              </Link>
             </div>
           ))}
         </div>
