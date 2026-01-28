@@ -465,7 +465,13 @@ export default function ZintraHomepage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <img src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" alt="Zintra" className="h-32 w-auto" />
+              <img 
+                src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" 
+                alt="Zintra" 
+                className="h-32 w-auto"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+              <span className="text-2xl font-bold text-gray-900">Zintra</span>
             </Link>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Home</Link>
@@ -1227,7 +1233,15 @@ export default function ZintraHomepage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="bg-white p-4 rounded-lg inline-block mb-4">
-                <img src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" alt="Zintra" className="h-32 w-auto" />
+                <img 
+                  src="https://zintra-images-prod.s3.us-east-1.amazonaws.com/logos/zintrass-new-logo.png" 
+                  alt="Zintra" 
+                  className="h-32 w-auto"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = '<span className="text-2xl font-bold text-gray-900">Zintra</span>';
+                  }}
+                />
               </div>
               <p className="text-gray-200 text-lg font-medium mb-4 leading-tight">
                 The smarter way to source, hire, and build.
