@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Star, MapPin, Clock, CheckCircle2 } from 'lucide-react';
-import RFQModal from '@/components/RFQModal/RFQModal';
+import RFQModal from '@/components/RFQModal/RFQModal.jsx';
 
 /**
  * Enhanced VendorCard Component (v2)
@@ -226,6 +226,8 @@ export function VendorCard({ vendor, className = '' }) {
       {/* RFQ Modal */}
       {showRFQModal && (
         <RFQModal
+          rfqType="direct"
+          isOpen={showRFQModal}
           onClose={() => setShowRFQModal(false)}
           vendorId={id}
           vendorCategories={[primary_category_slug].filter(Boolean)}
