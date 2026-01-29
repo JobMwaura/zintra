@@ -7,8 +7,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getCandidateRedirectPath } from '@/lib/auth-helpers';
 
 const testimonials = [
   {
@@ -47,14 +49,16 @@ const testimonials = [
 ];
 
 export default function SuccessStories() {
-  const [isCandidate, setIsCandidate] = useState(false);
+  const router = useRouter();
+  const [applyLink, setApplyLink] = useState('/user-registration');
+  const [buttonText, setButtonText] = useState('Create Your Profile');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUserRole();
+    loadRedirectPath();
   }, []);
 
-  async function checkUserRole() {
+  async function loadRedirectPath() {
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -67,7 +71,16 @@ export default function SuccessStories() {
           .eq('id', user.id)
           .single();
         
-        setIsCandidate(data?.is_candidate || false);
+        if (data?.is_candidate) {
+          setApplyLink('/careers/me');
+          setButtonText('View Your Profile');
+        } else {
+          setApplyLink('/user-registration');
+          setButtonText('Create Your Profile');
+        }
+      } else {
+        setApplyLink('/user-registration');
+        setButtonText('Create Your Profile');
       }
     } catch (error) {
       console.error('Error checking user role:', error);
@@ -148,9 +161,9 @@ export default function SuccessStories() {
           <p className="text-gray-700 mb-4">
             Ready to start earning? Join our growing community of construction workers.
           </p>
-          <Link href={isCandidate ? "/careers/me" : "/user-registration"}>
+          <Link href={applyLink}>
             <button className="inline-block px-6 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm sm:text-base">
-              {isCandidate ? "View Your Profile" : "Create Your Profile"}
+              {buttonText}
             </button>
           </Link>
         </div>

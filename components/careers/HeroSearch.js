@@ -6,40 +6,34 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Search, CheckCircle2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { getEmployerRedirectPath } from '@/lib/auth-helpers';
 
 export default function HeroSearch() {
+  const router = useRouter();
   const [searchType, setSearchType] = useState('jobs');
   const [searchData, setSearchData] = useState({
     role: '',
     location: '',
   });
-  const [isEmployer, setIsEmployer] = useState(false);
+  const [postJobLink, setPostJobLink] = useState('/vendor-registration');
+  const [postGigLink, setPostGigLink] = useState('/vendor-registration');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUserRole();
+    loadRedirectPaths();
   }, []);
 
-  async function checkUserRole() {
+  async function loadRedirectPaths() {
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Check if user is employer
-        const { data } = await supabase
-          .from('profiles')
-          .select('is_employer')
-          .eq('id', user.id)
-          .single();
-        
-        setIsEmployer(data?.is_employer || false);
-      }
+      const jobPath = await getEmployerRedirectPath('job');
+      const gigPath = await getEmployerRedirectPath('gig');
+      setPostJobLink(jobPath);
+      setPostGigLink(gigPath);
     } catch (error) {
-      console.error('Error checking user role:', error);
+      console.error('Error loading redirect paths:', error);
     } finally {
       setLoading(false);
     }
@@ -200,14 +194,14 @@ export default function HeroSearch() {
         <div className="text-center text-xs sm:text-sm text-gray-600">
           <span>Are you an employer? </span>
           <Link 
-            href={isEmployer ? "/careers/post-job" : "/vendor-registration"} 
+            href={postJobLink} 
             className="text-[#ea8f1e] font-semibold hover:underline"
           >
             Post a job
           </Link>
           <span> or </span>
           <Link 
-            href={isEmployer ? "/careers/post-gig" : "/vendor-registration"} 
+            href={postGigLink} 
             className="text-[#ea8f1e] font-semibold hover:underline"
           >
             post a gig
