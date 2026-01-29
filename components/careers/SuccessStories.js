@@ -5,8 +5,10 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 const testimonials = [
   {
@@ -45,6 +47,35 @@ const testimonials = [
 ];
 
 export default function SuccessStories() {
+  const [isCandidate, setIsCandidate] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkUserRole();
+  }, []);
+
+  async function checkUserRole() {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is candidate
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_candidate')
+          .eq('id', user.id)
+          .single();
+        
+        setIsCandidate(data?.is_candidate || false);
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section className="w-full bg-gray-50 border-b border-gray-200 py-12 sm:py-14 lg:py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -117,9 +148,9 @@ export default function SuccessStories() {
           <p className="text-gray-700 mb-4">
             Ready to start earning? Join our growing community of construction workers.
           </p>
-          <Link href="/user-registration">
+          <Link href={isCandidate ? "/careers/me" : "/user-registration"}>
             <button className="inline-block px-6 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm sm:text-base">
-              Create Your Profile
+              {isCandidate ? "View Your Profile" : "Create Your Profile"}
             </button>
           </Link>
         </div>

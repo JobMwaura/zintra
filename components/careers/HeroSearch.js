@@ -6,8 +6,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, CheckCircle2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function HeroSearch() {
   const [searchType, setSearchType] = useState('jobs');
@@ -15,6 +16,34 @@ export default function HeroSearch() {
     role: '',
     location: '',
   });
+  const [isEmployer, setIsEmployer] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkUserRole();
+  }, []);
+
+  async function checkUserRole() {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is employer
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_employer')
+          .eq('id', user.id)
+          .single();
+        
+        setIsEmployer(data?.is_employer || false);
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -170,11 +199,17 @@ export default function HeroSearch() {
         {/* Secondary CTA - Post a Job/Gig */}
         <div className="text-center text-xs sm:text-sm text-gray-600">
           <span>Are you an employer? </span>
-          <Link href="/vendor-registration" className="text-[#ea8f1e] font-semibold hover:underline">
+          <Link 
+            href={isEmployer ? "/careers/post-job" : "/vendor-registration"} 
+            className="text-[#ea8f1e] font-semibold hover:underline"
+          >
             Post a job
           </Link>
           <span> or </span>
-          <Link href="/vendor-registration" className="text-[#ea8f1e] font-semibold hover:underline">
+          <Link 
+            href={isEmployer ? "/careers/post-gig" : "/vendor-registration"} 
+            className="text-[#ea8f1e] font-semibold hover:underline"
+          >
             post a gig
           </Link>
         </div>

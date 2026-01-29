@@ -5,10 +5,41 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Building2, Users, CheckCircle2, TrendingUp } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function EmployerTestimonial() {
+  const [isEmployer, setIsEmployer] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkUserRole();
+  }, []);
+
+  async function checkUserRole() {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is employer
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_employer')
+          .eq('id', user.id)
+          .single();
+        
+        setIsEmployer(data?.is_employer || false);
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const stats = [
     {
       icon: Users,
@@ -147,12 +178,12 @@ export default function EmployerTestimonial() {
                 <p className="text-sm text-gray-600 mb-4">
                   Ready to hire verified construction workers?
                 </p>
-                <Link href="/vendor-registration">
+                <Link href={isEmployer ? "/careers/post-job" : "/vendor-registration"}>
                   <button className="w-full px-4 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm">
                     Post a Job
                   </button>
                 </Link>
-                <Link href="/vendor-registration">
+                <Link href={isEmployer ? "/careers/post-gig" : "/vendor-registration"}>
                   <button className="w-full mt-2 px-4 py-2.5 border-2 border-[#ea8f1e] text-[#ea8f1e] font-bold rounded-lg hover:bg-orange-50 transition-colors text-sm">
                     Post a Gig
                   </button>
