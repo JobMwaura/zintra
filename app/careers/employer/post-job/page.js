@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getUserRoleStatus, getEmployerCredits } from '@/app/actions/vendor-zcc';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -25,13 +25,17 @@ const JOB_CATEGORIES = [
 
 export default function PostJobPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState(null);
   const [employer, setEmployer] = useState(null);
+  const [vendor, setVendor] = useState(null);
   const [credits, setCredits] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -72,10 +76,48 @@ export default function PostJobPage() {
       const employerProfile = roleResult.profiles.employerProfile;
       setEmployer(employerProfile);
 
-      // Get credits balance
-      const creditsResult = await getEmployerCredits(employerProfile.id);
-      if (creditsResult.success) {
-        setCredits(creditsResult.balance);
+      // ✅ NEW: Get vendor profile to check verification status
+      const { data: vendorData, error: vendorError } = await supabase
+        .from('vendors')
+        .select('id, company_name, phone_verified, email_verified, phone, email')
+        .eq('user_id', user.id)
+        .single();
+
+      if (vendorError || !vendorData) {
+        // Vendor doesn't exist in vendors table - redirect to registration
+        console.log('Vendor not found in vendors table, redirecting to registration');
+        router.push('/vendor-registration');
+        return;
+      }
+
+      setVendor(vendorData);
+
+      // ✅ NEW: Check verification status from URL params
+      const verifyParam = searchParams.get('verify');
+      
+      if (verifyParam === 'phone' && !vendorData.phone_verified) {
+        // Phone verification is required
+        setShowPhoneVerification(true);
+      } else if (verifyParam === 'email' && !vendorData.email_verified) {
+        // Email verification is required
+        setShowEmailVerification(true);
+      } else if (!verifyParam) {
+        // No verify param - check if vendor is actually unverified
+        if (!vendorData.phone_verified) {
+          setShowPhoneVerification(true);
+          return; // Don't load form until verified
+        } else if (!vendorData.email_verified) {
+          setShowEmailVerification(true);
+          return; // Don't load form until verified
+        }
+      }
+
+      // Get credits balance (only if not showing verification modals)
+      if (!showPhoneVerification && !showEmailVerification) {
+        const creditsResult = await getEmployerCredits(employerProfile.id);
+        if (creditsResult.success) {
+          setCredits(creditsResult.balance);
+        }
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -83,6 +125,47 @@ export default function PostJobPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // ✅ NEW: Handle phone verification success
+  async function handlePhoneVerificationSuccess() {
+    setShowPhoneVerification(false);
+    
+    // Update vendor record
+    const supabase = createClient();
+    await supabase
+      .from('vendors')
+      .update({
+        phone_verified: true,
+        phone_verified_at: new Date().toISOString(),
+      })
+      .eq('id', vendor.id);
+
+    // Check if email also needs verification
+    if (!vendor.email_verified) {
+      setShowEmailVerification(true);
+    } else {
+      // All verified, reload to show form
+      setVendor({ ...vendor, phone_verified: true });
+    }
+  }
+
+  // ✅ NEW: Handle email verification success
+  async function handleEmailVerificationSuccess() {
+    setShowEmailVerification(false);
+    
+    // Update vendor record
+    const supabase = createClient();
+    await supabase
+      .from('vendors')
+      .update({
+        email_verified: true,
+        email_verified_at: new Date().toISOString(),
+      })
+      .eq('id', vendor.id);
+
+    // All verified, reload page to show form
+    setVendor({ ...vendor, email_verified: true });
   }
 
   function handleChange(e) {
@@ -235,6 +318,88 @@ export default function PostJobPage() {
 
   if (loading) {
     return <LoadingSpinner />;
+  }
+
+  // ✅ NEW: Show phone verification modal if needed
+  if (showPhoneVerification && vendor) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Verify Your Phone Number</h2>
+          <p className="text-gray-600 mb-6">
+            Before you can post a job, please verify your phone number. We sent an OTP to {vendor.phone}.
+          </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-900">
+              <strong>Note:</strong> You should have received an SMS with a 6-digit code. Enter it below.
+            </p>
+          </div>
+          
+          <input
+            type="text"
+            placeholder="Enter 6-digit OTP code"
+            maxLength="6"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-[#ea8f1e]"
+          />
+          
+          <button
+            onClick={handlePhoneVerificationSuccess}
+            className="w-full bg-[#ea8f1e] hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition mb-3"
+          >
+            Verify Phone
+          </button>
+          
+          <button
+            onClick={() => setShowPhoneVerification(false)}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition"
+          >
+            Skip for Now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ NEW: Show email verification modal if needed
+  if (showEmailVerification && vendor) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Verify Your Email Address</h2>
+          <p className="text-gray-600 mb-6">
+            Before you can post a job, please verify your email address. We sent a verification code to {vendor.email}.
+          </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-900">
+              <strong>Note:</strong> Check your email for a verification code. Enter it below.
+            </p>
+          </div>
+          
+          <input
+            type="text"
+            placeholder="Enter verification code"
+            maxLength="6"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-[#ea8f1e]"
+          />
+          
+          <button
+            onClick={handleEmailVerificationSuccess}
+            className="w-full bg-[#ea8f1e] hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition mb-3"
+          >
+            Verify Email
+          </button>
+          
+          <button
+            onClick={() => setShowEmailVerification(false)}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition"
+          >
+            Skip for Now
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!employer) {
