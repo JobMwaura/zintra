@@ -25,17 +25,25 @@ export default function HeroSearch() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadRedirectPaths();
+    // Add a small delay to ensure Supabase session is fully initialized
+    // This helps prevent timing issues where auth isn't ready yet
+    const timer = setTimeout(() => {
+      loadRedirectPaths();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   async function loadRedirectPaths() {
     try {
+      console.log('[HeroSearch] Starting to load redirect paths...');
       const jobPath = await getEmployerRedirectPath('job');
       const gigPath = await getEmployerRedirectPath('gig');
+      console.log('[HeroSearch] Loaded paths:', { jobPath, gigPath });
       setPostJobLink(jobPath);
       setPostGigLink(gigPath);
     } catch (error) {
-      console.error('Error loading redirect paths:', error);
+      console.error('[HeroSearch] Error loading redirect paths:', error);
     } finally {
       setLoading(false);
     }
