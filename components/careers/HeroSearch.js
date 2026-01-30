@@ -10,6 +10,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Search, CheckCircle2 } from 'lucide-react';
 import { getEmployerRedirectPath } from '@/lib/auth-helpers';
+import { KENYA_COUNTIES } from '@/lib/kenyaLocations';
+import { CANONICAL_CATEGORIES } from '@/lib/categories';
 
 export default function HeroSearch() {
   const router = useRouter();
@@ -121,30 +123,40 @@ export default function HeroSearch() {
             <div className="hidden sm:grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Role or Skill
+                  Category or Skill
                 </label>
-                <input
-                  type="text"
+                <select
                   name="role"
-                  placeholder="Mason, Electrician, Foreman..."
                   value={searchData.role}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-10"
-                />
+                >
+                  <option value="">All Categories</option>
+                  {CANONICAL_CATEGORIES.map((category) => (
+                    <option key={category.slug} value={category.label}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Location
+                  County
                 </label>
-                <input
-                  type="text"
+                <select
                   name="location"
-                  placeholder="Nairobi, Kiambu, Mombasa..."
                   value={searchData.location}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-10"
-                />
+                >
+                  <option value="">All Counties</option>
+                  {KENYA_COUNTIES.map((county) => (
+                    <option key={county.value} value={county.label}>
+                      {county.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -152,30 +164,40 @@ export default function HeroSearch() {
             <div className="sm:hidden grid grid-cols-1 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Role or Skill
+                  Category or Skill
                 </label>
-                <input
-                  type="text"
+                <select
                   name="role"
-                  placeholder="Electrician, Mason, Foreman..."
                   value={searchData.role}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-11"
-                />
+                >
+                  <option value="">All Categories</option>
+                  {CANONICAL_CATEGORIES.map((category) => (
+                    <option key={category.slug} value={category.label}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Location (Optional)
+                  County
                 </label>
-                <input
-                  type="text"
+                <select
                   name="location"
-                  placeholder="All Locations"
                   value={searchData.location}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-11"
-                />
+                >
+                  <option value="">All Counties</option>
+                  {KENYA_COUNTIES.map((county) => (
+                    <option key={county.value} value={county.label}>
+                      {county.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
