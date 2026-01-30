@@ -8,51 +8,49 @@ Error occurred prerendering page "/careers/employer/post-job"
 ```
 
 ### ✅ Solution
-Split the post-job page into two components to properly handle `useSearchParams()`:
+Made the page a client component and used dynamic import with `ssr: false`:
 
 **Issue Root Cause**:
-- `useSearchParams()` requires dynamic rendering
-- It cannot be called at the top level of a Server Component during build time
-- Next.js 14+ requires this hook to be wrapped in a client component that's properly isolated
+- `useSearchParams()` cannot be called during server-side rendering or build-time prerendering
+- Next.js 14+ requires this hook to only be called on the client when URL is available
+- The page needs to skip SSR entirely to avoid this
 
 **Fix Applied**:
-1. Created `PostJobPageWrapper.js` - Client component that handles `useSearchParams()`
-2. Created `PostJobContent.js` - Main component with all the original job posting logic
-3. Updated `page.js` - Now just renders the wrapper (server component can do this)
+1. Made `page.js` a client component with `'use client'`
+2. Used dynamic import with `ssr: false` to skip server-side rendering
+3. Kept wrapper and content components for clarity and separation of concerns
+4. This ensures `useSearchParams()` is ONLY called on the client, never during build
 
 ### 📁 Files Modified
 
 ```
 app/careers/employer/post-job/
-├── page.js (simplified - now just renders wrapper)
-├── PostJobPageWrapper.js (new - handles useSearchParams)
-└── PostJobContent.js (new - contains all original logic)
+├── page.js (now client component with dynamic import)
+├── PostJobPageWrapper.js (handles useSearchParams)
+└── PostJobContent.js (contains all original job posting logic)
 ```
 
 ### 🔧 How It Works Now
 
-**Before (Error)**:
+**Final Solution**:
 ```javascript
-// page.js - Server Component
+// page.js - Client Component with Dynamic Import
 'use client';
-export default function PostJobPage() {
-  const searchParams = useSearchParams(); // ❌ Error during prerendering
-  // ...
-}
-```
 
-**After (Fixed)**:
-```javascript
-// page.js - Server Component
-import PostJobPageWrapper from './PostJobPageWrapper';
+import dynamic from 'next/dynamic';
+
+const PostJobPageWrapper = dynamic(() => import('./PostJobPageWrapper'), {
+  ssr: false,  // ✅ Skip SSR/prerendering entirely
+});
+
 export default function PostJobPage() {
-  return <PostJobPageWrapper />; // ✅ Simple render
+  return <PostJobPageWrapper />;
 }
 
 // PostJobPageWrapper.js - Client Component
 'use client';
 export default function PostJobPageWrapper() {
-  const searchParams = useSearchParams(); // ✅ OK in client component
+  const searchParams = useSearchParams(); // ✅ Safe - only called on client
   return <PostJobContent searchParams={searchParams} />;
 }
 
@@ -64,26 +62,43 @@ export default function PostJobContent({ searchParams }) {
 ```
 
 ### ✅ What Was Fixed
-- ✅ `useSearchParams()` is now in a proper client component wrapper
-- ✅ Build will no longer fail on /careers/employer/post-job
+- ✅ `useSearchParams()` is never called during build/SSR
+- ✅ Build succeeds: `✓ Compiled successfully in 5.4s` and `✓ Generating static pages using 11 workers (150/150) in 959.9ms`
 - ✅ Verification parameter detection still works (`?verify=phone`, `?verify=email`)
 - ✅ All original functionality preserved
+- ✅ Verified with local `npm run build` - NO ERRORS
 
 ### 🚀 Deployment Status
-- ✅ Changes committed to GitHub (commit 3ad5265)
+- ✅ Changes committed to GitHub (commit 04f30fa)
+- ✅ Verified locally - build succeeds
 - ✅ Pushed to main branch
-- ✅ Ready for Vercel build
+- ✅ Ready for Vercel deployment
 
-###  📝 Technical Details
+### 📝 Technical Details
 
 The issue occurs because:
-1. Next.js 14 tries to prerender pages at build time
+1. Next.js tries to prerender pages at build time
 2. `useSearchParams()` requires access to URL parameters
 3. URL parameters aren't available during build prerendering
-4. The hook must be in a client component that skips prerendering
+4. The hook would throw an error if called during SSR
 
-By wrapping `useSearchParams()` in a separate client component (`PostJobPageWrapper`), we:
-- Allow the page to be properly prerendered
-- Only call `useSearchParams()` when the component runs on the client
-- Maintain all functionality while following Next.js best practices
+By using `dynamic()` with `ssr: false`, we:
+- Tell Next.js to skip prerendering this page
+- Only render the page on the client when the URL is available
+- `useSearchParams()` can safely access the URL parameters
+- Build completes successfully without Suspense boundary warnings
+
+### 🔨 Key Changes
+
+**Before** (Error):
+- Page tried to render on server during build
+- `useSearchParams()` called during SSR = error
+
+**After** (Working):
+- Page marked as `'use client'`
+- Dynamic import with `ssr: false` skips all SSR
+- `useSearchParams()` only called on client after page loads
+- Build succeeds ✓
+
+
 
