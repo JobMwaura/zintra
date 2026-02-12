@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { approvePublicRFQ, triggerNotifications } from '@/lib/vendorMatching';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -93,7 +94,7 @@ export async function GET(request) {
       .select('*', { count: 'exact' });
 
     // Apply filters
-    if (status && ['submitted', 'approved', 'in_review', 'assigned', 'completed', 'cancelled', 'expired'].includes(status)) {
+    if (status && ['submitted', 'pending_approval', 'approved', 'in_review', 'assigned', 'completed', 'cancelled', 'expired'].includes(status)) {
       query = query.eq('status', status);
     }
 
@@ -157,6 +158,10 @@ export async function GET(request) {
     let summary = {
       total_pending: 0,
       total_approved: 0,
+      total_pending_approval: 0,
+      total_wizard: 0,
+      total_public: 0,
+      total_direct: 0,
       total_responses: 0,
       revenue_from_paid_rfqs: 0
     };
@@ -164,6 +169,10 @@ export async function GET(request) {
     if (summaryData) {
       summary.total_pending = summaryData.filter(r => r.status === 'submitted').length;
       summary.total_approved = summaryData.filter(r => r.status === 'approved').length;
+      summary.total_pending_approval = summaryData.filter(r => r.status === 'pending_approval').length;
+      summary.total_wizard = summaryData.filter(r => r.type === 'wizard').length;
+      summary.total_public = summaryData.filter(r => r.type === 'public').length;
+      summary.total_direct = summaryData.filter(r => r.type === 'direct' || r.type === 'vendor-request').length;
     }
 
     // Get payment summary
@@ -188,8 +197,10 @@ export async function GET(request) {
     // Enrich RFQ data with more details
     const rfqIds = rfqs.map(r => r.id);
     let responsesByRfq = {};
+    let recipientsByRfq = {};
 
     if (rfqIds.length > 0) {
+      // Fetch responses
       const { data: responses } = await supabase
         .from('rfq_responses')
         .select('rfq_id, id, vendor_id, status');
@@ -206,13 +217,61 @@ export async function GET(request) {
           });
         });
       }
+
+      // Fetch recipients with vendor details (for admin to see where RFQs were sent)
+      const { data: recipients } = await supabase
+        .from('rfq_recipients')
+        .select('rfq_id, vendor_id, recipient_type, status, match_score, match_reasons, created_at')
+        .in('rfq_id', rfqIds);
+
+      if (recipients) {
+        // Get unique vendor IDs to fetch their names
+        const vendorIds = [...new Set(recipients.map(r => r.vendor_id).filter(Boolean))];
+        let vendorNames = {};
+        if (vendorIds.length > 0) {
+          const { data: vendors } = await supabase
+            .from('vendors')
+            .select('id, company_name, county, rating, primary_category_slug')
+            .in('id', vendorIds);
+          if (vendors) {
+            vendors.forEach(v => {
+              vendorNames[v.id] = {
+                company_name: v.company_name,
+                county: v.county,
+                rating: v.rating,
+                category: v.primary_category_slug
+              };
+            });
+          }
+        }
+
+        recipients.forEach(r => {
+          if (!recipientsByRfq[r.rfq_id]) {
+            recipientsByRfq[r.rfq_id] = [];
+          }
+          recipientsByRfq[r.rfq_id].push({
+            vendor_id: r.vendor_id,
+            vendor_name: vendorNames[r.vendor_id]?.company_name || 'Unknown',
+            vendor_county: vendorNames[r.vendor_id]?.county || '',
+            vendor_rating: vendorNames[r.vendor_id]?.rating || 0,
+            vendor_category: vendorNames[r.vendor_id]?.category || '',
+            recipient_type: r.recipient_type,
+            status: r.status,
+            match_score: r.match_score || null,
+            match_reasons: r.match_reasons || null,
+            sent_at: r.created_at
+          });
+        });
+      }
     }
 
     const enrichedRfqs = rfqs.map(rfq => ({
       ...rfq,
       responses: responsesByRfq[rfq.id] || [],
       response_count: (responsesByRfq[rfq.id] || []).length,
-      action_needed: ['submitted', 'in_review'].includes(rfq.status)
+      recipients: recipientsByRfq[rfq.id] || [],
+      recipient_count: (recipientsByRfq[rfq.id] || []).length,
+      action_needed: ['submitted', 'in_review', 'pending_approval'].includes(rfq.status)
     }));
 
     return NextResponse.json({
@@ -328,6 +387,40 @@ export async function PATCH(request) {
 
     switch (action) {
       case 'approve':
+        // Public RFQs: use approvePublicRFQ to flip recipients + send notifications
+        if (rfq.type === 'public') {
+          const result = await approvePublicRFQ(rfq_id);
+          if (!result.success) {
+            return NextResponse.json(
+              { error: 'Failed to approve public RFQ' },
+              { status: 500 }
+            );
+          }
+          // approvePublicRFQ already updated the RFQ status and triggered notifications
+          // Log audit and return
+          await supabase
+            .from('rfq_admin_audit')
+            .insert([{
+              action: 'approve',
+              resource_type: 'rfq',
+              resource_id: rfq_id,
+              user_id: user.id,
+              details: {
+                previous_status: rfq.status,
+                new_status: 'approved',
+                rfq_type: 'public',
+                vendors_notified: result.vendorCount,
+                reason: reason || null
+              }
+            }]).catch(() => {});
+
+          return NextResponse.json({
+            success: true,
+            message: `Public RFQ approved and sent to ${result.vendorCount} vendor(s)`,
+            rfq: { id: rfq_id, status: 'approved', title: rfq.title }
+          });
+        }
+        // Non-public RFQs: simple status update
         newStatus = 'approved';
         updateData = { status: newStatus };
         break;
@@ -335,6 +428,12 @@ export async function PATCH(request) {
       case 'reject':
         newStatus = 'cancelled';
         updateData = { status: newStatus, notes: reason || 'Rejected by admin' };
+        // Also clean up pending recipients
+        await supabase
+          .from('rfq_recipients')
+          .update({ status: 'cancelled' })
+          .eq('rfq_id', rfq_id)
+          .eq('status', 'pending_approval');
         break;
 
       case 'assign_vendor':
