@@ -32,14 +32,16 @@ export default function BrowseVendors() {
   // ✅ Fetch vendors — Safari-safe with AbortController + hard timeout
   useEffect(() => {
     let isMounted = true;
+    let dataLoaded = false;
     const abortController = new AbortController();
     const supabase = createClient();
 
     // Hard safety timeout — force-end loading after 10s no matter what
     const safetyTimer = setTimeout(() => {
-      if (isMounted && loading) {
+      if (isMounted && !dataLoaded) {
         console.warn('⚠️ Browse: Safety timeout reached — forcing loading=false');
         setLoading(false);
+        dataLoaded = true;
       }
     }, 10000);
 
@@ -116,7 +118,10 @@ export default function BrowseVendors() {
         setError(`Error: ${err.message || 'Failed to load vendors'}`);
         setVendors([]);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          dataLoaded = true;
+        }
       }
     };
 

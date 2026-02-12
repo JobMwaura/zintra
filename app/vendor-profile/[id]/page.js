@@ -109,14 +109,10 @@ export default function VendorProfilePage() {
 
   // Fetch unread message count for this vendor
   useEffect(() => {
-    const fetchUnreadMessages = async () => {
-      if (!vendorId) return;
+    if (!vendorId) return;
 
+    const fetchUnreadMessages = async () => {
       try {
-        // Query for unread admin messages sent TO this vendor
-        // vendor_id = recipient (the vendor viewing the profile)
-        // sender_type = 'user' means message from admin
-        // is_read = false means not yet read by vendor
         const { data, error } = await supabase
           .from('vendor_messages')
           .select('id')
@@ -137,33 +133,27 @@ export default function VendorProfilePage() {
 
     fetchUnreadMessages();
 
-    // Set up polling as PRIMARY mechanism (every 3 seconds)
-    // This ensures notifications work even if real-time subscription fails
-    const pollInterval = setInterval(() => {
-      fetchUnreadMessages();
-    }, 3000);
-
-    // Set up real-time subscription as BACKUP for instant updates
-    const subscription = supabase
+    // Real-time subscription for instant updates
+    const channel = supabase
       .channel(`vendor_messages_${vendorId}`)
       .on('postgres_changes', {
-        event: 'INSERT',  // Only listen to new messages
+        event: 'INSERT',
         schema: 'public',
         table: 'vendor_messages',
         filter: `vendor_id=eq.${vendorId}`
-      }, (payload) => {
-        console.log('🔔 New message received:', payload);
-        fetchUnreadMessages(); // Refresh immediately
+      }, () => {
+        fetchUnreadMessages();
       })
-      .subscribe((status) => {
-        console.log('Vendor profile subscription status:', status);
-      });
+      .subscribe();
+
+    // Fallback polling every 30 seconds (not 3s — too aggressive for Safari)
+    const pollInterval = setInterval(fetchUnreadMessages, 30000);
 
     return () => {
       clearInterval(pollInterval);
-      subscription?.unsubscribe();
+      channel?.unsubscribe();
     };
-  }, [vendorId, supabase]);
+  }, [vendorId]);
 
   // Fetch vendor and related data
   useEffect(() => {
@@ -371,22 +361,13 @@ export default function VendorProfilePage() {
     };
 
     if (vendorId) fetchData();
-  }, [vendorId, authLoading, authUser]);
+  }, [vendorId, authLoading, authUser?.id]);
 
   const canEdit = useMemo(() => {
     const result = !!currentUser &&
       (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
-    
-    console.log('🔐 canEdit check:', {
-      currentUser: currentUser?.id,
-      currentUserEmail: currentUser?.email,
-      vendorUserId: vendor?.user_id,
-      vendorEmail: vendor?.email,
-      canEdit: result
-    });
-    
     return result;
-  }, [currentUser, vendor]);
+  }, [currentUser?.id, currentUser?.email, vendor?.user_id, vendor?.email]);
 
   // Fetch RFQ Inbox data for vendor
   useEffect(() => {
