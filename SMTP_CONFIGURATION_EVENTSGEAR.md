@@ -11,7 +11,7 @@ Enable Custom SMTP: ON
 SMTP Host: mail.eventsgear.co.ke
 SMTP Port: 587
 SMTP Username: forgetpassword@eventsgear.co.ke
-SMTP Password: [Use the email account's password]
+SMTP Password: [Chicago2026*]
 Sender Email: forgetpassword@eventsgear.co.ke
 Sender Name: Zintra
 Enable TLS: YES

@@ -337,7 +337,7 @@ Value: v=DMARC1; p=quarantine; rua=mailto:zintraotp@eventsgear.co.ke
 - [ ] SMTP Host: `mail.eventsgear.co.ke`
 - [ ] SMTP Port: `587`
 - [ ] SMTP Username: `forgetpassword@eventsgear.co.ke`
-- [ ] SMTP Password: `[Get from cPanel]`
+- [ ] SMTP Password: `[Chicago2026!]`
 - [ ] Sender Email: `forgetpassword@eventsgear.co.ke`
 - [ ] Sender Name: `Zintra`
 - [ ] TLS/STARTTLS enabled
