@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Link from 'next/link';
 import { Star, MapPin, Clock, CheckCircle2 } from 'lucide-react';
-import RFQModal from '@/components/RFQModal/RFQModal.jsx';
+
+// Lazy-load RFQ modal — only downloads when user clicks "Request Quote"
+const RFQModal = lazy(() => import('@/components/RFQModal/RFQModal.jsx'));
 
 /**
  * Enhanced VendorCard Component (v2)
@@ -53,44 +55,24 @@ export function VendorCard({ vendor, className = '' }) {
   
   // Generate fresh presigned URL if logo_url is stored as S3 key
   useEffect(() => {
-    const generateFreshUrl = async () => {
-      if (!vendor?.logo_url) return;
+    if (!vendor?.logo_url) return;
 
-      // Check if this is a Supabase URL (keep as-is)
-      if (vendor.logo_url.includes('supabase.co')) {
-        console.log('📝 Using Supabase Storage URL');
-        setFreshLogoUrl(vendor.logo_url);
-        return;
-      }
+    // Supabase URLs or full URLs — use as-is
+    if (vendor.logo_url.startsWith('http') || vendor.logo_url.includes('supabase.co')) {
+      setFreshLogoUrl(vendor.logo_url);
+      return;
+    }
 
-      // Check if this is an S3 key (not a presigned URL)
-      // S3 keys don't have query parameters and don't start with https://
-      const isS3Key = !vendor.logo_url.startsWith('http') && !vendor.logo_url.includes('?');
-      
-      if (isS3Key) {
-        try {
-          console.log('📝 Generating fresh presigned URL for S3 key:', vendor.logo_url);
-          const response = await fetch(`/api/vendor-profile/get-image-url?key=${encodeURIComponent(vendor.logo_url)}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            setFreshLogoUrl(data.url);
-            console.log('✅ Fresh presigned URL generated');
-          } else {
-            console.warn('⚠️ Failed to generate fresh URL, falling back to stored URL');
-            setFreshLogoUrl(vendor.logo_url);
-          }
-        } catch (error) {
-          console.error('❌ Error generating fresh URL:', error);
-          setFreshLogoUrl(vendor.logo_url);
-        }
-      } else {
-        // Already a full URL (presigned or public)
-        setFreshLogoUrl(vendor.logo_url);
-      }
-    };
+    // S3 key — need to generate presigned URL
+    const controller = new AbortController();
+    fetch(`/api/vendor-profile/get-image-url?key=${encodeURIComponent(vendor.logo_url)}`, {
+      signal: controller.signal
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.url) setFreshLogoUrl(data.url); else setFreshLogoUrl(vendor.logo_url); })
+      .catch(() => setFreshLogoUrl(vendor.logo_url));
 
-    generateFreshUrl();
+    return () => controller.abort();
   }, [vendor?.logo_url]);
   
   if (!vendor) return null;
@@ -268,16 +250,18 @@ export function VendorCard({ vendor, className = '' }) {
         </div>
       </div>
 
-      {/* RFQ Modal */}
+      {/* RFQ Modal — lazy loaded */}
       {showRFQModal && (
-        <RFQModal
-          rfqType="direct"
-          isOpen={showRFQModal}
-          onClose={() => setShowRFQModal(false)}
-          vendorId={id}
-          vendorCategories={[primary_category_slug].filter(Boolean)}
-          vendorName={company_name}
-        />
+        <Suspense fallback={null}>
+          <RFQModal
+            rfqType="direct"
+            isOpen={showRFQModal}
+            onClose={() => setShowRFQModal(false)}
+            vendorId={id}
+            vendorCategories={[primary_category_slug].filter(Boolean)}
+            vendorName={company_name}
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
-import { ALL_CATEGORIES_FLAT, filterVendorsByCategory } from '@/lib/constructionCategories';
-import { VerificationBadgeWithTooltip, VerificationMini } from '@/app/components/VerificationBadge';
+import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { VendorCard } from '@/components/VendorCard';
 
 export default function BrowseVendors() {
@@ -22,104 +21,113 @@ export default function BrowseVendors() {
   const [showFilters, setShowFilters] = useState(false);
   const [vendorProfileLink, setVendorProfileLink] = useState('');
 
-  // ✅ Fetch vendors and extract filters
+  // ✅ Set categories immediately (no async needed)
+  useEffect(() => {
+    setCategories([
+      'All Categories',
+      ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
+    ]);
+  }, []);
+
+  // ✅ Fetch vendors — Safari-safe with AbortController + hard timeout
   useEffect(() => {
     let isMounted = true;
+    const abortController = new AbortController();
+    const supabase = createClient();
+
+    // Hard safety timeout — force-end loading after 10s no matter what
+    const safetyTimer = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('⚠️ Browse: Safety timeout reached — forcing loading=false');
+        setLoading(false);
+      }
+    }, 10000);
 
     const fetchVendorProfileLink = async () => {
       try {
-        // 2-second timeout for fetching vendor profile link
-        await Promise.race([
-          (async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user || !isMounted) return;
-            const { data: vendor } = await supabase
-              .from('vendors')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-            if (vendor?.id && isMounted) setVendorProfileLink(`/vendor-profile/${vendor.id}`);
-          })(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
-        ]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !isMounted) return;
+        const { data: vendor } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (vendor?.id && isMounted) setVendorProfileLink(`/vendor-profile/${vendor.id}`);
       } catch {
         // Silently fail - not critical
       }
     };
-    
-    fetchVendorProfileLink();
 
     const fetchVendors = async () => {
       try {
         if (!isMounted) return;
         setLoading(true);
         setError(null);
-        
-        // 15-second timeout for vendor fetch
-        await Promise.race([
-          (async () => {
-            const { data: vendorData, error: fetchError } = await supabase
+
+        // First try with stats join
+        let vendorData = null;
+        let fetchError = null;
+
+        try {
+          const result = await Promise.race([
+            supabase
               .from('vendors')
-              .select(`
-                *,
-                vendor_profile_stats(views_count, likes_count)
-              `);
+              .select('*, vendor_profile_stats(views_count, likes_count)'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+          ]);
+          vendorData = result.data;
+          fetchError = result.error;
+        } catch {
+          // Stats join timed out or failed — fallback to vendors only
+          console.warn('⚠️ Stats join failed, fetching vendors without stats...');
+          try {
+            const fallback = await Promise.race([
+              supabase.from('vendors').select('*'),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+            ]);
+            vendorData = fallback.data;
+            fetchError = fallback.error;
+          } catch {
+            fetchError = { message: 'Request timed out. Please refresh the page.' };
+          }
+        }
 
-            if (!isMounted) return;
+        if (!isMounted) return;
 
-            if (fetchError) {
-              console.error('❌ Error fetching vendors:', fetchError.message);
-              setError(`Failed to load vendors: ${fetchError.message}`);
-              setVendors([]);
-              // Set comprehensive categories even on error
-              setCategories([
-                'All Categories',
-                ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-              ]);
-            } else if (!vendorData || vendorData.length === 0) {
-              console.warn('No vendors found in database');
-              setVendors([]);
-              // Set comprehensive categories for filtering even with no vendors
-              setCategories([
-                'All Categories',
-                ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-              ]);
-            } else {
-              // Flatten the stats into each vendor object for easier access
-              const vendorsWithStats = vendorData.map(vendor => ({
-                ...vendor,
-                views_count: vendor.vendor_profile_stats?.[0]?.views_count || 0,
-                likes_count: vendor.vendor_profile_stats?.[0]?.likes_count || 0,
-              }));
-              setVendors(vendorsWithStats);
-              // Use comprehensive construction categories
-              setCategories([
-                'All Categories',
-                ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-              ]);
-            }
-          })(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Vendor fetch timeout')), 15000))
-        ]);
+        if (fetchError) {
+          console.error('❌ Error fetching vendors:', fetchError.message);
+          setError(`Failed to load vendors: ${fetchError.message}`);
+          setVendors([]);
+        } else if (!vendorData || vendorData.length === 0) {
+          console.warn('No vendors found in database');
+          setVendors([]);
+        } else {
+          // Flatten stats (if present) into each vendor object
+          const vendorsWithStats = vendorData.map(vendor => ({
+            ...vendor,
+            views_count: vendor.vendor_profile_stats?.[0]?.views_count || 0,
+            likes_count: vendor.vendor_profile_stats?.[0]?.likes_count || 0,
+          }));
+          setVendors(vendorsWithStats);
+        }
       } catch (err) {
         if (!isMounted) return;
         console.error('Unexpected error fetching vendors:', err.message);
         setError(`Error: ${err.message || 'Failed to load vendors'}`);
         setVendors([]);
-        // Set comprehensive categories on error
-        setCategories([
-          'All Categories',
-          ...ALL_CATEGORIES_FLAT.map((cat) => cat.label),
-        ]);
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
+    // Run in parallel — neither blocks the other
+    fetchVendorProfileLink();
     fetchVendors();
 
     return () => {
       isMounted = false;
+      abortController.abort();
+      clearTimeout(safetyTimer);
     };
   }, []);
 
