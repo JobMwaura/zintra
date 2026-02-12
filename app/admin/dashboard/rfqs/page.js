@@ -222,20 +222,31 @@ export default function ConsolidatedRFQs() {
 
   // Pending tab handlers
   const notifyVendors = async (rfq) => {
-    const category = rfq.category || rfq.auto_category;
+    const category = rfq.category_slug || rfq.category || rfq.auto_category;
     
-    // Fetch ALL active vendors (don't filter by category at DB level)
+    // Fetch ALL active vendors (with both old and new category columns)
     const { data: vendors } = await supabase
       .from('vendors')
-      .select('id, user_id, county, category, rating, verified, status, rfqs_completed, response_time, service_counties')
+      .select('id, user_id, county, category, primary_category_slug, secondary_categories, rating, verified, status, rfqs_completed, response_time, service_counties')
       .eq('status', 'active');
 
     // Enhanced matching with fuzzy category matching and service area support
     let matching = (vendors || [])
       .filter((v) => {
-        // 1. Category matching: Use fuzzy matching instead of exact match
-        const categoryMatch = categoryMatches(v.category, category);
-        if (!categoryMatch) return false;
+        // 1. Category matching: Check primary_category_slug first, then old category column
+        const vendorCategory = v.primary_category_slug || v.category || '';
+        const categoryMatch = categoryMatches(vendorCategory, category);
+        
+        // Also check secondary_categories
+        let secondaryMatch = false;
+        if (!categoryMatch && v.secondary_categories) {
+          const secondaries = Array.isArray(v.secondary_categories)
+            ? v.secondary_categories
+            : (() => { try { return JSON.parse(v.secondary_categories); } catch { return []; } })();
+          secondaryMatch = secondaries.some(sc => categoryMatches(sc, category));
+        }
+        
+        if (!categoryMatch && !secondaryMatch) return false;
 
         // 2. Location matching: Check primary county or service_counties array
         if (rfq.county) {
@@ -281,9 +292,20 @@ export default function ConsolidatedRFQs() {
     if (matching.length < 3) {
       console.warn(`⚠️ Low match count (${matching.length}). Relaxing criteria...`);
       
-      // Fallback: Match on category alone, include all quality levels
+      // Fallback: Match on category alone (primary_category_slug or old category), include all quality levels
       matching = (vendors || [])
-        .filter((v) => categoryMatches(v.category, category))
+        .filter((v) => {
+          const vendorCat = v.primary_category_slug || v.category || '';
+          if (categoryMatches(vendorCat, category)) return true;
+          // Check secondary categories too
+          if (v.secondary_categories) {
+            const secondaries = Array.isArray(v.secondary_categories)
+              ? v.secondary_categories
+              : (() => { try { return JSON.parse(v.secondary_categories); } catch { return []; } })();
+            return secondaries.some(sc => categoryMatches(sc, category));
+          }
+          return false;
+        })
         .sort((a, b) => {
           const aVerified = a.verified ? 1 : 0;
           const bVerified = b.verified ? 1 : 0;
@@ -300,23 +322,40 @@ export default function ConsolidatedRFQs() {
       return;
     }
 
-    await supabase.from('rfq_requests').insert(
+    const { error: insertError } = await supabase.from('rfq_requests').insert(
       matching.map((v) => ({
         rfq_id: rfq.id,
-        vendor_id: v.user_id || v.id,
+        vendor_id: v.id,
+        user_id: rfq.user_id || null,
+        project_title: rfq.title || 'Untitled RFQ',
+        project_description: rfq.description || '',
         status: 'pending',
       }))
     );
 
+    if (insertError) {
+      console.error('rfq_requests insert error:', insertError);
+      // Try simplified insert without optional columns
+      await supabase.from('rfq_requests').insert(
+        matching.map((v) => ({
+          rfq_id: rfq.id,
+          vendor_id: v.id,
+          status: 'pending',
+        }))
+      );
+    }
+
     try {
       await supabase.from('notifications').insert(
-        matching.map((v) => ({
-          user_id: v.user_id || v.id,
-          type: 'rfq_match',
-          title: `New RFQ: ${rfq.title}`,
-          body: `${category} • ${rfq.county || rfq.location || 'Location provided'}`,
-          metadata: { rfq_id: rfq.id, budget: rfq.budget_range },
-        }))
+        matching
+          .filter(v => v.user_id) // Only vendors linked to auth users
+          .map((v) => ({
+            user_id: v.user_id,
+            type: 'rfq_match',
+            title: `New RFQ: ${rfq.title}`,
+            body: `${category} • ${rfq.county || rfq.location || 'Location provided'}`,
+            metadata: { rfq_id: rfq.id, budget: rfq.budget_range },
+          }))
       );
     } catch (e) {
       console.warn('Notifications insert skipped', e.message);
