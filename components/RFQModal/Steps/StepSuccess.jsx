@@ -67,16 +67,27 @@ export default function StepSuccess({ rfqType, rfqId, onClose, recipientCount })
             </p>
           </div>
         )}
+
+        {rfqType === 'vendor-request' && (
+          <div>
+            <p className="font-medium text-blue-900 mb-2">
+              ✓ Sent directly to vendor
+            </p>
+            <p className="text-sm text-blue-800">
+              The vendor has been notified via email and in-app notification. They can now review your request and submit a quote.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Next Steps */}
       <div className="text-left space-y-2 bg-gray-50 rounded-lg p-4">
         <p className="font-medium text-gray-900 text-sm">What's next?</p>
         <ul className="text-sm text-gray-700 space-y-1">
-          <li>• Check your email for confirmation</li>
-          <li>• You'll receive notifications when vendors respond</li>
-          <li>• Review responses in your dashboard</li>
-          <li>• Compare quotes and select a vendor</li>
+          <li>• You'll see a confirmation in your notifications</li>
+          <li>• Vendors will receive an email and in-app notification</li>
+          <li>• You'll be notified when vendors submit quotes</li>
+          <li>• Compare quotes in your <a href="/my-rfqs" className="text-orange-600 underline font-medium">My RFQs</a> dashboard</li>
         </ul>
       </div>
 

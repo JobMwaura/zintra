@@ -62,6 +62,7 @@ export default function MyRFQsPage() {
   const [statusValue, setStatusValue] = useState('all');
   const [dateRangeValue, setDateRangeValue] = useState('all');
   const [sortValue, setSortValue] = useState('latest');
+  const [quota, setQuota] = useState(null);
 
   // Redirect if not authenticated (only after auth loading is complete)
   useEffect(() => {
@@ -69,6 +70,27 @@ export default function MyRFQsPage() {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  // Fetch RFQ quota on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchQuota = async () => {
+      try {
+        const res = await fetch('/api/rfq/check-eligibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setQuota(data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch quota:', err);
+      }
+    };
+    fetchQuota();
+  }, [user?.id]);
 
   // Handle search
   const handleSearch = useCallback((query) => {
@@ -210,6 +232,47 @@ export default function MyRFQsPage() {
               >
                 Try again
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* RFQ Quota Banner */}
+        {quota && (
+          <div className={`rounded-lg border p-4 mb-6 flex items-center justify-between ${
+            quota.remaining_free > 0
+              ? 'bg-green-50 border-green-200'
+              : 'bg-amber-50 border-amber-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{quota.remaining_free > 0 ? '✅' : '⚠️'}</span>
+              <div>
+                <p className={`font-semibold text-sm ${
+                  quota.remaining_free > 0 ? 'text-green-900' : 'text-amber-900'
+                }`}>
+                  {quota.remaining_free > 0
+                    ? `${quota.remaining_free} of ${quota.free_limit} free RFQs remaining this month`
+                    : `Free RFQ limit reached (${quota.current_count}/${quota.free_limit} used)`
+                  }
+                </p>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {quota.remaining_free > 0
+                    ? `You've sent ${quota.current_count} RFQ${quota.current_count !== 1 ? 's' : ''} this month`
+                    : 'Additional RFQs cost KES 300 each'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              {[...Array(quota.free_limit)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-3 h-3 rounded-full ${
+                    i < quota.current_count
+                      ? 'bg-orange-500'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              ))}
             </div>
           </div>
         )}

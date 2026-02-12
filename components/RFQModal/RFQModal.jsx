@@ -75,6 +75,7 @@ export default function RFQModal({
   const [vendors, setVendors] = useState([]);
   const [categoryNeedsJobType, setCategoryNeedsJobType] = useState(false);
   const [rfqId, setRfqId] = useState(null);
+  const [quota, setQuota] = useState({ remaining_free: null, current_count: null, free_limit: 3 });
 
   // Form persistence hook
   const { clearFormData } = useRfqFormPersistence();
@@ -161,6 +162,27 @@ export default function RFQModal({
         try {
           const { data: { user: authUser } } = await withTimeout(supabase.auth.getUser(), 6000, 'auth.getUser');
           setUser(authUser);
+
+          // Fetch RFQ quota for this user
+          if (authUser?.id) {
+            try {
+              const eligRes = await fetch('/api/rfq/check-eligibility', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: authUser.id, rfq_type: rfqType }),
+              });
+              if (eligRes.ok) {
+                const eligData = await eligRes.json();
+                setQuota({
+                  remaining_free: eligData.remaining_free ?? null,
+                  current_count: eligData.current_count ?? null,
+                  free_limit: eligData.free_limit ?? 3,
+                });
+              }
+            } catch (quotaErr) {
+              console.warn('Quota check skipped:', quotaErr?.message);
+            }
+          }
         } catch (authErr) {
           console.warn('Auth load skipped:', authErr?.message || authErr);
         }
@@ -543,6 +565,25 @@ export default function RFQModal({
               <span className="text-base">⚠️</span>
               {error}
             </p>
+          </div>
+        )}
+
+        {/* Quota Banner - show remaining free RFQs */}
+        {quota.remaining_free !== null && currentStep !== 'success' && (
+          <div className={`px-6 sm:px-8 py-2 border-b text-xs font-medium flex items-center justify-between ${
+            quota.remaining_free > 0
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'
+          }`}>
+            <span>
+              {quota.remaining_free > 0
+                ? `✅ ${quota.remaining_free} of ${quota.free_limit} free RFQs remaining this month`
+                : `⚠️ Free RFQ limit reached (${quota.current_count}/${quota.free_limit}). Additional RFQs cost KES 300.`
+              }
+            </span>
+            <span className="text-[10px] opacity-70">
+              Resets monthly
+            </span>
           </div>
         )}
 
