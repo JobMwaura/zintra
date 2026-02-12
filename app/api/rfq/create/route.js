@@ -314,19 +314,23 @@ export async function POST(request) {
     }
 
     // For WIZARD RFQ: Auto-match vendors using multi-criteria scoring algorithm
-    // Pushes automatically — no admin intervention needed
+    // If algorithm matches ≥1 vendor → auto-push. If 0 → flag for admin manual review
+    let wizardNeedsAdminReview = false;
+    let wizardMatchCount = 0;
     if (rfqType === 'wizard') {
       try {
         console.log('[RFQ CREATE] Wizard RFQ - Auto-matching vendors for category:', categorySlug);
-        const matched = await autoMatchVendors(rfqId, categorySlug, sharedFields.county, {
+        const matchResult = await autoMatchVendors(rfqId, categorySlug, sharedFields.county, {
           town: sharedFields.town,
           budgetMin: sharedFields.budgetMin,
           budgetMax: sharedFields.budgetMax,
         });
-        console.log('[RFQ CREATE] Wizard RFQ - Matched', matched.length, 'vendors');
+        wizardNeedsAdminReview = matchResult.needsAdminReview;
+        wizardMatchCount = matchResult.vendors.length;
+        console.log('[RFQ CREATE] Wizard RFQ - Matched', wizardMatchCount, 'vendors. Needs admin review:', wizardNeedsAdminReview);
       } catch (err) {
         console.error('[RFQ CREATE] Vendor auto-match error:', err.message);
-        // Continue - auto-match is not critical
+        wizardNeedsAdminReview = true; // If matching crashes, flag for admin
       }
     }
 
@@ -387,8 +391,24 @@ export async function POST(request) {
     // 8. TRIGGER NOTIFICATIONS (async, non-blocking)
     // ============================================================================
     // Public RFQs: do NOT notify vendors yet (admin must approve first)
+    // Wizard RFQs needing admin review: notify USER about the review, admin already notified by _flagForAdminReview
     // All other types: send notifications immediately
-    if (rfqType !== 'public') {
+    if (rfqType === 'wizard' && wizardNeedsAdminReview) {
+      // Wizard with 0 matches → notify user their RFQ is being reviewed
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+      const supa = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      supa.from('notifications').insert({
+        user_id: userId,
+        type: 'rfq_under_review',
+        title: 'RFQ Under Review',
+        body: `Your RFQ "${createdRfq.title}" is being reviewed by our team to find the best matching vendors. You'll be notified once we've matched you with relevant vendors.`,
+        metadata: { rfq_id: rfqId, rfq_type: 'wizard', reason: 'admin_intervention' },
+        related_id: rfqId,
+        related_type: 'rfq',
+      }).then(() => {
+        console.log('[RFQ CREATE] ✅ Sent under-review notification to user (wizard needs admin)');
+      }).catch(() => {});
+    } else if (rfqType !== 'public') {
       triggerNotifications(rfqId, rfqType, userId, createdRfq.title).catch(err => {
         console.error('[RFQ CREATE] Notification error (non-critical):', err.message);
       });
@@ -442,12 +462,25 @@ export async function POST(request) {
     // ============================================================================
     // 9. RETURN SUCCESS
     // ============================================================================
-    const successMessages = {
-      direct: 'RFQ sent directly to your selected vendor(s)!',
-      wizard: 'RFQ auto-matched and sent to the best vendors for your project!',
-      public: 'Your public RFQ has been submitted for admin review. Once approved, it will be visible to vendors in the marketplace.',
-      'vendor-request': 'Your request for quote has been sent to the vendor!',
-    };
+    let successMessage;
+    let responseStatus;
+
+    if (rfqType === 'wizard' && wizardNeedsAdminReview) {
+      successMessage = 'Your RFQ has been submitted and is being reviewed by our team to find the best matching vendors. You\'ll be notified once matched!';
+      responseStatus = 'needs_admin_review';
+    } else if (rfqType === 'wizard') {
+      successMessage = `RFQ auto-matched and sent to ${wizardMatchCount} top vendor${wizardMatchCount !== 1 ? 's' : ''} for your project!`;
+      responseStatus = 'submitted';
+    } else if (rfqType === 'public') {
+      successMessage = 'Your public RFQ has been submitted for admin review. Once approved, it will be visible to vendors in the marketplace.';
+      responseStatus = 'pending_approval';
+    } else if (rfqType === 'vendor-request') {
+      successMessage = 'Your request for quote has been sent to the vendor!';
+      responseStatus = 'submitted';
+    } else {
+      successMessage = 'RFQ sent directly to your selected vendor(s)!';
+      responseStatus = 'submitted';
+    }
 
     console.log('[RFQ CREATE] Success - returning response');
     return NextResponse.json(
@@ -455,9 +488,11 @@ export async function POST(request) {
         success: true,
         rfqId: rfqId,
         rfqTitle: createdRfq.title,
-        message: successMessages[rfqType] || `RFQ created successfully! (${rfqType} type)`,
+        message: successMessage,
         rfqType: rfqType,
-        status: rfqType === 'public' ? 'pending_approval' : 'submitted',
+        status: responseStatus,
+        needsAdminReview: wizardNeedsAdminReview,
+        vendorCount: wizardMatchCount,
       },
       { status: 201 }
     );
