@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import NegotiationThread from '@/components/NegotiationThread';
 import NegotiationQA from '@/components/NegotiationQA';
-import { ArrowLeft, MessageSquare, AlertCircle, HelpCircle, CheckCircle, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, MessageSquare, AlertCircle, HelpCircle, CheckCircle, FileText, Clock, Star, Flag } from 'lucide-react';
 
 /**
  * Negotiate Page — /rfq/[rfqId]/negotiate
@@ -612,7 +612,7 @@ export default function NegotiatePage({ params }) {
                       </div>
 
                       {/* Action buttons */}
-                      {jobOrder.status !== 'cancelled' && jobOrder.status !== 'completed' && (
+                      {jobOrder.status !== 'cancelled' && jobOrder.status !== 'completed' && jobOrder.status !== 'disputed' && (
                         <div className="mt-4 flex gap-2">
                           {/* Confirm button: only if this user hasn't confirmed */}
                           {((userRole === 'buyer' && !jobOrder.confirmed_by_buyer) || 
@@ -699,6 +699,95 @@ export default function NegotiatePage({ params }) {
                               ✅ Mark Complete
                             </button>
                           )}
+                        </div>
+                      )}
+
+                      {/* Dispute button for active jobs */}
+                      {['confirmed', 'in_progress'].includes(jobOrder.status) && (
+                        <div className="mt-3">
+                          <button
+                            onClick={async () => {
+                              const reason = prompt('Describe the issue you want to dispute:');
+                              if (!reason) return;
+                              setIsSubmitting(true);
+                              try {
+                                const res = await fetch('/api/job-orders', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ jobOrderId: jobOrder.id, action: 'dispute', userId: user.id, reason })
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error);
+                                setMessage('⚠️ Dispute raised. Admin has been notified.');
+                                await loadNegotiationThread(selectedQuoteId);
+                              } catch (err) {
+                                setError(err.message);
+                              } finally {
+                                setIsSubmitting(false);
+                              }
+                            }}
+                            disabled={isSubmitting}
+                            className="text-sm text-red-600 hover:text-red-800 font-medium underline"
+                          >
+                            ⚠️ Raise a Dispute
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Disputed notice */}
+                      {jobOrder.status === 'disputed' && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-sm font-semibold text-red-900">⚠️ Dispute Active</p>
+                          <p className="text-xs text-red-700 mt-1">
+                            A dispute has been raised on this job order. Admin has been notified and will mediate.
+                            {jobOrder.metadata?.dispute_reason && (
+                              <span className="block mt-1">Reason: {jobOrder.metadata.dispute_reason}</span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Completed — rate vendor prompt (buyer only) */}
+                      {jobOrder.status === 'completed' && userRole === 'buyer' && selectedVendor && (
+                        <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <Star className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h4 className="font-bold text-emerald-900">Job Completed! 🎉</h4>
+                              <p className="text-sm text-emerald-800 mt-1">
+                                The job has been marked as completed. Consider leaving a rating for{' '}
+                                <span className="font-semibold">{selectedVendor.company_name}</span> to help other buyers.
+                              </p>
+                              <a
+                                href={`/vendor-profile/${selectedQuote?.vendor_id}`}
+                                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition"
+                              >
+                                <Star className="w-4 h-4" />
+                                Rate Vendor
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Completed — vendor thank you */}
+                      {jobOrder.status === 'completed' && userRole === 'vendor' && (
+                        <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <CheckCircle className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h4 className="font-bold text-emerald-900">Job Completed! 🎉</h4>
+                              <p className="text-sm text-emerald-800 mt-1">
+                                This job has been completed successfully. The buyer may leave a rating on your profile.
+                              </p>
+                              <a
+                                href="/job-orders"
+                                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition"
+                              >
+                                View All Job Orders →
+                              </a>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

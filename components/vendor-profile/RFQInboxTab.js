@@ -443,6 +443,12 @@ export default function RFQInboxTab({ vendor, currentUser }) {
             </span>
           )}
         </button>
+        <a
+          href="/job-orders"
+          className="px-4 py-2 rounded-t-lg font-semibold text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+        >
+          📋 Job Orders
+        </a>
       </div>
 
       {/* ========== MY QUOTES SECTION ========== */}

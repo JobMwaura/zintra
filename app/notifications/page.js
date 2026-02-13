@@ -127,7 +127,11 @@ export default function NotificationsPage() {
       'job_order_confirmed': 'Job Order Confirmed',
       'job_order_started': 'Work Started',
       'job_order_completed': 'Job Completed',
-      'job_order_cancelled': 'Job Order Cancelled'
+      'job_order_cancelled': 'Job Order Cancelled',
+      'job_order_disputed': 'Job Dispute Raised',
+      'negotiation_warning': 'Activity Flagged',
+      'admin_negotiation_report': 'Negotiation Report',
+      'admin_job_dispute': 'Job Dispute'
     };
     return labels[type] || type;
   };
@@ -170,7 +174,12 @@ export default function NotificationsPage() {
       'job_order_confirmed': '✅',
       'job_order_started': '🚀',
       'job_order_completed': '🏁',
-      'job_order_cancelled': '🚫'
+      'job_order_cancelled': '🚫',
+      'job_order_disputed': '⚠️',
+      // Safety types
+      'negotiation_warning': '🛡️',
+      'admin_negotiation_report': '🚩',
+      'admin_job_dispute': '🚨'
     };
     return icons[type] || '🔔';
   };
@@ -331,6 +340,26 @@ export default function NotificationsPage() {
         border: 'border-l-red-500',
         badge: 'bg-red-100 text-red-800'
       },
+      'job_order_disputed': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-600',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'negotiation_warning': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-600',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'admin_negotiation_report': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'admin_job_dispute': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-600',
+        badge: 'bg-red-100 text-red-800'
+      },
       'default': {
         bg: 'bg-slate-50',
         border: 'border-l-slate-500',
@@ -465,6 +494,8 @@ export default function NotificationsPage() {
               <option value="job_order_started">Work Started</option>
               <option value="job_order_completed">Job Completed</option>
               <option value="job_order_cancelled">Job Order Cancelled</option>
+              <option value="job_order_disputed">Job Dispute</option>
+              <option value="negotiation_warning">Activity Flagged</option>
             </select>
           </div>
         </div>

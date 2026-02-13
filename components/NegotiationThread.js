@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, XCircle, Ban, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, XCircle, Ban, Clock, AlertTriangle, Flag, Shield } from 'lucide-react';
 
 /**
  * NegotiationThread Component
@@ -49,6 +49,11 @@ export default function NegotiationThread({
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(null); // offerId or null
   const [actionError, setActionError] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportMessage, setReportMessage] = useState(null);
 
   if (loading) {
     return (
@@ -136,6 +141,148 @@ export default function NegotiationThread({
       setActionError(err.message || 'Failed to reject offer');
     }
   };
+
+  // Report handler
+  const handleReport = async () => {
+    if (!reportReason) return;
+    setReportSubmitting(true);
+    try {
+      const res = await fetch('/api/negotiations/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          negotiationId: negotiation.id,
+          reportedBy: userId,
+          reason: reportReason,
+          details: reportDetails || null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit report');
+      setReportMessage('✅ Report submitted. Our team will review this.');
+      setShowReportModal(false);
+      setReportReason('');
+      setReportDetails('');
+    } catch (err) {
+      setReportMessage('❌ ' + (err.message || 'Failed to submit report'));
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  // Build chronological audit trail (all events sorted by date)
+  const auditTrail = useMemo(() => {
+    const events = [];
+
+    // Negotiation started
+    events.push({
+      id: 'start',
+      type: 'started',
+      date: negotiation.created_at,
+      label: 'Negotiation Started',
+      detail: `Initial price: KSh ${negotiation.original_price?.toLocaleString() || 'N/A'}`,
+      color: 'bg-blue-500',
+      icon: '🤝'
+    });
+
+    // Counter offers
+    counterOffers.slice().reverse().forEach((offer, index) => {
+      const offerBy = offer.proposed_by === userId ? 'You' : (offer.proposed_by === negotiation.user_id ? 'Buyer' : 'Vendor');
+      events.push({
+        id: `offer-${offer.id}`,
+        type: 'offer',
+        date: offer.created_at,
+        label: `Counter Offer #${index + 1} by ${offerBy}`,
+        detail: `KSh ${offer.proposed_price?.toLocaleString()} — ${offer.status}`,
+        subDetail: offer.scope_changes ? `Scope: ${offer.scope_changes}` : null,
+        color: offer.status === 'accepted' ? 'bg-green-500' :
+               offer.status === 'rejected' ? 'bg-red-500' :
+               offer.status === 'expired' ? 'bg-amber-500' :
+               offer.status === 'cancelled' ? 'bg-gray-400' :
+               'bg-orange-500',
+        icon: offer.status === 'accepted' ? '✅' :
+              offer.status === 'rejected' ? '❌' :
+              offer.status === 'expired' ? '⏰' :
+              '💰'
+      });
+
+      // If offer was accepted/rejected, add that as separate event
+      if (offer.status === 'accepted' && offer.updated_at !== offer.created_at) {
+        events.push({
+          id: `accept-${offer.id}`,
+          type: 'accepted',
+          date: offer.updated_at,
+          label: 'Offer Accepted',
+          detail: `Deal agreed at KSh ${offer.proposed_price?.toLocaleString()}`,
+          color: 'bg-green-600',
+          icon: '🎉'
+        });
+      }
+      if (offer.status === 'rejected' && offer.updated_at !== offer.created_at) {
+        events.push({
+          id: `reject-${offer.id}`,
+          type: 'rejected',
+          date: offer.updated_at,
+          label: 'Offer Rejected',
+          detail: offer.rejected_reason ? `Reason: ${offer.rejected_reason}` : 'No reason given',
+          color: 'bg-red-400',
+          icon: '↩️'
+        });
+      }
+    });
+
+    // Q&A items
+    qaItems.forEach((qa) => {
+      events.push({
+        id: `q-${qa.id}`,
+        type: 'question',
+        date: qa.created_at,
+        label: 'Question Asked',
+        detail: qa.question?.length > 80 ? qa.question.substring(0, 80) + '...' : qa.question,
+        color: 'bg-purple-500',
+        icon: '❓'
+      });
+      if (qa.answer) {
+        events.push({
+          id: `a-${qa.id}`,
+          type: 'answer',
+          date: qa.answered_at || qa.updated_at || qa.created_at,
+          label: 'Question Answered',
+          detail: qa.answer?.length > 80 ? qa.answer.substring(0, 80) + '...' : qa.answer,
+          color: 'bg-green-400',
+          icon: '💬'
+        });
+      }
+    });
+
+    // Thread closure events
+    if (negotiation.status === 'cancelled' && negotiation.closed_at) {
+      events.push({
+        id: 'cancelled',
+        type: 'cancelled',
+        date: negotiation.closed_at,
+        label: 'Negotiation Cancelled',
+        detail: '',
+        color: 'bg-red-600',
+        icon: '🚫'
+      });
+    }
+    if (negotiation.status === 'expired') {
+      events.push({
+        id: 'expired',
+        type: 'expired',
+        date: negotiation.closed_at || negotiation.updated_at,
+        label: 'Negotiation Expired',
+        detail: 'Response deadline passed',
+        color: 'bg-amber-600',
+        icon: '⏰'
+      });
+    }
+
+    // Sort chronologically
+    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return events;
+  }, [negotiation, counterOffers, qaItems, userId]);
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -489,60 +636,31 @@ export default function NegotiationThread({
 
         {selectedTab === 'activity' && (
           <div className="space-y-3">
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Full Audit Trail — {auditTrail.length} events</p>
             <div className="relative">
               {/* Timeline line */}
               <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
               {/* Timeline items */}
               <div className="space-y-4">
-                {/* Initial creation */}
-                <div className="flex gap-4 relative z-10">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-white"></div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">Negotiation Started</p>
-                    <p className="text-sm text-gray-600">{new Date(negotiation.created_at).toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-1">Initial price: KSh {negotiation.original_price?.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                {/* Counter offers */}
-                {counterOffers.map((offer, index) => (
-                  <div key={offer.id} className="flex gap-4 relative z-10">
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      offer.status === 'accepted' ? 'bg-green-500' :
-                      offer.status === 'rejected' ? 'bg-red-500' :
-                      'bg-gray-400'
-                    }`}>
-                      <div className="w-2 h-2 rounded-full bg-white"></div>
+                {auditTrail.map((event) => (
+                  <div key={event.id} className="flex gap-4 relative z-10">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full ${event.color} flex items-center justify-center text-sm`}>
+                      {event.icon}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        Counter Offer #{counterOffers.length - index}
-                      </p>
-                      <p className="text-sm text-gray-600">{new Date(offer.created_at).toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        New price: KSh {offer.proposed_price?.toLocaleString()} ({offer.status})
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Q&A items */}
-                {qaItems.slice(0, 3).map((qa) => (
-                  <div key={qa.id} className="flex gap-4 relative z-10">
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      qa.answer ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}>
-                      <div className="w-2 h-2 rounded-full bg-white"></div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {qa.answer ? 'Question Answered' : 'Question Asked'}
-                      </p>
-                      <p className="text-sm text-gray-600">{new Date(qa.created_at).toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">{qa.question}</p>
+                    <div className="flex-1 pb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-gray-900 text-sm">{event.label}</p>
+                        <span className="text-xs text-gray-400">
+                          {new Date(event.date).toLocaleString()}
+                        </span>
+                      </div>
+                      {event.detail && (
+                        <p className="text-xs text-gray-600 mt-0.5">{event.detail}</p>
+                      )}
+                      {event.subDetail && (
+                        <p className="text-xs text-gray-400 mt-0.5 italic">{event.subDetail}</p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -642,17 +760,108 @@ export default function NegotiationThread({
           {!canCounter && (
             <p className="text-sm text-amber-700 font-medium">Maximum rounds ({maxRounds}) reached — accept or reject the latest offer</p>
           )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="flex items-center gap-1 px-3 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 transition"
+              title="Report this negotiation"
+            >
+              <Flag className="w-4 h-4" /> Report
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('Are you sure you want to cancel this negotiation? This cannot be undone.')) {
+                  onCancelNegotiation?.('Cancelled by ' + userRole);
+                }
+              }}
+              disabled={isSubmitting}
+              className="flex items-center gap-1 px-4 py-2 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-50 transition disabled:opacity-50"
+            >
+              <Ban className="w-4 h-4" /> Cancel Negotiation
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Report button for closed negotiations too */}
+      {isClosed && (
+        <div className="border-t p-4 flex justify-end items-center bg-gray-50">
           <button
-            onClick={() => {
-              if (confirm('Are you sure you want to cancel this negotiation? This cannot be undone.')) {
-                onCancelNegotiation?.('Cancelled by ' + userRole);
-              }
-            }}
-            disabled={isSubmitting}
-            className="flex items-center gap-1 px-4 py-2 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-50 transition disabled:opacity-50"
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center gap-1 px-3 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 transition"
+            title="Report this negotiation"
           >
-            <Ban className="w-4 h-4" /> Cancel Negotiation
+            <Flag className="w-4 h-4" /> Report
           </button>
+        </div>
+      )}
+
+      {/* ── REPORT MODAL ── */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-red-600" />
+              <h3 className="text-lg font-bold text-gray-900">Report Negotiation</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              If you've encountered suspicious behaviour, harassment, or policy violations, 
+              please let us know. Our team will review and take action.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Reason *</label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="Suspicious pricing">Suspicious pricing</option>
+                  <option value="Harassment or threats">Harassment or threats</option>
+                  <option value="Spam or fake offers">Spam or fake offers</option>
+                  <option value="Unresponsive party">Unresponsive party</option>
+                  <option value="Misleading information">Misleading information</option>
+                  <option value="Attempted fraud">Attempted fraud</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Details (optional)</label>
+                <textarea
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  placeholder="Provide additional context..."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={handleReport}
+                disabled={!reportReason || reportSubmitting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold text-sm hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+              </button>
+              <button
+                onClick={() => { setShowReportModal(false); setReportReason(''); setReportDetails(''); }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-semibold text-sm hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report message toast */}
+      {reportMessage && (
+        <div className="border-t p-3 text-center">
+          <p className="text-sm font-medium text-gray-700">{reportMessage}</p>
+          <button onClick={() => setReportMessage(null)} className="text-xs text-gray-400 mt-1">Dismiss</button>
         </div>
       )}
     </div>

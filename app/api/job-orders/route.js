@@ -265,6 +265,50 @@ export async function PATCH(request) {
       return NextResponse.json({ success: true, action: 'cancelled' });
     }
 
+    // ── DISPUTE ──
+    if (action === 'dispute') {
+      if (!['confirmed', 'in_progress'].includes(jobOrder.status)) {
+        return NextResponse.json({ error: 'Can only dispute confirmed or in-progress jobs' }, { status: 400 });
+      }
+
+      await supabase.from('job_orders').update({
+        status: 'disputed',
+        metadata: { ...jobOrder.metadata, dispute_reason: reason || 'No reason provided', disputed_by: userId, disputed_at: now },
+        updated_at: now
+      }).eq('id', jobOrderId);
+
+      // Notify the other party
+      await supabase.from('notifications').insert({
+        user_id: otherPartyId,
+        type: 'job_order_disputed',
+        title: 'Dispute Raised ⚠️',
+        body: `A dispute has been raised on the job order by the ${isBuyer ? 'buyer' : 'vendor'}.${reason ? ` Issue: ${reason}` : ''}`,
+        metadata: { job_order_id: jobOrderId, rfq_id: jobOrder.rfq_id, reason },
+        related_id: jobOrderId,
+        related_type: 'job_order'
+      });
+
+      // Notify ALL admins about the dispute for intervention
+      const { data: admins } = await supabase
+        .from('admin_users')
+        .select('id');
+
+      if (admins && admins.length > 0) {
+        const adminNotifications = admins.map(admin => ({
+          user_id: admin.id,
+          type: 'admin_job_dispute',
+          title: '🚨 Job Order Dispute Needs Review',
+          body: `A dispute was raised on job order (KSh ${parseFloat(jobOrder.agreed_price).toLocaleString()}). Reason: ${reason || 'Not specified'}`,
+          metadata: { job_order_id: jobOrderId, rfq_id: jobOrder.rfq_id, buyer_id: jobOrder.buyer_id, vendor_id: jobOrder.vendor_id, reason },
+          related_id: jobOrderId,
+          related_type: 'job_order'
+        }));
+        await supabase.from('notifications').insert(adminNotifications);
+      }
+
+      return NextResponse.json({ success: true, action: 'disputed' });
+    }
+
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
 
   } catch (error) {

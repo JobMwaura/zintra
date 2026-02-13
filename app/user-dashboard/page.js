@@ -433,6 +433,11 @@ export default function UserDashboard() {
                     My RFQs
                   </button>
                 </Link>
+                <Link href="/job-orders">
+                  <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
+                    Job Orders
+                  </button>
+                </Link>
                 <Link href="/user-messages">
                   <button className="w-full text-left px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
                     Messages

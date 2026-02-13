@@ -96,6 +96,10 @@ export default function DashboardNotificationsPanel() {
         return <CheckCircle className="w-5 h-5 text-emerald-600" />;
       case 'job_order_cancelled':
         return <AlertCircle className="w-5 h-5 text-red-600" />;
+      case 'job_order_disputed':
+        return <AlertCircle className="w-5 h-5 text-red-700" />;
+      case 'negotiation_warning':
+        return <Clock className="w-5 h-5 text-amber-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -131,9 +135,15 @@ export default function DashboardNotificationsPanel() {
       }
 
       // Job order types → link to negotiate page (job order is shown there)
-      if (['job_order_created', 'job_order_confirmed', 'job_order_started', 'job_order_completed', 'job_order_cancelled'].includes(notification?.type)) {
+      if (['job_order_created', 'job_order_confirmed', 'job_order_started', 'job_order_completed', 'job_order_cancelled', 'job_order_disputed'].includes(notification?.type)) {
         const rfqId = notification?.metadata?.rfq_id;
-        return rfqId ? `/rfq/${rfqId}/negotiate` : '/my-rfqs';
+        return rfqId ? `/rfq/${rfqId}/negotiate` : '/job-orders';
+      }
+
+      // Safety/warning types
+      if (notification?.type === 'negotiation_warning') {
+        const rfqId = notification?.metadata?.rfq_id;
+        return rfqId ? `/rfq/${rfqId}/negotiate` : '/notifications';
       }
       
       // Handle by related_type (legacy)
