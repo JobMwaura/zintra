@@ -183,9 +183,9 @@ export function NotificationToast({ notification, onClose, index }) {
             <p className={`font-semibold text-sm ${styles.title}`}>
               {notification.title}
             </p>
-            {notification.body && (
+            {(notification.body || notification.message) && (
               <p className={`text-sm mt-1 ${styles.text}`}>
-                {notification.body}
+                {notification.body || notification.message}
               </p>
             )}
           </div>

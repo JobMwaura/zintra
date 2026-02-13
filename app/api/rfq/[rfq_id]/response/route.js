@@ -420,10 +420,10 @@ export async function POST(request, { params }) {
           user_id: rfq.user_id,
           type: 'rfq_response',
           title: 'New Quote Received',
-          message: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for "${rfq.title}"`,
+          body: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for "${rfq.title}"`,
           related_type: 'rfq',
           related_id: rfq_id,
-          data: {
+          metadata: {
             rfq_id: rfq_id,
             response_id: response.id,
             vendor_name: vendorProfile?.company_name || 'Vendor',
@@ -452,10 +452,10 @@ export async function POST(request, { params }) {
           user_id: a.user_id,
           type: 'admin_quote_submitted',
           title: '📩 Vendor Quote Submitted',
-          message: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for RFQ "${rfq.title}". The quote has been delivered to the requester.`,
+          body: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for RFQ "${rfq.title}". The quote has been delivered to the requester.`,
           related_type: 'rfq',
           related_id: rfq_id,
-          data: {
+          metadata: {
             rfq_id: rfq_id,
             response_id: response.id,
             vendor_id: vendorProfile.id,

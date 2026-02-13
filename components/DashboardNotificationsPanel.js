@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Bell, Trash2, CheckCircle, MessageSquare, AlertCircle, Archive } from 'lucide-react';
+import { Bell, Trash2, CheckCircle, MessageSquare, AlertCircle, Archive, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 /**
@@ -53,12 +53,28 @@ export default function DashboardNotificationsPanel() {
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'message':
+      case 'message_received':
+      case 'vendor_message':
         return <MessageSquare className="w-5 h-5 text-blue-600" />;
       case 'rfq':
       case 'rfq_response':
+      case 'rfq_received':
+      case 'rfq_match':
+      case 'new_rfq':
         return <AlertCircle className="w-5 h-5 text-orange-600" />;
+      case 'rfq_sent':
+      case 'rfq_admin_matched':
       case 'quote':
+      case 'quote_accepted':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'rfq_under_review':
+      case 'rfq_pending_review':
+      case 'rfq_status':
+        return <Clock className="w-5 h-5 text-amber-600" />;
+      case 'admin_rfq_intervention':
+        return <AlertCircle className="w-5 h-5 text-red-600" />;
+      case 'admin_quote_submitted':
+        return <Archive className="w-5 h-5 text-purple-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -69,8 +85,22 @@ export default function DashboardNotificationsPanel() {
       // Handle by type first (newer notifications)
       if (notification?.type === 'rfq_response') {
         // Link to quote comparison page for the RFQ
-        const rfqId = notification?.data?.rfq_id || notification?.related_id;
+        const rfqId = notification?.metadata?.rfq_id || notification?.related_id;
         return rfqId ? `/quote-comparison/${rfqId}` : '/my-rfqs';
+      }
+
+      if (notification?.type === 'rfq_sent' || notification?.type === 'rfq_under_review' || 
+          notification?.type === 'rfq_pending_review' || notification?.type === 'rfq_admin_matched' ||
+          notification?.type === 'rfq_status') {
+        return '/my-rfqs';
+      }
+
+      if (notification?.type === 'rfq_received' || notification?.type === 'rfq_match' || notification?.type === 'new_rfq') {
+        return '/vendor/rfq';
+      }
+
+      if (notification?.type === 'admin_rfq_intervention' || notification?.type === 'admin_quote_submitted') {
+        return '/admin/rfqs';
       }
       
       // Handle by related_type (legacy)
@@ -78,8 +108,8 @@ export default function DashboardNotificationsPanel() {
         case 'vendor_message':
           return '/user-messages';
         case 'rfq':
-          // If there's an rfq_id in data, link to quote comparison
-          const rfqId = notification?.data?.rfq_id;
+          // If there's an rfq_id in metadata, link to quote comparison
+          const rfqId = notification?.metadata?.rfq_id;
           return rfqId ? `/quote-comparison/${rfqId}` : '/my-rfqs';
         case 'quote':
           return `/user-messages`;
