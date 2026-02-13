@@ -79,6 +79,7 @@ export default function AdminRFQs() {
   const [stats, setStats] = useState({
     total_rfqs: 0,
     pending_approval: 0,
+    needs_admin_review: 0,
     wizard_count: 0,
     public_count: 0,
     completed: 0,

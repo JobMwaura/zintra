@@ -403,22 +403,16 @@ export async function POST(request, { params }) {
     }
 
     // Update RFQ recipient status if applicable
-    if (rfq.type === 'direct') {
-      await supabase
-        .from('rfq_recipients')
-        .update({ status: 'responded' })
-        .eq('rfq_id', rfq_id)
-        .eq('vendor_id', vendorProfile.id);
-    }
+    await supabase
+      .from('rfq_recipients')
+      .update({ status: 'responded' })
+      .eq('rfq_id', rfq_id)
+      .eq('vendor_id', vendorProfile.id);
 
-    // Fetch requester info for notification
-    const { data: requester } = await supabase
-      .from('profiles')
-      .select('email, first_name')
-      .eq('id', rfq.user_id)
-      .maybeSingle();
-
-    // Create notification for buyer
+    // =========================================================================
+    // NOTIFICATION 1: Notify the BUYER (RFQ requester) — quote has been submitted
+    // The buyer sees the vendor name but not the other way around
+    // =========================================================================
     const { error: notifError } = await supabase
       .from('notifications')
       .insert([
@@ -440,8 +434,42 @@ export async function POST(request, { params }) {
       ]);
 
     if (notifError) {
-      console.error('Error creating notification:', notifError);
-      // Don't fail the request if notification fails
+      console.error('Error creating buyer notification:', notifError);
+    }
+
+    // =========================================================================
+    // NOTIFICATION 2: Notify all ADMINS — vendor has submitted a quote
+    // Admin sees: which vendor, which RFQ, and that it went to the user
+    // =========================================================================
+    try {
+      const { data: admins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+
+      if (admins?.length) {
+        const adminNotifs = admins.map(a => ({
+          user_id: a.user_id,
+          type: 'admin_quote_submitted',
+          title: '📩 Vendor Quote Submitted',
+          message: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for RFQ "${rfq.title}". The quote has been delivered to the requester.`,
+          related_type: 'rfq',
+          related_id: rfq_id,
+          data: {
+            rfq_id: rfq_id,
+            response_id: response.id,
+            vendor_id: vendorProfile.id,
+            vendor_name: vendorProfile?.company_name || 'Vendor',
+            quoted_price: total_price_calculated || quoted_price,
+            rfq_type: rfq.type,
+          }
+        }));
+
+        await supabase.from('notifications').insert(adminNotifs);
+        console.log('[QUOTE SUBMIT] ✅ Notified', admins.length, 'admin(s) about vendor quote submission');
+      }
+    } catch (adminErr) {
+      console.error('Admin notification error (non-critical):', adminErr.message);
     }
 
     // Log audit trail
@@ -456,7 +484,8 @@ export async function POST(request, { params }) {
           details: {
             rfq_id: rfq_id,
             vendor_id: vendorProfile.id,
-            quoted_price: quoted_price,
+            vendor_name: vendorProfile?.company_name,
+            quoted_price: total_price_calculated || quoted_price,
             timestamp: new Date().toISOString()
           }
         }
@@ -473,10 +502,9 @@ export async function POST(request, { params }) {
           status: response.status,
           created_at: response.created_at
         },
-        message: 'Quote submitted successfully',
+        message: 'Quote submitted successfully! The buyer will be notified.',
         rfq_info: {
           rfq_title: rfq.title,
-          requester_name: requester?.user_metadata?.first_name || 'Customer',
           total_responses: responseCount + 1
         }
       },

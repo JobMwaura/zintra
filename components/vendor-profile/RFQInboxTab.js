@@ -84,7 +84,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     }
   };
 
-  // Handle Contact Buyer - open modal with buyer details
+  // Handle Contact Buyer - open modal for messaging (buyer identity stays hidden)
   const handleContactBuyer = async (quote) => {
     setSelectedQuote(quote);
     setLoadingModal(true);
@@ -101,19 +101,15 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         return;
       }
 
-      // Fetch from API that gets email from auth.users
-      const response = await fetch(`/api/user/${buyerId}/details`);
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        console.error('Error fetching buyer details:', result.error);
-        setContactBuyer({ error: 'Could not load buyer details' });
-      } else {
-        setContactBuyer(result.user);
-      }
+      // Set buyer reference for messaging — but keep identity anonymous
+      setContactBuyer({
+        id: buyerId,
+        full_name: 'Zintra User',   // Anonymized
+        email: null,                 // Hidden
+      });
     } catch (err) {
-      console.error('Error fetching buyer:', err);
-      setContactBuyer({ error: 'Error loading buyer details' });
+      console.error('Error setting up contact:', err);
+      setContactBuyer({ error: 'Error loading contact details' });
     }
     setLoadingModal(false);
   };
@@ -155,7 +151,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     setSendingMessage(false);
   };
 
-  // Handle View Assignment - open modal with full RFQ details
+  // Handle View Assignment - open modal with full RFQ details (buyer stays anonymous)
   const handleViewAssignment = async (quote) => {
     setSelectedQuote(quote);
     setLoadingModal(true);
@@ -172,14 +168,11 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       if (rfqError || !rfqData) {
         setAssignmentRfq({ error: 'Could not load RFQ details' });
       } else {
-        // Also fetch buyer info from users table
-        const { data: buyerData } = await supabase
-          .from('users')
-          .select('id, full_name, email, phone')
-          .eq('id', rfqData.user_id)
-          .maybeSingle();
-        
-        setAssignmentRfq({ ...rfqData, buyer: buyerData });
+        // Anonymize buyer info — vendor sees project details, not the buyer identity
+        setAssignmentRfq({
+          ...rfqData,
+          buyer: { id: rfqData.user_id, full_name: 'Zintra User', email: null, phone: null }
+        });
       }
     } catch (err) {
       console.error('Error fetching RFQ:', err);
@@ -328,36 +321,22 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       const allRfqs = [...assignedMappedRfqs, ...recipientMappedRfqs, ...directMappedRfqs];
       allRfqs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      // Fetch buyer information for RFQs that need it
+      // Fetch buyer information for RFQs — BUT anonymize for vendor privacy
+      // Vendors should NOT see buyer's real name or email
+      // They communicate via the platform messaging system
       const requesterIds = [
         ...new Set(allRfqs.map(r => r.requester_id_for_fetch || r.requester_id).filter(Boolean))
       ];
       
       if (requesterIds.length > 0) {
         try {
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('id, email, full_name')
-            .in('id', requesterIds);
-          
-          const usersMap = {};
-          (usersData || []).forEach(user => {
-            usersMap[user.id] = {
-              email: user.email || 'unknown@zintra.co.ke',
-              full_name: user.full_name || 'Unknown'
-            };
-          });
-
-          // Update RFQs with fetched buyer info
+          // Only fetch the user_id so messaging still works — name stays hidden
           allRfqs.forEach(rfq => {
-            const requesterId = rfq.requester_id_for_fetch || rfq.requester_id;
-            if (usersMap[requesterId]) {
-              rfq.requester_email = usersMap[requesterId].email;
-              rfq.requester_name = usersMap[requesterId].full_name;
-            }
+            rfq.requester_email = null; // Hidden from vendor
+            rfq.requester_name = 'Zintra User'; // Anonymized
           });
         } catch (err) {
-          console.warn('Could not fetch buyer information:', err);
+          console.warn('Could not process buyer information:', err);
         }
       }
 
@@ -692,7 +671,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                     {showChatMode ? <MessageCircle className="w-5 h-5" /> : <User className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">{showChatMode ? 'Send Message' : 'Contact Buyer'}</h2>
+                    <h2 className="text-lg font-bold">{showChatMode ? 'Send Message' : 'Message Buyer'}</h2>
                     <p className="text-blue-100 text-sm truncate max-w-[200px]">{selectedQuote?.rfqs?.title || 'Project'}</p>
                   </div>
                 </div>
