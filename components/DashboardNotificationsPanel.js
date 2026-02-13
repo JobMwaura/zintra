@@ -66,15 +66,24 @@ export default function DashboardNotificationsPanel() {
       case 'rfq_admin_matched':
       case 'quote':
       case 'quote_accepted':
+      case 'offer_accepted':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'rfq_under_review':
       case 'rfq_pending_review':
       case 'rfq_status':
         return <Clock className="w-5 h-5 text-amber-600" />;
       case 'admin_rfq_intervention':
+      case 'negotiation_cancelled':
+      case 'offer_rejected':
         return <AlertCircle className="w-5 h-5 text-red-600" />;
       case 'admin_quote_submitted':
         return <Archive className="w-5 h-5 text-purple-600" />;
+      case 'negotiation_started':
+      case 'counter_offer':
+        return <MessageSquare className="w-5 h-5 text-orange-600" />;
+      case 'qa_question':
+      case 'qa_answer':
+        return <MessageSquare className="w-5 h-5 text-purple-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -101,6 +110,12 @@ export default function DashboardNotificationsPanel() {
 
       if (notification?.type === 'admin_rfq_intervention' || notification?.type === 'admin_quote_submitted') {
         return '/admin/rfqs';
+      }
+
+      // Negotiation types → link to negotiate page
+      if (['negotiation_started', 'counter_offer', 'offer_accepted', 'offer_rejected', 'negotiation_cancelled', 'qa_question', 'qa_answer'].includes(notification?.type)) {
+        const rfqId = notification?.metadata?.rfq_id;
+        return rfqId ? `/rfq/${rfqId}/negotiate` : '/my-rfqs';
       }
       
       // Handle by related_type (legacy)

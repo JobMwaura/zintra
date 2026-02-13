@@ -506,7 +506,7 @@ export default function QuoteComparisonPage({ params }) {
               onClick={() => router.push(`/rfq/${rfqId}/negotiate`)}
               className="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition font-semibold text-orange-700"
             >
-              <MessageCircle className="w-4 h-4" /> Send Messages
+              <MessageCircle className="w-4 h-4" /> Negotiate Quotes
             </button>
           )}
 
@@ -605,9 +605,15 @@ export default function QuoteComparisonPage({ params }) {
               <button
                 onClick={() => {
                   const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
-                  const vendor = vendors[selectedQuote?.vendor_id];
-                  if (vendor?.email) {
-                    window.location.href = `mailto:${vendor.email}`;
+                  if (selectedQuote?.status === 'accepted') {
+                    const vendor = vendors[selectedQuote?.vendor_id];
+                    if (vendor?.email) {
+                      window.location.href = `mailto:${vendor.email}`;
+                    } else {
+                      setActionMessage('❌ No vendor email available');
+                    }
+                  } else {
+                    setActionMessage('ℹ️ Accept the quote or negotiate a deal first. Vendor contact is revealed after acceptance.');
                   }
                 }}
                 className="flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"

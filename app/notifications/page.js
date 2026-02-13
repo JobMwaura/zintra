@@ -111,7 +111,15 @@ export default function NotificationsPage() {
       'message_received': 'Message Received',
       'rfq_updated': 'RFQ Updated',
       'vendor_message': 'Vendor Message',
-      'new_rfq': 'New RFQ'
+      'new_rfq': 'New RFQ',
+      // Negotiation types
+      'negotiation_started': 'Negotiation Started',
+      'counter_offer': 'Counter Offer',
+      'offer_accepted': 'Offer Accepted',
+      'offer_rejected': 'Offer Declined',
+      'negotiation_cancelled': 'Negotiation Cancelled',
+      'qa_question': 'Question Asked',
+      'qa_answer': 'Question Answered'
     };
     return labels[type] || type;
   };
@@ -138,7 +146,15 @@ export default function NotificationsPage() {
       'message_received': '💬',
       'rfq_updated': '🔄',
       'vendor_message': '👤',
-      'new_rfq': '🆕'
+      'new_rfq': '🆕',
+      // Negotiation types
+      'negotiation_started': '🤝',
+      'counter_offer': '↩️',
+      'offer_accepted': '🎉',
+      'offer_rejected': '⛔',
+      'negotiation_cancelled': '🚫',
+      'qa_question': '❓',
+      'qa_answer': '💡'
     };
     return icons[type] || '🔔';
   };
@@ -227,6 +243,42 @@ export default function NotificationsPage() {
         bg: 'bg-orange-50',
         border: 'border-l-orange-500',
         badge: 'bg-orange-100 text-orange-800'
+      },
+      // Negotiation types
+      'negotiation_started': {
+        bg: 'bg-indigo-50',
+        border: 'border-l-indigo-500',
+        badge: 'bg-indigo-100 text-indigo-800'
+      },
+      'counter_offer': {
+        bg: 'bg-orange-50',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-100 text-orange-800'
+      },
+      'offer_accepted': {
+        bg: 'bg-green-50',
+        border: 'border-l-green-500',
+        badge: 'bg-green-100 text-green-800'
+      },
+      'offer_rejected': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'negotiation_cancelled': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'qa_question': {
+        bg: 'bg-purple-50',
+        border: 'border-l-purple-500',
+        badge: 'bg-purple-100 text-purple-800'
+      },
+      'qa_answer': {
+        bg: 'bg-teal-50',
+        border: 'border-l-teal-500',
+        badge: 'bg-teal-100 text-teal-800'
       },
       'default': {
         bg: 'bg-slate-50',
@@ -348,6 +400,13 @@ export default function NotificationsPage() {
               <option value="admin_rfq_intervention">Admin Intervention</option>
               <option value="admin_quote_submitted">Quote Submitted</option>
               <option value="message_received">Message Received</option>
+              <option value="negotiation_started">Negotiation Started</option>
+              <option value="counter_offer">Counter Offer</option>
+              <option value="offer_accepted">Offer Accepted</option>
+              <option value="offer_rejected">Offer Declined</option>
+              <option value="negotiation_cancelled">Negotiation Cancelled</option>
+              <option value="qa_question">Question Asked</option>
+              <option value="qa_answer">Question Answered</option>
             </select>
           </div>
         </div>
