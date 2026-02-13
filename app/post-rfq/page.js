@@ -31,10 +31,10 @@ function PostRFQContent() {
           (async () => {
             const { data, error: fetchError } = await supabase
               .from('rfqs')
-              .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
-              .eq('rfq_type', 'public')
+              .select('id, title, description, category_slug, budget_min, budget_max, budget_range, location, county, deadline, status, created_at, type')
+              .eq('type', 'public')
               .eq('visibility', 'public')
-              .eq('status', 'open')
+              .in('status', ['approved', 'open', 'active'])
               .order('created_at', { ascending: false });
 
             if (!isMounted) return;
@@ -336,15 +336,21 @@ function PostRFQContent() {
                       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                         <div>
                           <p className="text-gray-500 font-semibold text-xs">Budget</p>
-                          <p className="font-bold text-gray-900">{rfq.budget_range}</p>
+                          <p className="font-bold text-gray-900">
+                            {rfq.budget_min && rfq.budget_max
+                              ? `KES ${Number(rfq.budget_min).toLocaleString()} - ${Number(rfq.budget_max).toLocaleString()}`
+                              : rfq.budget_range || 'Flexible'}
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-500 font-semibold text-xs">Location</p>
-                          <p className="font-bold text-gray-900">{rfq.county}</p>
+                          <p className="font-bold text-gray-900">{rfq.county || rfq.location || 'Kenya'}</p>
                         </div>
                         <div>
                           <p className="text-gray-500 font-semibold text-xs">Category</p>
-                          <p className="font-bold text-gray-900 text-xs line-clamp-1">{rfq.category}</p>
+                          <p className="font-bold text-gray-900 text-xs line-clamp-1 capitalize">
+                            {rfq.category_slug ? rfq.category_slug.replace(/-/g, ' ') : rfq.category || 'General'}
+                          </p>
                         </div>
                         {daysLeft !== null && (
                           <div>

@@ -204,7 +204,7 @@ export default function PublicRFQModal({ isOpen = false, onClose = () => {}, onS
         return;
       }
 
-      setSuccessMessage('RFQ posted successfully! Vendors will view and respond to your request.');
+      setSuccessMessage("RFQ submitted successfully! Your project is being reviewed by our team and will be published to the marketplace shortly. You'll be notified once it's live.");
       clearFormData('public', selectedCategory, selectedJobType);
       resetRfq();
 
