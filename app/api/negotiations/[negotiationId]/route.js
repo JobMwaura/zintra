@@ -182,6 +182,14 @@ export async function PATCH(request, { params }) {
         })
         .eq('id', negotiationId);
 
+      // Cancel any other pending offers on this thread
+      await supabase
+        .from('counter_offers')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('negotiation_id', negotiationId)
+        .eq('status', 'pending')
+        .neq('id', offerId);
+
       // Notify the other party
       const notifiedUserId = isFromBuyer ? thread.vendor_id : thread.user_id;
       await supabase.from('notifications').insert({
@@ -199,10 +207,62 @@ export async function PATCH(request, { params }) {
         related_type: 'negotiation'
       });
 
+      // ── AUTO-GENERATE JOB ORDER ──
+      let jobOrder = null;
+      try {
+        const { data: newJobOrder, error: jobError } = await supabase
+          .from('job_orders')
+          .insert({
+            negotiation_id: negotiationId,
+            rfq_id: thread.rfq_id || null,
+            rfq_quote_id: thread.rfq_quote_id || null,
+            buyer_id: thread.user_id,
+            vendor_id: thread.vendor_id,
+            agreed_price: offer.proposed_price,
+            payment_terms: offer.payment_terms || null,
+            delivery_date: offer.delivery_date || null,
+            scope_summary: offer.scope_changes || null,
+            status: 'created'
+          })
+          .select()
+          .single();
+
+        if (!jobError && newJobOrder) {
+          jobOrder = newJobOrder;
+
+          // Notify both parties about the job order
+          await supabase.from('notifications').insert([
+            {
+              user_id: thread.user_id,
+              type: 'job_order_created',
+              title: 'Job Order Created 📋',
+              body: `A job order for KSh ${offer.proposed_price.toLocaleString()} has been generated. Please review and confirm.`,
+              metadata: { job_order_id: newJobOrder.id, negotiation_id: negotiationId, rfq_id: thread.rfq_id },
+              related_id: newJobOrder.id,
+              related_type: 'job_order'
+            },
+            {
+              user_id: thread.vendor_id,
+              type: 'job_order_created',
+              title: 'Job Order Created 📋',
+              body: `A job order for KSh ${offer.proposed_price.toLocaleString()} has been generated. Please review and confirm.`,
+              metadata: { job_order_id: newJobOrder.id, negotiation_id: negotiationId, rfq_id: thread.rfq_id },
+              related_id: newJobOrder.id,
+              related_type: 'job_order'
+            }
+          ]);
+        } else {
+          console.error('Failed to create job order (non-blocking):', jobError?.message);
+        }
+      } catch (jobErr) {
+        console.error('Job order creation error (non-blocking):', jobErr.message);
+      }
+
       return NextResponse.json({
         success: true,
         action: 'accepted',
         offer,
+        jobOrder,
         message: 'Offer accepted successfully'
       });
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, XCircle, Ban } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, XCircle, Ban, Clock, AlertTriangle } from 'lucide-react';
 
 /**
  * NegotiationThread Component
@@ -69,12 +69,29 @@ export default function NegotiationThread({
 
   const isAccepted = negotiation.status === 'accepted' || counterOffers.some(co => co.status === 'accepted');
   const isClosed = ['accepted', 'cancelled', 'expired'].includes(negotiation.status);
+  const isExpired = negotiation.status === 'expired';
   const latestPrice = counterOffers[0]?.proposed_price || negotiation.current_price || negotiation.original_price;
   const priceDifference = latestPrice - negotiation.original_price;
   const pricePercentChange = negotiation.original_price ? ((priceDifference / negotiation.original_price) * 100).toFixed(1) : '0';
   const roundCount = negotiation.round_count || counterOffers.length || 0;
   const maxRounds = negotiation.max_rounds || 3;
   const canCounter = !isClosed && roundCount < maxRounds;
+
+  // Helper: time remaining until offer expires
+  const getTimeRemaining = (responseByDate) => {
+    if (!responseByDate) return null;
+    const now = new Date();
+    const deadline = new Date(responseByDate);
+    const diff = deadline - now;
+    if (diff <= 0) return { expired: true, text: 'Expired' };
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    if (days > 0) return { expired: false, text: `${days}d ${remainingHours}h remaining` };
+    if (hours > 0) return { expired: false, text: `${hours}h remaining` };
+    const minutes = Math.floor(diff / (1000 * 60));
+    return { expired: false, text: `${minutes}m remaining`, urgent: true };
+  };
 
   // Determine if user can act on a pending offer (the other party must respond)
   const canActOnOffer = (offer) => {
@@ -152,6 +169,12 @@ export default function NegotiationThread({
             <div className="flex items-center gap-2 bg-red-100 text-red-800 px-3 py-1 rounded-full">
               <XCircle className="w-4 h-4" />
               <span className="text-sm font-medium">Cancelled</span>
+            </div>
+          )}
+          {isExpired && (
+            <div className="flex items-center gap-2 bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-medium">Expired</span>
             </div>
           )}
         </div>
@@ -249,6 +272,8 @@ export default function NegotiationThread({
                           offer.status === 'accepted' ? 'bg-green-100 text-green-800' :
                           offer.status === 'rejected' ? 'bg-red-100 text-red-800' :
                           offer.status === 'countered' ? 'bg-yellow-100 text-yellow-800' :
+                          offer.status === 'expired' ? 'bg-amber-100 text-amber-800' :
+                          offer.status === 'cancelled' ? 'bg-gray-100 text-gray-600' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
@@ -296,10 +321,40 @@ export default function NegotiationThread({
                       )}
 
                       {offer.response_by_date && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                          <p className="text-sm text-yellow-800">
-                            <span className="font-semibold">Response requested by:</span> {new Date(offer.response_by_date).toLocaleDateString()}
-                          </p>
+                        <div className={`border rounded p-3 ${
+                          (() => {
+                            const tr = getTimeRemaining(offer.response_by_date);
+                            if (!tr) return 'bg-gray-50 border-gray-200';
+                            if (tr.expired || offer.status === 'expired') return 'bg-red-50 border-red-200';
+                            if (tr.urgent) return 'bg-amber-50 border-amber-200';
+                            return 'bg-yellow-50 border-yellow-200';
+                          })()
+                        }`}>
+                          {(() => {
+                            const tr = getTimeRemaining(offer.response_by_date);
+                            if (offer.status === 'expired' || (tr && tr.expired)) {
+                              return (
+                                <p className="text-sm text-red-800 flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  <span className="font-semibold">Expired</span> — deadline was {new Date(offer.response_by_date).toLocaleDateString()}
+                                </p>
+                              );
+                            }
+                            if (tr && offer.status === 'pending') {
+                              return (
+                                <p className={`text-sm flex items-center gap-1 ${tr.urgent ? 'text-amber-800' : 'text-yellow-800'}`}>
+                                  {tr.urgent && <AlertTriangle className="w-4 h-4" />}
+                                  {!tr.urgent && <Clock className="w-4 h-4" />}
+                                  <span className="font-semibold">Response by:</span> {new Date(offer.response_by_date).toLocaleDateString()} ({tr.text})
+                                </p>
+                              );
+                            }
+                            return (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-semibold">Response requested by:</span> {new Date(offer.response_by_date).toLocaleDateString()}
+                              </p>
+                            );
+                          })()}
                         </div>
                       )}
 

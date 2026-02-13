@@ -574,13 +574,22 @@ export default function VendorRFQDashboard() {
                         Submit Quote
                       </button>
                     )}
-                    {hasResponded && (
+                    {hasResponded && responseStatus !== 'rejected' && (
+                      <button
+                        onClick={() => router.push(`/rfq/${rfq.id}/negotiate`)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition"
+                      >
+                        <MessageSquare size={18} />
+                        Negotiate
+                      </button>
+                    )}
+                    {hasResponded && responseStatus === 'rejected' && (
                       <div className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold cursor-not-allowed">
                         <CheckCircle size={18} />
-                        Already Responded
+                        Quote Rejected
                       </div>
                     )}
-                    {daysUntilExpiry <= 0 && (
+                    {daysUntilExpiry <= 0 && !hasResponded && (
                       <div className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold cursor-not-allowed">
                         <Clock size={18} />
                         Expired

@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import NegotiationThread from '@/components/NegotiationThread';
 import NegotiationQA from '@/components/NegotiationQA';
-import { ArrowLeft, MessageSquare, AlertCircle, HelpCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, MessageSquare, AlertCircle, HelpCircle, CheckCircle, FileText, Clock } from 'lucide-react';
 
 /**
  * Negotiate Page — /rfq/[rfqId]/negotiate
@@ -44,6 +44,7 @@ export default function NegotiatePage({ params }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
+  const [jobOrder, setJobOrder] = useState(null);
 
   // Resolve params (Next.js 15+ async params)
   useEffect(() => {
@@ -61,6 +62,8 @@ export default function NegotiatePage({ params }) {
   useEffect(() => {
     if (!rfqId || !user) return;
     fetchRFQAndQuotes();
+    // Background expiry check on page load
+    fetch('/api/negotiations/check-expiry', { method: 'POST' }).catch(() => {});
   }, [rfqId, user]);
 
   const fetchRFQAndQuotes = async () => {
@@ -137,11 +140,12 @@ export default function NegotiatePage({ params }) {
       setNegotiation(null);
       setCounterOffers([]);
       setQaItems([]);
+      setJobOrder(null);
 
       // Check if a thread already exists for this quote
       const { data: existingThreads } = await supabase
         .from('negotiation_threads')
-        .select('id')
+        .select('id, status')
         .eq('rfq_quote_id', quoteId);
 
       if (existingThreads && existingThreads.length > 0) {
@@ -153,6 +157,20 @@ export default function NegotiatePage({ params }) {
           setNegotiation(data.thread);
           setCounterOffers(data.counterOffers || []);
           setQaItems(data.qaItems || []);
+
+          // If accepted, fetch the job order
+          if (data.thread?.status === 'accepted') {
+            try {
+              const joRes = await fetch(`/api/job-orders?userId=${user.id}`);
+              const joData = await joRes.json();
+              if (joRes.ok && joData.orders) {
+                const matchingOrder = joData.orders.find(o => o.negotiation_id === existingThreads[0].id);
+                if (matchingOrder) setJobOrder(matchingOrder);
+              }
+            } catch (joErr) {
+              console.error('Error fetching job order:', joErr);
+            }
+          }
         }
       }
       // If no thread, that's fine — user can start one
@@ -524,6 +542,180 @@ export default function NegotiatePage({ params }) {
                         </p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* ── JOB ORDER CARD (shown after deal acceptance) ── */}
+                {isDealAccepted && jobOrder && (
+                  <div className="bg-white rounded-lg shadow-md border-l-4 border-green-500 overflow-hidden">
+                    <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-green-700" />
+                          <h3 className="text-lg font-bold text-green-900">Job Order</h3>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          jobOrder.status === 'created' ? 'bg-blue-100 text-blue-700' :
+                          jobOrder.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                          jobOrder.status === 'in_progress' ? 'bg-orange-100 text-orange-700' :
+                          jobOrder.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                          jobOrder.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {jobOrder.status === 'in_progress' ? 'In Progress' : jobOrder.status.charAt(0).toUpperCase() + jobOrder.status.slice(1)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-gray-500 text-xs uppercase tracking-wide">Agreed Price</p>
+                          <p className="font-bold text-lg text-green-800">KSh {parseFloat(jobOrder.agreed_price).toLocaleString()}</p>
+                        </div>
+                        {jobOrder.delivery_date && (
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wide">Delivery Date</p>
+                            <p className="font-semibold text-gray-900">{new Date(jobOrder.delivery_date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+                        {jobOrder.payment_terms && (
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wide">Payment Terms</p>
+                            <p className="font-medium text-gray-800">{jobOrder.payment_terms}</p>
+                          </div>
+                        )}
+                        {jobOrder.scope_summary && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs uppercase tracking-wide">Scope</p>
+                            <p className="text-gray-700">{jobOrder.scope_summary}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Confirmation status */}
+                      <div className="mt-4 flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                          {jobOrder.confirmed_by_buyer 
+                            ? <CheckCircle className="w-4 h-4 text-green-600" /> 
+                            : <Clock className="w-4 h-4 text-gray-400" />}
+                          <span className={`text-sm ${jobOrder.confirmed_by_buyer ? 'text-green-700 font-semibold' : 'text-gray-500'}`}>
+                            Buyer {jobOrder.confirmed_by_buyer ? 'Confirmed' : 'Pending'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {jobOrder.confirmed_by_vendor 
+                            ? <CheckCircle className="w-4 h-4 text-green-600" /> 
+                            : <Clock className="w-4 h-4 text-gray-400" />}
+                          <span className={`text-sm ${jobOrder.confirmed_by_vendor ? 'text-green-700 font-semibold' : 'text-gray-500'}`}>
+                            Vendor {jobOrder.confirmed_by_vendor ? 'Confirmed' : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      {jobOrder.status !== 'cancelled' && jobOrder.status !== 'completed' && (
+                        <div className="mt-4 flex gap-2">
+                          {/* Confirm button: only if this user hasn't confirmed */}
+                          {((userRole === 'buyer' && !jobOrder.confirmed_by_buyer) || 
+                            (userRole === 'vendor' && !jobOrder.confirmed_by_vendor)) && (
+                            <button
+                              onClick={async () => {
+                                setIsSubmitting(true);
+                                try {
+                                  const res = await fetch('/api/job-orders', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ jobOrderId: jobOrder.id, action: 'confirm', userId: user.id })
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data.error);
+                                  setMessage(data.bothConfirmed ? '✅ Both parties confirmed! Job can begin.' : '✅ You confirmed the job order.');
+                                  await loadNegotiationThread(selectedQuoteId);
+                                } catch (err) {
+                                  setError(err.message);
+                                } finally {
+                                  setIsSubmitting(false);
+                                }
+                              }}
+                              disabled={isSubmitting}
+                              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm hover:bg-green-700 transition disabled:opacity-50"
+                            >
+                              {isSubmitting ? 'Confirming...' : '✓ Confirm Job Order'}
+                            </button>
+                          )}
+
+                          {/* Start work: only vendor, only if confirmed */}
+                          {userRole === 'vendor' && jobOrder.status === 'confirmed' && (
+                            <button
+                              onClick={async () => {
+                                setIsSubmitting(true);
+                                try {
+                                  const res = await fetch('/api/job-orders', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ jobOrderId: jobOrder.id, action: 'start', userId: user.id })
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data.error);
+                                  setMessage('🚀 Work started!');
+                                  await loadNegotiationThread(selectedQuoteId);
+                                } catch (err) {
+                                  setError(err.message);
+                                } finally {
+                                  setIsSubmitting(false);
+                                }
+                              }}
+                              disabled={isSubmitting}
+                              className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold text-sm hover:bg-orange-700 transition disabled:opacity-50"
+                            >
+                              🚀 Start Work
+                            </button>
+                          )}
+
+                          {/* Complete: either party, only if in_progress */}
+                          {jobOrder.status === 'in_progress' && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Mark this job as completed?')) return;
+                                setIsSubmitting(true);
+                                try {
+                                  const res = await fetch('/api/job-orders', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ jobOrderId: jobOrder.id, action: 'complete', userId: user.id })
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data.error);
+                                  setMessage('✅ Job marked as completed!');
+                                  await loadNegotiationThread(selectedQuoteId);
+                                } catch (err) {
+                                  setError(err.message);
+                                } finally {
+                                  setIsSubmitting(false);
+                                }
+                              }}
+                              disabled={isSubmitting}
+                              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 transition disabled:opacity-50"
+                            >
+                              ✅ Mark Complete
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expired negotiation notice */}
+                {negotiation?.status === 'expired' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 flex items-start gap-3">
+                    <Clock className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-amber-900">Negotiation Expired</h4>
+                      <p className="text-sm text-amber-800 mt-1">
+                        This negotiation has expired because the last counter-offer was not responded to in time. 
+                        You may start a new negotiation if the RFQ is still open.
+                      </p>
+                    </div>
                   </div>
                 )}
 

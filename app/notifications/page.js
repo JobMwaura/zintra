@@ -118,8 +118,16 @@ export default function NotificationsPage() {
       'offer_accepted': 'Offer Accepted',
       'offer_rejected': 'Offer Declined',
       'negotiation_cancelled': 'Negotiation Cancelled',
+      'negotiation_expired': 'Negotiation Expired',
+      'offer_expired': 'Offer Expired',
       'qa_question': 'Question Asked',
-      'qa_answer': 'Question Answered'
+      'qa_answer': 'Question Answered',
+      // Job order types
+      'job_order_created': 'Job Order Created',
+      'job_order_confirmed': 'Job Order Confirmed',
+      'job_order_started': 'Work Started',
+      'job_order_completed': 'Job Completed',
+      'job_order_cancelled': 'Job Order Cancelled'
     };
     return labels[type] || type;
   };
@@ -153,8 +161,16 @@ export default function NotificationsPage() {
       'offer_accepted': '🎉',
       'offer_rejected': '⛔',
       'negotiation_cancelled': '🚫',
+      'negotiation_expired': '⏰',
+      'offer_expired': '⌛',
       'qa_question': '❓',
-      'qa_answer': '💡'
+      'qa_answer': '💡',
+      // Job order types
+      'job_order_created': '📋',
+      'job_order_confirmed': '✅',
+      'job_order_started': '🚀',
+      'job_order_completed': '🏁',
+      'job_order_cancelled': '🚫'
     };
     return icons[type] || '🔔';
   };
@@ -279,6 +295,41 @@ export default function NotificationsPage() {
         bg: 'bg-teal-50',
         border: 'border-l-teal-500',
         badge: 'bg-teal-100 text-teal-800'
+      },
+      'negotiation_expired': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'offer_expired': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'job_order_created': {
+        bg: 'bg-blue-50',
+        border: 'border-l-blue-500',
+        badge: 'bg-blue-100 text-blue-800'
+      },
+      'job_order_confirmed': {
+        bg: 'bg-green-50',
+        border: 'border-l-green-500',
+        badge: 'bg-green-100 text-green-800'
+      },
+      'job_order_started': {
+        bg: 'bg-orange-50',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-100 text-orange-800'
+      },
+      'job_order_completed': {
+        bg: 'bg-emerald-50',
+        border: 'border-l-emerald-500',
+        badge: 'bg-emerald-100 text-emerald-800'
+      },
+      'job_order_cancelled': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
       },
       'default': {
         bg: 'bg-slate-50',
@@ -405,8 +456,15 @@ export default function NotificationsPage() {
               <option value="offer_accepted">Offer Accepted</option>
               <option value="offer_rejected">Offer Declined</option>
               <option value="negotiation_cancelled">Negotiation Cancelled</option>
+              <option value="negotiation_expired">Negotiation Expired</option>
+              <option value="offer_expired">Offer Expired</option>
               <option value="qa_question">Question Asked</option>
               <option value="qa_answer">Question Answered</option>
+              <option value="job_order_created">Job Order Created</option>
+              <option value="job_order_confirmed">Job Order Confirmed</option>
+              <option value="job_order_started">Work Started</option>
+              <option value="job_order_completed">Job Completed</option>
+              <option value="job_order_cancelled">Job Order Cancelled</option>
             </select>
           </div>
         </div>

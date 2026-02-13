@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { Clock, CheckCircle, AlertCircle, TrendingUp, X, Mail, Phone, User, MapPin, Calendar, DollarSign, FileText, Eye, MessageCircle, Send } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, TrendingUp, X, Mail, Phone, User, MapPin, Calendar, DollarSign, FileText, Eye, MessageCircle, Send, Scale } from 'lucide-react';
 
 const RFQ_TYPE_COLORS = {
   direct: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-800', label: 'Direct RFQ' },
@@ -30,6 +30,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [activeSection, setActiveSection] = useState('inbox'); // 'inbox' or 'my-quotes'
+  const [negotiationStatuses, setNegotiationStatuses] = useState({}); // { quoteId: { threadId, status } }
 
   // Modal states
   const [showContactModal, setShowContactModal] = useState(false);
@@ -49,7 +50,39 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   useEffect(() => {
     fetchRFQs();
     fetchMyQuotes();
+    fetchNegotiationStatuses();
   }, [vendor.id]);
+
+  // Fetch negotiation thread statuses for all vendor's quotes
+  const fetchNegotiationStatuses = async () => {
+    try {
+      const { data: threads, error } = await supabase
+        .from('negotiation_threads')
+        .select('id, rfq_quote_id, status, round_count, max_rounds, current_price')
+        .eq('vendor_id', vendor.id);
+
+      if (error) {
+        console.error('Error fetching negotiation statuses:', error);
+        return;
+      }
+
+      if (threads && threads.length > 0) {
+        const map = {};
+        threads.forEach(t => {
+          map[t.rfq_quote_id] = {
+            threadId: t.id,
+            status: t.status,
+            roundCount: t.round_count || 0,
+            maxRounds: t.max_rounds || 3,
+            currentPrice: t.current_price
+          };
+        });
+        setNegotiationStatuses(map);
+      }
+    } catch (err) {
+      console.error('Error in fetchNegotiationStatuses:', err);
+    }
+  };
 
   // Fetch vendor's submitted quotes/responses
   const fetchMyQuotes = async () => {
@@ -486,6 +519,13 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                         View Assignment
                       </button>
                       <button
+                        onClick={() => router.push(`/rfq/${quote.rfq_id}/negotiate`)}
+                        className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition flex items-center justify-center gap-2"
+                      >
+                        <Scale className="w-4 h-4" />
+                        View Negotiation
+                      </button>
+                      <button
                         onClick={() => handleContactBuyer(quote)}
                         className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition flex items-center justify-center gap-2"
                       >
@@ -522,11 +562,37 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                         <h4 className="font-semibold text-gray-900">{quote.rfqs?.title || 'Project'}</h4>
                         <p className="text-sm text-gray-600">Quote: KSh {parseFloat(quote.amount || 0).toLocaleString()}</p>
                       </div>
-                      <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-semibold">
-                        ⏳ Pending
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {negotiationStatuses[quote.id] && (
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            negotiationStatuses[quote.id].status === 'active' ? 'bg-blue-100 text-blue-700' :
+                            negotiationStatuses[quote.id].status === 'expired' ? 'bg-amber-100 text-amber-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            💬 {negotiationStatuses[quote.id].status === 'active' 
+                              ? `Negotiating (${negotiationStatuses[quote.id].roundCount}/${negotiationStatuses[quote.id].maxRounds})` 
+                              : negotiationStatuses[quote.id].status.charAt(0).toUpperCase() + negotiationStatuses[quote.id].status.slice(1)}
+                          </span>
+                        )}
+                        <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-semibold">
+                          ⏳ Pending
+                        </span>
+                      </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Submitted: {new Date(quote.created_at).toLocaleDateString()}</p>
+                    
+                    {/* Negotiate / View Negotiation button */}
+                    {negotiationStatuses[quote.id] && (
+                      <div className="mt-3 pt-3 border-t border-yellow-100">
+                        <button
+                          onClick={() => router.push(`/rfq/${quote.rfq_id}/negotiate`)}
+                          className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium text-sm transition flex items-center justify-center gap-2"
+                        >
+                          <Scale className="w-4 h-4" />
+                          {negotiationStatuses[quote.id].status === 'active' ? 'Continue Negotiation' : 'View Negotiation'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

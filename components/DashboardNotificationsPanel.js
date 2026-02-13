@@ -84,6 +84,18 @@ export default function DashboardNotificationsPanel() {
       case 'qa_question':
       case 'qa_answer':
         return <MessageSquare className="w-5 h-5 text-purple-600" />;
+      case 'negotiation_expired':
+      case 'offer_expired':
+        return <Clock className="w-5 h-5 text-amber-600" />;
+      case 'job_order_created':
+      case 'job_order_confirmed':
+        return <CheckCircle className="w-5 h-5 text-blue-600" />;
+      case 'job_order_started':
+        return <AlertCircle className="w-5 h-5 text-orange-600" />;
+      case 'job_order_completed':
+        return <CheckCircle className="w-5 h-5 text-emerald-600" />;
+      case 'job_order_cancelled':
+        return <AlertCircle className="w-5 h-5 text-red-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -113,7 +125,13 @@ export default function DashboardNotificationsPanel() {
       }
 
       // Negotiation types → link to negotiate page
-      if (['negotiation_started', 'counter_offer', 'offer_accepted', 'offer_rejected', 'negotiation_cancelled', 'qa_question', 'qa_answer'].includes(notification?.type)) {
+      if (['negotiation_started', 'counter_offer', 'offer_accepted', 'offer_rejected', 'negotiation_cancelled', 'negotiation_expired', 'offer_expired', 'qa_question', 'qa_answer'].includes(notification?.type)) {
+        const rfqId = notification?.metadata?.rfq_id;
+        return rfqId ? `/rfq/${rfqId}/negotiate` : '/my-rfqs';
+      }
+
+      // Job order types → link to negotiate page (job order is shown there)
+      if (['job_order_created', 'job_order_confirmed', 'job_order_started', 'job_order_completed', 'job_order_cancelled'].includes(notification?.type)) {
         const rfqId = notification?.metadata?.rfq_id;
         return rfqId ? `/rfq/${rfqId}/negotiate` : '/my-rfqs';
       }
