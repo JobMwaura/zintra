@@ -72,7 +72,10 @@ export default function DashboardNotificationsPanel() {
       case 'rfq_pending_review':
       case 'rfq_status':
         return <Clock className="w-5 h-5 text-amber-600" />;
+      case 'rfq_unsuccessful':
+        return <AlertCircle className="w-5 h-5 text-amber-600" />;
       case 'admin_rfq_intervention':
+      case 'admin_rfq_low_match':
       case 'negotiation_cancelled':
       case 'offer_rejected':
         return <AlertCircle className="w-5 h-5 text-red-600" />;
@@ -120,7 +123,7 @@ export default function DashboardNotificationsPanel() {
 
       if (notification?.type === 'rfq_sent' || notification?.type === 'rfq_under_review' || 
           notification?.type === 'rfq_pending_review' || notification?.type === 'rfq_admin_matched' ||
-          notification?.type === 'rfq_status') {
+          notification?.type === 'rfq_status' || notification?.type === 'rfq_unsuccessful') {
         return '/my-rfqs';
       }
 
@@ -128,7 +131,7 @@ export default function DashboardNotificationsPanel() {
         return '/vendor/rfq';
       }
 
-      if (notification?.type === 'admin_rfq_intervention' || notification?.type === 'admin_quote_submitted') {
+      if (notification?.type === 'admin_rfq_intervention' || notification?.type === 'admin_quote_submitted' || notification?.type === 'admin_rfq_low_match') {
         return '/admin/rfqs';
       }
 

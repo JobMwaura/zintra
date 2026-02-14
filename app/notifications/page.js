@@ -102,7 +102,9 @@ export default function NotificationsPage() {
       'rfq_pending_review': 'Pending Approval',
       'rfq_admin_matched': 'Admin Matched',
       'rfq_match': 'RFQ Match',
+      'rfq_unsuccessful': 'RFQ Not Successful',
       'admin_rfq_intervention': 'Admin Intervention',
+      'admin_rfq_low_match': 'Low Vendor Match',
       'admin_quote_submitted': 'Quote Submitted',
       'quote_received': 'Quote Received',
       'quote_accepted': 'Quote Accepted',
@@ -149,7 +151,9 @@ export default function NotificationsPage() {
       'rfq_pending_review': '⏳',
       'rfq_admin_matched': '✅',
       'rfq_match': '🤝',
+      'rfq_unsuccessful': '😔',
       'admin_rfq_intervention': '🚨',
+      'admin_rfq_low_match': '⚠️',
       'admin_quote_submitted': '📩',
       'quote_received': '📋',
       'quote_accepted': '✅',
@@ -229,10 +233,20 @@ export default function NotificationsPage() {
         border: 'border-l-indigo-500',
         badge: 'bg-indigo-100 text-indigo-800'
       },
+      'rfq_unsuccessful': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
       'admin_rfq_intervention': {
         bg: 'bg-red-50',
         border: 'border-l-red-500',
         badge: 'bg-red-100 text-red-800'
+      },
+      'admin_rfq_low_match': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
       },
       'admin_quote_submitted': {
         bg: 'bg-purple-50',
@@ -475,9 +489,11 @@ export default function NotificationsPage() {
               <option value="rfq_received">RFQ Received</option>
               <option value="rfq_status">RFQ Status Update</option>
               <option value="rfq_under_review">Under Review</option>
+              <option value="rfq_unsuccessful">RFQ Not Successful</option>
               <option value="rfq_pending_review">Pending Approval</option>
               <option value="rfq_admin_matched">Admin Matched</option>
               <option value="admin_rfq_intervention">Admin Intervention</option>
+              <option value="admin_rfq_low_match">Low Vendor Match</option>
               <option value="admin_quote_submitted">Quote Submitted</option>
               <option value="message_received">Message Received</option>
               <option value="negotiation_started">Negotiation Started</option>

@@ -336,13 +336,40 @@ export async function POST(request) {
 
     // For PUBLIC RFQ: Create recipients but DON'T notify yet (admin approval required)
     // Recipients stored as 'pending_approval' — admin must approve before vendors see it
+    let publicHasNoMatches = false;
     if (rfqType === 'public') {
       try {
         console.log('[RFQ CREATE] Public RFQ - Pre-matching vendors (pending admin approval)');
-        await createPublicRFQRecipients(rfqId, categorySlug, sharedFields.county, false);
+        const publicMatchResult = await createPublicRFQRecipients(rfqId, categorySlug, sharedFields.county, false);
+        if (!publicMatchResult) {
+          publicHasNoMatches = true;
+          console.warn('[RFQ CREATE] Public RFQ - 0 vendors matched for category:', categorySlug);
+          // Notify admins about the zero-match public RFQ
+          try {
+            const { data: admins } = await supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('role', 'admin');
+            if (admins?.length) {
+              await supabase.from('notifications').insert(
+                admins.map(a => ({
+                  user_id: a.user_id,
+                  type: 'admin_rfq_intervention',
+                  title: '⚠️ Public RFQ Has No Vendor Matches',
+                  body: `Public RFQ "${createdRfq.title}" has 0 vendors matching category "${categorySlug}" in ${sharedFields.county || 'any location'}. Consider marking as unsuccessful or manually assigning vendors.`,
+                  metadata: { rfq_id: rfqId, category: categorySlug, county: sharedFields.county || null, reason: 'public_zero_matches', rfq_type: 'public' },
+                  related_id: rfqId,
+                  related_type: 'rfq',
+                }))
+              );
+            }
+          } catch (adminErr) {
+            console.warn('[RFQ CREATE] Admin notification for public zero-match failed:', adminErr.message);
+          }
+        }
       } catch (err) {
         console.error('[RFQ CREATE] Public RFQ recipient error:', err.message);
-        // Continue - vendor assignment is not critical
+        publicHasNoMatches = true;
       }
     }
 

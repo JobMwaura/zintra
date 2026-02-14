@@ -7,10 +7,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { categoryMatches } from '@/lib/constructionCategories';
 import { 
   Eye, Check, X, Search, Filter, MapPin, Calendar, DollarSign, Clock, User, FileText, 
-  AlertTriangle, Shield, ArrowLeft, CheckCircle, AlertCircle, TrendingUp, Plus, Edit2, Trash2 
+  AlertTriangle, Shield, ArrowLeft, CheckCircle, AlertCircle, TrendingUp, Plus, Edit2, Trash2,
+  MessageSquare, Send, XCircle
 } from 'lucide-react';
 
-const pendingStatuses = ['pending', 'needs_verification', 'needs_review', 'needs_fix'];
+const pendingStatuses = ['pending', 'needs_verification', 'needs_review', 'needs_fix', 'needs_admin_review'];
 const activeStatuses = ['open', 'active'];
 
 export default function ConsolidatedRFQs() {
@@ -28,6 +29,12 @@ export default function ConsolidatedRFQs() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  
+  // Mark Unsuccessful state
+  const [showUnsuccessfulModal, setShowUnsuccessfulModal] = useState(false);
+  const [unsuccessfulReason, setUnsuccessfulReason] = useState('no_vendor_match');
+  const [unsuccessfulMessage, setUnsuccessfulMessage] = useState('');
+  const [markingUnsuccessful, setMarkingUnsuccessful] = useState(false);
   
   // Stats state
   const [stats, setStats] = useState({
@@ -416,6 +423,37 @@ export default function ConsolidatedRFQs() {
     }
   };
 
+  // Mark RFQ as Unsuccessful — sends notification to buyer
+  const handleMarkUnsuccessful = async () => {
+    if (!selectedRFQ) return;
+    setMarkingUnsuccessful(true);
+    try {
+      const res = await fetch('/api/admin/rfq/close-unsuccessful', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rfqId: selectedRFQ.id,
+          reason: unsuccessfulReason,
+          adminMessage: unsuccessfulMessage.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to mark as unsuccessful');
+
+      setMessage(`✓ ${data.message}`);
+      setShowUnsuccessfulModal(false);
+      setShowDetailModal(false);
+      setUnsuccessfulReason('no_vendor_match');
+      setUnsuccessfulMessage('');
+      fetchAllData();
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setMarkingUnsuccessful(false);
+    }
+  };
+
   // Filtered data
   const pendingRFQs = useMemo(() => {
     return (rfqs || [])
@@ -733,8 +771,12 @@ export default function ConsolidatedRFQs() {
                   <div key={rfq.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:border-orange-300 transition shadow-sm">
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="text-lg font-bold text-gray-900">{rfq.title}</h3>
-                      <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
-                        {rfq.status}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        rfq.status === 'needs_admin_review'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {rfq.status === 'needs_admin_review' ? '🚨 Needs Matching' : rfq.status}
                       </span>
                     </div>
 
@@ -775,7 +817,7 @@ export default function ConsolidatedRFQs() {
                     <p className="text-sm text-gray-600 mb-4 line-clamp-2">{rfq.description}</p>
 
                     {/* Actions */}
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <button
                         onClick={() => handleApprove(rfq)}
                         className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2"
@@ -792,6 +834,18 @@ export default function ConsolidatedRFQs() {
                       >
                         <Eye className="w-4 h-4" />
                         View
+                      </button>
+                      {/* Mark Unsuccessful — especially for needs_admin_review RFQs */}
+                      <button
+                        onClick={() => {
+                          setSelectedRFQ(rfq);
+                          setShowUnsuccessfulModal(true);
+                        }}
+                        className="px-4 py-2 border border-amber-300 rounded-lg text-amber-700 hover:bg-amber-50 transition flex items-center gap-2"
+                        title="Mark as unsuccessful and notify buyer"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        {rfq.status === 'needs_admin_review' ? 'Unsuccessful' : ''}
                       </button>
                       <button
                         onClick={() => {
@@ -906,6 +960,17 @@ export default function ConsolidatedRFQs() {
                       >
                         <Eye className="w-4 h-4" />
                         View Details
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedRFQ(rfq);
+                          setShowUnsuccessfulModal(true);
+                        }}
+                        className="px-4 py-2 border border-amber-300 rounded-lg text-amber-700 hover:bg-amber-50 transition flex items-center gap-2"
+                        title="Mark as unsuccessful and notify buyer"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Unsuccessful
                       </button>
                       <button
                         onClick={() => handleCloseRFQ(rfq.id)}
@@ -1116,6 +1181,119 @@ export default function ConsolidatedRFQs() {
                   className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                 >
                   Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Unsuccessful Modal — Admin sends message to buyer about no vendor match */}
+      {showUnsuccessfulModal && selectedRFQ && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="border-b border-gray-200 p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Mark RFQ as Unsuccessful</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">The buyer will be notified with your message</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* RFQ Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-sm font-semibold text-gray-900">{selectedRFQ.title}</p>
+                <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-600">
+                  <span>📂 {selectedRFQ.category || selectedRFQ.auto_category || 'N/A'}</span>
+                  <span>📍 {selectedRFQ.county || 'N/A'}</span>
+                  <span>💰 {selectedRFQ.budget_range || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* Reason Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason
+                </label>
+                <select
+                  value={unsuccessfulReason}
+                  onChange={(e) => setUnsuccessfulReason(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900 bg-white"
+                >
+                  <option value="no_vendor_match">No vendors found matching requirements</option>
+                  <option value="low_vendor_match">Not enough qualified vendors</option>
+                  <option value="no_vendor_response">No vendors responded to the request</option>
+                  <option value="category_unavailable">Category not yet available on Zintra</option>
+                  <option value="location_unavailable">No vendors in the specified location</option>
+                  <option value="custom">Custom reason (specify below)</option>
+                </select>
+              </div>
+
+              {/* Admin Message to Buyer */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <MessageSquare className="w-4 h-4 inline mr-1" />
+                  Message to Buyer {unsuccessfulReason === 'custom' ? '(required)' : '(optional)'}
+                </label>
+                <textarea
+                  value={unsuccessfulMessage}
+                  onChange={(e) => setUnsuccessfulMessage(e.target.value)}
+                  placeholder="e.g., We currently don't have enough plumbing vendors in Turkana county. We recommend trying Nairobi county or broadening your category. We're actively onboarding more vendors in your area."
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900"
+                  rows={4}
+                />
+                <p className="text-xs text-gray-500 mt-1.5">
+                  This message will be included in the notification sent to the buyer.
+                </p>
+              </div>
+
+              {/* Preview */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-xs font-semibold text-amber-800 mb-1">📬 Buyer will see:</p>
+                <p className="text-sm text-amber-900">
+                  &quot;Your RFQ &quot;{selectedRFQ.title}&quot; has been marked as unsuccessful because{' '}
+                  {unsuccessfulReason === 'no_vendor_match' && 'no vendors were found matching your requirements'}
+                  {unsuccessfulReason === 'low_vendor_match' && 'we could not find enough qualified vendors for your project'}
+                  {unsuccessfulReason === 'no_vendor_response' && 'no vendors responded to your request'}
+                  {unsuccessfulReason === 'category_unavailable' && 'there are currently no vendors available in your requested category'}
+                  {unsuccessfulReason === 'location_unavailable' && 'there are no vendors available in your specified location'}
+                  {unsuccessfulReason === 'custom' && (unsuccessfulMessage || '...')}
+                  .&quot;
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowUnsuccessfulModal(false);
+                    setUnsuccessfulReason('no_vendor_match');
+                    setUnsuccessfulMessage('');
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMarkUnsuccessful}
+                  disabled={markingUnsuccessful || (unsuccessfulReason === 'custom' && !unsuccessfulMessage.trim())}
+                  className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {markingUnsuccessful ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Mark Unsuccessful & Notify Buyer
+                    </>
+                  )}
                 </button>
               </div>
             </div>
