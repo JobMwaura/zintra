@@ -9,7 +9,7 @@ import NegotiationQA from '@/components/NegotiationQA';
 import { ArrowLeft, MessageSquare, AlertCircle, HelpCircle, CheckCircle, FileText, Clock, Star, Flag } from 'lucide-react';
 
 /**
- * Negotiate Page — /rfq/[rfqId]/negotiate
+ * Negotiate Page — /rfq/[id]/negotiate
  * 
  * Buyer or Vendor can:
  * - View all quotes for the RFQ and open a negotiation thread per quote
@@ -50,7 +50,7 @@ export default function NegotiatePage({ params }) {
   useEffect(() => {
     (async () => {
       const resolved = await params;
-      setRfqId(resolved.rfqId);
+      setRfqId(resolved.id);
     })();
   }, [params]);
 
