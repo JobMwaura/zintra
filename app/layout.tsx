@@ -1,17 +1,18 @@
-'use client';
-
 import './globals.css';
-import { AuthProvider } from '@/contexts/AuthContext';
-import NotificationToast from '@/components/NotificationToast';
+import Providers from './providers';
+
+export const metadata = {
+  title: 'Zintra - B2B Construction Procurement Platform',
+  description: 'Find vendors, get quotes, and hire the best contractors for your construction projects in Kenya.',
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
+        <Providers>
           {children}
-          <NotificationToast />
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
