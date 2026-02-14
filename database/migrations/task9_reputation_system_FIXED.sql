@@ -1,21 +1,14 @@
 -- ============================================================================
 -- Task 9: User Reputation System - SAFE RE-RUN VERSION
+-- Fixes: Renames buyer_id → user_id if table was created with old column name
 -- Fixes: Uses DROP POLICY IF EXISTS before CREATE POLICY
 -- Fixes: Checks for users table existence before ALTER TABLE
 -- 
 -- Run this in Supabase SQL Editor.
 -- ============================================================================
 
--- Step 1: Ensure the public.users table exists
--- If your project uses auth.users directly, this creates a lightweight public.users
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') THEN
-    RAISE NOTICE 'WARNING: public.users table does not exist. You must create it first (run CREATE_USERS_TABLE.sql). Skipping ALTER TABLE statements.';
-  END IF;
-END $$;
-
--- Step 2: Create reputation_scores table
+-- Step 1: Create reputation_scores table (only if it doesn't exist)
+-- Uses buyer_id initially — will be renamed to user_id in Step 2
 CREATE TABLE IF NOT EXISTS reputation_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE,
@@ -27,6 +20,58 @@ CREATE TABLE IF NOT EXISTS reputation_scores (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Step 2: If table was created with old "buyer_id" column, rename it to "user_id"
+-- This handles the case where the original migration ran with buyer_id
+DO $$
+BEGIN
+  -- Check if buyer_id exists (old column name)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'reputation_scores' 
+    AND column_name = 'buyer_id'
+  ) THEN
+    -- Check if user_id does NOT exist yet
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'reputation_scores' 
+      AND column_name = 'user_id'
+    ) THEN
+      -- Drop old FK constraint if it exists
+      IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'reputation_scores_buyer_id_fkey' 
+        AND table_name = 'reputation_scores'
+      ) THEN
+        ALTER TABLE reputation_scores DROP CONSTRAINT reputation_scores_buyer_id_fkey;
+      END IF;
+
+      -- Drop old unique constraint if it exists
+      IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'reputation_scores_buyer_id_key' 
+        AND table_name = 'reputation_scores'
+      ) THEN
+        ALTER TABLE reputation_scores DROP CONSTRAINT reputation_scores_buyer_id_key;
+      END IF;
+
+      -- Rename column
+      ALTER TABLE reputation_scores RENAME COLUMN buyer_id TO user_id;
+      
+      -- Re-add unique constraint
+      ALTER TABLE reputation_scores ADD CONSTRAINT reputation_scores_user_id_key UNIQUE (user_id);
+
+      RAISE NOTICE 'Renamed buyer_id → user_id on reputation_scores';
+    ELSE
+      RAISE NOTICE 'Both buyer_id and user_id exist — dropping buyer_id';
+      ALTER TABLE reputation_scores DROP COLUMN buyer_id;
+    END IF;
+  ELSE
+    RAISE NOTICE 'Column user_id already exists on reputation_scores — no rename needed';
+  END IF;
+END $$;
 
 -- Step 3: Add foreign key constraint only if public.users exists
 DO $$
@@ -47,11 +92,12 @@ BEGIN
     ALTER TABLE users ADD COLUMN IF NOT EXISTS reputation_score INTEGER DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS badge_tier TEXT DEFAULT 'bronze';
   ELSE
-    RAISE NOTICE 'Skipping foreign key and ALTER TABLE users — public.users table not found.';
+    RAISE NOTICE 'Skipping FK and ALTER TABLE users — public.users table not found.';
   END IF;
 END $$;
 
--- Step 4: Indexes
+-- Step 4: Indexes (drop old buyer_id index if it exists, create user_id index)
+DROP INDEX IF EXISTS idx_reputation_buyer_id;
 CREATE INDEX IF NOT EXISTS idx_reputation_user_id ON reputation_scores(user_id);
 CREATE INDEX IF NOT EXISTS idx_reputation_badge_tier ON reputation_scores(badge_tier);
 
