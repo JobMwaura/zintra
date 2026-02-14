@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -23,33 +24,35 @@ import {
   Heart,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import RFQModal from '@/components/RFQModal/RFQModal';
-import VendorMessagingModal from '@/components/VendorMessagingModal';
-import ProductUploadModal from '@/components/vendor-profile/ProductUploadModal';
-import ServiceUploadModal from '@/components/vendor-profile/ServiceUploadModal';
-import BusinessHoursEditor from '@/components/vendor-profile/BusinessHoursEditor';
-import LocationManager from '@/components/vendor-profile/LocationManager';
-import CertificationManager from '@/components/vendor-profile/CertificationManager';
-import HighlightsManager from '@/components/vendor-profile/HighlightsManager';
-import CategoryManagement from '@/components/vendor-profile/CategoryManagement';
-import SubscriptionPanel from '@/components/vendor-profile/SubscriptionPanel';
-import VerificationStatusCard from '@/components/vendor-profile/VerificationStatusCard';
-import ReviewResponses from '@/components/vendor-profile/ReviewResponses';
-import StatusUpdateModal from '@/components/vendor-profile/StatusUpdateModal';
-import StatusUpdateCard from '@/components/vendor-profile/StatusUpdateCard';
-import RFQInboxTab from '@/components/vendor-profile/RFQInboxTab';
-import ReviewRatingSystem from '@/components/vendor-profile/ReviewRatingSystem';
-import ReviewsList from '@/components/vendor-profile/ReviewsList';
-import CategoryBadges from '@/components/VendorCard/CategoryBadges';
-import AddProjectModal from '@/components/vendor-profile/AddProjectModal';
-import PortfolioProjectCard from '@/components/vendor-profile/PortfolioProjectCard';
-import PortfolioProjectModal from '@/components/vendor-profile/PortfolioProjectModal';
-import EditPortfolioProjectModal from '@/components/vendor-profile/EditPortfolioProjectModal';
-import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
-import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
-import VendorInboxMessagesTabV2 from '@/components/VendorInboxMessagesTabV2';
-import VendorInboxModal from '@/components/VendorInboxModal';
-import ZCCCreditsCard from '@/components/vendor-profile/ZCCCreditsCard';
+
+// Lazy-load heavy components to reduce SSR bundle size and avoid Vercel function timeout
+const RFQModal = dynamic(() => import('@/components/RFQModal/RFQModal'), { ssr: false });
+const VendorMessagingModal = dynamic(() => import('@/components/VendorMessagingModal'), { ssr: false });
+const ProductUploadModal = dynamic(() => import('@/components/vendor-profile/ProductUploadModal'), { ssr: false });
+const ServiceUploadModal = dynamic(() => import('@/components/vendor-profile/ServiceUploadModal'), { ssr: false });
+const BusinessHoursEditor = dynamic(() => import('@/components/vendor-profile/BusinessHoursEditor'), { ssr: false });
+const LocationManager = dynamic(() => import('@/components/vendor-profile/LocationManager'), { ssr: false });
+const CertificationManager = dynamic(() => import('@/components/vendor-profile/CertificationManager'), { ssr: false });
+const HighlightsManager = dynamic(() => import('@/components/vendor-profile/HighlightsManager'), { ssr: false });
+const CategoryManagement = dynamic(() => import('@/components/vendor-profile/CategoryManagement'), { ssr: false });
+const SubscriptionPanel = dynamic(() => import('@/components/vendor-profile/SubscriptionPanel'), { ssr: false });
+const VerificationStatusCard = dynamic(() => import('@/components/vendor-profile/VerificationStatusCard'), { ssr: false });
+const ReviewResponses = dynamic(() => import('@/components/vendor-profile/ReviewResponses'), { ssr: false });
+const StatusUpdateModal = dynamic(() => import('@/components/vendor-profile/StatusUpdateModal'), { ssr: false });
+const StatusUpdateCard = dynamic(() => import('@/components/vendor-profile/StatusUpdateCard'), { ssr: false });
+const RFQInboxTab = dynamic(() => import('@/components/vendor-profile/RFQInboxTab'), { ssr: false });
+const ReviewRatingSystem = dynamic(() => import('@/components/vendor-profile/ReviewRatingSystem'), { ssr: false });
+const ReviewsList = dynamic(() => import('@/components/vendor-profile/ReviewsList'), { ssr: false });
+const CategoryBadges = dynamic(() => import('@/components/VendorCard/CategoryBadges'), { ssr: false });
+const AddProjectModal = dynamic(() => import('@/components/vendor-profile/AddProjectModal'), { ssr: false });
+const PortfolioProjectCard = dynamic(() => import('@/components/vendor-profile/PortfolioProjectCard'), { ssr: false });
+const PortfolioProjectModal = dynamic(() => import('@/components/vendor-profile/PortfolioProjectModal'), { ssr: false });
+const EditPortfolioProjectModal = dynamic(() => import('@/components/vendor-profile/EditPortfolioProjectModal'), { ssr: false });
+const PortfolioEmptyState = dynamic(() => import('@/components/vendor-profile/PortfolioEmptyState'), { ssr: false });
+const EditAboutModal = dynamic(() => import('@/components/vendor-profile/EditAboutModal'), { ssr: false });
+const VendorInboxMessagesTabV2 = dynamic(() => import('@/components/VendorInboxMessagesTabV2'), { ssr: false });
+const VendorInboxModal = dynamic(() => import('@/components/VendorInboxModal'), { ssr: false });
+const ZCCCreditsCard = dynamic(() => import('@/components/vendor-profile/ZCCCreditsCard'), { ssr: false });
 
 export default function VendorProfilePage() {
   const params = useParams();
