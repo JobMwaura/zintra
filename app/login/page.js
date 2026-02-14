@@ -133,23 +133,57 @@ export default function Login() {
       // If no stored redirect, use default logic based on user type
       if (!storedRedirect) {
         if (activeTab === 'vendor') {
-          // VENDOR LOGIN: Fetch vendor ID and redirect to editable vendor profile
+          // VENDOR LOGIN: Fetch vendor ID and redirect to vendor profile
           console.log('✓ Vendor login detected, fetching vendor profile...');
-          const { data: vendorData, error: vendorError } = await supabase
-            .from('vendors')
-            .select('id')
-            .eq('user_id', data.user.id)
-            .maybeSingle();
+          try {
+            const { data: vendorData, error: vendorError } = await supabase
+              .from('vendors')
+              .select('id')
+              .eq('user_id', data.user.id)
+              .maybeSingle();
 
-          if (vendorError) {
-            console.error('❌ Error fetching vendor:', vendorError);
-            redirectUrl = '/browse'; // fallback
-          } else if (vendorData) {
-            redirectUrl = `/vendor-profile/${vendorData.id}`;
-            console.log('✓ Vendor found, redirecting to:', redirectUrl);
-          } else {
-            console.log('⚠️ No vendor profile found for user');
-            redirectUrl = '/browse'; // fallback if no vendor profile
+            if (vendorError) {
+              console.error('❌ Error fetching vendor:', vendorError);
+              // Try email fallback
+              const { data: vendorByEmail } = await supabase
+                .from('vendors')
+                .select('id')
+                .eq('email', data.user.email)
+                .maybeSingle();
+              if (vendorByEmail) {
+                redirectUrl = `/vendor-profile/${vendorByEmail.id}`;
+                console.log('✓ Vendor found by email, redirecting to:', redirectUrl);
+              } else {
+                redirectUrl = '/vendor-registration';
+                console.log('⚠️ No vendor profile, redirecting to registration');
+              }
+            } else if (vendorData) {
+              redirectUrl = `/vendor-profile/${vendorData.id}`;
+              console.log('✓ Vendor found, redirecting to:', redirectUrl);
+            } else {
+              // No vendor profile found by user_id — try email as fallback
+              console.log('⚠️ No vendor profile for user_id, trying email fallback...');
+              const { data: vendorByEmail } = await supabase
+                .from('vendors')
+                .select('id')
+                .eq('email', data.user.email)
+                .maybeSingle();
+              if (vendorByEmail) {
+                // Also link the vendor to this user_id for next time
+                await supabase
+                  .from('vendors')
+                  .update({ user_id: data.user.id })
+                  .eq('id', vendorByEmail.id);
+                redirectUrl = `/vendor-profile/${vendorByEmail.id}`;
+                console.log('✓ Vendor found by email & linked, redirecting to:', redirectUrl);
+              } else {
+                console.log('⚠️ No vendor profile found at all');
+                redirectUrl = '/vendor-registration';
+              }
+            }
+          } catch (vendorFetchErr) {
+            console.error('❌ Vendor fetch failed:', vendorFetchErr);
+            redirectUrl = '/vendor-registration';
           }
         } else {
           // USER LOGIN: Redirect to user dashboard

@@ -10,6 +10,7 @@ import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { useNotifications } from '@/hooks/useNotifications';
 import { VendorCard } from '@/components/VendorCard';
+import RFQDetailModal from '@/components/RFQDetailModal';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -242,6 +243,10 @@ export default function ZintraHomepage() {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedRFQ, setSelectedRFQ] = useState(null);
+  const [showRFQModal, setShowRFQModal] = useState(false);
+  const [isVendor, setIsVendor] = useState(false);
+  const [vendorProfile, setVendorProfile] = useState(null);
   
   // Refs for menu management
   const userMenuRef = useRef(null);
@@ -293,6 +298,8 @@ export default function ZintraHomepage() {
           console.log('No user logged in');
           setCurrentUser(null);
           setVendorProfileLink('');
+          setIsVendor(false);
+          setVendorProfile(null);
           return;
         }
 
@@ -304,7 +311,7 @@ export default function ZintraHomepage() {
           const { data: vendor, error } = await Promise.race([
             supabase
               .from('vendors')
-              .select('id')
+              .select('id, company_name, verified, status')
               .eq('user_id', user.id)
               .maybeSingle(),
             new Promise((_, reject) =>
@@ -320,13 +327,19 @@ export default function ZintraHomepage() {
           if (vendor?.id) {
             console.log('Vendor found, setting profile link:', vendor.id);
             setVendorProfileLink(`/vendor-profile/${vendor.id}`);
+            setIsVendor(true);
+            setVendorProfile(vendor);
           } else {
             console.log('No vendor found for user:', user.id);
             setVendorProfileLink('');
+            setIsVendor(false);
+            setVendorProfile(null);
           }
         } catch (vendorErr) {
           console.warn('Error in vendor check:', vendorErr.message);
           setVendorProfileLink('');
+          setIsVendor(false);
+          setVendorProfile(null);
         }
       } catch (err) {
         console.error('Error in fetchVendorProfile:', err);
@@ -342,6 +355,8 @@ export default function ZintraHomepage() {
       } else {
         setCurrentUser(null);
         setVendorProfileLink('');
+        setIsVendor(false);
+        setVendorProfile(null);
       }
     });
 
@@ -996,42 +1011,44 @@ export default function ZintraHomepage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {featuredRFQs.length > 0 ? (
               featuredRFQs.map((rfq) => (
-                <Link key={rfq.id} href={`/rfq/${rfq.id}`}>
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-100 hover:border-orange-300 hover:shadow-lg transition-all p-4 flex flex-col cursor-pointer">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">{rfq.title}</h3>
-                        <p className="text-xs text-gray-600 line-clamp-1">{rfq.description}</p>
-                      </div>
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium ml-2 flex-shrink-0 whitespace-nowrap">Open</span>
+                <div
+                  key={rfq.id}
+                  onClick={() => { setSelectedRFQ(rfq); setShowRFQModal(true); }}
+                  className="bg-white rounded-lg shadow-sm border border-gray-100 hover:border-orange-300 hover:shadow-lg transition-all p-4 flex flex-col cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">{rfq.title}</h3>
+                      <p className="text-xs text-gray-600 line-clamp-1">{rfq.description}</p>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                      <div>
-                        <p className="text-gray-500 font-semibold text-xs">Budget</p>
-                        <p className="font-bold text-gray-900 text-xs">
-                          {rfq.budget_min && rfq.budget_max
-                            ? `KES ${Number(rfq.budget_min).toLocaleString()} - ${Number(rfq.budget_max).toLocaleString()}`
-                            : rfq.budget_range || 'Flexible'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 font-semibold text-xs">Location</p>
-                        <p className="font-bold text-gray-900 text-xs">{rfq.county || rfq.location || 'Kenya'}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-gray-500 font-semibold text-xs">Category</p>
-                        <p className="font-bold text-gray-900 text-xs line-clamp-1 capitalize">
-                          {rfq.category_slug ? rfq.category_slug.replace(/-/g, ' ') : rfq.category || 'General'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all mt-auto" style={{ backgroundColor: '#5f6466' }}>
-                      View & Quote
-                    </button>
+                    <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium ml-2 flex-shrink-0 whitespace-nowrap">Open</span>
                   </div>
-                </Link>
+                  
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                    <div>
+                      <p className="text-gray-500 font-semibold text-xs">Budget</p>
+                      <p className="font-bold text-gray-900 text-xs">
+                        {rfq.budget_min && rfq.budget_max
+                          ? `KES ${Number(rfq.budget_min).toLocaleString()} - ${Number(rfq.budget_max).toLocaleString()}`
+                          : rfq.budget_range || 'Flexible'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 font-semibold text-xs">Location</p>
+                      <p className="font-bold text-gray-900 text-xs">{rfq.county || rfq.location || 'Kenya'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-gray-500 font-semibold text-xs">Category</p>
+                      <p className="font-bold text-gray-900 text-xs line-clamp-1 capitalize">
+                        {rfq.category_slug ? rfq.category_slug.replace(/-/g, ' ') : rfq.category || 'General'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <span className="w-full text-white py-2 rounded-lg font-semibold text-xs text-center hover:opacity-90 transition-all mt-auto" style={{ backgroundColor: '#5f6466' }}>
+                    View RFQ
+                  </span>
+                </div>
               ))
             ) : (
               <div className="col-span-3 text-center py-12">
@@ -1291,6 +1308,17 @@ export default function ZintraHomepage() {
           </div>
         </div>
       </footer>
+
+      {/* RFQ Detail Modal */}
+      <RFQDetailModal
+        rfq={selectedRFQ}
+        isOpen={showRFQModal}
+        onClose={() => { setShowRFQModal(false); setSelectedRFQ(null); }}
+        user={currentUser}
+        isVendor={isVendor}
+        vendorProfile={vendorProfile}
+        quoteCount={0}
+      />
     </div>
   );
 }

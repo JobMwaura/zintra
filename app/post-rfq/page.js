@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock, MessageSquare, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import AuthGuard from '../../components/AuthGuard';
+import RFQDetailModal from '@/components/RFQDetailModal';
 
 function PostRFQContent() {
   const router = useRouter();
@@ -16,6 +17,31 @@ function PostRFQContent() {
   const [quoteStats, setQuoteStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedRFQ, setSelectedRFQ] = useState(null);
+  const [showRFQModal, setShowRFQModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isVendor, setIsVendor] = useState(false);
+  const [vendorProfile, setVendorProfile] = useState(null);
+
+  // Check auth and vendor status
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+      if (user) {
+        const { data: vendor } = await supabase
+          .from('vendors')
+          .select('id, company_name, verified, status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (vendor) {
+          setIsVendor(true);
+          setVendorProfile(vendor);
+        }
+      }
+    };
+    checkUser();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -303,19 +329,15 @@ function PostRFQContent() {
                   const daysLeft = calculateDaysLeft(rfq.deadline);
                   const quoteCount = quoteStats[rfq.id] || 0;
 
-                  const handleViewRFQ = async () => {
-                    // Track the view
-                    try {
-                      await fetch('/api/track-rfq-view', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rfqId: rfq.id }),
-                      });
-                    } catch (err) {
-                      console.error('Error tracking view:', err);
-                    }
-                    // Navigate to RFQ details
-                    router.push(`/rfq/${rfq.id}`);
+                  const handleViewRFQ = () => {
+                    setSelectedRFQ(rfq);
+                    setShowRFQModal(true);
+                    // Track the view in background
+                    fetch('/api/track-rfq-view', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ rfqId: rfq.id }),
+                    }).catch(() => {});
                   };
 
                   return (
@@ -377,7 +399,7 @@ function PostRFQContent() {
                         className="w-full text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-all mt-auto"
                         style={{ backgroundColor: '#ca8637' }}
                       >
-                        View & Quote
+                        View RFQ
                       </button>
                     </div>
                   );
@@ -387,6 +409,17 @@ function PostRFQContent() {
           </div>
         </div>
       </div>
+
+      {/* RFQ Detail Modal */}
+      <RFQDetailModal
+        rfq={selectedRFQ}
+        isOpen={showRFQModal}
+        onClose={() => { setShowRFQModal(false); setSelectedRFQ(null); }}
+        user={currentUser}
+        isVendor={isVendor}
+        vendorProfile={vendorProfile}
+        quoteCount={selectedRFQ ? (quoteStats[selectedRFQ.id] || 0) : 0}
+      />
     </div>
   );
 }
