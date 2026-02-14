@@ -100,6 +100,10 @@ export default function DashboardNotificationsPanel() {
         return <AlertCircle className="w-5 h-5 text-red-700" />;
       case 'negotiation_warning':
         return <Clock className="w-5 h-5 text-amber-600" />;
+      case 'admin_negotiation_report':
+        return <AlertCircle className="w-5 h-5 text-red-600" />;
+      case 'admin_job_dispute':
+        return <AlertCircle className="w-5 h-5 text-red-700" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -144,6 +148,11 @@ export default function DashboardNotificationsPanel() {
       if (notification?.type === 'negotiation_warning') {
         const rfqId = notification?.metadata?.rfq_id;
         return rfqId ? `/rfq/${rfqId}/negotiate` : '/notifications';
+      }
+
+      // Admin report/dispute types → link to notifications for review
+      if (['admin_negotiation_report', 'admin_job_dispute'].includes(notification?.type)) {
+        return '/notifications';
       }
       
       // Handle by related_type (legacy)

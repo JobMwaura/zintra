@@ -92,7 +92,7 @@ export async function POST(request) {
       type: 'negotiation_warning',
       title: 'Negotiation Activity Flagged',
       body: 'Activity in one of your negotiations has been flagged for review. Please ensure you follow platform guidelines.',
-      metadata: { negotiation_id: negotiationId },
+      metadata: { negotiation_id: negotiationId, rfq_id: thread.rfq_id },
       related_id: negotiationId,
       related_type: 'negotiation'
     });
