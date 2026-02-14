@@ -184,10 +184,10 @@ export default function BrowseVendors() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white py-12">
+      <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-3xl font-bold mb-4">Find Construction Vendors</h1>
-          <p className="text-gray-200">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Find Construction Vendors</h1>
+          <p className="text-gray-200 text-sm sm:text-base">
             Browse verified vendors and connect with the best professionals in Kenya.
           </p>
         </div>
@@ -195,7 +195,7 @@ export default function BrowseVendors() {
 
       {/* Search & Filters */}
       <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
           {/* Desktop Filters - Single Row */}
           <div className="hidden md:flex gap-3 items-center">
             {/* Search Input */}
@@ -269,13 +269,83 @@ export default function BrowseVendors() {
             onClick={() => setShowFilters(!showFilters)}
             className="md:hidden w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium"
           >
-            <Filter className="w-5 h-5 mr-2" /> Filters
+            <Filter className="w-5 h-5 mr-2" /> {showFilters ? 'Hide Filters' : 'Filters'}
+            {(selectedCategory !== 'All Categories' || selectedCounty || selectedTown || searchQuery) && (
+              <span className="ml-2 w-2 h-2 bg-orange-500 rounded-full"></span>
+            )}
           </button>
+
+          {/* Mobile Filters Panel */}
+          {showFilters && (
+            <div className="md:hidden mt-3 space-y-3 animate-in slide-in-from-top">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search vendors..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+
+              {/* Category Dropdown */}
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white text-sm"
+              >
+                {categories.map((cat) => (
+                  <option key={cat}>{cat}</option>
+                ))}
+              </select>
+
+              {/* County Dropdown */}
+              <select
+                value={selectedCounty}
+                onChange={(e) => { setSelectedCounty(e.target.value); setSelectedTown(''); }}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white text-sm"
+              >
+                <option value="">All Counties</option>
+                {KENYA_COUNTIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Location Dropdown */}
+              <select
+                value={selectedTown}
+                onChange={(e) => setSelectedTown(e.target.value)}
+                disabled={!selectedCounty}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">All Locations</option>
+                {selectedCounty && KENYA_TOWNS_BY_COUNTY[selectedCounty]?.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+
+              {/* Clear Filters */}
+              {(selectedCategory !== 'All Categories' || selectedCounty || selectedTown || searchQuery) && (
+                <button
+                  onClick={clearFilters}
+                  className="w-full px-4 py-2.5 text-gray-600 hover:text-gray-900 font-medium flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <X className="w-4 h-4 mr-1" /> Clear All Filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Vendor Cards */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-700 font-semibold">Error loading vendors</p>
@@ -304,7 +374,7 @@ export default function BrowseVendors() {
             No vendors found matching your criteria.
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredVendors.map((vendor) => (
               <VendorCard key={vendor.id} vendor={vendor} />
             ))}

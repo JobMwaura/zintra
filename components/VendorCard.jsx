@@ -229,11 +229,11 @@ export function VendorCard({ vendor, className = '' }) {
         </div>
 
         {/* CTA Buttons: PRIMARY (Request Quote) + SECONDARY (View Profile) */}
-        <div className="flex gap-2.5 mt-auto pt-2">
+        <div className="flex gap-2 sm:gap-2.5 mt-auto pt-2">
           {/* PRIMARY: Request Quote (FILLED, dominates) - Opens RFQ modal */}
           <button
             onClick={() => setShowRFQModal(true)}
-            className="flex-1 w-full px-3 py-2 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm"
+            className="flex-1 w-full px-3 py-2.5 sm:py-2.5 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm shadow-sm min-h-[44px]"
             style={{ backgroundColor: '#ea8f1e' }}
             onMouseEnter={(e) => e.target.style.backgroundColor = '#d47a0b'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#ea8f1e'}
@@ -242,10 +242,10 @@ export function VendorCard({ vendor, className = '' }) {
           </button>
 
           {/* SECONDARY: View Profile (Zintra gray) - Opens vendor profile */}
-          <Link href={`/vendor-profile/${id}`} className="flex-1">
-            <button className="w-full px-3 py-2 sm:py-2.5 text-white font-medium rounded-lg transition-colors text-xs sm:text-sm shadow-sm" style={{ backgroundColor: '#aaabaa' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#919192'} onMouseLeave={(e) => e.target.style.backgroundColor = '#aaabaa'}>
+          <Link href={`/vendor-profile/${id}`} className="flex-1 block">
+            <span className="flex items-center justify-center w-full px-3 py-2.5 sm:py-2.5 text-white font-medium rounded-lg transition-colors text-xs sm:text-sm shadow-sm min-h-[44px] cursor-pointer" style={{ backgroundColor: '#aaabaa' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#919192'} onMouseLeave={(e) => e.target.style.backgroundColor = '#aaabaa'}>
               View Profile
-            </button>
+            </span>
           </Link>
         </div>
       </div>

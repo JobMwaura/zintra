@@ -897,11 +897,11 @@ export default function VendorProfilePage() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-xl font-bold overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="relative flex-shrink-0">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-lg sm:text-xl font-bold overflow-hidden">
                   {vendor?.logo_url ? (
                     <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-cover" />
                   ) : (
@@ -926,11 +926,11 @@ export default function VendorProfilePage() {
                 />
               </div>
 
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold text-slate-900">{vendor.company_name}</h1>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-sm font-semibold">
-                    <ShieldCheck className="w-4 h-4" /> Verified
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 break-words">{vendor.company_name}</h1>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm font-semibold flex-shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Verified
                   </span>
                 </div>
                 
@@ -947,7 +947,7 @@ export default function VendorProfilePage() {
                   </div>
                 )}
                 
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 mt-1">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700 mt-1">
                   {vendor.location && (
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -982,13 +982,13 @@ export default function VendorProfilePage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {/* Show Inbox & Quotes buttons when vendor is logged into their own profile */}
               {canEdit ? (
                 <>
                   <button
                     onClick={() => setShowInboxModal(true)}
-                    className="relative inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition"
+                    className="relative inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-3 sm:px-4 py-2 font-semibold text-sm hover:bg-amber-700 transition"
                   >
                     <MessageSquare className="w-5 h-5" /> Inbox
                     {unreadMessageCount > 0 && (
@@ -999,7 +999,7 @@ export default function VendorProfilePage() {
                   </button>
                   <Link
                     href="/vendor-quotes"
-                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100 transition"
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 sm:px-4 py-2 text-amber-800 font-semibold text-sm hover:bg-amber-100 transition"
                   >
                     📋 Quotes
                   </Link>
@@ -1009,13 +1009,13 @@ export default function VendorProfilePage() {
                   {/* Show Contact & Request Quote buttons when viewing other vendors */}
                   <button
                     onClick={() => setShowMessaging(true)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100"
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 sm:px-4 py-2 text-amber-800 font-semibold text-sm hover:bg-amber-100"
                   >
-                    <MessageSquare className="w-5 h-5" /> Contact Vendor
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" /> Contact Vendor
                   </button>
                   <button
                     onClick={() => router.push(`/post-rfq/vendor-request?vendorId=${vendor.id}`)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 sm:px-4 py-2 text-slate-700 font-semibold text-sm hover:border-slate-300 hover:bg-slate-50"
                   >
                     Request Quote
                   </button>
@@ -1067,39 +1067,39 @@ export default function VendorProfilePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-sm text-slate-600">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-slate-600">
             <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-500" />
               {averageRating || '4.9'} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
             </div>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-1">
-              <Heart className="w-4 h-4 text-red-500 fill-red-500" />
+              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500 fill-red-500" />
               {profileStats.likes_count} {profileStats.likes_count === 1 ? 'like' : 'likes'}
             </div>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-1">
               👁️ {profileStats.views_count} {profileStats.views_count === 1 ? 'view' : 'views'}
             </div>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <span className="capitalize">Plan: {vendor.plan || 'Free'}</span>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4 text-slate-500" /> {vendor.response_time || '24 hrs'} response time
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500" /> {vendor.response_time || '24 hrs'} response
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
+        <div className="flex gap-1 sm:gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === tab
                   ? 'border-amber-600 text-amber-700'
                   : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -1130,7 +1130,7 @@ export default function VendorProfilePage() {
         </div>
 
         {/* Tab Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 sm:gap-6">
           {/* Left Column */}
           <div className="space-y-6">
             {/* Portfolio Tab */}
