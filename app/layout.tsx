@@ -1,18 +1,17 @@
-import './globals.css';
-import Providers from './providers';
+'use client';
 
-export const metadata = {
-  title: 'Zintra - B2B Construction Procurement Platform',
-  description: 'Find vendors, get quotes, and hire the best contractors for your construction projects in Kenya.',
-};
+import './globals.css';
+import { AuthProvider } from '@/contexts/AuthContext';
+import NotificationToast from '@/components/NotificationToast';
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <Providers>
+        <AuthProvider>
           {children}
-        </Providers>
+          <NotificationToast />
+        </AuthProvider>
       </body>
     </html>
   );
