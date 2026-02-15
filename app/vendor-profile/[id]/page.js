@@ -376,6 +376,19 @@ export default function VendorProfilePage() {
       
       try {
         setRfqLoading(true);
+
+        // Query 0: Fetch declined rfq_ids so we can exclude them
+        const { data: declinedResponses, error: declinedErr } = await supabase
+          .from('rfq_responses')
+          .select('rfq_id')
+          .eq('vendor_id', vendor.id)
+          .eq('status', 'declined');
+
+        if (declinedErr) {
+          console.error('Error loading declined responses:', declinedErr);
+        }
+
+        const declinedRfqIds = new Set((declinedResponses || []).map(r => r.rfq_id));
         
         // Query 1: Get RFQs from rfq_requests table (legacy direct RFQs)
         const { data: directRfqs, error: directError } = await supabase
@@ -399,13 +412,13 @@ export default function VendorProfilePage() {
           console.error('Error loading assigned rfqs:', assignedError);
         }
 
-        // Combine both sources, avoiding duplicates
+        // Combine both sources, avoiding duplicates and declined RFQs
         const allRfqIds = new Set();
         const combinedRfqs = [];
 
-        // Add assigned RFQs first (new system - more complete data)
+        // Add assigned RFQs first (new system - more complete data) — skip declined
         (assignedRfqs || []).forEach(rfq => {
-          if (!allRfqIds.has(rfq.id)) {
+          if (!allRfqIds.has(rfq.id) && !declinedRfqIds.has(rfq.id)) {
             allRfqIds.add(rfq.id);
             combinedRfqs.push({
               id: rfq.id,
@@ -427,13 +440,14 @@ export default function VendorProfilePage() {
           }
         });
 
-        // Add legacy rfq_requests (for backward compatibility)
+        // Add legacy rfq_requests (for backward compatibility) — skip declined
         (directRfqs || []).forEach(rfq => {
-          // Check if we already have this RFQ (by rfq_id if present)
+          // Check if we already have this RFQ (by rfq_id if present) or if it's declined
+          const rfqId = rfq.rfq_id || rfq.id;
           if (rfq.rfq_id && allRfqIds.has(rfq.rfq_id)) return;
           if (!rfq.rfq_id && allRfqIds.has(rfq.id)) return;
+          if (declinedRfqIds.has(rfqId)) return;
           
-          const rfqId = rfq.rfq_id || rfq.id;
           allRfqIds.add(rfqId);
           combinedRfqs.push({
             id: rfqId,

@@ -84,7 +84,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     }
   };
 
-  // Fetch vendor's submitted quotes/responses
+  // Fetch vendor's submitted quotes/responses (exclude declined)
   const fetchMyQuotes = async () => {
     try {
       console.log('DEBUG: Fetching quotes for vendor_id:', vendor.id);
@@ -102,6 +102,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
           )
         `)
         .eq('vendor_id', vendor.id)
+        .neq('status', 'declined')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -217,6 +218,19 @@ export default function RFQInboxTab({ vendor, currentUser }) {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
+      // Query 0: Fetch all declined rfq_ids for this vendor (to filter them out)
+      const { data: declinedResponses, error: declinedError } = await supabase
+        .from('rfq_responses')
+        .select('rfq_id')
+        .eq('vendor_id', vendor.id)
+        .eq('status', 'declined');
+
+      if (declinedError) {
+        console.error('Error fetching declined responses:', declinedError);
+      }
+
+      const declinedRfqIds = new Set((declinedResponses || []).map(r => r.rfq_id));
+
       // Query 1: RFQs from rfq_recipients table (includes direct, wizard, matched, vendor-request)
       const { data: recipientRfqs, error: recipientError } = await supabase
         .from('rfq_recipients')
@@ -269,8 +283,10 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       // Track all RFQ IDs to avoid duplicates
       const allRfqIds = new Set();
 
-      // Map assignedRfqs FIRST (most reliable data)
-      const assignedMappedRfqs = (assignedRfqs || []).map(rfq => {
+      // Map assignedRfqs FIRST (most reliable data) — skip declined
+      const assignedMappedRfqs = (assignedRfqs || [])
+        .filter(rfq => !declinedRfqIds.has(rfq.id))
+        .map(rfq => {
         allRfqIds.add(rfq.id);
         return {
           id: rfq.id,
@@ -296,9 +312,9 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         };
       });
 
-      // Map recipientRfqs (new system) - skip if already added
+      // Map recipientRfqs (new system) - skip if already added or declined
       const recipientMappedRfqs = (recipientRfqs || [])
-        .filter(recipient => recipient.rfqs && !allRfqIds.has(recipient.rfqs.id))
+        .filter(recipient => recipient.rfqs && !allRfqIds.has(recipient.rfqs.id) && !declinedRfqIds.has(recipient.rfqs.id))
         .map(recipient => {
           allRfqIds.add(recipient.rfqs.id);
           return {
@@ -323,9 +339,12 @@ export default function RFQInboxTab({ vendor, currentUser }) {
           };
         });
 
-      // Map directRfqs (legacy system) - only add if not already present
+      // Map directRfqs (legacy system) - only add if not already present or declined
       const directMappedRfqs = (directRfqs || [])
-        .filter(rfq => !allRfqIds.has(rfq.rfq_id) && !allRfqIds.has(rfq.id))
+        .filter(rfq => {
+          const rfqId = rfq.rfq_id || rfq.id;
+          return !allRfqIds.has(rfq.rfq_id) && !allRfqIds.has(rfq.id) && !declinedRfqIds.has(rfqId);
+        })
         .map(rfq => {
           const rfqId = rfq.rfq_id || rfq.id;
           allRfqIds.add(rfqId);
