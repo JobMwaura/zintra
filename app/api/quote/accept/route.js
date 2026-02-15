@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendQuoteAcceptedSMS, sendVendorQuoteAcceptedSMS } from '@/lib/services/smsService';
 
 // Create a Supabase client with the service role key to bypass RLS
 const supabaseAdmin = createClient(
@@ -120,12 +121,153 @@ export async function POST(request) {
       })
       .eq('id', rfqId);
 
-    console.log('API: Quote accepted successfully');
+    // =========================================================================
+    // STEP 5: Fetch buyer and vendor profiles for notifications & contact reveal
+    // =========================================================================
+    let buyerProfile = null;
+    let vendorProfile = null;
 
+    try {
+      // Fetch buyer profile (the RFQ creator)
+      const { data: buyer } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email, phone, phone_number, phone_verified')
+        .eq('id', userId)
+        .maybeSingle();
+      buyerProfile = buyer;
+
+      // Fetch vendor profile
+      const { data: vendor } = await supabaseAdmin
+        .from('vendors')
+        .select('id, user_id, company_name, contact_email, contact_phone, phone_number, phone')
+        .eq('id', quote.vendor_id)
+        .maybeSingle();
+      vendorProfile = vendor;
+
+      // If vendor found, also get their user profile for phone/email
+      if (vendor?.user_id) {
+        const { data: vendorUser } = await supabaseAdmin
+          .from('profiles')
+          .select('id, full_name, email, phone, phone_number, phone_verified')
+          .eq('id', vendor.user_id)
+          .maybeSingle();
+        if (vendorUser) {
+          vendorProfile = {
+            ...vendorProfile,
+            user_full_name: vendorUser.full_name,
+            user_email: vendorUser.email,
+            user_phone: vendorUser.phone_number || vendorUser.phone,
+          };
+        }
+      }
+    } catch (profileErr) {
+      console.error('API: Error fetching profiles:', profileErr);
+      // Don't fail — profiles are for notifications, not core logic
+    }
+
+    const buyerName = buyerProfile?.full_name || 'Buyer';
+    const vendorName = vendorProfile?.company_name || 'Vendor';
+    const buyerPhone = buyerProfile?.phone_number || buyerProfile?.phone || null;
+    const vendorPhone = vendorProfile?.contact_phone || vendorProfile?.phone_number || vendorProfile?.phone || vendorProfile?.user_phone || null;
+
+    // =========================================================================
+    // STEP 6: Send in-app notification to VENDOR — quote accepted + buyer contact
+    // =========================================================================
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: vendorProfile?.user_id || quote.vendor_id,
+        type: 'quote_accepted',
+        title: '🎉 Your Quote Was Accepted!',
+        body: `${buyerName} accepted your quote for "${rfq.title}". You can now view their contact details and begin the project.`,
+        related_type: 'rfq',
+        related_id: rfqId,
+        metadata: {
+          rfq_id: rfqId,
+          rfq_title: rfq.title,
+          quote_id: quoteId,
+          buyer_name: buyerName,
+          buyer_email: buyerProfile?.email || null,
+          buyer_phone: buyerPhone,
+          accepted_at: new Date().toISOString(),
+        }
+      });
+      console.log('API: Vendor notification sent');
+    } catch (notifErr) {
+      console.error('API: Failed to send vendor notification:', notifErr);
+    }
+
+    // =========================================================================
+    // STEP 7: Send in-app notification to BUYER — confirmation
+    // =========================================================================
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: userId,
+        type: 'quote_accepted_confirmation',
+        title: 'Quote Accepted Successfully',
+        body: `You accepted ${vendorName}'s quote for "${rfq.title}". The vendor has been notified and will contact you soon.`,
+        related_type: 'rfq',
+        related_id: rfqId,
+        metadata: {
+          rfq_id: rfqId,
+          rfq_title: rfq.title,
+          quote_id: quoteId,
+          vendor_name: vendorName,
+          vendor_id: quote.vendor_id,
+          accepted_at: new Date().toISOString(),
+        }
+      });
+      console.log('API: Buyer notification sent');
+    } catch (notifErr) {
+      console.error('API: Failed to send buyer notification:', notifErr);
+    }
+
+    // =========================================================================
+    // STEP 8: Send SMS to BUYER — quote accepted notification
+    // =========================================================================
+    try {
+      if (buyerPhone) {
+        const smsResult = await sendQuoteAcceptedSMS(buyerPhone, rfq.title, vendorName);
+        console.log('API: Buyer SMS result:', smsResult);
+      } else {
+        console.log('API: No buyer phone number — skipping SMS');
+      }
+    } catch (smsErr) {
+      console.error('API: Failed to send buyer SMS:', smsErr);
+    }
+
+    // =========================================================================
+    // STEP 9: Send SMS to VENDOR — their quote was accepted
+    // =========================================================================
+    try {
+      if (vendorPhone) {
+        const smsResult = await sendVendorQuoteAcceptedSMS(vendorPhone, rfq.title, buyerName);
+        console.log('API: Vendor SMS result:', smsResult);
+      } else {
+        console.log('API: No vendor phone number — skipping SMS');
+      }
+    } catch (smsErr) {
+      console.error('API: Failed to send vendor SMS:', smsErr);
+    }
+
+    console.log('API: Quote accepted successfully with notifications');
+
+    // Return success with contact data for immediate display
     return NextResponse.json({
       success: true,
       message: 'Quote accepted successfully',
-      quote: updatedQuote
+      quote: updatedQuote,
+      // Include buyer contact for vendor-side usage (contact reveal)
+      buyerContact: {
+        name: buyerProfile?.full_name || null,
+        email: buyerProfile?.email || null,
+        phone: buyerPhone,
+      },
+      // Include vendor contact for buyer-side usage
+      vendorContact: {
+        name: vendorProfile?.company_name || null,
+        email: vendorProfile?.contact_email || vendorProfile?.user_email || null,
+        phone: vendorPhone,
+      }
     });
 
   } catch (error) {

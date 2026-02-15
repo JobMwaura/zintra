@@ -135,20 +135,30 @@ export default function QuoteComparisonPage({ params }) {
 
     try {
       setActing(quoteId);
-      setActionMessage('');
+      setActionMessage('Accepting quote...');
 
-      const { error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'accepted' })
-        .eq('id', quoteId);
+      // Use API route for proper notifications, SMS, and contact reveal
+      const response = await fetch('/api/quote/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteId: quoteId,
+          rfqId: rfq.id,
+          userId: user.id,
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      setActionMessage('✅ Quote accepted successfully!');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to accept quote');
+      }
+
+      setActionMessage('✅ Quote accepted! The vendor has been notified and will contact you soon.');
       setTimeout(() => {
         fetchRFQDetails();
         setActionMessage('');
-      }, 2000);
+      }, 3000);
     } catch (err) {
       console.error('Error accepting quote:', err);
       setActionMessage(`❌ Error: ${err.message}`);

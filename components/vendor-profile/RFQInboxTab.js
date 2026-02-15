@@ -118,7 +118,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
     }
   };
 
-  // Handle Contact Buyer - open modal for messaging (buyer identity stays hidden)
+  // Handle Contact Buyer - reveal real contact for accepted quotes, anonymous for others
   const handleContactBuyer = async (quote) => {
     setSelectedQuote(quote);
     setLoadingModal(true);
@@ -135,12 +135,42 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         return;
       }
 
-      // Set buyer reference for messaging — but keep identity anonymous
-      setContactBuyer({
-        id: buyerId,
-        full_name: 'Zintra User',   // Anonymized
-        email: null,                 // Hidden
-      });
+      // If quote is ACCEPTED → reveal real buyer contact details
+      if (quote.status === 'accepted') {
+        const { data: buyerProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, phone, phone_number')
+          .eq('id', buyerId)
+          .maybeSingle();
+
+        if (profileError || !buyerProfile) {
+          console.error('Error fetching buyer profile:', profileError);
+          setContactBuyer({
+            id: buyerId,
+            full_name: 'Buyer',
+            email: null,
+            phone: null,
+            contactRevealed: true,
+          });
+        } else {
+          setContactBuyer({
+            id: buyerProfile.id,
+            full_name: buyerProfile.full_name || 'Buyer',
+            email: buyerProfile.email || null,
+            phone: buyerProfile.phone_number || buyerProfile.phone || null,
+            contactRevealed: true,
+          });
+        }
+      } else {
+        // Not accepted — keep identity anonymous, messaging only
+        setContactBuyer({
+          id: buyerId,
+          full_name: 'Zintra User',   // Anonymized
+          email: null,                 // Hidden
+          phone: null,
+          contactRevealed: false,
+        });
+      }
     } catch (err) {
       console.error('Error setting up contact:', err);
       setContactBuyer({ error: 'Error loading contact details' });
@@ -202,11 +232,31 @@ export default function RFQInboxTab({ vendor, currentUser }) {
       if (rfqError || !rfqData) {
         setAssignmentRfq({ error: 'Could not load RFQ details' });
       } else {
-        // Anonymize buyer info — vendor sees project details, not the buyer identity
-        setAssignmentRfq({
-          ...rfqData,
-          buyer: { id: rfqData.user_id, full_name: 'Zintra User', email: null, phone: null }
-        });
+        // For accepted quotes — reveal buyer contact details
+        if (quote.status === 'accepted') {
+          const { data: buyerProfile } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, phone, phone_number')
+            .eq('id', rfqData.user_id)
+            .maybeSingle();
+
+          setAssignmentRfq({
+            ...rfqData,
+            buyer: {
+              id: rfqData.user_id,
+              full_name: buyerProfile?.full_name || 'Buyer',
+              email: buyerProfile?.email || null,
+              phone: buyerProfile?.phone_number || buyerProfile?.phone || null,
+              contactRevealed: true,
+            }
+          });
+        } else {
+          // Not accepted — anonymize buyer info
+          setAssignmentRfq({
+            ...rfqData,
+            buyer: { id: rfqData.user_id, full_name: 'Zintra User', email: null, phone: null, contactRevealed: false }
+          });
+        }
       }
     } catch (err) {
       console.error('Error fetching RFQ:', err);
@@ -511,7 +561,7 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                       <div className="flex-1">
                         <p className="font-semibold text-green-900">Quote Accepted!</p>
                         <p className="text-sm text-green-700 mt-1">
-                          Great news! The buyer has accepted your quote and will be in touch soon.
+                          Great news! The buyer has accepted your quote. Contact them to begin the project.
                         </p>
                       </div>
                     </div>
@@ -755,14 +805,16 @@ export default function RFQInboxTab({ vendor, currentUser }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm sm:max-w-md w-full overflow-hidden max-h-[90vh] my-4 sm:my-8">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white">
+            <div className={`${contactBuyer?.contactRevealed ? 'bg-gradient-to-r from-green-600 to-emerald-700' : 'bg-gradient-to-r from-blue-600 to-blue-700'} p-5 text-white`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                     {showChatMode ? <MessageCircle className="w-5 h-5" /> : <User className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">{showChatMode ? 'Send Message' : 'Message Buyer'}</h2>
+                    <h2 className="text-lg font-bold">
+                      {showChatMode ? 'Send Message' : contactBuyer?.contactRevealed ? 'Buyer Contact Details' : 'Message Buyer'}
+                    </h2>
                     <p className="text-blue-100 text-sm truncate max-w-[200px]">{selectedQuote?.rfqs?.title || 'Project'}</p>
                   </div>
                 </div>
@@ -870,6 +922,51 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                   ) : (
                     /* Contact Options */
                     <div className="space-y-3">
+                      {/* Contact Revealed Banner — only for accepted quotes */}
+                      {contactBuyer.contactRevealed && (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-2">
+                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-green-900">Contact Details Revealed</p>
+                            <p className="text-xs text-green-700">Your quote was accepted! You can now contact the buyer directly.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Email — shown when contact is revealed */}
+                      {contactBuyer.contactRevealed && contactBuyer.email && (
+                        <a
+                          href={`mailto:${contactBuyer.email}`}
+                          className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition group text-left"
+                        >
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 group-hover:bg-blue-200 rounded-full flex items-center justify-center transition flex-shrink-0">
+                            <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-blue-900 text-sm sm:text-base">Send Email</p>
+                            <p className="text-xs sm:text-sm text-blue-600 truncate">{contactBuyer.email}</p>
+                          </div>
+                          <span className="text-blue-400 flex-shrink-0">→</span>
+                        </a>
+                      )}
+
+                      {/* Phone — shown when contact is revealed */}
+                      {contactBuyer.contactRevealed && contactBuyer.phone && (
+                        <a
+                          href={`tel:${contactBuyer.phone}`}
+                          className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group text-left"
+                        >
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition flex-shrink-0">
+                            <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-green-900 text-sm sm:text-base">Call Buyer</p>
+                            <p className="text-xs sm:text-sm text-green-600">{contactBuyer.phone}</p>
+                          </div>
+                          <span className="text-green-400 flex-shrink-0">→</span>
+                        </a>
+                      )}
+
                       {/* Primary: In-App Message */}
                       <button
                         onClick={() => setShowChatMode(true)}
@@ -879,42 +976,26 @@ export default function RFQInboxTab({ vendor, currentUser }) {
                           <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-orange-900 text-sm sm:text-base">Send Message</p>
+                          <p className="font-semibold text-orange-900 text-sm sm:text-base">Send Message via Zintra</p>
                           <p className="text-xs sm:text-sm text-orange-600">Chat via Zintra inbox</p>
                         </div>
                         <span className="text-orange-400 flex-shrink-0">→</span>
                       </button>
 
-                      {/* Email notification info */}
-                      <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-blue-50 rounded-xl">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                      {/* Not-accepted info — tell vendor to wait */}
+                      {!contactBuyer.contactRevealed && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+                          <p className="text-xs sm:text-sm text-amber-800">
+                            🔒 Direct contact details are revealed after the buyer accepts your quote.
+                            Use Zintra messaging for now.
+                          </p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-blue-900 text-sm sm:text-base">Email Notification</p>
-                          <p className="text-xs sm:text-sm text-blue-600">Buyer will be notified via email when you send a message</p>
-                        </div>
-                      </div>
-
-                      {contactBuyer.phone && (
-                        <a
-                          href={`tel:${contactBuyer.phone}`}
-                          className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-green-50 hover:bg-green-100 rounded-xl transition group text-left"
-                        >
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 group-hover:bg-green-200 rounded-full flex items-center justify-center transition flex-shrink-0">
-                            <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-green-900 text-sm sm:text-base">Call Now</p>
-                            <p className="text-xs sm:text-sm text-green-600">{contactBuyer.phone}</p>
-                          </div>
-                          <span className="text-green-400 flex-shrink-0">→</span>
-                        </a>
                       )}
 
-                      {!contactBuyer.phone && (
+                      {/* No contact info fallback for accepted quotes */}
+                      {contactBuyer.contactRevealed && !contactBuyer.email && !contactBuyer.phone && (
                         <div className="text-center py-2 text-gray-500 text-xs sm:text-sm">
-                          <p>No phone number available</p>
+                          <p>No direct contact info available. Use Zintra messaging above.</p>
                         </div>
                       )}
                     </div>
@@ -1048,16 +1129,30 @@ export default function RFQInboxTab({ vendor, currentUser }) {
 
                       {/* Buyer Info */}
                       {assignmentRfq.buyer && (
-                        <div className="bg-blue-50 rounded-lg p-4">
-                          <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2 text-sm sm:text-base">
-                            <User className="w-4 h-4" /> Buyer
+                        <div className={`${assignmentRfq.buyer.contactRevealed ? 'bg-green-50 border border-green-200' : 'bg-blue-50'} rounded-lg p-4`}>
+                          <h4 className={`font-semibold ${assignmentRfq.buyer.contactRevealed ? 'text-green-900' : 'text-blue-900'} mb-2 flex items-center gap-2 text-sm sm:text-base`}>
+                            <User className="w-4 h-4" /> 
+                            {assignmentRfq.buyer.contactRevealed ? 'Buyer Contact (Revealed)' : 'Buyer'}
                           </h4>
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="space-y-2">
                             <div className="min-w-0">
                               <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{assignmentRfq.buyer.full_name || 'Buyer'}</p>
-                              {assignmentRfq.buyer.email && <p className="text-xs sm:text-sm text-gray-600 truncate">{assignmentRfq.buyer.email}</p>}
-                              {assignmentRfq.buyer.phone && <p className="text-xs sm:text-sm text-gray-600">{assignmentRfq.buyer.phone}</p>}
                             </div>
+                            {assignmentRfq.buyer.contactRevealed && assignmentRfq.buyer.email && (
+                              <a href={`mailto:${assignmentRfq.buyer.email}`} className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm">
+                                <Mail className="w-4 h-4" />
+                                <span className="truncate">{assignmentRfq.buyer.email}</span>
+                              </a>
+                            )}
+                            {assignmentRfq.buyer.contactRevealed && assignmentRfq.buyer.phone && (
+                              <a href={`tel:${assignmentRfq.buyer.phone}`} className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm">
+                                <Phone className="w-4 h-4" />
+                                <span>{assignmentRfq.buyer.phone}</span>
+                              </a>
+                            )}
+                            {!assignmentRfq.buyer.contactRevealed && (
+                              <p className="text-xs text-blue-600">🔒 Contact details will be revealed when your quote is accepted</p>
+                            )}
                           </div>
                         </div>
                       )}

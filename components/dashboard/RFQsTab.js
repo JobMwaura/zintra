@@ -211,7 +211,11 @@ export default function RFQsTab() {
       if (buyerError || !buyerData) {
         setContactBuyer({ error: 'Could not load buyer details' });
       } else {
-        setContactBuyer(buyerData);
+        // Normalize phone field — profiles table may have 'phone' or 'phone_number'
+        setContactBuyer({
+          ...buyerData,
+          phone: buyerData.phone_number || buyerData.phone || null,
+        });
       }
     } catch (err) {
       console.error('Error fetching buyer:', err);
