@@ -135,13 +135,19 @@ export default function TalentProfilePage() {
         updated_at: candidateData?.updated_at,
       };
 
-      // Fetch worker reviews/ratings
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select('id, rating, comment, created_at, reviewer:reviewer_id(full_name)')
-        .eq('worker_id', workerId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // Fetch worker reviews/ratings (table may not exist yet for workers)
+      let reviewsData = [];
+      try {
+        const { data } = await supabase
+          .from('reviews')
+          .select('id, rating, comment, created_at, reviewer:author')
+          .eq('vendor_id', workerId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        reviewsData = data || [];
+      } catch {
+        // Reviews table may not support worker reviews yet
+      }
 
       // Fetch worker applications and completed gigs
       const { data: applicationsData } = await supabase
@@ -150,9 +156,9 @@ export default function TalentProfilePage() {
           id,
           status,
           created_at,
-          gig:gig_id(title, pay_max, completed)
+          listing:listing_id(title, pay_max)
         `)
-        .eq('worker_id', workerId)
+        .eq('candidate_id', workerId)
         .limit(5);
 
       setWorker({
