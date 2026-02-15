@@ -46,7 +46,7 @@ export default function FeaturedListings({ type = 'job', limit = 4 }) {
           .from('listings')
           .select(`
             id, title, description, type, location, pay_min, pay_max, pay_currency,
-            start_date, duration, workers_needed, status, created_at,
+            start_date, duration, status, created_at,
             employer_id
           `)
           .in('id', postIds)
@@ -58,7 +58,7 @@ export default function FeaturedListings({ type = 'job', limit = 4 }) {
           .from('listings')
           .select(`
             id, title, description, type, location, pay_min, pay_max, pay_currency,
-            start_date, duration, workers_needed, status, created_at,
+            start_date, duration, status, created_at,
             employer_id
           `)
           .eq('status', 'active')
@@ -176,21 +176,13 @@ export default function FeaturedListings({ type = 'job', limit = 4 }) {
                   </div>
                 )}
 
-                {/* Gig-specific: Duration + Workers Needed */}
-                {isGig && (
+                {/* Gig-specific: Duration */}
+                {isGig && listing.duration && (
                   <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-                    {listing.duration && (
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} />
-                        {listing.duration}
-                      </span>
-                    )}
-                    {listing.workers_needed > 1 && (
-                      <span className="flex items-center gap-1">
-                        <Users size={14} />
-                        {listing.workers_needed} needed
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1">
+                      <Clock size={14} />
+                      {listing.duration}
+                    </span>
                   </div>
                 )}
 

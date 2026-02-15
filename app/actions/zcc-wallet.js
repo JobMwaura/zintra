@@ -324,7 +324,6 @@ export async function publishGigWithCredits(userId, listingData, featuredOption 
         pay_currency: 'KES',
         start_date: listingData.startDate || null,
         duration: listingData.duration || null,
-        workers_needed: listingData.workersNeeded ? parseInt(listingData.workersNeeded) : 1,
         requirements: listingData.requirements || null,
         status: 'active',
       })
