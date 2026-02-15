@@ -6,7 +6,10 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { ArrowLeft, Upload, Plus, X } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, X, Check, Shield } from 'lucide-react';
+import PhoneInput from '@/components/PhoneInput';
+import useOTP from '@/components/hooks/useOTP';
+import EmailOTPVerification from '@/components/EmailOTPVerification';
 
 export default function CreateProfilePage() {
   const router = useRouter();
@@ -34,6 +37,17 @@ export default function CreateProfilePage() {
   const [success, setSuccess] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  // Phone verification state
+  const { sendOTP, verifyOTP } = useOTP();
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [showPhoneOTP, setShowPhoneOTP] = useState(false);
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [phoneOtpLoading, setPhoneOtpLoading] = useState(false);
+  const [phoneOtpMessage, setPhoneOtpMessage] = useState('');
+
+  // Email verification state
+  const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -103,10 +117,64 @@ export default function CreateProfilePage() {
     }
   }
 
+  // Phone OTP handlers
+  async function handleSendPhoneOTP() {
+    if (!profile.phone?.trim()) {
+      setPhoneOtpMessage('Please enter a phone number first');
+      return;
+    }
+    setPhoneOtpLoading(true);
+    setPhoneOtpMessage('');
+    try {
+      const result = await sendOTP(profile.phone, 'sms', 'registration');
+      if (result.success) {
+        setShowPhoneOTP(true);
+        setPhoneOtpMessage('✓ SMS sent! Enter the 6-digit code');
+      } else {
+        setPhoneOtpMessage(result.error || 'Failed to send OTP');
+      }
+    } catch (err) {
+      setPhoneOtpMessage('Error: ' + err.message);
+    } finally {
+      setPhoneOtpLoading(false);
+    }
+  }
+
+  async function handleVerifyPhoneOTP() {
+    if (!phoneOtpCode.trim() || phoneOtpCode.length !== 6) {
+      setPhoneOtpMessage('Enter a valid 6-digit code');
+      return;
+    }
+    setPhoneOtpLoading(true);
+    setPhoneOtpMessage('');
+    try {
+      const result = await verifyOTP(phoneOtpCode, profile.phone);
+      if (result.verified) {
+        setPhoneVerified(true);
+        setPhoneOtpMessage('✓ Phone verified!');
+        setShowPhoneOTP(false);
+        setPhoneOtpCode('');
+      } else {
+        setPhoneOtpMessage(result.error || 'Invalid code');
+      }
+    } catch (err) {
+      setPhoneOtpMessage('Error: ' + err.message);
+    } finally {
+      setPhoneOtpLoading(false);
+    }
+  }
+
   async function handleSaveProfile() {
     try {
       setSaving(true);
       setError(null);
+
+      // Require at least one verified contact method
+      if (!phoneVerified && !emailVerified) {
+        setError('Please verify at least your phone number or email address before saving.');
+        setSaving(false);
+        return;
+      }
 
       let avatarUrl = profile.avatar_url;
 
@@ -262,35 +330,157 @@ export default function CreateProfilePage() {
                       required
                     />
                   </div>
+                </div>
+              </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Email *
+              {/* Verified Contact Details */}
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <Shield size={18} className="text-orange-500" />
+                  <h2 className="text-lg font-bold text-gray-900">Verify Your Contact Details</h2>
+                </div>
+                <p className="text-xs text-gray-500 mb-4">
+                  Verify at least one contact method. You can use different details than your Zintra login.
+                </p>
+
+                <div className="space-y-5">
+                  {/* Phone Verification */}
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number {phoneVerified && <span className="text-green-600 text-xs ml-1">✓ Verified</span>}
                     </label>
-                    <input
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      placeholder="your.email@example.com"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                      required
-                    />
+
+                    {!phoneVerified ? (
+                      <>
+                        <PhoneInput
+                          value={profile.phone}
+                          onChange={(phone) => {
+                            setProfile({ ...profile, phone });
+                            setShowPhoneOTP(false);
+                            setPhoneOtpCode('');
+                            setPhoneOtpMessage('');
+                          }}
+                          country="KE"
+                          placeholder="721345678"
+                        />
+
+                        {!showPhoneOTP ? (
+                          <button
+                            type="button"
+                            onClick={handleSendPhoneOTP}
+                            disabled={!profile.phone?.trim() || phoneOtpLoading}
+                            className={`mt-3 w-full px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                              profile.phone?.trim() && !phoneOtpLoading
+                                ? 'bg-orange-500 text-white hover:bg-orange-600'
+                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                          >
+                            {phoneOtpLoading ? 'Sending...' : 'Send SMS Code'}
+                          </button>
+                        ) : (
+                          <div className="mt-3 space-y-3">
+                            <input
+                              type="text"
+                              maxLength="6"
+                              value={phoneOtpCode}
+                              onChange={(e) => setPhoneOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              className="w-full text-center text-2xl tracking-widest font-mono rounded-lg border-2 border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleVerifyPhoneOTP}
+                              disabled={phoneOtpCode.length !== 6 || phoneOtpLoading}
+                              className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                                phoneOtpCode.length === 6 && !phoneOtpLoading
+                                  ? 'bg-green-500 text-white hover:bg-green-600'
+                                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              {phoneOtpLoading ? 'Verifying...' : 'Verify Code'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowPhoneOTP(false); setPhoneOtpCode(''); setPhoneOtpMessage(''); }}
+                              className="w-full text-orange-600 text-xs hover:text-orange-700"
+                            >
+                              ← Change Number
+                            </button>
+                          </div>
+                        )}
+
+                        {phoneOtpMessage && (
+                          <p className={`mt-2 text-xs font-medium ${phoneOtpMessage.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
+                            {phoneOtpMessage}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                        <Check size={18} className="text-green-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-green-800">{profile.phone}</p>
+                          <p className="text-xs text-green-600">Phone verified via SMS</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setPhoneVerified(false); setPhoneOtpMessage(''); }}
+                          className="ml-auto text-xs text-gray-500 hover:text-orange-600"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Phone Number
+                  {/* Email Verification */}
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address {emailVerified && <span className="text-green-600 text-xs ml-1">✓ Verified</span>}
                     </label>
-                    <input
-                      type="tel"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      placeholder="+254 700 000 000"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                    />
+
+                    {!emailVerified ? (
+                      <>
+                        <input
+                          type="email"
+                          value={profile.email}
+                          onChange={(e) => {
+                            setProfile({ ...profile, email: e.target.value });
+                            setEmailVerified(false);
+                          }}
+                          placeholder="your.email@example.com"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition mb-3"
+                        />
+                        <EmailOTPVerification
+                          email={profile.email}
+                          onVerified={setEmailVerified}
+                          isVerified={emailVerified}
+                        />
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                        <Check size={18} className="text-green-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-green-800">{profile.email}</p>
+                          <p className="text-xs text-green-600">Email verified via OTP</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEmailVerified(false)}
+                          className="ml-auto text-xs text-gray-500 hover:text-orange-600"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Verification status hint */}
+                  {!phoneVerified && !emailVerified && (
+                    <p className="text-xs text-amber-600 font-medium">
+                      ⚠ You must verify at least one contact method before saving your profile.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -494,21 +684,30 @@ export default function CreateProfilePage() {
               </div>
 
               {/* Actions */}
-              <div className="border-t border-gray-200 pt-6 flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveProfile}
-                  disabled={saving || !profile.full_name || !profile.email || !profile.role}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white font-bold py-3 rounded-lg transition"
-                >
-                  {saving ? 'Saving...' : 'Save Profile'}
-                </button>
-                <Link
-                  href="/careers/talent"
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-3 rounded-lg text-center transition"
-                >
-                  Cancel
-                </Link>
+              <div className="border-t border-gray-200 pt-6">
+                {!phoneVerified && !emailVerified && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-center">
+                    <p className="text-sm text-amber-800 font-medium">
+                      🔒 Verify your phone or email above to enable saving
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    disabled={saving || !profile.full_name || !profile.role || (!phoneVerified && !emailVerified)}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white font-bold py-3 rounded-lg transition"
+                  >
+                    {saving ? 'Saving...' : 'Save Profile'}
+                  </button>
+                  <Link
+                    href="/careers/talent"
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-3 rounded-lg text-center transition"
+                  >
+                    Cancel
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
