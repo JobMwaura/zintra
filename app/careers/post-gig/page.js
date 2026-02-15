@@ -17,8 +17,8 @@ export default function PostGigRedirect() {
         return;
       }
 
-      // Redirect to employer post-job page with gig type
-      router.push('/careers/employer/post-job?type=gig');
+      // Redirect to dedicated post-gig page
+      router.push('/careers/employer/post-gig');
     };
 
     checkAuth();

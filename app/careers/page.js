@@ -7,6 +7,8 @@
 
 import { useState, useEffect } from 'react';
 import HeroSearch from '@/components/careers/HeroSearch';
+import QuickActions from '@/components/careers/QuickActions';
+import FeaturedListings from '@/components/careers/FeaturedListings';
 import WhyZintra from '@/components/careers/WhyZintra';
 import TrustStrip from '@/components/careers/TrustStrip';
 import LiveJobStats from '@/components/careers/LiveJobStats';
@@ -94,14 +96,23 @@ export default function CareersPage() {
       {/* Hero & Search */}
       <HeroSearch />
 
+      {/* Quick Actions: Find Jobs, Find Gigs, Post Job, Post Gig, Talent */}
+      <QuickActions />
+
       {/* Why Zintra - Differentiators */}
       <WhyZintra />
 
       {/* Trust Strip */}
       <TrustStrip items={trustItems} />
 
+      {/* Featured Jobs (paid placements from zcc_featured_posts) */}
+      <FeaturedListings type="job" limit={4} />
+
       {/* Live Job Stats - Real-time activity */}
       <LiveJobStats />
+
+      {/* Featured Gigs (paid placements — "Urgent Today") */}
+      <FeaturedListings type="gig" limit={4} />
 
       {/* Featured Employers */}
       <FeaturedEmployers employers={mockEmployers} />

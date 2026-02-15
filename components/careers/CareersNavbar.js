@@ -151,10 +151,26 @@ export default function CareersNavbar() {
                     )}
                     {roles?.employer && (
                       <Link
+                        href="/careers/credits"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
+                      >
+                        Credits
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
                         href="/careers/employer/post-job"
-                        className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
                       >
                         Post Job
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
+                        href="/careers/employer/post-gig"
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition"
+                      >
+                        Post Gig
                       </Link>
                     )}
                   </>
@@ -276,10 +292,26 @@ export default function CareersNavbar() {
                     )}
                     {roles?.employer && (
                       <Link
+                        href="/careers/credits"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
+                      >
+                        Credits
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
                         href="/careers/employer/post-job"
-                        className="block bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg text-center transition"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                       >
                         Post Job
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
+                        href="/careers/employer/post-gig"
+                        className="block bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg text-center transition"
+                      >
+                        Post Gig
                       </Link>
                     )}
                   </>
