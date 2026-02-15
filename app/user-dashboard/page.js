@@ -206,45 +206,6 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation Bar */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center">
-              <img src="/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
-            </Link>
-
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="/browse" className="text-gray-700 hover:text-gray-900 font-medium">
-                Browse
-              </Link>
-              <Link href="/post-rfq" className="text-gray-700 hover:text-gray-900 font-medium">
-                Post RFQ
-              </Link>
-              <Link href="/about" className="text-gray-700 hover:text-gray-900 font-medium">
-                About
-              </Link>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ea8f1e' }}>
-                  <User className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-sm font-medium text-gray-900">{user?.email}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
