@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import {
   ArrowLeft,
@@ -14,32 +15,59 @@ import {
   CheckCircle,
   Share2,
   Calendar,
+  User,
 } from 'lucide-react';
 
 export default function GigDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [gig, setGig] = useState(null);
   const [error, setError] = useState(null);
   const [applying, setApplying] = useState(false);
-  const [user, setUser] = useState(null);
   const [applied, setApplied] = useState(false);
+  const [hasProfile, setHasProfile] = useState(null);
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
 
   useEffect(() => {
     loadGig();
-    checkAuthStatus();
   }, []);
 
-  async function checkAuthStatus() {
+  // Check ZCC profile + existing application
+  useEffect(() => {
+    if (!authLoading && user) {
+      checkCandidateStatus();
+    }
+  }, [authLoading, user, params.id]);
+
+  async function checkCandidateStatus() {
     try {
       const supabase = createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (!authError && user) {
-        setUser(user);
+      const gigId = params.id;
+
+      // Check for candidate_profiles record
+      const { data: candidate } = await supabase
+        .from('candidate_profiles')
+        .select('id, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      setHasProfile(!!candidate?.full_name);
+
+      // Check if already applied
+      const { data: existingApp } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('listing_id', gigId)
+        .eq('candidate_id', user.id)
+        .maybeSingle();
+
+      if (existingApp) {
+        setApplied(true);
       }
     } catch (err) {
-      console.error('Error checking auth:', err);
+      console.error('Error checking candidate status:', err);
     }
   }
 
@@ -94,43 +122,43 @@ export default function GigDetailPage() {
 
   async function handleApply() {
     if (!user) {
-      router.push('/login');
+      router.push('/login?redirect=/careers/gigs/' + params.id);
       return;
     }
+
+    // No ZCC profile → prompt
+    if (!hasProfile) {
+      setShowProfilePrompt(true);
+      return;
+    }
+
+    if (applied) return;
 
     setApplying(true);
     try {
       const supabase = createClient();
 
-      // Check if already applied
-      const { data: existingApp, error: checkError } = await supabase
+      // Double-check not already applied
+      const { data: existingApp } = await supabase
         .from('applications')
         .select('id')
         .eq('listing_id', gig.id)
-        .eq('worker_id', user.id)
-        .single();
+        .eq('candidate_id', user.id)
+        .maybeSingle();
 
       if (existingApp) {
         setApplied(true);
-        setApplying(false);
         return;
-      }
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
       }
 
       // Create application
       const { error: createError } = await supabase.from('applications').insert({
         listing_id: gig.id,
-        worker_id: user.id,
-        status: 'pending',
-        created_at: new Date().toISOString(),
+        candidate_id: user.id,
+        status: 'applied',
       });
 
-      if (createError) {
-        throw createError;
-      }
+      if (createError) throw createError;
 
       setApplied(true);
       // Reload gig to update application count
@@ -362,6 +390,33 @@ export default function GigDetailPage() {
                 <p className="text-xs font-bold text-orange-100 uppercase">Applications</p>
                 <p className="text-2xl font-bold">{applicantCount}</p>
               </div>
+
+              {/* ZCC Profile Prompt */}
+              {showProfilePrompt && !hasProfile && (
+                <div className="bg-white bg-opacity-95 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <User className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 mb-1">Career Centre Profile Required</p>
+                      <p className="text-xs text-gray-600 mb-3">
+                        Create your ZCC profile so employers can see your skills and experience.
+                      </p>
+                      <button
+                        onClick={() => router.push('/careers/profile')}
+                        className="w-full px-4 py-2 rounded-lg font-semibold text-white text-sm bg-orange-600 hover:bg-orange-700 transition mb-2"
+                      >
+                        Create ZCC Profile
+                      </button>
+                      <button
+                        onClick={() => setShowProfilePrompt(false)}
+                        className="w-full text-xs text-orange-200 hover:text-white transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Apply Button */}
               <button

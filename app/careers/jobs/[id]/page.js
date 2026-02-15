@@ -3,22 +3,63 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, MapPin, Clock, DollarSign, Share2, Briefcase } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, MapPin, Clock, DollarSign, Share2, Briefcase, User, CheckCircle } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 export default function JobDetailPage() {
   const router = useRouter();
   const params = useParams();
   const jobId = params.id;
+  const { user, loading: authLoading } = useAuth();
 
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isApplying, setIsApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [hasProfile, setHasProfile] = useState(null); // null = not checked, true/false
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
 
   useEffect(() => {
     loadJobDetails();
   }, [jobId]);
+
+  // Check if user has a ZCC candidate profile + existing application
+  useEffect(() => {
+    if (!authLoading && user) {
+      checkCandidateStatus();
+    }
+  }, [authLoading, user, jobId]);
+
+  async function checkCandidateStatus() {
+    try {
+      const supabase = createClient();
+
+      // Check if user has a candidate_profiles record
+      const { data: candidate } = await supabase
+        .from('candidate_profiles')
+        .select('id, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      setHasProfile(!!candidate?.full_name);
+
+      // Check if already applied
+      const { data: existingApp } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('listing_id', jobId)
+        .eq('candidate_id', user.id)
+        .maybeSingle();
+
+      if (existingApp) {
+        setApplied(true);
+      }
+    } catch (err) {
+      console.error('Error checking candidate status:', err);
+    }
+  }
 
   async function loadJobDetails() {
     try {
@@ -57,43 +98,50 @@ export default function JobDetailPage() {
   }
 
   async function handleApply() {
+    // 1. Not logged in → redirect to login
+    if (!user) {
+      router.push('/login?redirect=/careers/jobs/' + jobId);
+      return;
+    }
+
+    // 2. No ZCC candidate profile → show prompt to create one
+    if (!hasProfile) {
+      setShowProfilePrompt(true);
+      return;
+    }
+
+    // 3. Already applied
+    if (applied) return;
+
     setIsApplying(true);
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
-      // Check if already applied
+      // Double-check not already applied
       const { data: existingApp } = await supabase
         .from('applications')
         .select('id')
-        .eq('job_id', jobId)
-        .eq('applicant_id', user.id)
+        .eq('listing_id', jobId)
+        .eq('candidate_id', user.id)
         .maybeSingle();
 
       if (existingApp) {
-        alert('You have already applied for this job');
+        setApplied(true);
         return;
       }
 
       // Create application
       const { error: appError } = await supabase
         .from('applications')
-        .insert([
-          {
-            job_id: jobId,
-            applicant_id: user.id,
-            status: 'applied'
-          }
-        ]);
+        .insert({
+          listing_id: jobId,
+          candidate_id: user.id,
+          status: 'applied',
+        });
 
       if (appError) throw appError;
 
-      alert('Application submitted successfully!');
+      setApplied(true);
     } catch (err) {
       console.error('Error applying:', err);
       alert('Failed to apply. Please try again.');
@@ -245,18 +293,61 @@ export default function JobDetailPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Ready to Apply?</h3>
-              
-              <button
-                onClick={handleApply}
-                disabled={isApplying}
-                className="w-full py-3 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: '#ca8637' }}
-              >
-                {isApplying ? 'Applying...' : 'Apply Now'}
-              </button>
+
+              {/* Already applied state */}
+              {applied && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <p className="text-green-800 font-semibold text-sm">You&apos;ve applied for this job!</p>
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">The employer will review your Career Centre profile.</p>
+                </div>
+              )}
+
+              {/* Profile prompt modal */}
+              {showProfilePrompt && !hasProfile && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <User className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 mb-1">Career Centre Profile Required</p>
+                      <p className="text-xs text-gray-600 mb-3">
+                        To apply for jobs, you need a Zintra Career Centre profile. This is separate from your Zintra platform account and lets employers see your skills and experience.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => router.push('/careers/profile')}
+                          className="px-4 py-2 rounded-lg font-semibold text-white text-sm transition-all hover:opacity-90"
+                          style={{ backgroundColor: '#ca8637' }}
+                        >
+                          Create ZCC Profile
+                        </button>
+                        <button
+                          onClick={() => setShowProfilePrompt(false)}
+                          className="px-4 py-2 rounded-lg font-semibold text-gray-600 text-sm bg-gray-100 hover:bg-gray-200 transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!applied && (
+                <button
+                  onClick={handleApply}
+                  disabled={isApplying || applied}
+                  className="w-full py-3 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: '#ca8637' }}
+                >
+                  {isApplying ? 'Applying...' : applied ? 'Applied ✓' : 'Apply Now'}
+                </button>
+              )}
 
               <p className="text-xs text-gray-500 mt-4 text-center">
-                By applying, you agree to share your profile with the employer.
+                By applying, you agree to share your Career Centre profile with the employer.
               </p>
 
               {job.employer && (

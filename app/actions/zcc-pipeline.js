@@ -52,14 +52,14 @@ export async function getApplicationsForJob(employerId, listingId) {
     
     let candidates = {};
     if (candidateIds.length > 0) {
-      // Get from candidate_profiles
+      // Get from candidate_profiles (now self-contained with name, email, phone, avatar)
       const { data: candidateProfiles } = await supabase
         .from('candidate_profiles')
-        .select('id, skills, availability, experience_years, verified_id, completed_gigs, rating, bio')
+        .select('id, full_name, email, phone, avatar_url, city, role, skills, availability, experience_years, verified_id, completed_gigs, rating, bio')
         .in('id', candidateIds);
 
-      // Get from profiles (for name, phone, email, avatar)
-      const { data: profiles } = await supabase
+      // Fallback: get base profiles for candidates who may not have full candidate_profiles yet
+      const { data: baseProfiles } = await supabase
         .from('profiles')
         .select('id, full_name, phone, email, avatar_url, location')
         .in('id', candidateIds);
@@ -73,37 +73,37 @@ export async function getApplicationsForJob(employerId, listingId) {
 
       const unlockedSet = new Set((unlocks || []).map(u => u.candidate_id));
 
-      // Merge data
+      // Merge data — candidate_profiles takes priority
       for (const cp of (candidateProfiles || [])) {
-        const profile = (profiles || []).find(p => p.id === cp.id);
+        const base = (baseProfiles || []).find(p => p.id === cp.id);
         candidates[cp.id] = {
           ...cp,
-          full_name: profile?.full_name || 'Unknown',
-          avatar_url: profile?.avatar_url || null,
-          location: profile?.location || null,
+          full_name: cp.full_name || base?.full_name || 'Unknown',
+          avatar_url: cp.avatar_url || base?.avatar_url || null,
+          location: cp.city || base?.location || null,
           // Only show contact info if unlocked
-          phone: unlockedSet.has(cp.id) ? profile?.phone : null,
-          email: unlockedSet.has(cp.id) ? profile?.email : null,
+          phone: unlockedSet.has(cp.id) ? (cp.phone || base?.phone) : null,
+          email: unlockedSet.has(cp.id) ? (cp.email || base?.email) : null,
           contact_unlocked: unlockedSet.has(cp.id),
         };
       }
 
       // Handle candidates who may not have a candidate_profile yet
-      for (const profile of (profiles || [])) {
-        if (!candidates[profile.id]) {
-          candidates[profile.id] = {
-            id: profile.id,
-            full_name: profile.full_name || 'Unknown',
-            avatar_url: profile.avatar_url || null,
-            location: profile.location || null,
+      for (const base of (baseProfiles || [])) {
+        if (!candidates[base.id]) {
+          candidates[base.id] = {
+            id: base.id,
+            full_name: base.full_name || 'Unknown',
+            avatar_url: base.avatar_url || null,
+            location: base.location || null,
             skills: [],
             experience_years: 0,
             verified_id: false,
             completed_gigs: 0,
             rating: 0,
-            phone: unlockedSet.has(profile.id) ? profile.phone : null,
-            email: unlockedSet.has(profile.id) ? profile.email : null,
-            contact_unlocked: unlockedSet.has(profile.id),
+            phone: unlockedSet.has(base.id) ? base.phone : null,
+            email: unlockedSet.has(base.id) ? base.email : null,
+            contact_unlocked: unlockedSet.has(base.id),
           };
         }
       }
