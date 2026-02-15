@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { ZCC_COSTS, ZCC_SPEND_TYPES, ZCC_APP_STATUSES, ZCC_APP_STATUS_FLOW } from '@/lib/zcc/credit-config';
+import { notifyPipelineEvent } from '@/app/actions/zcc-requirements';
 
 /**
  * Get all applications for a specific listing (employer's pipeline view).
@@ -166,6 +167,29 @@ export async function updateApplicationStatus(employerId, applicationId, newStat
     if (error) {
       console.error('Status update RPC error:', error);
       return { success: false, error: error.message };
+    }
+
+    // Fire SMS + in-app notifications for key status changes
+    if (data.success && ['shortlisted', 'offer', 'hired'].includes(newStatus)) {
+      try {
+        const { data: appData } = await supabase
+          .from('applications')
+          .select('candidate_id, listing_id, listings(title)')
+          .eq('id', applicationId)
+          .single();
+
+        if (appData?.candidate_id) {
+          // Fire-and-forget — don't block the response
+          notifyPipelineEvent(
+            appData.candidate_id,
+            newStatus,
+            { jobTitle: appData.listings?.title || 'a job' }
+          ).catch(err => console.error('Pipeline notification error:', err));
+        }
+      } catch (notifErr) {
+        // Notification failure should never block the status update
+        console.error('Failed to send pipeline notification:', notifErr);
+      }
     }
 
     return {

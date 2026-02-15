@@ -149,6 +149,22 @@ export default function CareersNavbar() {
                         Verification
                       </Link>
                     )}
+                    {roles?.candidate && (
+                      <Link
+                        href="/careers/me/requirements"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
+                      >
+                        Requirements
+                      </Link>
+                    )}
+                    {roles?.candidate && (
+                      <Link
+                        href="/careers/notifications"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
+                      >
+                        Notifications
+                      </Link>
+                    )}
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/dashboard"
@@ -163,6 +179,14 @@ export default function CareersNavbar() {
                         className="text-gray-700 hover:text-orange-500 font-medium transition"
                       >
                         Applicants
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
+                        href="/careers/employer/orders"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
+                      >
+                        Orders
                       </Link>
                     )}
                     {roles?.employer && (
@@ -306,6 +330,22 @@ export default function CareersNavbar() {
                         Verification
                       </Link>
                     )}
+                    {roles?.candidate && (
+                      <Link
+                        href="/careers/me/requirements"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
+                      >
+                        Requirements
+                      </Link>
+                    )}
+                    {roles?.candidate && (
+                      <Link
+                        href="/careers/notifications"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
+                      >
+                        Notifications
+                      </Link>
+                    )}
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/dashboard"
@@ -320,6 +360,14 @@ export default function CareersNavbar() {
                         className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                       >
                         Applicants
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
+                        href="/careers/employer/orders"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
+                      >
+                        Orders
                       </Link>
                     )}
                     {roles?.employer && (
