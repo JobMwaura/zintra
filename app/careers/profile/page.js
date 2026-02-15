@@ -59,6 +59,16 @@ export default function CreateProfilePage() {
     }
   }, [authLoading, user]);
 
+  // Auto-verify email if it matches the authenticated user's email
+  // (Supabase Auth already confirmed it during signup)
+  useEffect(() => {
+    if (user?.email && profile.email) {
+      if (profile.email.toLowerCase() === user.email.toLowerCase()) {
+        setEmailVerified(true);
+      }
+    }
+  }, [user, profile.email]);
+
   async function fetchProfile() {
     try {
       setLoading(true);
@@ -91,7 +101,7 @@ export default function CreateProfilePage() {
         role: candidateData?.role || '',
         bio: candidateData?.bio || '',
         city: candidateData?.city || baseProfile?.location || '',
-        email: candidateData?.email || baseProfile?.email || '',
+        email: candidateData?.email || baseProfile?.email || user?.email || '',
         phone: candidateData?.phone || baseProfile?.phone || '',
         skills: [],
         experience: candidateData?.experience_years?.toString() || '',
@@ -540,7 +550,11 @@ export default function CreateProfilePage() {
                         <Check size={18} className="text-green-600 flex-shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-green-800">{profile.email}</p>
-                          <p className="text-xs text-green-600">Email verified via OTP</p>
+                          <p className="text-xs text-green-600">
+                            {user?.email && profile.email?.toLowerCase() === user.email.toLowerCase()
+                              ? 'Automatically verified — matches your sign-up email'
+                              : 'Email verified via OTP'}
+                          </p>
                         </div>
                         <button
                           type="button"
@@ -557,6 +571,11 @@ export default function CreateProfilePage() {
                   {!phoneVerified && !emailVerified && (
                     <p className="text-xs text-amber-600 font-medium">
                       ⚠ You must verify at least one contact method before saving your profile.
+                      {user?.email && (
+                        <span className="block mt-1 text-gray-500 font-normal">
+                          💡 Tip: Enter your sign-up email ({user.email}) above — it will be automatically verified.
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
