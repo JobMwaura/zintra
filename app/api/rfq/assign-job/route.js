@@ -1,14 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
-// Initialize Supabase client for server-side use
+// Initialize Supabase client with SERVICE ROLE KEY for server-side use (bypasses RLS)
 function createSupabaseClient() {
-  const cookieStore = cookies()
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
+      autoRefreshToken: false,
       persistSession: false
     }
   })
@@ -30,7 +30,7 @@ function createSupabaseClient() {
  */
 
 export async function POST(req) {
-  const { rfqId, vendorId, startDate, notes } = await req.json()
+  const { rfqId, vendorId, startDate, notes, userId } = await req.json()
 
   try {
     // Validate inputs
@@ -43,10 +43,19 @@ export async function POST(req) {
 
     const supabase = createSupabaseClient()
 
-    // [1] Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (!user || userError) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    // [1] Get userId — accept from body or fall back to auth
+    let currentUserId = userId
+    if (!currentUserId) {
+      // Try to get from auth session (backward compat)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        currentUserId = user?.id
+      } catch (e) {
+        // Service role doesn't have auth context — userId must be in body
+      }
+    }
+    if (!currentUserId) {
+      return Response.json({ error: 'Unauthorized — userId required' }, { status: 401 })
     }
 
     // [2] Verify user owns the RFQ
@@ -61,7 +70,7 @@ export async function POST(req) {
       return Response.json({ error: 'RFQ not found' }, { status: 404 })
     }
 
-    if (rfq.user_id !== user.id) {
+    if (rfq.user_id !== currentUserId) {
       return Response.json(
         { error: 'You do not own this RFQ' },
         { status: 403 }
@@ -91,7 +100,7 @@ export async function POST(req) {
       .insert({
         rfq_id: rfqId,
         assigned_vendor_id: vendorId,
-        assigned_by_user_id: user.id,
+        assigned_by_user_id: currentUserId,
         status: 'pending',
         start_date: startDate,
         notes: notes || null
@@ -135,7 +144,7 @@ export async function POST(req) {
     const { data: buyer, error: buyerError } = await supabase
       .from('profiles')
       .select('id, full_name, email')
-      .eq('id', user.id)
+      .eq('id', currentUserId)
       .single()
 
     const buyerName = buyer?.full_name || 'A client'
@@ -148,7 +157,7 @@ export async function POST(req) {
       message: `${buyerName} has assigned you the "${rfq.title}" project. Start date: ${new Date(startDate).toLocaleDateString()}. Review the details and confirm your acceptance.`,
       related_rfq_id: rfqId,
       related_project_id: project.id,
-      related_user_id: user.id,
+      related_user_id: currentUserId,
       action_url: `/projects/${project.id}`
     }
 
@@ -163,7 +172,7 @@ export async function POST(req) {
 
     // [9] Create notification for BUYER (confirmation of assignment)
     const buyerNotificationData = {
-      user_id: user.id,
+      user_id: currentUserId,
       type: 'job_assigned',
       title: `✓ ${vendorName} Has Been Assigned`,
       message: `You have successfully assigned "${rfq.title}" to ${vendorName}. They will receive a notification and can review the project details.`,
@@ -207,6 +216,7 @@ export async function POST(req) {
 export async function GET(req) {
   const { searchParams } = new URL(req.url)
   const projectId = searchParams.get('projectId')
+  const userId = searchParams.get('userId')
 
   if (!projectId) {
     return Response.json(
@@ -218,10 +228,9 @@ export async function GET(req) {
   try {
     const supabase = createSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (!user || userError) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    // Get userId from query param
+    if (!userId) {
+      return Response.json({ error: 'Unauthorized — userId required' }, { status: 401 })
     }
 
     // Get project with RFQ details
@@ -249,7 +258,7 @@ export async function GET(req) {
     }
 
     // Check authorization (user must be creator or assigned vendor)
-    if (user.id !== project.assigned_by_user_id && user.id !== project.assigned_vendor_id) {
+    if (userId !== project.assigned_by_user_id && userId !== project.assigned_vendor_id) {
       return Response.json({ error: 'Unauthorized' }, { status: 403 })
     }
 

@@ -177,14 +177,20 @@ export default function QuoteComparisonPage({ params }) {
       setActing(quoteId);
       setActionMessage('');
 
-      const { error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'rejected' })
-        .eq('id', quoteId);
+      const response = await fetch('/api/quote/accept', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteId,
+          rfqId: rfq.id,
+          userId: user.id,
+        }),
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to reject quote');
 
-      setActionMessage('✅ Quote rejected');
+      setActionMessage('✅ Quote rejected — vendor notified');
       setTimeout(() => {
         fetchRFQDetails();
         setActionMessage('');
@@ -221,7 +227,8 @@ export default function QuoteComparisonPage({ params }) {
           rfqId,
           vendorId: selectedQuote.vendor_id,
           startDate: assignmentData.startDate,
-          notes: assignmentData.notes
+          notes: assignmentData.notes,
+          userId: user.id
         })
       });
 

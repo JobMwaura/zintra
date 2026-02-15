@@ -301,7 +301,7 @@ export async function PATCH(request) {
     // Verify RFQ ownership
     const { data: rfq, error: rfqError } = await supabaseAdmin
       .from('rfqs')
-      .select('id, user_id')
+      .select('id, user_id, title')
       .eq('id', rfqId)
       .single();
 
@@ -328,6 +328,40 @@ export async function PATCH(request) {
         { error: 'Failed to reject quote' },
         { status: 500 }
       );
+    }
+
+    // ── Notify vendor their quote was rejected (in-app) ──
+    try {
+      const vendorId = updatedQuote.vendor_id;
+      if (vendorId) {
+        // Get buyer name for notification context
+        const { data: buyerProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .single();
+
+        const buyerName = buyerProfile?.full_name || 'The buyer';
+
+        await supabaseAdmin.from('notifications').insert({
+          user_id: vendorId,
+          type: 'quote_rejected',
+          title: 'Quote Not Selected',
+          body: `${buyerName} has chosen a different vendor for "${rfq.title}". Don't worry — more opportunities are available on the platform.`,
+          related_type: 'rfq',
+          related_id: rfqId,
+          metadata: {
+            rfq_id: rfqId,
+            rfq_title: rfq.title,
+            quote_id: quoteId,
+            rejected_at: new Date().toISOString(),
+          }
+        });
+        console.log('API: Vendor rejection notification sent');
+      }
+    } catch (notifErr) {
+      console.error('API: Failed to send vendor rejection notification:', notifErr);
+      // Non-blocking — don't fail the rejection
     }
 
     return NextResponse.json({

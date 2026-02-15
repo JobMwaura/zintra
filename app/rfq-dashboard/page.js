@@ -175,7 +175,7 @@ export default function RFQDashboard() {
               <p className="text-gray-600 mt-2">Manage your requests for quotation</p>
             </div>
             <button
-              onClick={() => router.push('/rfq/create')}
+              onClick={() => router.push('/post-rfq')}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
             >
               <Plus size={20} />
@@ -303,7 +303,7 @@ export default function RFQDashboard() {
                 : 'Create your first RFQ to get started'}
             </p>
             <button
-              onClick={() => router.push('/rfq/create')}
+              onClick={() => router.push('/post-rfq')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition"
             >
               Create RFQ

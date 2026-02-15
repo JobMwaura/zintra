@@ -11,7 +11,7 @@ import {
   MessageSquare, Send, XCircle
 } from 'lucide-react';
 
-const pendingStatuses = ['pending', 'needs_verification', 'needs_review', 'needs_fix', 'needs_admin_review'];
+const pendingStatuses = ['pending', 'submitted', 'pending_approval', 'needs_verification', 'needs_review', 'needs_fix', 'needs_admin_review'];
 const activeStatuses = ['open', 'active'];
 
 export default function ConsolidatedRFQs() {

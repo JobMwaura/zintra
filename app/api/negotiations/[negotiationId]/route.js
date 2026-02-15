@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { sendSMS } from '@/lib/services/smsService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -206,6 +207,58 @@ export async function PATCH(request, { params }) {
         related_id: negotiationId,
         related_type: 'negotiation'
       });
+
+      // ── SMS NOTIFICATIONS ──
+      // Fetch RFQ title for SMS context
+      let rfqTitle = 'your project';
+      try {
+        if (thread.rfq_id) {
+          const { data: rfqData } = await supabase
+            .from('rfqs')
+            .select('title')
+            .eq('id', thread.rfq_id)
+            .single();
+          if (rfqData?.title) rfqTitle = rfqData.title;
+        }
+      } catch (e) {
+        console.error('Failed to fetch RFQ title for SMS:', e.message);
+      }
+
+      // Fetch phone numbers for both parties
+      try {
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('full_name, phone, phone_number')
+          .eq('id', thread.user_id)
+          .single();
+
+        const { data: vendorRecord } = await supabase
+          .from('vendors')
+          .select('company_name, contact_phone, phone_number, phone, user_id')
+          .eq('user_id', thread.vendor_id)
+          .maybeSingle();
+
+        const buyerName = buyerProfile?.full_name || 'Buyer';
+        const vendorName = vendorRecord?.company_name || 'Vendor';
+        const buyerPhone = buyerProfile?.phone_number || buyerProfile?.phone || null;
+        const vendorPhone = vendorRecord?.contact_phone || vendorRecord?.phone_number || vendorRecord?.phone || null;
+
+        // SMS to buyer
+        if (buyerPhone) {
+          const buyerMsg = `Hi! Your negotiation for "${rfqTitle}" on Zintra has been concluded. Agreed price: KSh ${offer.proposed_price.toLocaleString()}. Login to zintra.co.ke to view details.`;
+          await sendSMS(buyerPhone, buyerMsg).catch(e => console.error('Buyer SMS error:', e));
+        }
+
+        // SMS to vendor
+        if (vendorPhone) {
+          const vendorMsg = `Congratulations! The negotiation for "${rfqTitle}" on Zintra has been accepted. Agreed price: KSh ${offer.proposed_price.toLocaleString()}. Login to zintra.co.ke to view buyer details and begin the project.`;
+          await sendSMS(vendorPhone, vendorMsg).catch(e => console.error('Vendor SMS error:', e));
+        }
+
+        console.log('[NEGOTIATION] SMS notifications sent for accepted offer');
+      } catch (smsErr) {
+        console.error('[NEGOTIATION] SMS notification error (non-blocking):', smsErr.message);
+      }
 
       // ── AUTO-GENERATE JOB ORDER ──
       let jobOrder = null;
