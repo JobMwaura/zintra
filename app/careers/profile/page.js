@@ -236,7 +236,43 @@ export default function CreateProfilePage() {
         avatarUrl = publicUrl.publicUrl;
       }
 
-      // 1. Save career-specific data to candidate_profiles
+      // 1. Ensure base profiles row exists (FK requirement for candidate_profiles)
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        // Create the base profile row first
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || profile.email,
+            full_name: profile.full_name,
+            is_candidate: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (insertError) {
+          console.error('Error creating base profile:', insertError);
+          throw new Error('Failed to create base profile. Please try again.');
+        }
+      } else {
+        // Update existing base profile
+        await supabase
+          .from('profiles')
+          .update({
+            full_name: profile.full_name,
+            is_candidate: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+      }
+
+      // 2. Save career-specific data to candidate_profiles
       const candidateData = {
         id: user.id,
         full_name: profile.full_name,
@@ -259,21 +295,6 @@ export default function CreateProfilePage() {
         .upsert(candidateData, { onConflict: 'id' });
 
       if (candidateError) throw candidateError;
-
-      // 2. Also update base profile with shared info + mark as candidate
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: profile.full_name,
-          is_candidate: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (profileError) {
-        console.error('Warning: base profile update failed:', profileError);
-        // Non-fatal — career data already saved
-      }
 
       setSuccess(true);
       setAvatarFile(null);

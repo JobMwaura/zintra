@@ -1,9 +1,18 @@
 -- ============================================
--- FIX: Add RLS policies for candidate_profiles
--- The table has RLS enabled but NO policies were ever created,
--- so all client-side operations (INSERT, UPDATE, SELECT) are denied.
+-- FIX: Add missing RLS policies for candidate_profiles AND profiles
 -- Run in Supabase SQL Editor
 -- ============================================
+
+-- ======== PROFILES TABLE ========
+-- The profiles table only had SELECT + UPDATE policies.
+-- Users who sign up via Career Centre need INSERT to create their base profile row.
+
+-- INSERT own profile
+DROP POLICY IF EXISTS "users_insert_own_profile" ON profiles;
+CREATE POLICY "users_insert_own_profile" ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- ======== CANDIDATE_PROFILES TABLE ========
 
 -- 1. Anyone can READ candidate profiles (public talent directory)
 DROP POLICY IF EXISTS "anyone_read_candidate_profiles" ON candidate_profiles;
