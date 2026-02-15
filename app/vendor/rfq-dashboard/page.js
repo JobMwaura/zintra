@@ -18,7 +18,9 @@ import {
   Star,
   MapPin,
   DollarSign,
-  Calendar
+  Calendar,
+  XCircle,
+  Ban
 } from 'lucide-react';
 
 const urgencyColors = {
@@ -32,7 +34,8 @@ const responseStatusColors = {
   submitted: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Your Quote Submitted' },
   viewed: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Quote Viewed' },
   accepted: { bg: 'bg-green-100', text: 'text-green-700', label: 'Quote Accepted!' },
-  rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Quote Rejected' }
+  rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Quote Rejected' },
+  declined: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Declined' }
 };
 
 // Debounce hook for search optimization
@@ -81,7 +84,7 @@ function RFQSkeleton() {
 // Stats skeleton
 function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
       {[...Array(4)].map((_, i) => (
         <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse border-l-4 border-gray-200">
           <div className="flex items-center justify-between">
@@ -150,7 +153,12 @@ export default function VendorRFQDashboard() {
     if (filterStatus === 'not_responded') {
       filtered = filtered.filter(rfq => !rfq.vendor_response);
     } else if (filterStatus === 'responded') {
-      filtered = filtered.filter(rfq => rfq.vendor_response);
+      filtered = filtered.filter(rfq => rfq.vendor_response && rfq.vendor_response.status !== 'declined');
+    } else if (filterStatus === 'declined') {
+      filtered = filtered.filter(rfq => rfq.vendor_response?.status === 'declined');
+    } else {
+      // 'all' — hide declined by default to keep the list clean
+      filtered = filtered.filter(rfq => rfq.vendor_response?.status !== 'declined');
     }
 
     return filtered;
@@ -201,13 +209,15 @@ export default function VendorRFQDashboard() {
         // Calculate stats
         const submitted = rfqsList?.filter(r => r?.vendor_response?.status === 'submitted')?.length || 0;
         const accepted = rfqsList?.filter(r => r?.vendor_response?.status === 'accepted')?.length || 0;
+        const declined = rfqsList?.filter(r => r?.vendor_response?.status === 'declined')?.length || 0;
         const pending = rfqsList?.filter(r => !r?.vendor_response)?.length || 0;
 
         setStats({
-          total_eligible: rfqsList?.length || 0,
+          total_eligible: (rfqsList?.length || 0) - declined,
           pending_response: pending,
           submitted_quotes: submitted,
-          accepted_quotes: accepted
+          accepted_quotes: accepted,
+          declined_rfqs: declined
         });
       } else {
         setError('Failed to fetch RFQs');
@@ -360,7 +370,7 @@ export default function VendorRFQDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-emerald-500">
             <div className="flex items-center justify-between">
               <div>
@@ -400,6 +410,18 @@ export default function VendorRFQDashboard() {
               <CheckCircle size={32} className="text-green-200" />
             </div>
           </div>
+
+          {stats.declined_rfqs > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-gray-400">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm mb-1">Declined</p>
+                  <p className="text-3xl font-bold text-gray-500">{stats.declined_rfqs}</p>
+                </div>
+                <Ban size={32} className="text-gray-200" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
@@ -444,6 +466,7 @@ export default function VendorRFQDashboard() {
               <option value="all">All Status</option>
               <option value="not_responded">Not Responded</option>
               <option value="responded">Already Responded</option>
+              <option value="declined">Declined</option>
             </select>
           </div>
         </div>
@@ -574,7 +597,7 @@ export default function VendorRFQDashboard() {
                         Submit Quote
                       </button>
                     )}
-                    {hasResponded && responseStatus !== 'rejected' && (
+                    {hasResponded && responseStatus !== 'rejected' && responseStatus !== 'declined' && (
                       <button
                         onClick={() => router.push(`/rfq/${rfq.id}/negotiate`)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition"
@@ -593,6 +616,12 @@ export default function VendorRFQDashboard() {
                       <div className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold cursor-not-allowed">
                         <Clock size={18} />
                         Expired
+                      </div>
+                    )}
+                    {hasResponded && responseStatus === 'declined' && (
+                      <div className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-semibold cursor-not-allowed">
+                        <Ban size={18} />
+                        Declined
                       </div>
                     )}
                   </div>

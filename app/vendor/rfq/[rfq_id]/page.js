@@ -15,7 +15,10 @@ import {
   FileText,
   TrendingUp,
   CheckCircle,
-  X
+  X,
+  XCircle,
+  ThumbsDown,
+  Ban
 } from 'lucide-react';
 
 export default function VendorRFQDetails() {
@@ -32,6 +35,24 @@ export default function VendorRFQDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+
+  // Decline modal state
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [declineNotes, setDeclineNotes] = useState('');
+  const [declining, setDeclining] = useState(false);
+  const [declineError, setDeclineError] = useState(null);
+  const [declineSuccess, setDeclineSuccess] = useState(false);
+
+  const DECLINE_REASONS = [
+    'Outside my service area',
+    'Currently at full capacity',
+    'Budget does not match our pricing',
+    'Not within my area of expertise',
+    'Timeline is too tight',
+    'Project scope is unclear',
+    'Other'
+  ];
 
   useEffect(() => {
     // Wait for auth to load
@@ -136,6 +157,60 @@ export default function VendorRFQDetails() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!declineReason) {
+      setDeclineError('Please select a reason for declining');
+      return;
+    }
+
+    try {
+      setDeclining(true);
+      setDeclineError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setDeclineError('You must be logged in');
+        return;
+      }
+
+      const res = await fetch('/api/vendor/rfq/decline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          rfq_id: rfqId,
+          reason: declineReason,
+          additional_notes: declineNotes || undefined
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setDeclineError(data.error || 'Failed to decline RFQ');
+        return;
+      }
+
+      setDeclineSuccess(true);
+      setShowDeclineModal(false);
+
+      // Update local state to reflect decline
+      setUserResponse({
+        status: 'declined',
+        description: `Decline reason: ${declineReason}`,
+        created_at: new Date().toISOString()
+      });
+
+    } catch (err) {
+      console.error('Error declining RFQ:', err);
+      setDeclineError(err.message || 'Something went wrong');
+    } finally {
+      setDeclining(false);
     }
   };
 
@@ -281,7 +356,20 @@ export default function VendorRFQDetails() {
             </div>
 
             {/* Your Response */}
-            {userResponse && (
+            {userResponse && userResponse.status === 'declined' && (
+              <div className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <Ban size={24} className="text-gray-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-700 mb-2">You Declined This RFQ</h3>
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <p><span className="font-semibold">Declined:</span> {new Date(userResponse.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {userResponse && userResponse.status !== 'declined' && (
               <div className="bg-green-50 border-l-4 border-green-500 rounded-lg p-6">
                 <div className="flex items-start gap-3">
                   <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
@@ -340,10 +428,41 @@ export default function VendorRFQDetails() {
                 <p className="text-xs text-emerald-700 mt-3 text-center">
                   Quick response increases your chances of winning
                 </p>
+
+                {/* Decline / Not Interested */}
+                <div className="mt-4 pt-4 border-t border-emerald-200">
+                  <button
+                    onClick={() => {
+                      setShowDeclineModal(true);
+                      setDeclineError(null);
+                      setDeclineReason('');
+                      setDeclineNotes('');
+                    }}
+                    className="w-full bg-white hover:bg-gray-50 text-gray-600 hover:text-red-600 py-2.5 rounded-lg font-medium transition flex items-center justify-center gap-2 border border-gray-300 hover:border-red-300 text-sm"
+                  >
+                    <XCircle size={16} />
+                    Not Interested
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Opt out if this project isn&apos;t a good fit
+                  </p>
+                </div>
               </div>
             )}
 
-            {userResponse && (
+            {userResponse && userResponse.status === 'declined' && (
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Ban size={20} className="text-gray-500" />
+                  <p className="text-sm text-gray-700 font-semibold">You declined this RFQ</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  This RFQ has been removed from your active opportunities.
+                </p>
+              </div>
+            )}
+
+            {userResponse && userResponse.status !== 'declined' && (
               <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-emerald-500">
                 <p className="text-sm text-emerald-700 font-semibold">✓ You have submitted a quote</p>
               </div>
@@ -390,6 +509,143 @@ export default function VendorRFQDetails() {
           </div>
         </div>
       </div>
+
+      {/* Decline Modal */}
+      {showDeclineModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <XCircle size={20} className="text-red-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Decline RFQ</h2>
+                  <p className="text-xs text-gray-500">Let us know why this isn&apos;t a good fit</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeclineModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition"
+              >
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              {/* RFQ Title Reference */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">Declining</p>
+                <p className="font-semibold text-gray-900 text-sm">{rfq.title}</p>
+              </div>
+
+              {/* Reason Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Why are you declining? <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {DECLINE_REASONS.map((reason) => (
+                    <label
+                      key={reason}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                        declineReason === reason
+                          ? 'border-red-400 bg-red-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="declineReason"
+                        value={reason}
+                        checked={declineReason === reason}
+                        onChange={(e) => setDeclineReason(e.target.value)}
+                        className="text-red-600 focus:ring-red-500"
+                      />
+                      <span className="text-sm text-gray-700">{reason}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Additional notes <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={declineNotes}
+                  onChange={(e) => setDeclineNotes(e.target.value)}
+                  placeholder="Any additional context you'd like to share..."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{declineNotes.length}/500</p>
+              </div>
+
+              {/* Error */}
+              {declineError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700 text-sm">
+                  <AlertCircle size={16} />
+                  {declineError}
+                </div>
+              )}
+
+              {/* Info Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-700">
+                  <span className="font-semibold">Note:</span> The buyer will be notified that you&apos;ve opted out. This RFQ will be removed from your active opportunities. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => setShowDeclineModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition text-sm"
+                disabled={declining}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDecline}
+                disabled={declining || !declineReason}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg font-medium transition text-sm flex items-center justify-center gap-2"
+              >
+                {declining ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Declining...
+                  </>
+                ) : (
+                  <>
+                    <ThumbsDown size={16} />
+                    Confirm Decline
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Decline Success Toast */}
+      {declineSuccess && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-fade-in">
+          <CheckCircle size={20} className="text-green-400" />
+          <span className="text-sm font-medium">RFQ declined successfully</span>
+          <button
+            onClick={() => setDeclineSuccess(false)}
+            className="ml-2 text-gray-400 hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

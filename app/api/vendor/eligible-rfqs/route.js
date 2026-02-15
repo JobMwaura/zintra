@@ -170,7 +170,7 @@ export async function GET(request) {
     const enrichedRfqs = rfqs.map(rfq => ({
       ...rfq,
       vendor_response: vendorResponses[rfq.id] || null,
-      can_respond: !vendorResponses[rfq.id], // Can only respond if no existing response
+      can_respond: !vendorResponses[rfq.id], // Can only respond if no existing response (including declined)
       days_until_expiry: Math.ceil(
         (new Date(rfq.expires_at) - new Date()) / (1000 * 60 * 60 * 24)
       )
