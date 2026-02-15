@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, MapPin, Briefcase, Star, Mail, Phone, Award, CheckCircle2 } from 'lucide-react';
 import { mockTopRatedWorkers } from '@/lib/careers-mock-data';
+import { LevelBadge, VerificationBadges } from '@/components/careers/LevelBadge';
 
 export default function TalentProfilePage() {
   const params = useParams();
@@ -92,6 +93,13 @@ export default function TalentProfilePage() {
         throw new Error('Worker profile not found');
       }
 
+      // Also fetch candidate_profiles for level + verification data
+      const { data: candidateData } = await supabase
+        .from('candidate_profiles')
+        .select('level, verified_id, verified_references, tools_ready, completed_gigs, rating, featured_until')
+        .eq('id', workerId)
+        .single();
+
       // Fetch worker reviews/ratings
       const { data: reviewsData } = await supabase
         .from('reviews')
@@ -114,6 +122,7 @@ export default function TalentProfilePage() {
 
       setWorker({
         ...profileData,
+        ...(candidateData || {}),
         reviews: reviewsData || [],
         applications: applicationsData || [],
       });
@@ -220,8 +229,23 @@ export default function TalentProfilePage() {
               {/* Name & Role */}
               <h1 className="text-2xl font-bold text-gray-900 mb-1">{worker.full_name}</h1>
               {worker.role && (
-                <p className="text-lg text-orange-600 font-semibold mb-4">{worker.role}</p>
+                <p className="text-lg text-orange-600 font-semibold mb-2">{worker.role}</p>
               )}
+
+              {/* Level Badge */}
+              <div className="mb-2">
+                <LevelBadge level={worker.level || 'new'} size="md" />
+              </div>
+
+              {/* Verification Badges */}
+              <div className="mb-4">
+                <VerificationBadges
+                  verifiedId={worker.verified_id}
+                  verifiedReferences={worker.verified_references}
+                  toolsReady={worker.tools_ready}
+                  variant="full"
+                />
+              </div>
 
               {/* Rating */}
               <div className="mb-4 pb-4 border-b border-gray-200">

@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
+import { Shield, CheckCircle2, Sparkles, ArrowRight } from 'lucide-react';
+import { LevelBadge } from '@/components/careers/LevelBadge';
 
 export default function CandidateProfile() {
   const router = useRouter();
@@ -53,7 +56,7 @@ export default function CandidateProfile() {
         // Fetch candidate profile
         const { data: candidateProfile, error: profileError } = await supabase
           .from('candidate_profiles')
-          .select('*')
+          .select('*, profile:id(full_name, phone, location)')
           .eq('id', authUser.id)
           .single();
 
@@ -69,6 +72,21 @@ export default function CandidateProfile() {
             bio: candidateProfile.bio || '',
             experience_years: candidateProfile.experience_years || 0,
           });
+        } else {
+          // No candidate profile yet — fetch basic profile for pre-fill
+          const { data: basicProfile } = await supabase
+            .from('profiles')
+            .select('full_name, phone, location')
+            .eq('id', authUser.id)
+            .single();
+          if (basicProfile) {
+            setFormData(prev => ({
+              ...prev,
+              full_name: basicProfile.full_name || '',
+              phone: basicProfile.phone || '',
+              location: basicProfile.location || '',
+            }));
+          }
         }
 
         setError(null);
@@ -201,6 +219,58 @@ export default function CandidateProfile() {
           <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
           <p className="mt-2 text-gray-600">Complete your profile to get hired faster</p>
         </div>
+
+        {/* Level & Verification Quick Card */}
+        {profile && (
+          <div className="mb-6 bg-white rounded-lg shadow p-5 border">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <Shield size={24} className="text-orange-500" />
+                <div>
+                  <h2 className="font-bold text-gray-900">Worker Level</h2>
+                  <p className="text-sm text-gray-500">
+                    {profile.completed_gigs || 0} gigs completed · {Number(profile.rating || 0).toFixed(1)} rating
+                  </p>
+                </div>
+              </div>
+              <LevelBadge level={profile.level || 'new'} size="md" />
+            </div>
+
+            {/* Verification status summary */}
+            <div className="flex items-center gap-4 pt-3 border-t text-sm">
+              <div className="flex items-center gap-1">
+                <CheckCircle2 size={14} className={profile.verified_id ? 'text-green-500' : 'text-gray-300'} />
+                <span className={profile.verified_id ? 'text-gray-700' : 'text-gray-400'}>ID</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CheckCircle2 size={14} className={profile.verified_references ? 'text-green-500' : 'text-gray-300'} />
+                <span className={profile.verified_references ? 'text-gray-700' : 'text-gray-400'}>References</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CheckCircle2 size={14} className={profile.tools_ready ? 'text-green-500' : 'text-gray-300'} />
+                <span className={profile.tools_ready ? 'text-gray-700' : 'text-gray-400'}>Certificates</span>
+              </div>
+              <div className="ml-auto">
+                <Link
+                  href="/careers/me/verification"
+                  className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 font-semibold text-sm transition"
+                >
+                  Verification & Level <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Featured profile status */}
+            {profile.featured_until && new Date(profile.featured_until) > new Date() && (
+              <div className="mt-3 p-2 bg-orange-50 rounded-lg flex items-center gap-2">
+                <Sparkles size={16} className="text-orange-500" />
+                <span className="text-sm text-orange-800 font-medium">
+                  Profile featured until {new Date(profile.featured_until).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Alerts */}
         {error && (

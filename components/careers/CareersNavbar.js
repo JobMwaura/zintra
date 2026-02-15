@@ -141,6 +141,14 @@ export default function CareersNavbar() {
                         My Profile
                       </Link>
                     )}
+                    {roles?.candidate && (
+                      <Link
+                        href="/careers/me/verification"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
+                      >
+                        Verification
+                      </Link>
+                    )}
                     {roles?.employer && (
                       <Link
                         href="/careers/employer/dashboard"
@@ -288,6 +296,14 @@ export default function CareersNavbar() {
                         className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                       >
                         My Profile
+                      </Link>
+                    )}
+                    {roles?.candidate && (
+                      <Link
+                        href="/careers/me/verification"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
+                      >
+                        Verification
                       </Link>
                     )}
                     {roles?.employer && (
