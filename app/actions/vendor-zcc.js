@@ -15,21 +15,21 @@ export async function getUserRoleStatus(userId) {
       .from('candidate_profiles')
       .select('id, skills, availability')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     // Get employer profile (id = userId, not user_id)
     const { data: employerProfile } = await supabase
       .from('employer_profiles')
       .select('id, company_name, is_vendor_employer, vendor_id')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     // Get vendor info (from vendors table)
     const { data: vendorInfo } = await supabase
       .from('vendors')
       .select('id, name, email, phone, location, logo_url')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     return {
       success: true,

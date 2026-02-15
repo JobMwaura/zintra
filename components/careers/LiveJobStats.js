@@ -40,11 +40,10 @@ export default function LiveJobStats() {
         .eq('status', 'active')
         .eq('type', 'gig');
 
-      // Fetch total workers (profiles with account_type = 'worker')
+      // Fetch total workers (candidate profiles)
       const { count: workersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('account_type', 'worker');
+        .from('candidate_profiles')
+        .select('*', { count: 'exact', head: true });
 
       setStats({
         activeJobs: jobsCount || 1500,
