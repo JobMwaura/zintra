@@ -140,7 +140,7 @@ CREATE INDEX IF NOT EXISTS idx_zcc_transactions_user ON zcc_credit_transactions(
 CREATE INDEX IF NOT EXISTS idx_zcc_transactions_created ON zcc_credit_transactions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_zcc_spends_user ON zcc_credit_spends(user_id);
 CREATE INDEX IF NOT EXISTS idx_zcc_spends_type ON zcc_credit_spends(spend_type);
-CREATE INDEX IF NOT EXISTS idx_zcc_featured_posts_active ON zcc_featured_posts(ends_at) WHERE ends_at > now();
+CREATE INDEX IF NOT EXISTS idx_zcc_featured_posts_active ON zcc_featured_posts(ends_at DESC);
 CREATE INDEX IF NOT EXISTS idx_zcc_featured_posts_post ON zcc_featured_posts(post_id);
 CREATE INDEX IF NOT EXISTS idx_zcc_contact_unlocks_employer ON zcc_contact_unlocks(employer_id);
 CREATE INDEX IF NOT EXISTS idx_zcc_notifications_user ON zcc_notifications(user_id);
