@@ -43,7 +43,7 @@ export default function EmployerProfile() {
         } = await supabase.auth.getUser();
 
         if (!authUser) {
-          router.push('/auth/login');
+          router.push('/login');
           return;
         }
 

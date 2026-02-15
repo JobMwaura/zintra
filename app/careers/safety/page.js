@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowLeft, Shield, CheckCircle, AlertCircle, Lock, Eye, FileText } from 'lucide-react';
-import CareersNavbar from '@/components/careers/CareersNavbar';
 
 export default function SafetyPage() {
   const [expandedSection, setExpandedSection] = useState(null);
@@ -98,7 +97,6 @@ export default function SafetyPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <CareersNavbar />
 
       {/* Header Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-12">

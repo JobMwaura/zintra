@@ -32,7 +32,7 @@ export default function EmployerJobsPage() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        router.push('/careers/auth/login');
+        router.push('/login');
         return;
       }
 

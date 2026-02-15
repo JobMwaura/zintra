@@ -44,7 +44,7 @@ export default function CandidateProfile() {
         } = await supabase.auth.getUser();
 
         if (!authUser) {
-          router.push('/auth/login');
+          router.push('/login');
           return;
         }
 

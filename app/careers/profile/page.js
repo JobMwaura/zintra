@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import CareersNavbar from '@/components/careers/CareersNavbar';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, Upload, Plus, X } from 'lucide-react';
 
@@ -39,7 +38,7 @@ export default function CreateProfilePage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        router.push('/careers/auth/role-selector');
+        router.push('/login');
       } else {
         fetchProfile();
       }
@@ -167,7 +166,6 @@ export default function CreateProfilePage() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <CareersNavbar />
         <div className="flex items-center justify-center pt-20">
           <LoadingSpinner />
         </div>
@@ -177,7 +175,6 @@ export default function CreateProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <CareersNavbar />
 
       {/* Back Button & Header */}
       <div className="bg-white border-b border-gray-200">

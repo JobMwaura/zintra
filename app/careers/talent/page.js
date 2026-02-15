@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, MapPin, Briefcase, Star, Search } from 'lucide-react';
-import CareersNavbar from '@/components/careers/CareersNavbar';
 
 export default function TalentPage() {
   const supabase = createClient();
@@ -23,12 +22,11 @@ export default function TalentPage() {
     try {
       setLoading(true);
 
-      // Fetch all workers with their profiles
+      // Fetch all workers from candidate_profiles with profile data
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, city, role, bio, ratings_count, average_rating')
-        .eq('account_type', 'worker')
-        .order('average_rating', { ascending: false })
+        .from('candidate_profiles')
+        .select('id, full_name, avatar_url, city, role, bio, skills, availability, hourly_rate')
+        .order('created_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
@@ -58,7 +56,6 @@ export default function TalentPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <CareersNavbar />
         <div className="flex items-center justify-center pt-20">
           <LoadingSpinner />
         </div>
@@ -68,7 +65,6 @@ export default function TalentPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <CareersNavbar />
 
       {/* Header Section */}
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-12">

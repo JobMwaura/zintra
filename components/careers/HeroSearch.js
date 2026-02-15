@@ -59,7 +59,16 @@ export default function HeroSearch() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Search submitted:', searchData, 'Type:', searchType);
+    const params = new URLSearchParams();
+    if (searchData.role) params.set('q', searchData.role);
+    if (searchData.location) params.set('location', searchData.location);
+    
+    const queryString = params.toString();
+    if (searchType === 'jobs') {
+      router.push(`/careers/jobs${queryString ? '?' + queryString : ''}`);
+    } else {
+      router.push(`/careers/gigs${queryString ? '?' + queryString : ''}`);
+    }
   };
 
   return (

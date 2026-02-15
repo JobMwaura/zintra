@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import CareersNavbar from '@/components/careers/CareersNavbar';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, MapPin, Briefcase, Star, Mail, Phone, Award, CheckCircle2 } from 'lucide-react';
 import { mockTopRatedWorkers } from '@/lib/careers-mock-data';
@@ -129,7 +128,6 @@ export default function TalentProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <CareersNavbar />
         <div className="flex items-center justify-center pt-20">
           <LoadingSpinner />
         </div>
@@ -140,7 +138,6 @@ export default function TalentProfilePage() {
   if (error || !worker) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <CareersNavbar />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Link
             href="/careers/talent"
@@ -185,7 +182,6 @@ export default function TalentProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <CareersNavbar />
 
       {/* Back Button & Header */}
       <div className="bg-white border-b border-gray-200">

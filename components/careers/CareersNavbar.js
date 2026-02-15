@@ -83,7 +83,29 @@ export default function CareersNavbar() {
               </Link>
             </div>
 
-            {/* Career Centre Links */}
+            {/* Career Centre Browse Links */}
+            <div className="flex items-center gap-4 pr-4 border-r border-gray-200">
+              <Link
+                href="/careers/jobs"
+                className="text-gray-700 hover:text-orange-500 font-medium transition text-sm"
+              >
+                Find Jobs
+              </Link>
+              <Link
+                href="/careers/gigs"
+                className="text-gray-700 hover:text-orange-500 font-medium transition text-sm"
+              >
+                Find Gigs
+              </Link>
+              <Link
+                href="/careers/talent"
+                className="text-gray-700 hover:text-orange-500 font-medium transition text-sm"
+              >
+                Talent
+              </Link>
+            </div>
+
+            {/* Auth / Role Links */}
             {!user ? (
               <>
                 <Link
@@ -93,7 +115,7 @@ export default function CareersNavbar() {
                   Login
                 </Link>
                 <Link
-                  href="/signup"
+                  href="/login"
                   className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition"
                 >
                   Sign Up
@@ -187,7 +209,29 @@ export default function CareersNavbar() {
               </Link>
             </div>
 
-            {/* Career Centre Links */}
+            {/* Career Centre Browse Links */}
+            <div className="pb-3 border-b border-gray-200">
+              <Link
+                href="/careers/jobs"
+                className="block text-gray-700 hover:text-orange-500 font-medium py-2 text-sm"
+              >
+                Find Jobs
+              </Link>
+              <Link
+                href="/careers/gigs"
+                className="block text-gray-700 hover:text-orange-500 font-medium py-2 text-sm"
+              >
+                Find Gigs
+              </Link>
+              <Link
+                href="/careers/talent"
+                className="block text-gray-700 hover:text-orange-500 font-medium py-2 text-sm"
+              >
+                Talent
+              </Link>
+            </div>
+
+            {/* Auth / Role Links */}
             {!user ? (
               <>
                 <Link
@@ -197,7 +241,7 @@ export default function CareersNavbar() {
                   Login
                 </Link>
                 <Link
-                  href="/signup"
+                  href="/login"
                   className="block bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg text-center transition"
                 >
                   Sign Up
