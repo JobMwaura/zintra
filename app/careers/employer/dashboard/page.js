@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getUserRoleStatus, getEmployerStats, getEmployerJobs, getEmployerApplications, getEmployerCredits } from '@/app/actions/vendor-zcc';
+import { getUserRoleStatus, getEmployerStats, getEmployerJobs, getEmployerApplications } from '@/app/actions/vendor-zcc';
+import { getWalletBalance } from '@/app/actions/zcc-wallet';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 export default function EmployerDashboardPage() {
@@ -45,11 +46,11 @@ export default function EmployerDashboardPage() {
       setEmployer(employerProfile);
 
       // Load all dashboard data in parallel
-      const [statsResult, jobsResult, appsResult, creditsResult] = await Promise.all([
+      const [statsResult, jobsResult, appsResult, walletResult] = await Promise.all([
         getEmployerStats(employerProfile.id),
         getEmployerJobs(employerProfile.id, 5),
         getEmployerApplications(employerProfile.id, 5),
-        getEmployerCredits(employerProfile.id),
+        getWalletBalance(user.id),
       ]);
 
       if (statsResult.success) {
@@ -64,8 +65,8 @@ export default function EmployerDashboardPage() {
         setApplications(appsResult.applications);
       }
 
-      if (creditsResult.success) {
-        setCredits(creditsResult.balance);
+      if (walletResult.success) {
+        setCredits(walletResult.balance);
       }
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -122,6 +123,26 @@ export default function EmployerDashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Applicant Alert Banner */}
+        {(stats?.pending_applications || 0) > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📬</span>
+              <div>
+                <p className="font-semibold text-blue-900">
+                  {stats.pending_applications} new application{stats.pending_applications !== 1 ? 's' : ''} waiting
+                </p>
+                <p className="text-sm text-blue-700">Review and move candidates through your pipeline</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/careers/employer/applicants')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition text-sm"
+            >
+              View Applicants →
+            </button>
+          </div>
+        )}
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <StatCard
@@ -130,7 +151,7 @@ export default function EmployerDashboardPage() {
             icon="💳"
             action={{
               text: 'Buy Credits',
-              onClick: () => router.push('/careers/employer/buy-credits'),
+              onClick: () => router.push('/careers/credits'),
             }}
           />
           <StatCard
@@ -191,19 +212,29 @@ export default function EmployerDashboardPage() {
                 onClick={() => router.push('/careers/employer/post-job')}
               />
               <ActionButton
-                icon="💳"
-                label="Buy Credits"
-                onClick={() => router.push('/careers/employer/buy-credits')}
+                icon="⚡"
+                label="Post Gig"
+                onClick={() => router.push('/careers/employer/post-gig')}
               />
               <ActionButton
-                icon="⚙️"
-                label="Company Settings"
-                onClick={() => router.push('/careers/me/employer')}
+                icon="👥"
+                label="View Applicants"
+                onClick={() => router.push('/careers/employer/applicants')}
+              />
+              <ActionButton
+                icon="💳"
+                label="Buy Credits"
+                onClick={() => router.push('/careers/credits')}
               />
               <ActionButton
                 icon="📊"
                 label="View All Jobs"
                 onClick={() => router.push('/careers/employer/jobs')}
+              />
+              <ActionButton
+                icon="⚙️"
+                label="Company Settings"
+                onClick={() => router.push('/careers/me/employer')}
               />
             </div>
           </div>
@@ -245,7 +276,17 @@ export default function EmployerDashboardPage() {
 
           {/* Recent Applications */}
           <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-4">Recent Applications</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-slate-900">Recent Applications</h2>
+              {applications.length > 0 && (
+                <button
+                  onClick={() => router.push('/careers/employer/applicants')}
+                  className="text-orange-600 hover:text-orange-700 font-semibold text-sm"
+                >
+                  View All →
+                </button>
+              )}
+            </div>
             {applications.length === 0 ? (
               <p className="text-slate-600 py-8 text-center">
                 No applications yet. Applications will appear here.

@@ -151,6 +151,14 @@ export default function CareersNavbar() {
                     )}
                     {roles?.employer && (
                       <Link
+                        href="/careers/employer/applicants"
+                        className="text-gray-700 hover:text-orange-500 font-medium transition"
+                      >
+                        Applicants
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
                         href="/careers/credits"
                         className="text-gray-700 hover:text-orange-500 font-medium transition"
                       >
@@ -288,6 +296,14 @@ export default function CareersNavbar() {
                         className="block text-gray-700 hover:text-orange-500 font-medium py-2"
                       >
                         Dashboard
+                      </Link>
+                    )}
+                    {roles?.employer && (
+                      <Link
+                        href="/careers/employer/applicants"
+                        className="block text-gray-700 hover:text-orange-500 font-medium py-2"
+                      >
+                        Applicants
                       </Link>
                     )}
                     {roles?.employer && (

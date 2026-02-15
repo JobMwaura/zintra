@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getUserRoleStatus, getEmployerCredits } from '@/app/actions/vendor-zcc';
+import { getUserRoleStatus } from '@/app/actions/vendor-zcc';
+import { getWalletBalance, publishJobWithCredits } from '@/app/actions/zcc-wallet';
+import { ZCC_COSTS } from '@/lib/zcc/credit-config';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
 
-const JOB_POSTING_COST = 1000; // KES
+const JOB_POSTING_COST = ZCC_COSTS.JOB_POST; // credits (not KES)
 
 const JOB_CATEGORIES = [
   'Construction',
@@ -46,6 +48,7 @@ export default function PostJobContent({ searchParams }) {
     jobType: 'full-time', // full-time, part-time, gig
     startDate: '',
     isRealOpportunity: false, // Verify job is a real opportunity
+    featuredOption: null, // null, '7d', '14d', '30d'
   });
 
   useEffect(() => {
@@ -115,9 +118,9 @@ export default function PostJobContent({ searchParams }) {
 
       // Get credits balance (only if not showing verification modals)
       if (!showPhoneVerification && !showEmailVerification) {
-        const creditsResult = await getEmployerCredits(employerProfile.id);
-        if (creditsResult.success) {
-          setCredits(creditsResult.balance);
+        const walletResult = await getWalletBalance(user.id);
+        if (walletResult.success) {
+          setCredits(walletResult.balance);
         }
       }
     } catch (err) {
@@ -209,101 +212,45 @@ export default function PostJobContent({ searchParams }) {
         return;
       }
 
+      // Calculate total credit cost
+      const totalCost = JOB_POSTING_COST + (
+        formData.featuredOption === '7d' ? ZCC_COSTS.FEATURED_JOB_7D :
+        formData.featuredOption === '14d' ? ZCC_COSTS.FEATURED_JOB_14D :
+        formData.featuredOption === '30d' ? ZCC_COSTS.FEATURED_JOB_30D : 0
+      );
+
       // Check credits
-      if (credits < JOB_POSTING_COST) {
-        setError(`Insufficient credits. You need ${JOB_POSTING_COST} KES but have ${credits} KES.`);
+      if (credits < totalCost) {
+        setError(`Insufficient credits. You need ${totalCost} credits but have ${credits}.`);
         return;
       }
 
       setSubmitting(true);
 
-      const supabase = createClient();
-
-      // Start transaction-like behavior with two operations
-      // 1. Create listing
-      const { data: listing, error: listingError } = await supabase
-        .from('listings')
-        .insert({
-          employer_id: employer.id,
-          type: formData.jobType === 'gig' ? 'gig' : 'job', // Set type based on jobType selection
+      // Use the new atomic wallet-based publish flow
+      const result = await publishJobWithCredits(
+        user.id,
+        {
           title: formData.title,
           description: formData.description,
           category: formData.category,
           location: formData.location,
-          pay_min: parseInt(formData.payMin),
-          pay_max: parseInt(formData.payMax),
-          job_type: formData.jobType,
-          start_date: formData.startDate || null,
-          status: 'active',
-        })
-        .select()
-        .single();
+          payMin: formData.payMin,
+          payMax: formData.payMax,
+          startDate: formData.startDate || null,
+          contractType: formData.jobType,
+          duration: null,
+          requirements: null,
+        },
+        formData.featuredOption // null, '7d', '14d', or '30d'
+      );
 
-      if (listingError) {
-        throw new Error('Failed to create listing: ' + listingError.message);
-      }
-
-      // 2. Deduct credits from zcc_credits table 
-      // Get current used_credits, then increment it
-      const { data: currentCredits } = await supabase
-        .from('zcc_credits')
-        .select('used_credits')
-        .eq('employer_id', employer.id)
-        .single();
-
-      const newUsedCredits = (currentCredits?.used_credits || 0) + JOB_POSTING_COST;
-      const { error: creditsError } = await supabase
-        .from('zcc_credits')
-        .update({ 
-          used_credits: newUsedCredits
-        })
-        .eq('employer_id', employer.id);
-
-      if (creditsError) {
-        throw new Error('Failed to deduct credits: ' + creditsError.message);
-      }
-
-      // 3. Update employer_spending for the month
-      const now = new Date();
-      const periodMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      // Try to update existing spending record
-      const { data: existingSpending } = await supabase
-        .from('employer_spending')
-        .select('id')
-        .eq('employer_id', employer.id)
-        .eq('period_month', periodMonth.toISOString().split('T')[0])
-        .single();
-
-      if (existingSpending) {
-        // Update existing
-        await supabase
-          .from('employer_spending')
-          .update({
-            posting_spent: supabase.rpc('increment_posting_spent', { amount: JOB_POSTING_COST, employer_id: employer.id, month: periodMonth.toISOString().split('T')[0] }),
-            total_spent: supabase.rpc('increment_total_spent', { amount: JOB_POSTING_COST, employer_id: employer.id, month: periodMonth.toISOString().split('T')[0] }),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('employer_id', employer.id)
-          .eq('period_month', periodMonth.toISOString().split('T')[0]);
-      } else {
-        // Create new
-        await supabase
-          .from('employer_spending')
-          .insert({
-            employer_id: employer.id,
-            vendor_id: employer.vendor_id || null,
-            period_month: periodMonth.toISOString().split('T')[0],
-            posting_spent: JOB_POSTING_COST,
-            unlocks_spent: 0,
-            boosts_spent: 0,
-            messaging_spent: 0,
-            total_spent: JOB_POSTING_COST,
-          });
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to publish job');
       }
 
       setSuccess(true);
-      setCredits(credits - JOB_POSTING_COST);
+      setCredits(result.balance);
 
       // Redirect to dashboard after 2 seconds
       setTimeout(() => {
@@ -453,14 +400,14 @@ export default function PostJobContent({ searchParams }) {
             )}
             <div>
               <p className={`font-semibold ${credits >= JOB_POSTING_COST ? 'text-emerald-900' : 'text-yellow-900'}`}>
-                Credits Required: {JOB_POSTING_COST} KES
+                Credits Required: {JOB_POSTING_COST} credits
               </p>
               <p className={`text-sm mt-1 ${credits >= JOB_POSTING_COST ? 'text-emerald-800' : 'text-yellow-800'}`}>
-                Your current balance: {credits} KES
+                Your current balance: {credits} credits
               </p>
               {credits < JOB_POSTING_COST && (
                 <button
-                  onClick={() => router.push('/careers/employer/buy-credits')}
+                  onClick={() => router.push('/careers/credits')}
                   className="text-sm font-semibold text-yellow-700 hover:text-yellow-900 mt-2 underline"
                 >
                   Buy credits →
@@ -635,7 +582,7 @@ export default function PostJobContent({ searchParams }) {
           </div>
 
           {/* Opportunity Verification Checkbox */}
-          <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -656,11 +603,88 @@ export default function PostJobContent({ searchParams }) {
             </label>
           </div>
 
+          {/* Featured Job Add-on */}
+          <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-semibold text-blue-900 mb-3">⭐ Feature This Job (Optional)</h3>
+            <p className="text-sm text-blue-700 mb-3">
+              Featured jobs appear at the top of search results and on the homepage.
+            </p>
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition">
+                <input
+                  type="radio"
+                  name="featuredOption"
+                  value=""
+                  checked={!formData.featuredOption}
+                  onChange={() => setFormData(prev => ({ ...prev, featuredOption: null }))}
+                  disabled={submitting}
+                  className="w-4 h-4"
+                />
+                <span className="text-slate-700">No featured add-on</span>
+                <span className="ml-auto text-sm font-medium text-slate-500">+0 credits</span>
+              </label>
+              {[
+                { value: '7d', label: 'Featured 7 days', cost: ZCC_COSTS.FEATURED_JOB_7D },
+                { value: '14d', label: 'Featured 14 days', cost: ZCC_COSTS.FEATURED_JOB_14D },
+                { value: '30d', label: 'Featured 30 days', cost: ZCC_COSTS.FEATURED_JOB_30D },
+              ].map(opt => (
+                <label key={opt.value} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-blue-100 transition">
+                  <input
+                    type="radio"
+                    name="featuredOption"
+                    value={opt.value}
+                    checked={formData.featuredOption === opt.value}
+                    onChange={() => setFormData(prev => ({ ...prev, featuredOption: opt.value }))}
+                    disabled={submitting}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-slate-700">{opt.label}</span>
+                  <span className="ml-auto text-sm font-bold text-blue-700">+{opt.cost} credits</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Cost Summary */}
+          <div className="mb-8 bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <h4 className="font-semibold text-slate-900 mb-2">Cost Summary</h4>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-slate-700">
+                <span>Job posting</span>
+                <span>{JOB_POSTING_COST} credits</span>
+              </div>
+              {formData.featuredOption && (
+                <div className="flex justify-between text-slate-700">
+                  <span>Featured add-on ({formData.featuredOption})</span>
+                  <span>
+                    {formData.featuredOption === '7d' ? ZCC_COSTS.FEATURED_JOB_7D :
+                     formData.featuredOption === '14d' ? ZCC_COSTS.FEATURED_JOB_14D :
+                     ZCC_COSTS.FEATURED_JOB_30D} credits
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1 mt-1">
+                <span>Total</span>
+                <span>
+                  {JOB_POSTING_COST + (
+                    formData.featuredOption === '7d' ? ZCC_COSTS.FEATURED_JOB_7D :
+                    formData.featuredOption === '14d' ? ZCC_COSTS.FEATURED_JOB_14D :
+                    formData.featuredOption === '30d' ? ZCC_COSTS.FEATURED_JOB_30D : 0
+                  )} credits
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={submitting || credits < JOB_POSTING_COST}
+              disabled={submitting || credits < (JOB_POSTING_COST + (
+                formData.featuredOption === '7d' ? ZCC_COSTS.FEATURED_JOB_7D :
+                formData.featuredOption === '14d' ? ZCC_COSTS.FEATURED_JOB_14D :
+                formData.featuredOption === '30d' ? ZCC_COSTS.FEATURED_JOB_30D : 0
+              ))}
               className={`flex-1 font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 ${
                 credits < JOB_POSTING_COST
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -675,7 +699,11 @@ export default function PostJobContent({ searchParams }) {
                 </>
               ) : (
                 <>
-                  <span>Post Job ({JOB_POSTING_COST} KES)</span>
+                  <span>Post Job ({JOB_POSTING_COST + (
+                    formData.featuredOption === '7d' ? ZCC_COSTS.FEATURED_JOB_7D :
+                    formData.featuredOption === '14d' ? ZCC_COSTS.FEATURED_JOB_14D :
+                    formData.featuredOption === '30d' ? ZCC_COSTS.FEATURED_JOB_30D : 0
+                  )} credits)</span>
                 </>
               )}
             </button>
