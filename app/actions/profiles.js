@@ -9,17 +9,27 @@ export async function updateCandidateProfile(candidateId, data) {
   try {
     const supabase = await createClient();
 
-    // Update candidate_profiles
+    // Update candidate_profiles (Career Centre data — self-contained)
     const { error: candidateError } = await supabase
       .from('candidate_profiles')
       .upsert(
         {
           id: candidateId,
+          full_name: data.full_name,
+          email: data.email,
+          phone: data.phone,
+          avatar_url: data.avatar_url,
+          city: data.city,
+          role: data.role,
           skills: data.skills || [],
+          certifications: data.certifications || [],
           availability: data.availability,
           rate_per_day: data.rate_per_day,
+          hourly_rate: data.hourly_rate,
           bio: data.bio,
           experience_years: data.experience_years,
+          phone_verified: data.phone_verified,
+          email_verified: data.email_verified,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'id' }
@@ -30,13 +40,13 @@ export async function updateCandidateProfile(candidateId, data) {
       return { success: false, error: 'Failed to update candidate profile' };
     }
 
-    // Update profiles (base info)
+    // Update profiles (base info — only shared fields)
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
         full_name: data.full_name,
         phone: data.phone,
-        location: data.location,
+        location: data.location || data.city,
         is_candidate: true,
         updated_at: new Date().toISOString(),
       })
@@ -119,7 +129,7 @@ export async function getCandidateProfile(candidateId) {
       .select(
         `
         *,
-        profile:profiles(id, email, full_name, phone, location, avatar_url, created_at)
+        base_profile:profiles!candidate_profiles_id_fkey(id, email, full_name, phone, location, avatar_url, created_at)
       `
       )
       .eq('id', candidateId)

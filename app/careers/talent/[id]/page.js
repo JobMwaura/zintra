@@ -65,9 +65,9 @@ export default function TalentProfilePage() {
         }
       }
 
-      // Fetch worker profile from database
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+      // Fetch worker profile from candidate_profiles (Career Centre data)
+      const { data: candidateData, error: candidateError } = await supabase
+        .from('candidate_profiles')
         .select(`
           id,
           full_name,
@@ -78,27 +78,62 @@ export default function TalentProfilePage() {
           role,
           bio,
           skills,
-          experience,
           certifications,
-          average_rating,
-          ratings_count,
-          account_type,
+          experience_years,
+          hourly_rate,
+          rate_per_day,
+          availability,
+          level,
+          verified_id,
+          verified_references,
+          tools_ready,
+          completed_gigs,
+          rating,
+          featured_until,
           created_at,
           updated_at
         `)
         .eq('id', workerId)
-        .single();
+        .maybeSingle();
 
-      if (profileError) {
+      // Fallback to base profiles table for shared fields
+      const { data: baseProfile } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, email, phone, location, created_at')
+        .eq('id', workerId)
+        .maybeSingle();
+
+      if (!candidateData && !baseProfile) {
         throw new Error('Worker profile not found');
       }
 
-      // Also fetch candidate_profiles for level + verification data
-      const { data: candidateData } = await supabase
-        .from('candidate_profiles')
-        .select('level, verified_id, verified_references, tools_ready, completed_gigs, rating, featured_until')
-        .eq('id', workerId)
-        .single();
+      // Merge: candidate_profiles takes priority, fallback to profiles
+      const profileData = {
+        id: workerId,
+        full_name: candidateData?.full_name || baseProfile?.full_name,
+        avatar_url: candidateData?.avatar_url || baseProfile?.avatar_url,
+        city: candidateData?.city || baseProfile?.location,
+        phone: candidateData?.phone || baseProfile?.phone,
+        email: candidateData?.email || baseProfile?.email,
+        role: candidateData?.role,
+        bio: candidateData?.bio,
+        skills: candidateData?.skills,
+        experience: candidateData?.experience_years,
+        certifications: candidateData?.certifications,
+        hourly_rate: candidateData?.hourly_rate || candidateData?.rate_per_day,
+        availability: candidateData?.availability,
+        level: candidateData?.level,
+        verified_id: candidateData?.verified_id,
+        verified_references: candidateData?.verified_references,
+        tools_ready: candidateData?.tools_ready,
+        completed_gigs: candidateData?.completed_gigs,
+        average_rating: candidateData?.rating || 0,
+        ratings_count: 0,
+        featured_until: candidateData?.featured_until,
+        account_type: 'worker',
+        created_at: candidateData?.created_at || baseProfile?.created_at,
+        updated_at: candidateData?.updated_at,
+      };
 
       // Fetch worker reviews/ratings
       const { data: reviewsData } = await supabase
@@ -122,7 +157,6 @@ export default function TalentProfilePage() {
 
       setWorker({
         ...profileData,
-        ...(candidateData || {}),
         reviews: reviewsData || [],
         applications: applicationsData || [],
       });

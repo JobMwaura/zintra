@@ -62,26 +62,68 @@ export default function CreateProfilePage() {
   async function fetchProfile() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
+
+      // 1. Fetch career-specific data from candidate_profiles
+      const { data: candidateData, error: candidateError } = await supabase
+        .from('candidate_profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (candidateError) {
+        console.error('Error fetching candidate profile:', candidateError);
       }
 
-      if (data) {
-        setProfile({
-          ...data,
-          skills: typeof data.skills === 'string' ? data.skills.split(',').map(s => s.trim()) : (data.skills || []),
-          certifications: typeof data.certifications === 'string' ? data.certifications.split(',').map(c => c.trim()) : (data.certifications || []),
-        });
-        if (data.avatar_url) {
-          setPreviewUrl(data.avatar_url);
-        }
+      // 2. Fetch base profile data (for fallback / pre-fill)
+      const { data: baseProfile, error: baseError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone, avatar_url, location')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (baseError && baseError.code !== 'PGRST116') {
+        throw baseError;
       }
+
+      // 3. Merge: career data takes priority, fallback to base profile
+      const merged = {
+        full_name: candidateData?.full_name || baseProfile?.full_name || '',
+        role: candidateData?.role || '',
+        bio: candidateData?.bio || '',
+        city: candidateData?.city || baseProfile?.location || '',
+        email: candidateData?.email || baseProfile?.email || '',
+        phone: candidateData?.phone || baseProfile?.phone || '',
+        skills: [],
+        experience: candidateData?.experience_years?.toString() || '',
+        certifications: [],
+        avatar_url: candidateData?.avatar_url || baseProfile?.avatar_url || '',
+      };
+
+      // Parse skills
+      const rawSkills = candidateData?.skills;
+      if (Array.isArray(rawSkills)) {
+        merged.skills = rawSkills;
+      } else if (typeof rawSkills === 'string') {
+        merged.skills = rawSkills.split(',').map(s => s.trim()).filter(Boolean);
+      }
+
+      // Parse certifications
+      const rawCerts = candidateData?.certifications;
+      if (Array.isArray(rawCerts)) {
+        merged.certifications = rawCerts;
+      } else if (typeof rawCerts === 'string') {
+        merged.certifications = rawCerts.split(',').map(c => c.trim()).filter(Boolean);
+      }
+
+      setProfile(merged);
+
+      if (merged.avatar_url) {
+        setPreviewUrl(merged.avatar_url);
+      }
+
+      // Restore verification status if previously verified
+      if (candidateData?.phone_verified) setPhoneVerified(true);
+      if (candidateData?.email_verified) setEmailVerified(true);
     } catch (err) {
       console.error('Error fetching profile:', err);
       setError('Failed to load profile');
@@ -194,8 +236,8 @@ export default function CreateProfilePage() {
         avatarUrl = publicUrl.publicUrl;
       }
 
-      // Prepare profile data
-      const profileData = {
+      // 1. Save career-specific data to candidate_profiles
+      const candidateData = {
         id: user.id,
         full_name: profile.full_name,
         email: profile.email,
@@ -203,20 +245,35 @@ export default function CreateProfilePage() {
         role: profile.role,
         city: profile.city,
         bio: profile.bio,
-        skills: profile.skills.join(', '),
-        certifications: profile.certifications.join(', '),
-        experience: profile.experience,
+        skills: profile.skills,
+        certifications: profile.certifications,
+        experience_years: profile.experience ? parseInt(profile.experience) || null : null,
         avatar_url: avatarUrl,
-        account_type: 'worker',
+        phone_verified: phoneVerified,
+        email_verified: emailVerified,
         updated_at: new Date().toISOString(),
       };
 
-      // Upsert profile
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert(profileData, { onConflict: 'id' });
+      const { error: candidateError } = await supabase
+        .from('candidate_profiles')
+        .upsert(candidateData, { onConflict: 'id' });
 
-      if (upsertError) throw upsertError;
+      if (candidateError) throw candidateError;
+
+      // 2. Also update base profile with shared info + mark as candidate
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profile.full_name,
+          is_candidate: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('Warning: base profile update failed:', profileError);
+        // Non-fatal — career data already saved
+      }
 
       setSuccess(true);
       setAvatarFile(null);
