@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Check, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -28,8 +28,6 @@ export default function UserRegistration() {
   // Email OTP states
   const [verificationMethod, setVerificationMethod] = useState('sms'); // 'sms' or 'email'
   const [emailVerified, setEmailVerified] = useState(false);
-  const [isExistingUser, setIsExistingUser] = useState(false); // Track if already signed in
-  const [checkingSession, setCheckingSession] = useState(true); // Loading state for session check
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -42,32 +40,6 @@ export default function UserRegistration() {
     bio: '',
   });
   const [errors, setErrors] = useState({});
-
-  // Check if user is already signed in on mount
-  useEffect(() => {
-    async function checkExistingSession() {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (!error && user) {
-          console.log('✅ Existing user detected:', user.id);
-          setCurrentUser(user);
-          setIsExistingUser(true);
-          setFormData(prev => ({
-            ...prev,
-            fullName: user.user_metadata?.full_name || '',
-            email: user.email || '',
-          }));
-          // Skip Step 1 (account creation), go straight to Step 2 (verify)
-          setCurrentStep(2);
-        }
-      } catch (err) {
-        console.error('Error checking session:', err);
-      } finally {
-        setCheckingSession(false);
-      }
-    }
-    checkExistingSession();
-  }, []);
 
   // Step definitions
   const steps = [
@@ -352,22 +324,11 @@ export default function UserRegistration() {
     <div className="min-h-screen flex items-center justify-center py-8 md:py-12" style={{ backgroundColor: '#f8fafc' }}>
       <div className="w-full max-w-2xl px-4 md:px-6">
         <div className="bg-white rounded-lg shadow-lg p-6 md:p-10">
-
-          {/* Loading state while checking session */}
-          {checkingSession ? (
-            <div className="text-center py-12">
-              <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-500 text-sm">Checking your account...</p>
-            </div>
-          ) : (
-          <>
           <h1 className="text-2xl md:text-3xl font-bold text-center mb-2" style={{ color: '#5f6466' }}>
-            {isExistingUser ? 'Complete Your Profile' : 'Create Your Account'}
+            Create Your Account
           </h1>
           <p className="text-center text-gray-600 mb-10 text-sm md:text-base">
-            {isExistingUser
-              ? 'Verify your contact details for jobs & gigs on Zintra'
-              : 'Join Zintra to connect with trusted construction vendors'}
+            Join Zintra to connect with trusted construction vendors
           </p>
 
           {/* Step Indicators */}
@@ -497,18 +458,7 @@ export default function UserRegistration() {
           {currentStep === 2 && (
             <div>
               <h2 className="text-2xl font-bold mb-2 text-gray-800">Verify Your Account</h2>
-              <p className="text-gray-600 mb-4 text-sm">Choose your preferred verification method</p>
-
-              {/* Info banner for existing users */}
-              {isExistingUser && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <p className="text-sm font-medium text-blue-800">👋 Welcome back, {formData.fullName || 'there'}!</p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    You&apos;re already signed in. Verify a phone number or email below for your profile.
-                    You can use a different number/email than your account if you prefer.
-                  </p>
-                </div>
-              )}
+              <p className="text-gray-600 mb-6 text-sm">Choose your preferred verification method</p>
 
               <VerificationMethodToggle
                 currentMethod={verificationMethod}
@@ -726,32 +676,17 @@ export default function UserRegistration() {
               </div>
               <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-800">Registration Complete!</h2>
               <p className="text-gray-600 mb-8 text-sm md:text-base leading-relaxed">
-                {isExistingUser
-                  ? 'Your profile has been verified and updated. You can now browse jobs and gigs.'
-                  : 'Your account has been successfully created with verified phone number. You can now log in.'}
+                Your account has been successfully created with verified phone number. You can now log in.
               </p>
-              {isExistingUser ? (
-                <Link href="/careers">
-                  <button
-                    className="text-white px-8 py-2.5 rounded-lg font-semibold hover:opacity-90 transition inline-block"
-                    style={{ backgroundColor: '#ea8f1e' }}
-                  >
-                    Browse Jobs & Gigs →
-                  </button>
-                </Link>
-              ) : (
-                <Link href="/login">
-                  <button
-                    className="text-white px-8 py-2.5 rounded-lg font-semibold hover:opacity-90 transition inline-block"
-                    style={{ backgroundColor: '#ea8f1e' }}
-                  >
-                    Go to Login
-                  </button>
-                </Link>
-              )}
+              <Link href="/login">
+                <button
+                  className="text-white px-8 py-2.5 rounded-lg font-semibold hover:opacity-90 transition inline-block"
+                  style={{ backgroundColor: '#ea8f1e' }}
+                >
+                  Go to Login
+                </button>
+              </Link>
             </div>
-          )}
-          </>
           )}
         </div>
       </div>
