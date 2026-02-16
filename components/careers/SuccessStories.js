@@ -10,7 +10,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { getCandidateRedirectPath } from '@/lib/auth-helpers';
 
 const testimonials = [
   {

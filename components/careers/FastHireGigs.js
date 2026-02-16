@@ -6,16 +6,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { getCandidateRedirectPath } from '@/lib/auth-helpers';
 
 export default function FastHireGigs({ gigs }) {
-  const router = useRouter();
-
-  const handleApply = async (gigId) => {
-    const redirectPath = await getCandidateRedirectPath(gigId, 'gig');
-    router.push(redirectPath);
-  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -68,12 +60,12 @@ export default function FastHireGigs({ gigs }) {
 
               {/* Apply Button */}
               <div className="p-3 border-t border-gray-200">
-                <button 
-                  onClick={() => handleApply(gig.id)}
-                  className="w-full px-3 py-1.5 bg-[#ea8f1e] text-white font-bold rounded hover:bg-[#d97706] transition-colors text-xs"
+                <Link 
+                  href={`/careers/gigs/${gig.id}`}
+                  className="block w-full px-3 py-1.5 bg-[#ea8f1e] text-white font-bold rounded hover:bg-[#d97706] transition-colors text-xs text-center"
                 >
                   Apply Now
-                </button>
+                </Link>
               </div>
             </div>
           ))}
