@@ -276,29 +276,20 @@ export async function consumeIncluded(userId, metricKey) {
   }
 
   const supabase = await createClient();
-  const now = new Date().toISOString();
 
-  const { error } = await supabase
-    .from('billing_included_usage')
-    .update({
-      metric_value: remaining > 0 ? undefined : 0, // Will use SQL increment below
-      updated_at: now,
-    })
-    .eq('user_id', userId)
-    .eq('metric_key', metricKey)
-    .lte('period_start', now)
-    .gte('period_end', now);
-
-  // Use RPC or raw increment — simpler: just increment directly
-  const { error: incError } = await supabase.rpc('increment_billing_usage', {
+  // Use atomic RPC increment
+  const { data: newVal, error } = await supabase.rpc('increment_billing_usage', {
     p_user_id: userId,
     p_metric_key: metricKey,
-  }).catch(() => {
-    // Fallback: manual increment
-    return { error: null };
   });
 
-  return { consumed: true, remaining: remaining - 1 };
+  if (error) {
+    console.error('Error incrementing billing usage:', error);
+    // Non-critical — gate checks use active count as source of truth
+    return { consumed: true, remaining: remaining - 1 };
+  }
+
+  return { consumed: true, remaining: remaining - 1, currentUsage: newVal };
 }
 
 // ─── Subscription Info ───────────────────────────────────────────
@@ -366,11 +357,13 @@ export async function getBillingStatus(userId) {
 
   return {
     success: true,
-    products: productsResult.grouped || {},
+    products: productsResult.products || [], // flat array (used by upgrade page)
+    productsByScope: productsResult.grouped || {},
     activeTiers,
     activeUntil,
     passes: passesResult.passes || [],
     subscriptions: subsResult.subscriptions || [],
+    history: historyResult.purchases || [],
     recentPurchases: historyResult.purchases || [],
   };
 }

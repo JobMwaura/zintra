@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { checkRfqResponseGate } from '@/lib/billing/gates';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -218,6 +219,20 @@ export async function POST(request, { params }) {
     if (!vendorId) {
       return NextResponse.json(
         { error: 'Vendor profile not found. Please complete your vendor registration first.' },
+        { status: 403 }
+      );
+    }
+
+    // ── Sprint B: Check RFQ response limit by vendor tier ──
+    const rfqGate = await checkRfqResponseGate(vendorId, user.id);
+    if (!rfqGate.allowed) {
+      return NextResponse.json(
+        {
+          error: rfqGate.reason,
+          upgrade: rfqGate.upgrade,
+          limit: rfqGate.limit,
+          active: rfqGate.active,
+        },
         { status: 403 }
       );
     }

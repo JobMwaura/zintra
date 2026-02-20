@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { ZCC_COSTS, ZCC_SPEND_TYPES, ZCC_FREE } from '@/lib/zcc/credit-config';
+import { checkPostingGate, consumePostingQuota, checkContactUnlockGate, consumeContactUnlockQuota } from '@/lib/billing/gates';
 
 /**
  * Get wallet balance for a user.
@@ -188,13 +189,20 @@ export async function initializeWallet(userId, isVendor = false) {
 /**
  * Publish a job listing — deducts JOB_POST credits + optional featured add-on.
  * Returns the created listing ID.
+ * 
+ * Sprint B: Checks posting limit first. If within included quota, credits
+ * are only charged for featured add-ons. If over limit, full credit cost applies.
  */
 export async function publishJobWithCredits(userId, listingData, featuredOption = null) {
   try {
     const supabase = await createClient();
 
+    // ── Sprint B: Check posting gate ──
+    const gate = await checkPostingGate(userId, 'job');
+    const withinQuota = gate.source === 'included' && !gate.overLimit;
+
     // Calculate total cost
-    let totalCost = ZCC_COSTS.JOB_POST;
+    let baseCost = withinQuota ? 0 : ZCC_COSTS.JOB_POST; // Free if within included quota
     let featuredCost = 0;
 
     if (featuredOption) {
@@ -204,20 +212,24 @@ export async function publishJobWithCredits(userId, listingData, featuredOption 
         '30d': ZCC_COSTS.FEATURED_JOB_30D,
       };
       featuredCost = featuredCosts[featuredOption] || 0;
-      totalCost += featuredCost;
     }
 
-    // 1. Spend credits atomically
-    const spendResult = await spendCredits(
-      userId,
-      totalCost,
-      ZCC_SPEND_TYPES.JOB_POST,
-      null,
-      `Post job: ${listingData.title}${featuredOption ? ` + Featured ${featuredOption}` : ''}`
-    );
+    const totalCost = baseCost + featuredCost;
 
-    if (!spendResult.success) {
-      return { success: false, error: spendResult.error };
+    // 1. Spend credits (only if cost > 0)
+    let spendResult = { success: true, balance: 0, spendId: null };
+    if (totalCost > 0) {
+      spendResult = await spendCredits(
+        userId,
+        totalCost,
+        ZCC_SPEND_TYPES.JOB_POST,
+        null,
+        `Post job: ${listingData.title}${withinQuota ? ' (included in plan)' : ''}${featuredOption ? ` + Featured ${featuredOption}` : ''}`
+      );
+
+      if (!spendResult.success) {
+        return { success: false, error: spendResult.error };
+      }
     }
 
     // 2. Insert the listing
@@ -264,11 +276,18 @@ export async function publishJobWithCredits(userId, listingData, featuredOption 
       });
     }
 
+    // 4. Sprint B: Track posting quota consumption
+    if (withinQuota) {
+      await consumePostingQuota(userId, 'job');
+    }
+
     return {
       success: true,
       listingId: listing.id,
       creditsSpent: totalCost,
       balance: spendResult.balance,
+      includedInPlan: withinQuota,
+      postingQuota: gate,
     };
   } catch (err) {
     console.error('Error publishing job:', err);
@@ -278,13 +297,20 @@ export async function publishJobWithCredits(userId, listingData, featuredOption 
 
 /**
  * Publish a gig listing — deducts GIG_POST credits + optional featured add-on.
+ * 
+ * Sprint B: Checks posting limit first. If within included quota, credits
+ * are only charged for featured add-ons.
  */
 export async function publishGigWithCredits(userId, listingData, featuredOption = null) {
   try {
     const supabase = await createClient();
 
+    // ── Sprint B: Check posting gate ──
+    const gate = await checkPostingGate(userId, 'gig');
+    const withinQuota = gate.source === 'included' && !gate.overLimit;
+
     // Calculate total cost
-    let totalCost = ZCC_COSTS.GIG_POST;
+    let baseCost = withinQuota ? 0 : ZCC_COSTS.GIG_POST;
     let featuredCost = 0;
 
     if (featuredOption) {
@@ -293,20 +319,24 @@ export async function publishGigWithCredits(userId, listingData, featuredOption 
         '72h': ZCC_COSTS.FEATURED_GIG_72H,
       };
       featuredCost = featuredCosts[featuredOption] || 0;
-      totalCost += featuredCost;
     }
 
-    // 1. Spend credits atomically
-    const spendResult = await spendCredits(
-      userId,
-      totalCost,
-      ZCC_SPEND_TYPES.GIG_POST,
-      null,
-      `Post gig: ${listingData.title}${featuredOption ? ` + Featured ${featuredOption}` : ''}`
-    );
+    const totalCost = baseCost + featuredCost;
 
-    if (!spendResult.success) {
-      return { success: false, error: spendResult.error };
+    // 1. Spend credits (only if cost > 0)
+    let spendResult = { success: true, balance: 0, spendId: null };
+    if (totalCost > 0) {
+      spendResult = await spendCredits(
+        userId,
+        totalCost,
+        ZCC_SPEND_TYPES.GIG_POST,
+        null,
+        `Post gig: ${listingData.title}${withinQuota ? ' (included in plan)' : ''}${featuredOption ? ` + Featured ${featuredOption}` : ''}`
+      );
+
+      if (!spendResult.success) {
+        return { success: false, error: spendResult.error };
+      }
     }
 
     // 2. Insert the listing
@@ -351,11 +381,18 @@ export async function publishGigWithCredits(userId, listingData, featuredOption 
       });
     }
 
+    // 4. Sprint B: Track posting quota consumption
+    if (withinQuota) {
+      await consumePostingQuota(userId, 'gig');
+    }
+
     return {
       success: true,
       listingId: listing.id,
       creditsSpent: totalCost,
       balance: spendResult.balance,
+      includedInPlan: withinQuota,
+      postingQuota: gate,
     };
   } catch (err) {
     console.error('Error publishing gig:', err);
@@ -364,7 +401,11 @@ export async function publishGigWithCredits(userId, listingData, featuredOption 
 }
 
 /**
- * Unlock a candidate's contact info — deducts CONTACT_UNLOCK credits.
+ * Unlock a candidate's contact info.
+ * 
+ * Sprint B flow:
+ *   1. If included unlocks remaining → free (consume quota)
+ *   2. Else → deduct CONTACT_UNLOCK credits from wallet
  */
 export async function unlockCandidateContact(employerId, candidateId, postId = null, applicationId = null) {
   try {
@@ -382,17 +423,24 @@ export async function unlockCandidateContact(employerId, candidateId, postId = n
       return { success: true, alreadyUnlocked: true, message: 'Contact already unlocked' };
     }
 
-    // Spend credits
-    const spendResult = await spendCredits(
-      employerId,
-      ZCC_COSTS.CONTACT_UNLOCK,
-      ZCC_SPEND_TYPES.CONTACT_UNLOCK,
-      candidateId,
-      'Contact unlock'
-    );
+    // ── Sprint B: Check included quota first ──
+    const gate = await checkContactUnlockGate(employerId);
+    const useIncluded = gate.source === 'included' && gate.remaining > 0;
 
-    if (!spendResult.success) {
-      return { success: false, error: spendResult.error };
+    let spendResult = { success: true, balance: 0, spendId: null };
+    if (!useIncluded) {
+      // Fall back to credits
+      spendResult = await spendCredits(
+        employerId,
+        ZCC_COSTS.CONTACT_UNLOCK,
+        ZCC_SPEND_TYPES.CONTACT_UNLOCK,
+        candidateId,
+        'Contact unlock'
+      );
+
+      if (!spendResult.success) {
+        return { success: false, error: spendResult.error };
+      }
     }
 
     // Create unlock record
@@ -425,6 +473,11 @@ export async function unlockCandidateContact(employerId, candidateId, postId = n
       .eq('id', candidateId)
       .single();
 
+    // Sprint B: Consume included quota if used
+    if (useIncluded) {
+      await consumeContactUnlockQuota(employerId);
+    }
+
     return {
       success: true,
       alreadyUnlocked: false,
@@ -433,8 +486,10 @@ export async function unlockCandidateContact(employerId, candidateId, postId = n
         whatsapp: candidateData?.whatsapp || candidateData?.phone || profileData?.phone || null,
         email: profileData?.email || null,
       },
-      creditsSpent: ZCC_COSTS.CONTACT_UNLOCK,
+      creditsSpent: useIncluded ? 0 : ZCC_COSTS.CONTACT_UNLOCK,
       balance: spendResult.balance,
+      includedInPlan: useIncluded,
+      remainingIncluded: useIncluded ? (gate.remaining - 1) : 0,
     };
   } catch (err) {
     console.error('Error unlocking contact:', err);

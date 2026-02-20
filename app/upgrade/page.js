@@ -37,7 +37,7 @@ export default function UpgradePage() {
   const pollRef = useRef(null);
 
   // Active scope tab
-  const [activeScope, setActiveScope] = useState('marketplace.vendor');
+  const [activeScope, setActiveScope] = useState('marketplace_vendor');
 
   // History
   const [showHistory, setShowHistory] = useState(false);
@@ -69,7 +69,7 @@ export default function UpgradePage() {
 
       // Default scope based on roles
       if (roleResult.roles?.employer && !roleResult.roles?.vendor) {
-        setActiveScope('zcc.employer');
+        setActiveScope('zcc_employer');
       }
     } catch (err) {
       console.error('Error loading upgrade page:', err);
@@ -210,14 +210,14 @@ export default function UpgradePage() {
   }
 
   const scopeTabs = [
-    { id: 'marketplace.vendor', label: 'Vendor Plans', icon: <Building2 size={18} />, show: roles?.vendor },
-    { id: 'zcc.employer', label: 'Employer Plans', icon: <Briefcase size={18} />, show: roles?.employer },
+    { id: 'marketplace_vendor', label: 'Vendor Plans', icon: <Building2 size={18} />, show: roles?.vendor },
+    { id: 'zcc_employer', label: 'Employer Plans', icon: <Briefcase size={18} />, show: roles?.employer },
   ].filter(t => t.show);
 
   // If user has no roles, show both
   const visibleTabs = scopeTabs.length > 0 ? scopeTabs : [
-    { id: 'marketplace.vendor', label: 'Vendor Plans', icon: <Building2 size={18} /> },
-    { id: 'zcc.employer', label: 'Employer Plans', icon: <Briefcase size={18} /> },
+    { id: 'marketplace_vendor', label: 'Vendor Plans', icon: <Building2 size={18} /> },
+    { id: 'zcc_employer', label: 'Employer Plans', icon: <Briefcase size={18} /> },
   ];
 
   const currentTier = getActiveTier(activeScope);
@@ -539,7 +539,7 @@ export default function UpgradePage() {
             Free Tier — Always Included
           </h3>
           <div className="grid sm:grid-cols-2 gap-4 text-sm text-gray-700">
-            {activeScope === 'marketplace.vendor' ? (
+            {activeScope === 'marketplace_vendor' ? (
               <>
                 <div className="flex items-center gap-2"><Check className="text-green-500 w-4 h-4" /> Basic profile listing</div>
                 <div className="flex items-center gap-2"><Check className="text-green-500 w-4 h-4" /> Browse RFQs</div>
