@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { getUserRoleStatus } from '@/app/actions/vendor-zcc';
-import { getBillingStatus } from '@/app/actions/billing';
+import { getBillingStatus, isStripeConfigured } from '@/app/actions/billing';
 import {
   ArrowLeft, Crown, Zap, Shield, Check, CheckCircle, Smartphone,
   Loader, AlertCircle, Star, Building2, Briefcase, ChevronDown, ChevronUp,
-  Clock, RefreshCw,
+  Clock, RefreshCw, CreditCard, ExternalLink,
 } from 'lucide-react';
 
 const TIER_LABELS = { free: 'Free', pro: 'Pro', premium: 'Premium' };
@@ -36,6 +36,12 @@ export default function UpgradePage() {
   const [purchaseStatus, setPurchaseStatus] = useState(null);
   const pollRef = useRef(null);
 
+  // Payment method: 'mpesa' or 'card'
+  const [paymentMethod, setPaymentMethod] = useState('mpesa');
+  const [stripeAvailable, setStripeAvailable] = useState(false);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
   // Active scope tab
   const [activeScope, setActiveScope] = useState('marketplace_vendor');
 
@@ -59,13 +65,15 @@ export default function UpgradePage() {
 
       setUser(currentUser);
 
-      const [roleResult, billingResult] = await Promise.all([
+      const [roleResult, billingResult, stripeResult] = await Promise.all([
         getUserRoleStatus(currentUser.id),
         getBillingStatus(currentUser.id),
+        isStripeConfigured(),
       ]);
 
       setRoles(roleResult.roles);
       setBilling(billingResult);
+      setStripeAvailable(stripeResult.configured);
 
       // Default scope based on roles
       if (roleResult.roles?.employer && !roleResult.roles?.vendor) {
@@ -165,6 +173,48 @@ export default function UpgradePage() {
     setPurchaseId(null);
     setPurchaseStatus(null);
     setPhone('');
+    setPaymentMethod('mpesa');
+  }
+
+  // ─── Stripe Checkout Flow ─────────────────────────────────
+  async function handleStripeCheckout(product) {
+    setStripeLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/billing/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_code: product.product_code }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err.message);
+      setStripeLoading(false);
+    }
+  }
+
+  async function openCustomerPortal() {
+    setPortalLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/billing/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Failed to open billing portal');
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err.message);
+      setPortalLoading(false);
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────
@@ -174,6 +224,10 @@ export default function UpgradePage() {
 
   function getActivePass(scope) {
     return billing?.passes?.find(p => p.billing_products?.scope === scope);
+  }
+
+  function getActiveSubscription(scope) {
+    return billing?.subscriptions?.find(s => s.billing_products?.scope === scope && ['active', 'trialing'].includes(s.status));
   }
 
   function getProductsForScope(scope) {
@@ -222,6 +276,7 @@ export default function UpgradePage() {
 
   const currentTier = getActiveTier(activeScope);
   const activePass = getActivePass(activeScope);
+  const activeSub = getActiveSubscription(activeScope);
   const products = getProductsForScope(activeScope);
 
   return (
@@ -238,7 +293,7 @@ export default function UpgradePage() {
             Upgrade Your Plan
           </h1>
           <p className="text-orange-100 mt-2">
-            Unlock premium features with an M-Pesa pass — no card required.
+            Unlock premium features with M-Pesa{stripeAvailable ? ' or Card payment' : ''} — upgrade in seconds.
           </p>
         </div>
       </div>
@@ -282,6 +337,34 @@ export default function UpgradePage() {
           </div>
         )}
 
+        {/* Active Subscription Banner */}
+        {activeSub && (
+          <div className="mb-6 bg-white border-2 border-blue-300 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-blue-100">
+                <CreditCard className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">
+                  {activeSub.billing_products?.name || 'Subscription'} — Active
+                </p>
+                <p className="text-sm text-gray-600">
+                  Renews {formatDate(activeSub.current_period_end)}
+                  {activeSub.cancel_at_period_end && ' (cancels at end of period)'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={openCustomerPortal}
+              disabled={portalLoading}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm disabled:opacity-50"
+            >
+              {portalLoading ? <Loader className="w-4 h-4 animate-spin" /> : <ExternalLink size={16} />}
+              Manage Subscription
+            </button>
+          </div>
+        )}
+
         {/* Scope Tabs */}
         {visibleTabs.length > 1 && (
           <div className="flex gap-2 mb-8">
@@ -307,8 +390,8 @@ export default function UpgradePage() {
           <div className="mb-8 bg-white border-2 border-orange-400 rounded-xl shadow-lg overflow-hidden">
             <div className="bg-orange-50 px-6 py-4 border-b border-orange-200 flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Smartphone size={20} className="text-orange-500" />
-                Pay with M-Pesa
+                {paymentMethod === 'mpesa' ? <Smartphone size={20} className="text-orange-500" /> : <CreditCard size={20} className="text-blue-500" />}
+                {paymentMethod === 'mpesa' ? 'Pay with M-Pesa' : 'Pay with Card'}
               </h3>
               <button onClick={cancelPurchaseFlow} className="text-gray-400 hover:text-gray-600 text-sm">
                 ✕ Cancel
@@ -316,6 +399,33 @@ export default function UpgradePage() {
             </div>
 
             <div className="p-6">
+              {/* Payment Method Toggle */}
+              {stripeAvailable && !purchaseId && !purchaseStatus && (
+                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => setPaymentMethod('mpesa')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-semibold transition ${
+                      paymentMethod === 'mpesa'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Smartphone size={16} />
+                    M-Pesa (KES)
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('card')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-semibold transition ${
+                      paymentMethod === 'card'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <CreditCard size={16} />
+                    Card (USD)
+                  </button>
+                </div>
+              )}
               {/* Status: Waiting for STK Push result */}
               {purchaseId && purchaseStatus === 'initiated' && (
                 <div className="text-center py-8">
@@ -371,8 +481,8 @@ export default function UpgradePage() {
                 </div>
               )}
 
-              {/* Initial: Phone input */}
-              {!purchaseId && !purchaseStatus && (
+              {/* Initial: Phone input (M-Pesa) */}
+              {!purchaseId && !purchaseStatus && paymentMethod === 'mpesa' && (
                 <>
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -421,6 +531,45 @@ export default function UpgradePage() {
                       </>
                     )}
                   </button>
+                </>
+              )}
+
+              {/* Card / Stripe checkout */}
+              {!purchaseId && !purchaseStatus && paymentMethod === 'card' && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="font-bold text-gray-900 text-lg">{selectedProduct.name}</p>
+                      <p className="text-sm text-gray-600">
+                        Monthly subscription — cancel anytime
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ${selectedProduct.price_usd || '—'}<span className="text-sm text-gray-500 font-normal">/mo</span>
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleStripeCheckout(selectedProduct)}
+                    disabled={stripeLoading}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {stripeLoading ? (
+                      <>
+                        <Loader className="w-4 h-4 animate-spin" />
+                        Redirecting to checkout...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard size={18} />
+                        Subscribe — ${selectedProduct.price_usd || '—'}/mo
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-xs text-gray-500 text-center mt-3">
+                    Powered by Stripe. You&apos;ll be redirected to a secure checkout page.
+                  </p>
                 </>
               )}
             </div>
@@ -522,7 +671,7 @@ export default function UpgradePage() {
                           : 'bg-orange-500 hover:bg-orange-600 text-white'
                       } disabled:opacity-50`}
                     >
-                      <Smartphone size={18} />
+                      <Zap size={18} />
                       {isUpgrade ? 'Upgrade' : 'Get'} — KSh {product.price_kes?.toLocaleString()}
                     </button>
                   )}
@@ -609,12 +758,14 @@ export default function UpgradePage() {
           <div className="flex items-start gap-3">
             <Shield className="text-blue-500 flex-shrink-0 mt-1" size={24} />
             <div>
-              <h3 className="font-bold text-blue-900 mb-2">How Passes Work</h3>
+              <h3 className="font-bold text-blue-900 mb-2">How Plans Work</h3>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• A <strong>Pass</strong> is a prepaid plan paid via M-Pesa — no card needed.</li>
-                <li>• Each pass lasts <strong>30 days</strong> from the date of purchase.</li>
-                <li>• Upgrading replaces your current pass — no double billing.</li>
-                <li>• Your plan features activate <strong>instantly</strong> after M-Pesa confirmation.</li>
+                <li>• <strong>M-Pesa Pass:</strong> Prepaid for 30 days — no card needed. Instant activation.</li>
+                {stripeAvailable && (
+                  <li>• <strong>Card Subscription:</strong> Monthly auto-renewal via Stripe. Cancel anytime from your billing portal.</li>
+                )}
+                <li>• Upgrading replaces your current plan — no double billing.</li>
+                <li>• Features activate <strong>instantly</strong> after payment confirmation.</li>
                 <li>• Need help? Contact <a href="mailto:support@zintra.co.ke" className="underline">support@zintra.co.ke</a></li>
               </ul>
             </div>

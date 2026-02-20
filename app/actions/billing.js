@@ -318,6 +318,39 @@ export async function getActiveSubscriptions(userId) {
   return { success: true, subscriptions: data || [] };
 }
 
+/**
+ * Get subscription event history (Stripe webhook audit log).
+ */
+export async function getSubscriptionEvents(userId, limit = 20) {
+  const supabase = await createClient();
+
+  // First get subscription IDs for this user
+  const { data: subs } = await supabase
+    .from('billing_subscriptions')
+    .select('id')
+    .eq('user_id', userId);
+
+  const subIds = (subs || []).map(s => s.id);
+  if (subIds.length === 0) return { success: true, events: [] };
+
+  const { data, error } = await supabase
+    .from('billing_subscription_events')
+    .select('id, subscription_id, provider_event_id, type, created_at')
+    .in('subscription_id', subIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  return { success: true, events: data || [] };
+}
+
+/**
+ * Check if Stripe is configured (has STRIPE_SECRET_KEY).
+ * Used by upgrade page to show/hide card payment option.
+ */
+export async function isStripeConfigured() {
+  return { configured: !!process.env.STRIPE_SECRET_KEY };
+}
+
 // ─── Unified Status ──────────────────────────────────────────────
 
 /**
