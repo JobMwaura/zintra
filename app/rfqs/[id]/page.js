@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, MessageSquare, DollarSign, Clock, MapPin, User, AlertCircle, Check, X } from 'lucide-react';
 import Link from 'next/link';
+import QuoteDetailCard from '@/components/QuoteDetailCard';
 
 /**
  * RFQ Details Page
@@ -57,6 +58,7 @@ export default function RFQDetailsPage({ params }) {
       
       setLoading(true);
       setError(null);
+      console.log('DEBUG: Starting fetchRFQDetails...');
 
       // Fetch RFQ
       const { data: rfqData, error: rfqError } = await supabase
@@ -77,13 +79,17 @@ export default function RFQDetailsPage({ params }) {
         throw new Error('RFQ not found');
       }
 
+      console.log('DEBUG: RFQ fetched successfully:', rfqData);
+
       // Check if user is the RFQ creator
       const isOwner = rfqData.user_id === user?.id;
+      console.log('DEBUG: Setting isCreator to:', isOwner);
       setIsCreator(isOwner);
 
       setRfq(rfqData);
 
       // Fetch all responses for this RFQ
+      console.log('DEBUG: Fetching responses for rfqId:', rfqId);
       const { data: responsesData, error: responsesError } = await supabase
         .from('rfq_responses')
         .select('*')
@@ -95,15 +101,29 @@ export default function RFQDetailsPage({ params }) {
         throw responsesError;
       }
 
+      console.log('DEBUG: Responses fetched:', responsesData?.length, 'responses');
+      console.log('DEBUG: Response statuses:', responsesData?.map(r => ({ id: r.id, status: r.status })));
+      console.log('DEBUG: FULL response data:', responsesData);
+
       setResponses(responsesData || []);
+      console.log('DEBUG: setResponses called');
 
       // Fetch vendor details for all responses
       if (responsesData && responsesData.length > 0) {
+        console.log('DEBUG: Fetching vendor details for', responsesData.length, 'responses');
         const vendorIds = [...new Set(responsesData.map(r => r.vendor_id))];
+        console.log('DEBUG: Vendor IDs to fetch:', vendorIds);
+        
         const { data: vendorData, error: vendorError } = await supabase
           .from('vendors')
           .select('id, company_name, location, rating, verified, phone, email')
           .in('id', vendorIds);
+
+        if (vendorError) {
+          console.error('DEBUG: Vendor fetch error:', vendorError);
+        } else {
+          console.log('DEBUG: Vendors fetched:', vendorData?.length, 'vendors');
+        }
 
         if (!vendorError && vendorData) {
           const vendorMap = {};
@@ -111,72 +131,135 @@ export default function RFQDetailsPage({ params }) {
             vendorMap[v.id] = v;
           });
           setVendors(vendorMap);
+          console.log('DEBUG: setVendors called with', Object.keys(vendorMap).length, 'vendors');
         }
       }
 
       setLoading(false);
+      console.log('DEBUG: fetchRFQDetails completed - loading set to false');
     } catch (err) {
       console.error('Error fetching RFQ details:', err);
       setError(err.message || 'Failed to load RFQ details');
       setLoading(false);
+      console.log('DEBUG: fetchRFQDetails failed with error:', err.message);
     }
   };
 
   const handleAcceptQuote = async (quoteId) => {
+    console.log('DEBUG: handleAcceptQuote called with quoteId:', quoteId);
+    console.log('DEBUG: isCreator:', isCreator);
+    console.log('DEBUG: user:', user);
+    console.log('DEBUG: rfq?.user_id:', rfq?.user_id);
+    
     if (!isCreator) {
+      console.warn('DEBUG: User is not the RFQ creator');
       setActionMessage('Only the RFQ creator can accept quotes');
       return;
     }
 
     try {
       setActingQuoteId(quoteId);
-      setActionMessage('');
+      setActionMessage('Accepting quote...');
 
-      const { error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'accepted' })
-        .eq('id', quoteId);
+      console.log('DEBUG: Calling API to accept quote...');
+      
+      // Use API route to bypass RLS
+      const response = await fetch('/api/quote/accept', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId: quoteId,
+          rfqId: rfqId,
+          userId: user.id
+        })
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      console.log('DEBUG: API response:', result);
 
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to accept quote');
+      }
+
+      console.log('DEBUG: Quote accepted successfully via API');
       setActionMessage('✅ Quote accepted successfully!');
+      
+      // Update local state immediately for instant feedback
+      setResponses(prev => prev.map(r => 
+        r.id === quoteId ? { ...r, status: 'accepted' } : r
+      ));
+      
       setTimeout(() => {
+        console.log('DEBUG: Refetching RFQ details...');
         fetchRFQDetails();
         setActionMessage('');
       }, 2000);
     } catch (err) {
       console.error('Error accepting quote:', err);
-      setActionMessage(`❌ Error: ${err.message}`);
+      const errorMessage = err?.message || 'Unknown error occurred';
+      console.error('DEBUG: Full error object:', err);
+      setActionMessage(`❌ Error: ${errorMessage}`);
     } finally {
       setActingQuoteId(null);
     }
   };
 
   const handleRejectQuote = async (quoteId) => {
+    console.log('DEBUG: handleRejectQuote called with quoteId:', quoteId);
+    console.log('DEBUG: isCreator:', isCreator);
+    
     if (!isCreator) {
+      console.warn('DEBUG: User is not the RFQ creator');
       setActionMessage('Only the RFQ creator can reject quotes');
       return;
     }
 
     try {
       setActingQuoteId(quoteId);
-      setActionMessage('');
+      setActionMessage('Rejecting quote...');
 
-      const { error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'rejected' })
-        .eq('id', quoteId);
+      console.log('DEBUG: Calling API to reject quote...');
+      
+      // Use API route to bypass RLS
+      const response = await fetch('/api/quote/accept', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId: quoteId,
+          rfqId: rfqId,
+          userId: user.id
+        })
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      console.log('DEBUG: API response:', result);
 
-      setActionMessage('✅ Quote rejected successfully!');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reject quote');
+      }
+
+      console.log('DEBUG: Quote rejected successfully via API');
+      setActionMessage('✅ Quote rejected!');
+      
+      // Update local state immediately
+      setResponses(prev => prev.map(r => 
+        r.id === quoteId ? { ...r, status: 'rejected' } : r
+      ));
+      
       setTimeout(() => {
+        console.log('DEBUG: Refetching RFQ details...');
         fetchRFQDetails();
         setActionMessage('');
       }, 2000);
     } catch (err) {
       console.error('Error rejecting quote:', err);
-      setActionMessage(`❌ Error: ${err.message}`);
+      const errorMessage = err?.message || 'Unknown error occurred';
+      console.error('DEBUG: Full error object:', err);
+      setActionMessage(`❌ Error: ${errorMessage}`);
     } finally {
       setActingQuoteId(null);
     }
@@ -376,13 +459,13 @@ export default function RFQDetailsPage({ params }) {
             </div>
 
             {/* Vendor Responses Section */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div>
               <h2 className="text-xl font-semibold text-slate-900 mb-4">
                 Vendor Responses ({responses.length})
               </h2>
 
               {responses.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="bg-white rounded-lg shadow p-12 text-center">
                   <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">No vendor responses yet</p>
                   {isExpired && (
@@ -395,98 +478,28 @@ export default function RFQDetailsPage({ params }) {
                     const vendor = vendors[response.vendor_id];
                     const isAccepted = response.status === 'accepted';
                     const isRejected = response.status === 'rejected';
+                    console.log('DEBUG: Rendering response:', { id: response.id, status: response.status, isAccepted, isRejected });
 
                     return (
-                      <div
-                        key={response.id}
-                        className={`border-2 rounded-lg p-4 transition ${
-                          isAccepted
-                            ? 'border-green-200 bg-green-50'
-                            : isRejected
-                            ? 'border-red-200 bg-red-50'
-                            : 'border-slate-200 hover:border-orange-200'
-                        }`}
-                      >
-                        {/* Vendor Info & Quote Price */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-slate-900">
-                                {vendor?.company_name || 'Unknown Vendor'}
-                              </h3>
-                              {vendor?.verified && (
-                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">✓ Verified</span>
-                              )}
-                            </div>
-                            {vendor?.location && (
-                              <p className="text-sm text-slate-500 mt-1">{vendor.location}</p>
-                            )}
-                          </div>
+                      <div key={response.id}>
+                        {/* Use QuoteDetailCard for comprehensive display */}
+                        <QuoteDetailCard
+                          quote={response}
+                          vendor={vendor}
+                          isSelected={false}
+                          onSelect={() => {}}
+                        />
 
-                          {/* Quote Price */}
-                          <div className="text-right">
-                            <p className="text-xs text-slate-600 font-medium">Quoted Price</p>
-                            <p className="text-2xl font-bold text-orange-600">
-                              {formatCurrency(response.quoted_price)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Status Badge */}
-                        {isAccepted && (
-                          <div className="mb-3 flex items-center gap-2 text-green-700 font-semibold">
-                            <Check className="w-5 h-5" />
-                            Accepted
-                          </div>
-                        )}
-                        {isRejected && (
-                          <div className="mb-3 flex items-center gap-2 text-red-700 font-semibold">
-                            <X className="w-5 h-5" />
-                            Rejected
-                          </div>
-                        )}
-
-                        {/* Response Details */}
-                        <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                          {response.delivery_timeline && (
-                            <div>
-                              <p className="text-xs text-slate-600 font-medium flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                Delivery Timeline
-                              </p>
-                              <p className="text-slate-700">{response.delivery_timeline}</p>
-                            </div>
-                          )}
-                          {vendor?.rating && (
-                            <div>
-                              <p className="text-xs text-slate-600 font-medium">Vendor Rating</p>
-                              <p className="text-slate-700">⭐ {vendor.rating.toFixed(1)}/5</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Description */}
-                        {response.description && (
-                          <div className="mb-3 p-3 bg-white rounded border border-slate-200">
-                            <p className="text-sm text-slate-700">{response.description}</p>
-                          </div>
-                        )}
-
-                        {/* Response Metadata */}
-                        <div className="text-xs text-slate-500 mb-4">
-                          Responded on {formatDate(response.created_at)}
-                        </div>
-
-                        {/* Action Buttons (for creator only) */}
+                        {/* Action Buttons (for creator only) - Positioned below the card */}
                         {isCreator && !isAccepted && !isRejected && (
-                          <div className="flex gap-2 pt-3 border-t border-slate-200">
+                          <div className="mt-3 flex gap-2 px-6 pb-4 bg-orange-50 rounded-b-lg border border-t-0 border-orange-200">
                             <button
                               onClick={() => handleAcceptQuote(response.id)}
                               disabled={actingQuoteId === response.id}
                               className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
                             >
                               <Check className="w-4 h-4" />
-                              Accept
+                              Accept Quote
                             </button>
                             <button
                               onClick={() => handleRejectQuote(response.id)}
@@ -494,8 +507,22 @@ export default function RFQDetailsPage({ params }) {
                               className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
                             >
                               <X className="w-4 h-4" />
-                              Reject
+                              Reject Quote
                             </button>
+                          </div>
+                        )}
+
+                        {isAccepted && (
+                          <div className="mt-2 px-6 py-3 bg-green-50 border border-green-200 rounded-b-lg flex items-center gap-2 text-green-700 font-semibold">
+                            <Check className="w-5 h-5" />
+                            Quote Accepted
+                          </div>
+                        )}
+
+                        {isRejected && (
+                          <div className="mt-2 px-6 py-3 bg-red-50 border border-red-200 rounded-b-lg flex items-center gap-2 text-red-700 font-semibold">
+                            <X className="w-5 h-5" />
+                            Quote Rejected
                           </div>
                         )}
                       </div>

@@ -16,6 +16,7 @@ export default function PortfolioProjectPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageErrors, setImageErrors] = useState({});
 
   useEffect(() => {
     const fetchProjectAndVendor = async () => {
@@ -122,12 +123,18 @@ export default function PortfolioProjectPage() {
         {/* Image Gallery */}
         <div className={styles.gallerySection}>
           <div className={styles.mainImageContainer}>
-            {currentImage ? (
+            {currentImage && !imageErrors[currentImageIndex] ? (
               <>
                 <img
                   src={currentImage.imageUrl}
                   alt={currentImage.caption || project.title}
                   className={styles.mainImage}
+                  onError={(e) => {
+                    console.warn('❌ Portfolio image failed to load:', currentImage.imageUrl);
+                    setImageErrors(prev => ({ ...prev, [currentImageIndex]: true }));
+                    // Fallback SVG for broken images
+                    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"%3E%3Crect fill="%23e2e8f0" width="400" height="400"/%3E%3Cg fill="%23999"%3E%3Ccircle cx="100" cy="100" r="30"/%3E%3Cpath d="M 50 250 L 150 150 L 250 250 L 350 100 L 350 350 Q 350 350 350 350 L 50 350 Z"/%3E%3C/g%3E%3C/svg%3E';
+                  }}
                 />
                 {currentImage.imageType && (
                   <span className={`${styles.badge} ${styles[currentImage.imageType]}`}>
@@ -136,7 +143,12 @@ export default function PortfolioProjectPage() {
                 )}
               </>
             ) : (
-              <div className={styles.noImage}>No Image Available</div>
+              <div className={styles.noImage}>
+                <svg style={{width: '48px', height: '48px', opacity: 0.4}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p>Image Unavailable</p>
+              </div>
             )}
           </div>
 
@@ -177,7 +189,15 @@ export default function PortfolioProjectPage() {
                   onClick={() => setCurrentImageIndex(index)}
                   aria-label={`View image ${index + 1}`}
                 >
-                  <img src={image.imageUrl} alt={`Thumbnail ${index + 1}`} />
+                  <img 
+                    src={image.imageUrl} 
+                    alt={`Thumbnail ${index + 1}`}
+                    onError={(e) => {
+                      console.warn('❌ Thumbnail image failed to load:', image.imageUrl);
+                      // Fallback SVG for broken thumbnails
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23e2e8f0" width="100" height="100"/%3E%3Cg fill="%23999" opacity="0.5"%3E%3Ccircle cx="25" cy="25" r="8"/%3E%3Cpath d="M 10 70 L 30 40 L 70 70 Z"/%3E%3C/g%3E%3C/svg%3E';
+                    }}
+                  />
                 </button>
               ))}
             </div>

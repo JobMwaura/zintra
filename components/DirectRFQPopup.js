@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { CountySelect } from '@/components/LocationSelector';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { getUserProfile } from '@/app/actions/getUserProfile';
+import RFQFileUpload from '@/components/RFQModal/RFQFileUpload';
 
 /** 🎨 Brand palette */
 const BRAND = {
@@ -20,8 +21,6 @@ const BRAND = {
   white: '#ffffff',
 };
 
-const RFQ_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_RFQ_BUCKET || 'rfq_attachments';
-
 export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
   const [form, setForm] = useState({
     title: '',
@@ -31,7 +30,7 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
     custom_details: '', // For custom floor types, roofing types, etc
     budget: '',
     location: '',
-    attachment: null,
+    attachments: [], // Changed from single attachment to array for S3 uploads
     confirmed: false,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -168,33 +167,23 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
 
     try {
       setStatus('');
-      
-      /** Upload file if exists */
-      let attachmentUrl = null;
-      if (form.attachment) {
-        const fileName = `${Date.now()}_${form.attachment.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from(RFQ_BUCKET)
-          .upload(fileName, form.attachment);
-
-        if (uploadError) {
-          if (uploadError.message?.toLowerCase().includes('bucket')) {
-            setStatus('⚠️ Attachment bucket missing; request sent without file.');
-          } else {
-            throw uploadError;
-          }
-        } else {
-          const { data: publicUrl } = supabase.storage
-            .from(RFQ_BUCKET)
-            .getPublicUrl(uploadData.path);
-          attachmentUrl = publicUrl?.publicUrl || null;
-        }
-      }
 
       // Determine final category name
       const finalCategory = form.category === 'other' ? form.custom_category : form.category;
+      
+      // Get the vendor record ID (this is the correct ID for rfq_requests.vendor_id FK)
+      const vendorRecipientId = vendor?.id || null;
+      
+      // Debug logging
+      console.log('[DirectRFQPopup] Preparing RFQ submission:', {
+        vendorId: vendorRecipientId,
+        vendorName: vendor?.company_name,
+        rfqTitle: form.title,
+        userId: user?.id,
+        timestamp: new Date().toISOString(),
+      });
 
-      /** Save RFQ in main table */
+      /** Save RFQ in main table - include vendor_id for direct RFQs */
       const { data: rfqData, error: rfqError } = await supabase
         .from('rfqs')
         .insert([{
@@ -207,15 +196,22 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
           location: form.location,
           user_id: user?.id || null,
           status: 'submitted',
+          type: 'direct', // Mark as direct RFQ
+          assigned_vendor_id: vendorRecipientId, // Store vendor ID directly on RFQ
+          attachments: form.attachments.length > 0 ? form.attachments : null, // Store S3 file URLs
         }])
         .select()
         .maybeSingle();
 
-      if (rfqError) throw rfqError;
+      if (rfqError) {
+        console.error('[DirectRFQPopup] RFQ creation error:', rfqError);
+        throw rfqError;
+      }
+      
+      console.log('[DirectRFQPopup] RFQ created successfully:', rfqData?.id);
 
-      /** Send direct request to vendor */
-      const vendorRecipientId = vendor?.user_id || vendor?.id || null;
-      if (vendorRecipientId) {
+      /** Also insert into rfq_requests for vendor inbox (backward compatibility) */
+      if (vendorRecipientId && rfqData?.id) {
         const { error: requestError } = await supabase.from('rfq_requests').insert([{
           rfq_id: rfqData.id,
           vendor_id: vendorRecipientId,
@@ -227,12 +223,16 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
         }]);
 
         if (requestError) {
-          console.error('❌ Error sending RFQ request to vendor:', {
+          // Log but don't fail - the RFQ was created, just the vendor inbox link failed
+          console.error('⚠️ Warning: Could not link RFQ to vendor inbox:', {
             error: requestError.message,
             code: requestError.code,
             details: requestError.details,
+            hint: 'RFQ was created but vendor may not see it in their inbox'
           });
-          throw requestError;
+          // Don't throw - let the user continue since RFQ was created
+        } else {
+          console.log('[DirectRFQPopup] Vendor inbox entry created');
         }
       }
 
@@ -454,20 +454,26 @@ export default function DirectRFQPopup({ isOpen, onClose, vendor, user }) {
             />
           </div>
 
-          {/* Attachment */}
+          {/* Attachment - Now using RFQFileUpload component */}
           <div>
-            <label className="block text-sm font-medium text-slate-800 mb-1">Attachments (Optional)</label>
-            <div className="flex items-center justify-between rounded-lg border border-slate-300 px-3 py-2 text-sm">
-              <input
-                type="file"
-                accept=".pdf,.jpg,.png,.docx"
-                onChange={(e) => setForm({ ...form, attachment: e.target.files[0] })}
-              />
-              <FileUp className="h-4 w-4 text-slate-500" />
-            </div>
-            {form.attachment && (
-              <p className="mt-1 text-xs text-slate-500">Uploaded: {form.attachment.name}</p>
-            )}
+            <RFQFileUpload
+              files={form.attachments}
+              onUpload={(fileData) => {
+                setForm({
+                  ...form,
+                  attachments: [...form.attachments, fileData],
+                });
+              }}
+              onRemove={(fileKey) => {
+                setForm({
+                  ...form,
+                  attachments: form.attachments.filter(f => f.key !== fileKey),
+                });
+              }}
+              maxFiles={5}
+              maxSize={50}
+              uploadType="rfq-attachment"
+            />
           </div>
 
           {/* Confirmation */}

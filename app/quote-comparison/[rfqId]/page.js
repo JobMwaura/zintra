@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import QuoteDetailCard from '@/components/QuoteDetailCard';
 import QuoteComparisonTable from '@/components/QuoteComparisonTable';
 import { 
   ArrowLeft, 
@@ -16,7 +17,9 @@ import {
   TrendingDown,
   Clock,
   User,
-  Gift
+  Gift,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
@@ -40,6 +43,7 @@ export default function QuoteComparisonPage({ params }) {
   const [error, setError] = useState(null);
   const [acting, setActing] = useState(null);
   const [actionMessage, setActionMessage] = useState('');
+  const [viewMode, setViewMode] = useState('detail'); // 'detail' or 'table'
   
   // Job assignment modal state
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -131,20 +135,30 @@ export default function QuoteComparisonPage({ params }) {
 
     try {
       setActing(quoteId);
-      setActionMessage('');
+      setActionMessage('Accepting quote...');
 
-      const { error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'accepted' })
-        .eq('id', quoteId);
+      // Use API route for proper notifications, SMS, and contact reveal
+      const response = await fetch('/api/quote/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteId: quoteId,
+          rfqId: rfq.id,
+          userId: user.id,
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      setActionMessage('✅ Quote accepted successfully!');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to accept quote');
+      }
+
+      setActionMessage('✅ Quote accepted! The vendor has been notified and will contact you soon.');
       setTimeout(() => {
         fetchRFQDetails();
         setActionMessage('');
-      }, 2000);
+      }, 3000);
     } catch (err) {
       console.error('Error accepting quote:', err);
       setActionMessage(`❌ Error: ${err.message}`);
@@ -163,14 +177,20 @@ export default function QuoteComparisonPage({ params }) {
       setActing(quoteId);
       setActionMessage('');
 
-      const { error } = await supabase
-        .from('rfq_responses')
-        .update({ status: 'rejected' })
-        .eq('id', quoteId);
+      const response = await fetch('/api/quote/accept', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteId,
+          rfqId: rfq.id,
+          userId: user.id,
+        }),
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to reject quote');
 
-      setActionMessage('✅ Quote rejected');
+      setActionMessage('✅ Quote rejected — vendor notified');
       setTimeout(() => {
         fetchRFQDetails();
         setActionMessage('');
@@ -207,7 +227,8 @@ export default function QuoteComparisonPage({ params }) {
           rfqId,
           vendorId: selectedQuote.vendor_id,
           startDate: assignmentData.startDate,
-          notes: assignmentData.notes
+          notes: assignmentData.notes,
+          userId: user.id
         })
       });
 
@@ -502,9 +523,33 @@ export default function QuoteComparisonPage({ params }) {
               onClick={() => router.push(`/rfq/${rfqId}/negotiate`)}
               className="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition font-semibold text-orange-700"
             >
-              <MessageCircle className="w-4 h-4" /> Send Messages
+              <MessageCircle className="w-4 h-4" /> Negotiate Quotes
             </button>
           )}
+
+          {/* View Toggle */}
+          <div className="ml-auto flex gap-2">
+            <button
+              onClick={() => setViewMode('detail')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                viewMode === 'detail'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-white border border-slate-300 text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" /> Detailed View
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                viewMode === 'table'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-white border border-slate-300 text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <List className="w-4 h-4" /> Table View
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -514,7 +559,21 @@ export default function QuoteComparisonPage({ params }) {
             <p className="text-xl font-semibold text-slate-900">No quotes received yet</p>
             <p className="text-slate-600 mt-2">Vendors will appear here once they submit their quotes</p>
           </div>
+        ) : viewMode === 'detail' ? (
+          // Detailed Card View
+          <div className="space-y-4">
+            {quotes.map((quote) => (
+              <QuoteDetailCard
+                key={quote.id}
+                quote={quote}
+                vendor={vendors[quote.vendor_id]}
+                isSelected={selectedQuoteId === quote.id}
+                onSelect={() => setSelectedQuoteId(quote.id)}
+              />
+            ))}
+          </div>
         ) : (
+          // Table View
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <QuoteComparisonTable
               quotes={quotes}
@@ -563,9 +622,15 @@ export default function QuoteComparisonPage({ params }) {
               <button
                 onClick={() => {
                   const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
-                  const vendor = vendors[selectedQuote?.vendor_id];
-                  if (vendor?.email) {
-                    window.location.href = `mailto:${vendor.email}`;
+                  if (selectedQuote?.status === 'accepted') {
+                    const vendor = vendors[selectedQuote?.vendor_id];
+                    if (vendor?.email) {
+                      window.location.href = `mailto:${vendor.email}`;
+                    } else {
+                      setActionMessage('❌ No vendor email available');
+                    }
+                  } else {
+                    setActionMessage('ℹ️ Accept the quote or negotiate a deal first. Vendor contact is revealed after acceptance.');
                   }
                 }}
                 className="flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"

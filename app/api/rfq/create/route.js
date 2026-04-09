@@ -213,7 +213,11 @@ export async function POST(request) {
     // 6. CREATE RFQ RECORD - USING CORRECT SCHEMA
     // ============================================================================
     // Map to actual rfqs table schema (only fields that exist)
-    // Don't set assigned_vendor_id if we're not sure the vendor exists
+    // Set assigned_vendor_id for direct RFQs sent to a specific vendor
+    const assignedVendorId = (rfqType === 'direct' || rfqType === 'vendor-request') && selectedVendors.length > 0 
+      ? selectedVendors[0]  // Use first selected vendor for direct RFQs
+      : null;
+    
     const rfqData = {
       user_id: userId, // Required, already validated
       title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
@@ -225,18 +229,21 @@ export async function POST(request) {
       budget_min: sharedFields.budgetMin || null,
       budget_max: sharedFields.budgetMax || null,
       type: rfqType, // 'direct' | 'wizard' | 'public' | 'vendor-request'
-      assigned_vendor_id: null, // Don't set here - let rfq_recipients table handle vendor links
+      assigned_vendor_id: assignedVendorId, // ✅ FIXED: Set vendor ID for direct RFQs
       urgency: sharedFields.urgency || 'normal',
-      status: 'submitted', // Always submitted when created
+      // Public RFQs need admin approval; all others are submitted immediately
+      status: rfqType === 'public' ? 'pending_approval' : 'submitted',
       is_paid: false,
-      visibility: rfqType === 'public' ? 'public' : 'private', // Set visibility based on type
+      // Public RFQs start as 'private' until admin approves (then switched to 'public')
+      visibility: rfqType === 'public' ? 'private' : 'private',
     };
 
     console.log('[RFQ CREATE] Inserting RFQ with data:', { 
       title: rfqData.title, 
       type: rfqData.type, 
       category: rfqData.category,
-      user_id: rfqData.user_id 
+      user_id: rfqData.user_id,
+      assigned_vendor_id: rfqData.assigned_vendor_id // Log vendor ID
     });
 
     const { data: createdRfq, error: createError } = await supabase
@@ -263,6 +270,7 @@ export async function POST(request) {
     // For DIRECT RFQ: Add selected vendors to rfq_recipients table
     if (rfqType === 'direct' && selectedVendors.length > 0) {
       try {
+        // Insert into rfq_recipients (new system)
         const recipientRecords = selectedVendors.map(vendorId => ({
           rfq_id: rfqId,
           vendor_id: vendorId,
@@ -276,9 +284,28 @@ export async function POST(request) {
 
         if (recipientError) {
           console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
-          // Continue - vendor assignment is not critical to RFQ creation
         } else {
-          console.log('[RFQ CREATE] Direct RFQ - Added vendors:', selectedVendors);
+          console.log('[RFQ CREATE] Direct RFQ - Added vendors to rfq_recipients:', selectedVendors);
+        }
+
+        // ALSO insert into rfq_requests for backward compatibility with vendor inbox
+        const requestRecords = selectedVendors.map(vendorId => ({
+          rfq_id: rfqId,
+          vendor_id: vendorId,
+          user_id: userId,
+          project_title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
+          project_description: sharedFields.projectSummary?.trim() || '',
+          status: 'pending',
+        }));
+
+        const { error: requestError } = await supabase
+          .from('rfq_requests')
+          .insert(requestRecords);
+
+        if (requestError) {
+          console.error('[RFQ CREATE] rfq_requests insert error (non-critical):', requestError);
+        } else {
+          console.log('[RFQ CREATE] Direct RFQ - Added to rfq_requests for vendor inbox');
         }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
@@ -286,32 +313,70 @@ export async function POST(request) {
       }
     }
 
-    // For WIZARD RFQ: Auto-match vendors based on category and rating
+    // For WIZARD RFQ: Auto-match vendors using multi-criteria scoring algorithm
+    // If algorithm matches ≥1 vendor → auto-push. If 0 → flag for admin manual review
+    let wizardNeedsAdminReview = false;
+    let wizardMatchCount = 0;
     if (rfqType === 'wizard') {
       try {
         console.log('[RFQ CREATE] Wizard RFQ - Auto-matching vendors for category:', categorySlug);
-        const matched = await autoMatchVendors(rfqId, categorySlug, sharedFields.county);
-        console.log('[RFQ CREATE] Wizard RFQ - Matched', matched.length, 'vendors');
+        const matchResult = await autoMatchVendors(rfqId, categorySlug, sharedFields.county, {
+          town: sharedFields.town,
+          budgetMin: sharedFields.budgetMin,
+          budgetMax: sharedFields.budgetMax,
+        });
+        wizardNeedsAdminReview = matchResult.needsAdminReview;
+        wizardMatchCount = matchResult.vendors.length;
+        console.log('[RFQ CREATE] Wizard RFQ - Matched', wizardMatchCount, 'vendors. Needs admin review:', wizardNeedsAdminReview);
       } catch (err) {
         console.error('[RFQ CREATE] Vendor auto-match error:', err.message);
-        // Continue - auto-match is not critical
+        wizardNeedsAdminReview = true; // If matching crashes, flag for admin
       }
     }
 
-    // For PUBLIC RFQ: Create recipients with top vendors
+    // For PUBLIC RFQ: Create recipients but DON'T notify yet (admin approval required)
+    // Recipients stored as 'pending_approval' — admin must approve before vendors see it
+    let publicHasNoMatches = false;
     if (rfqType === 'public') {
       try {
-        console.log('[RFQ CREATE] Public RFQ - Finding top vendors for category:', categorySlug);
-        await createPublicRFQRecipients(rfqId, categorySlug, sharedFields.county);
+        console.log('[RFQ CREATE] Public RFQ - Pre-matching vendors (pending admin approval)');
+        const publicMatchResult = await createPublicRFQRecipients(rfqId, categorySlug, sharedFields.county, false);
+        if (!publicMatchResult) {
+          publicHasNoMatches = true;
+          console.warn('[RFQ CREATE] Public RFQ - 0 vendors matched for category:', categorySlug);
+          // Notify admins about the zero-match public RFQ
+          try {
+            const { data: admins } = await supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('role', 'admin');
+            if (admins?.length) {
+              await supabase.from('notifications').insert(
+                admins.map(a => ({
+                  user_id: a.user_id,
+                  type: 'admin_rfq_intervention',
+                  title: '⚠️ Public RFQ Has No Vendor Matches',
+                  body: `Public RFQ "${createdRfq.title}" has 0 vendors matching category "${categorySlug}" in ${sharedFields.county || 'any location'}. Consider marking as unsuccessful or manually assigning vendors.`,
+                  metadata: { rfq_id: rfqId, category: categorySlug, county: sharedFields.county || null, reason: 'public_zero_matches', rfq_type: 'public' },
+                  related_id: rfqId,
+                  related_type: 'rfq',
+                }))
+              );
+            }
+          } catch (adminErr) {
+            console.warn('[RFQ CREATE] Admin notification for public zero-match failed:', adminErr.message);
+          }
+        }
       } catch (err) {
         console.error('[RFQ CREATE] Public RFQ recipient error:', err.message);
-        // Continue - vendor assignment is not critical
+        publicHasNoMatches = true;
       }
     }
 
     // For VENDOR-REQUEST RFQ: Add the single pre-selected vendor
     if (rfqType === 'vendor-request' && selectedVendors.length > 0) {
       try {
+        // Insert into rfq_recipients (new system)
         const { error: recipientError } = await supabase
           .from('rfq_recipients')
           .insert({
@@ -324,7 +389,25 @@ export async function POST(request) {
         if (recipientError) {
           console.error('[RFQ CREATE] Vendor recipient error:', recipientError);
         } else {
-          console.log('[RFQ CREATE] Vendor-request RFQ - Added vendor:', selectedVendors[0]);
+          console.log('[RFQ CREATE] Vendor-request RFQ - Added vendor to rfq_recipients:', selectedVendors[0]);
+        }
+
+        // ALSO insert into rfq_requests for backward compatibility with vendor inbox
+        const { error: requestError } = await supabase
+          .from('rfq_requests')
+          .insert({
+            rfq_id: rfqId,
+            vendor_id: selectedVendors[0],
+            user_id: userId,
+            project_title: sharedFields.projectTitle?.trim() || 'Untitled RFQ',
+            project_description: sharedFields.projectSummary?.trim() || '',
+            status: 'pending',
+          });
+
+        if (requestError) {
+          console.error('[RFQ CREATE] rfq_requests insert error (non-critical):', requestError);
+        } else {
+          console.log('[RFQ CREATE] Vendor-request RFQ - Added to rfq_requests for vendor inbox');
         }
       } catch (err) {
         console.error('[RFQ CREATE] Vendor assignment error:', err.message);
@@ -334,10 +417,44 @@ export async function POST(request) {
     // ============================================================================
     // 8. TRIGGER NOTIFICATIONS (async, non-blocking)
     // ============================================================================
-    // Send notifications to vendors in background (don't wait for response)
-    triggerNotifications(rfqId, rfqType, userId, createdRfq.title).catch(err => {
-      console.error('[RFQ CREATE] Notification error (non-critical):', err.message);
-    });
+    // Public RFQs: do NOT notify vendors yet (admin must approve first)
+    // Wizard RFQs needing admin review: notify USER about the review, admin already notified by _flagForAdminReview
+    // All other types: send notifications immediately
+    if (rfqType === 'wizard' && wizardNeedsAdminReview) {
+      // Wizard with 0 matches → notify user their RFQ is being reviewed
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+      const supa = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      supa.from('notifications').insert({
+        user_id: userId,
+        type: 'rfq_under_review',
+        title: 'RFQ Under Review',
+        body: `Your RFQ "${createdRfq.title}" is being reviewed by our team to find the best matching vendors. You'll be notified once we've matched you with relevant vendors.`,
+        metadata: { rfq_id: rfqId, rfq_type: 'wizard', reason: 'admin_intervention' },
+        related_id: rfqId,
+        related_type: 'rfq',
+      }).then(() => {
+        console.log('[RFQ CREATE] ✅ Sent under-review notification to user (wizard needs admin)');
+      }).catch(() => {});
+    } else if (rfqType !== 'public') {
+      triggerNotifications(rfqId, rfqType, userId, createdRfq.title).catch(err => {
+        console.error('[RFQ CREATE] Notification error (non-critical):', err.message);
+      });
+    } else {
+      // Notify the USER that their public RFQ is pending admin review
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+      const supa = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      supa.from('notifications').insert({
+        user_id: userId,
+        type: 'rfq_pending_review',
+        title: 'Public RFQ Submitted for Review',
+        body: `Your public RFQ "${createdRfq.title}" has been submitted and is pending admin approval. You'll be notified once it's approved and visible to vendors.`,
+        metadata: { rfq_id: rfqId, rfq_type: 'public' },
+        related_id: rfqId,
+        related_type: 'rfq',
+      }).then(() => {
+        console.log('[RFQ CREATE] ✅ Sent pending-review notification to user');
+      }).catch(() => {});
+    }
 
     console.log('[RFQ CREATE] Vendor assignment and notifications triggered');
 
@@ -372,14 +489,37 @@ export async function POST(request) {
     // ============================================================================
     // 9. RETURN SUCCESS
     // ============================================================================
+    let successMessage;
+    let responseStatus;
+
+    if (rfqType === 'wizard' && wizardNeedsAdminReview) {
+      successMessage = 'Your RFQ has been submitted and is being reviewed by our team to find the best matching vendors. You\'ll be notified once matched!';
+      responseStatus = 'needs_admin_review';
+    } else if (rfqType === 'wizard') {
+      successMessage = `RFQ auto-matched and sent to ${wizardMatchCount} top vendor${wizardMatchCount !== 1 ? 's' : ''} for your project!`;
+      responseStatus = 'submitted';
+    } else if (rfqType === 'public') {
+      successMessage = 'Your public RFQ has been submitted for admin review. Once approved, it will be visible to vendors in the marketplace.';
+      responseStatus = 'pending_approval';
+    } else if (rfqType === 'vendor-request') {
+      successMessage = 'Your request for quote has been sent to the vendor!';
+      responseStatus = 'submitted';
+    } else {
+      successMessage = 'RFQ sent directly to your selected vendor(s)!';
+      responseStatus = 'submitted';
+    }
+
     console.log('[RFQ CREATE] Success - returning response');
     return NextResponse.json(
       {
         success: true,
         rfqId: rfqId,
         rfqTitle: createdRfq.title,
-        message: `RFQ created successfully! (${rfqType} type)`,
+        message: successMessage,
         rfqType: rfqType,
+        status: responseStatus,
+        needsAdminReview: wizardNeedsAdminReview,
+        vendorCount: wizardMatchCount,
       },
       { status: 201 }
     );

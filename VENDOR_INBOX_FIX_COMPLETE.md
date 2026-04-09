@@ -1,53 +1,36 @@
-# Vendor Inbox Fix - Complete
+# ✅ VENDOR INBOX MESSAGING SYSTEM - COMPLETE FIX
 
-## Problem Identified 🔍
+## 🎯 What Was Fixed
 
-The vendor inbox was empty because **MessagesTab.js was querying the wrong database tables**:
+### Issue #1: Vendor Inbox Not Showing Admin Messages ✅ FIXED
+**Problem:** Vendor couldn't see messages sent by admin in their inbox
+**Root Cause:** `UserVendorMessagesTab.js` filtered for `sender_type='vendor'` only, excluding admin messages (`sender_type='user'`)
+**Solution:** 
+- Created new `VendorInboxMessagesTab.js` component that shows ALL messages
+- Removed sender_type filter to display both admin and peer vendor messages
+- Added clear labels showing "From Admin" vs "From Peer Vendor"
 
-- **Old system** (broken): Used `conversations` and `messages` tables
-- **New system** (correct): Uses `vendor_messages` table for user-vendor messaging
+### Issue #2: Attachments Not Displaying ✅ FIXED
+**Problem:** Admin uploaded images but vendor couldn't see them
+**Root Cause:** Messages saved with attachments array but component didn't parse/display them
+**Solution:**
+- Changed message storage format to JSON: `{ body: text, attachments: [] }`
+- Updated admin send API to store messages as JSON
+- Updated vendor reply API to use same JSON format
+- New component parses attachments and displays as:
+  - Image previews with download links
+  - File attachment cards with size info
+  - Clickable links to open in new tab
 
-When users sent messages through the new API endpoint, they were stored in `vendor_messages`, but the vendor dashboard was trying to find them in the old `conversations` table.
-
-## Solution Implemented ✅
-
-### Updated MessagesTab.js Component
-
-Completely rewrote `components/dashboard/MessagesTab.js` to:
-
-1. **Query vendor_messages table** instead of conversations/messages
-   - Fetches messages where `vendor_id` matches the vendor's profile
-   - Groups messages by `user_id` to create conversation list
-   - Shows unread count from user messages (`sender_type = 'user'`)
-
-2. **Use correct field names**
-   - Changed from `msg.body` to `msg.message_text`
-   - Changed from `msg.sender_id` to `msg.sender_type` ('user' or 'vendor')
-   - Uses `is_read` boolean field (correct for vendor_messages table)
-
-3. **Implement message sending via API**
-   - Uses `/api/vendor/messages/send` endpoint
-   - Sends with `senderType: 'vendor'` to correctly identify vendor messages
-   - Uses bearer token for authentication
-   - Passes both `vendorId` and `userId` for correct conversation context
-
-4. **Display messages correctly**
-   - Vendor messages (sender_type='vendor') display on right side in orange
-   - User messages (sender_type='user') display on left side in white
-   - Both show timestamps and conversation metadata
-
-## Code Changes
-
-### Key Modifications to MessagesTab.js
-
-```javascript
-// Before: Querying wrong table
-const { data: allConversations } = await supabase
-  .from('conversations')  // ❌ Wrong table
-  .select(...);
-
-// After: Querying correct table
-const { data: allMessages } = await supabase
+### Issue #3: No Sender Context ✅ FIXED
+**Problem:** Vendor couldn't distinguish admin messages from peer vendor messages
+**Root Cause:** No label or indicator of message source
+**Solution:**
+- Added `getSenderLabel()` function that returns:
+  - "From Admin" for admin messages (sender_type='user', sender_name='Admin')
+  - "From Peer Vendor" for vendor messages (sender_type='vendor')
+- Display sender label with avatar indicator (A for Admin, V for Vendor)
+- Show sender name clearly in message header
   .from('vendor_messages')  // ✅ Correct table
   .select('*')
   .eq('vendor_id', vendorData.id);

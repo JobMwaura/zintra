@@ -68,16 +68,66 @@ export default function AuthCallback() {
         } else if (type === 'magiclink') {
           console.log('Magic link detected - logging in');
           setStatus('success');
-          setMessage('Authentication successful! Redirecting...');
+          setMessage('Login successful! Redirecting...');
+          
+          // Check URL params for admin flag
+          const urlParams = new URLSearchParams(window.location.search);
+          const isAdminLogin = urlParams.get('admin') === 'true';
+          
+          if (isAdminLogin) {
+            // Verify user is actually an admin
+            const { data: adminData, error: adminError } = await supabase
+              .from('admin_users')
+              .select('id, status')
+              .eq('user_id', data.user.id)
+              .eq('status', 'active')
+              .maybeSingle();
+
+            if (adminData) {
+              const redirectUrl = '/admin/dashboard';
+              setTimeout(() => {
+                window.location.href = redirectUrl;
+              }, 2000);
+              return;
+            } else {
+              setStatus('error');
+              setMessage('❌ Unauthorized: Admin access required');
+              return;
+            }
+          }
+          
+          // Check if user is vendor and redirect accordingly
+          const { data: vendorData } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+
+          const redirectUrl = vendorData 
+            ? `/vendor-profile/${vendorData.id}`
+            : '/user-dashboard';
+
           setTimeout(() => {
-            router.push('/dashboard');
+            window.location.href = redirectUrl;
           }, 2000);
         } else {
           console.log('Email verification/Other type');
           setStatus('success');
           setMessage('Authentication successful! Redirecting...');
+          
+          // Check if user is vendor for other auth types too
+          const { data: vendorData } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+
+          const redirectUrl = vendorData 
+            ? `/vendor-profile/${vendorData.id}`
+            : '/user-dashboard';
+
           setTimeout(() => {
-            router.push('/dashboard');
+            window.location.href = redirectUrl;
           }, 2000);
         }
       } catch (error) {

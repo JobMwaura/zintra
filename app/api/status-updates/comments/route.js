@@ -1,5 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * GET /api/status-updates/comments?updateId=...
@@ -10,14 +15,14 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const updateId = searchParams.get('updateId');
 
+    console.log('📥 GET /api/status-updates/comments - updateId:', updateId);
+
     if (!updateId) {
       return NextResponse.json(
         { message: 'updateId query parameter is required' },
         { status: 400 }
       );
     }
-
-    const supabase = await createClient();
 
     // Fetch comments with user info
     const { data: comments, error: commentsError } = await supabase
@@ -26,8 +31,7 @@ export async function GET(request) {
         id,
         content,
         user_id,
-        created_at,
-        auth_users:user_id(id, email, user_metadata)
+        created_at
       `)
       .eq('update_id', updateId)
       .order('created_at', { ascending: true })
@@ -43,14 +47,42 @@ export async function GET(request) {
 
     console.log('✅ Fetched', comments?.length || 0, 'comments for update:', updateId);
 
+    // Fetch user details for all comments
+    let enrichedComments = comments || [];
+    if (comments && comments.length > 0) {
+      const userIds = [...new Set(comments.map(c => c.user_id))];
+      
+      // Fetch user data from auth.users
+      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+      
+      if (!usersError && users) {
+        const userMap = {};
+        users.forEach(user => {
+          userMap[user.id] = {
+            email: user.email,
+            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous User',
+            avatar: user.user_metadata?.avatar_url,
+          };
+        });
+        
+        // Enrich comments with user info
+        enrichedComments = comments.map(comment => ({
+          ...comment,
+          userName: userMap[comment.user_id]?.name || 'Anonymous User',
+          userEmail: userMap[comment.user_id]?.email,
+          userAvatar: userMap[comment.user_id]?.avatar,
+        }));
+      }
+    }
+
     return NextResponse.json({
-      comments: comments || [],
-      count: comments?.length || 0,
+      comments: enrichedComments || [],
+      count: enrichedComments?.length || 0,
     });
   } catch (error) {
     console.error('❌ Comments fetch error:', error);
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
+      { message: 'Internal server error', error: error.message, stack: error.stack },
       { status: 500 }
     );
   }
@@ -62,11 +94,14 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
-    const { updateId, content } = await request.json();
+    const body = await request.json();
+    const { updateId, content, userId } = body;
 
-    if (!updateId || !content) {
+    console.log('📝 Incoming POST request:', { updateId, contentLength: content?.length, userId });
+
+    if (!updateId || !content || !userId) {
       return NextResponse.json(
-        { message: 'updateId and content are required' },
+        { message: 'updateId, content, and userId are required' },
         { status: 400 }
       );
     }
@@ -85,23 +120,8 @@ export async function POST(request) {
       );
     }
 
-    const supabase = await createClient();
-
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { message: 'User not authenticated' },
-        { status: 401 }
-      );
-    }
-
     console.log('💬 Creating comment for update:', updateId);
-    console.log('   By user:', user.id);
+    console.log('   By user:', userId);
     console.log('   Content length:', content.length);
 
     // Insert comment
@@ -109,7 +129,7 @@ export async function POST(request) {
       .from('vendor_status_update_comments')
       .insert({
         update_id: updateId,
-        user_id: user.id,
+        user_id: userId,
         content: content.trim(),
       })
       .select()
@@ -148,8 +168,7 @@ export async function POST(request) {
         id,
         content,
         user_id,
-        created_at,
-        auth_users:user_id(id, email, user_metadata)
+        created_at
       `)
       .eq('id', comment.id)
       .single();

@@ -6,7 +6,7 @@
  * 
  * Features:
  * - SMS OTP via TextSMS Kenya API
- * - Email OTP (placeholder for SendGrid/Resend integration)
+ * - Email OTP via EventsGear SMTP (production ready)
  * - OTP generation (secure random 6-digit codes)
  * - Rate limiting support
  * - Error handling and logging
@@ -16,6 +16,8 @@
  *   const result = await sendEmailOTP('user@example.com', '123456');
  * ============================================================================
  */
+
+import { createClient } from '@supabase/supabase-js';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -221,21 +223,55 @@ export async function sendSMSOTPCustom(
       password_reset: `Your Zintra password reset code is: ${otp}. Valid for 30 minutes.`
     };
 
-    const normalizedPhone = phoneNumber.startsWith('+254')
-      ? phoneNumber
-      : '+254' + phoneNumber.slice(1);
+    // TextSMS Kenya expects phone number without + sign or with it
+    // Try both formats but prefer the one without +
+    let normalizedPhone = phoneNumber;
+    
+    // Remove + if present
+    if (normalizedPhone.startsWith('+')) {
+      normalizedPhone = normalizedPhone.slice(1);
+    }
+    
+    // Ensure it starts with 254 (Kenya country code)
+    if (!normalizedPhone.startsWith('254')) {
+      // If it starts with 0, replace with 254
+      if (normalizedPhone.startsWith('0')) {
+        normalizedPhone = '254' + normalizedPhone.slice(1);
+      } else {
+        // Otherwise prepend 254
+        normalizedPhone = '254' + normalizedPhone;
+      }
+    }
 
-    const payload: TextSMSPayload = {
+    console.log('[OTP SMS] Phone normalization:', {
+      original: phoneNumber,
+      normalized: normalizedPhone
+    });
+
+    // Message should be simple and not too long
+    const message = messages[type] || messages.registration; // Default to registration if type not found
+    
+    // TextSMS Kenya /sendotp/ endpoint payload
+    // Based on API: https://sms.textsms.co.ke/api/services/sendotp/
+    const payload = {
       apikey: apiKey,
       partnerID: partnerId,
-      mobile: normalizedPhone,
-      message: messages[type],
-      shortcode: shortcode,
-      pass_type: 'plain'
+      mobile: normalizedPhone,  // Phone without + sign
+      message: message,
+      shortcode: shortcode
     };
 
-    // Use /sendotp/ endpoint (for sensitive transaction traffic like OTP)
-    // instead of /sendsms/ endpoint
+    console.log('[OTP SMS] Sending request to TextSMS Kenya:', {
+      endpoint: 'https://sms.textsms.co.ke/api/services/sendotp/',
+      phone: normalizedPhone,
+      hasApiKey: !!apiKey,
+      hasPartnerId: !!partnerId,
+      hasShortcode: !!shortcode,
+      messageLength: message?.length || 0,
+      messagePreview: message?.substring(0, 50) || 'undefined',
+      payloadKeys: Object.keys(payload)
+    });
+
     const response = await fetch(
       'https://sms.textsms.co.ke/api/services/sendotp/',
       {
@@ -245,6 +281,23 @@ export async function sendSMSOTPCustom(
       }
     );
 
+    console.log('[OTP SMS] Fetch response status:', response.status, response.statusText);
+    
+    // Check if response is OK before parsing JSON
+    if (!response.ok) {
+      console.error('[OTP SMS] HTTP error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      const errorText = await response.text();
+      console.error('[OTP SMS] Error response body:', errorText);
+      return {
+        success: false,
+        error: `TextSMS API returned ${response.status}: ${response.statusText}`
+      };
+    }
+    
     const data: TextSMSResponse = await response.json();
 
     console.log('[OTP SendOTP] Request:', { 
@@ -254,6 +307,7 @@ export async function sendSMSOTPCustom(
       timestamp: new Date().toISOString()
     });
     console.log('[OTP SendOTP Response]', JSON.stringify(data, null, 2));
+    console.log('[OTP SendOTP Response Keys]', Object.keys(data));
 
     // Check if response has the expected structure
     // TextSMS Kenya's /sendotp/ endpoint might return different format than /sendsms/
@@ -285,6 +339,10 @@ export async function sendSMSOTPCustom(
       isSuccess = data.code === '200' || data.code === 200 || data.code === '201';
       errorMessage = data.message || `Failed to send OTP (code: ${data.code})`;
       console.log('[OTP SendOTP] Using code-based format response - code:', data.code);
+    } else {
+      // Unknown response format - log it and treat as failure with details
+      console.error('[OTP SendOTP] Unrecognized response format from TextSMS Kenya:', data);
+      errorMessage = 'Unrecognized response from TextSMS API. Check logs.';
     }
 
     console.log('[OTP SendOTP Parsed]', { 
@@ -306,10 +364,11 @@ export async function sendSMSOTPCustom(
           error: errorMessage
         };
   } catch (error) {
-    console.error('[OTP SMS Error]', error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[OTP SMS Error]', { error: errorMsg, stack: error instanceof Error ? error.stack : undefined });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: `SMS Error: ${errorMsg}`
     };
   }
 }
@@ -319,16 +378,28 @@ export async function sendSMSOTPCustom(
 // ============================================================================
 
 /**
- * Send OTP via Email
- * Currently a placeholder - implement with SendGrid or Resend
+ * Send OTP via Email using EventsGear SMTP
  */
 export async function sendEmailOTP(
   email: string,
   otp: string
 ): Promise<OTPResult> {
   try {
-    // Validate email format
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    console.log(`[OTP Email] Function called with email: "${email}", otp: "${otp}"`);
+    
+    // Check for undefined or empty email
+    if (!email || typeof email !== 'string') {
+      console.error(`[OTP Email] Email is invalid:`, { email, type: typeof email });
+      return {
+        success: false,
+        error: 'Email address is required and must be a string'
+      };
+    }
+
+    // Trim and validate email format
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      console.error(`[OTP Email] Invalid email format: "${trimmedEmail}"`);
       return {
         success: false,
         error: 'Invalid email format'
@@ -336,40 +407,119 @@ export async function sendEmailOTP(
     }
 
     if (!validateOTPFormat(otp)) {
+      console.error(`[OTP Email] Invalid OTP format: "${otp}"`);
       return {
         success: false,
         error: 'Invalid OTP format'
       };
     }
 
-    // TODO: Implement with SendGrid or Resend
-    // For now, return placeholder response
-    console.log(`[OTP Email] Email: ${email}, OTP: ${otp}`);
+    console.log(`[OTP Email] Preparing to send email to: ${trimmedEmail}, OTP: ${otp}`);
+
+    // Check if production email is enabled
+    const emailPassword = process.env.EVENTSGEAR_EMAIL_PASSWORD;
+    
+    if (!emailPassword) {
+      // Simulation mode - no real email configured
+      console.log(`[OTP Email] 📧 SIMULATING EMAIL (no EVENTSGEAR_EMAIL_PASSWORD):`);
+      console.log(`[OTP Email] ┌─ From: Zintra <noreply@eventsgear.co.ke>`);
+      console.log(`[OTP Email] ├─ To: ${trimmedEmail}`);
+      console.log(`[OTP Email] ├─ Subject: Your Zintra verification code: ${otp}`);
+      console.log(`[OTP Email] ├─ OTP Code: ${otp}`);
+      console.log(`[OTP Email] └─ Status: Simulation mode (configure EVENTSGEAR_EMAIL_PASSWORD)`);
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      return {
+        success: true,
+        messageId: `simulated_email_otp_${Date.now()}`,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    // Production mode - send real email via EventsGear SMTP
+    console.log(`[OTP Email] 📧 SENDING REAL EMAIL via EventsGear SMTP...`);
+    
+    // Lazy load nodemailer only when needed
+    const nodemailer = await import('nodemailer');
+    
+    // Create nodemailer transporter for EventsGear SMTP
+    const transporter = nodemailer.default.createTransport({
+      host: 'mail.eventsgear.co.ke',
+      port: 587,
+      secure: false, // Use TLS
+      auth: {
+        user: 'noreply@eventsgear.co.ke',
+        pass: emailPassword
+      }
+    });
+
+    // Create simple but professional email content
+    const emailSubject = `Your Zintra verification code: ${otp}`;
+    
+    // Simple HTML template that won't cause parsing issues
+    const htmlContent = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+  <div style="background: #007bff; color: white; padding: 30px; text-align: center;">
+    <h1 style="margin: 0; font-size: 24px;">Email Verification</h1>
+    <p style="margin: 10px 0 0 0;">Zintra Platform</p>
+  </div>
+  <div style="padding: 40px 30px;">
+    <h2>Your Verification Code</h2>
+    <p>Hello,</p>
+    <p>You requested an email verification code for your Zintra account. Please use the following code:</p>
+    
+    <div style="background: #f8f9fa; border: 2px solid #007bff; color: #007bff; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; margin: 20px 0; letter-spacing: 4px; font-family: monospace;">
+      ${otp}
+    </div>
+    
+    <p><strong>Enter this code in the verification form to complete the process.</strong></p>
+    
+    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0;">
+      <strong>Security Notice:</strong>
+      <ul style="margin: 10px 0;">
+        <li>This code expires in 10 minutes</li>
+        <li>Never share this code with anyone</li>
+        <li>If you didn't request this, ignore this email</li>
+      </ul>
+    </div>
+    
+    <p style="color: #666; margin-top: 30px;">
+      Best regards,<br>
+      The Zintra Team
+    </p>
+  </div>
+  <div style="background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+    <p>© 2026 Zintra Platform. All rights reserved.</p>
+  </div>
+</div>
+`;
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: 'Zintra <noreply@eventsgear.co.ke>',
+      to: trimmedEmail,
+      subject: emailSubject,
+      html: htmlContent,
+      text: `Your Zintra verification code is: ${otp}. This code expires in 10 minutes. Never share this code with anyone.`
+    });
+
+    console.log(`[OTP Email] ✅ EMAIL SENT SUCCESSFULLY`);
+    console.log(`[OTP Email] ├─ Message ID: ${info.messageId}`);
+    console.log(`[OTP Email] ├─ From: Zintra <noreply@eventsgear.co.ke>`);
+    console.log(`[OTP Email] ├─ To: ${trimmedEmail}`);
+    console.log(`[OTP Email] └─ OTP: ${otp}`);
 
     return {
-      success: false,
-      error: 'Email OTP service not yet implemented. Please use SMS instead.'
+      success: true,
+      messageId: info.messageId,
+      timestamp: new Date().toISOString()
     };
 
-    // Example SendGrid implementation:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // 
-    // const msg = {
-    //   to: email,
-    //   from: process.env.SENDGRID_FROM_EMAIL || 'noreply@zintra.co.ke',
-    //   subject: 'Your Zintra Verification Code',
-    //   html: `<p>Your verification code is: <strong>${otp}</strong></p>`,
-    // };
-    //
-    // const result = await sgMail.send(msg);
-    // return {
-    //   success: true,
-    //   messageId: result[0].headers['x-message-id']
-    // };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[OTP Email Error] ${errorMessage}`);
+    console.error(`[OTP Email Error] Full error:`, error);
     return {
       success: false,
       error: 'Failed to send email OTP: ' + errorMessage

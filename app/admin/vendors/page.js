@@ -18,6 +18,7 @@ import {
   User,
   Download,
   MessageSquare,
+  X,
 } from 'lucide-react';
 
 const statusOptions = ['all', 'pending', 'active', 'suspended', 'rejected', 'flagged'];
@@ -52,15 +53,19 @@ export default function VendorsAdminPage() {
     try {
       setLoading(true);
       setMessage('');
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('vendors')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
       if (error) {
         setMessage(`Error loading vendors: ${error.message}`);
         setLoading(false);
         return;
       }
+      console.log('Total vendors in database:', count);
+      console.log('Vendors fetched:', data?.length);
+      console.log('Active vendors:', data?.filter(v => v.status === 'active').length);
+      console.log('Vendors data:', data);
       setVendors(data || []);
       setSelected([]);
       setLoading(false);

@@ -33,6 +33,7 @@ import CertificationManager from '@/components/vendor-profile/CertificationManag
 import HighlightsManager from '@/components/vendor-profile/HighlightsManager';
 import CategoryManagement from '@/components/vendor-profile/CategoryManagement';
 import SubscriptionPanel from '@/components/vendor-profile/SubscriptionPanel';
+import VerificationStatusCard from '@/components/vendor-profile/VerificationStatusCard';
 import ReviewResponses from '@/components/vendor-profile/ReviewResponses';
 import StatusUpdateModal from '@/components/vendor-profile/StatusUpdateModal';
 import StatusUpdateCard from '@/components/vendor-profile/StatusUpdateCard';
@@ -46,6 +47,9 @@ import PortfolioProjectModal from '@/components/vendor-profile/PortfolioProjectM
 import EditPortfolioProjectModal from '@/components/vendor-profile/EditPortfolioProjectModal';
 import PortfolioEmptyState from '@/components/vendor-profile/PortfolioEmptyState';
 import EditAboutModal from '@/components/vendor-profile/EditAboutModal';
+import VendorInboxMessagesTabV2 from '@/components/VendorInboxMessagesTabV2';
+import VendorInboxModal from '@/components/VendorInboxModal';
+import ZCCCreditsCard from '@/components/vendor-profile/ZCCCreditsCard';
 
 export default function VendorProfilePage() {
   const params = useParams();
@@ -67,8 +71,10 @@ export default function VendorProfilePage() {
 
   // Modal visibility states
   const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showInboxModal, setShowInboxModal] = useState(false);
   const [showHoursEditor, setShowHoursEditor] = useState(false);
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [showCertManager, setShowCertManager] = useState(false);
@@ -99,6 +105,55 @@ export default function VendorProfilePage() {
   const [reviews, setReviews] = useState([]);
   const [subscription, setSubscription] = useState(null);
   const [daysRemaining, setDaysRemaining] = useState(null);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  // Fetch unread message count for this vendor
+  useEffect(() => {
+    if (!vendorId) return;
+
+    const fetchUnreadMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('vendor_messages')
+          .select('id')
+          .eq('vendor_id', vendorId)
+          .eq('sender_type', 'user')
+          .eq('is_read', false);
+
+        if (error) {
+          console.error('Error fetching unread messages:', error);
+          return;
+        }
+
+        setUnreadMessageCount(data?.length || 0);
+      } catch (err) {
+        console.error('Error:', err);
+      }
+    };
+
+    fetchUnreadMessages();
+
+    // Real-time subscription for instant updates
+    const channel = supabase
+      .channel(`vendor_messages_${vendorId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'vendor_messages',
+        filter: `vendor_id=eq.${vendorId}`
+      }, () => {
+        fetchUnreadMessages();
+      })
+      .subscribe();
+
+    // Fallback polling every 30 seconds (not 3s — too aggressive for Safari)
+    const pollInterval = setInterval(fetchUnreadMessages, 30000);
+
+    return () => {
+      clearInterval(pollInterval);
+      channel?.unsubscribe();
+    };
+  }, [vendorId]);
 
   // Fetch vendor and related data
   useEffect(() => {
@@ -135,8 +190,50 @@ export default function VendorProfilePage() {
                 return;
               }
 
+              // Regenerate presigned URLs for vendor profile images (logo, cover)
+              let processedVendorData = vendorData;
+              const vendorImagesToRegenerate = [];
+              
+              if (vendorData.logo_url) {
+                vendorImagesToRegenerate.push(vendorData.logo_url);
+              }
+              if (vendorData.cover_image_url) {
+                vendorImagesToRegenerate.push(vendorData.cover_image_url);
+              }
+
+              if (vendorImagesToRegenerate.length > 0) {
+                try {
+                  console.log('🔄 Regenerating', vendorImagesToRegenerate.length, 'vendor profile image URLs');
+                  
+                  const response = await fetch('/api/vendor-profile/regenerate-image-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      imageUrls: vendorImagesToRegenerate,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    const { regeneratedUrls } = await response.json();
+                    console.log('✅ Received fresh presigned URLs for vendor images');
+                    
+                    // Update vendor data with fresh URLs
+                    if (vendorData.logo_url && regeneratedUrls[vendorData.logo_url]) {
+                      processedVendorData.logo_url = regeneratedUrls[vendorData.logo_url];
+                    }
+                    if (vendorData.cover_image_url && regeneratedUrls[vendorData.cover_image_url]) {
+                      processedVendorData.cover_image_url = regeneratedUrls[vendorData.cover_image_url];
+                    }
+                  } else {
+                    console.warn('⚠️ Failed to regenerate vendor image URLs, using originals');
+                  }
+                } catch (err) {
+                  console.warn('⚠️ Error regenerating vendor image URLs:', err);
+                }
+              }
+
               if (isMounted) {
-                setVendor(vendorData);
+                setVendor(processedVendorData);
               }
 
               // Fetch products
@@ -145,7 +242,57 @@ export default function VendorProfilePage() {
                 .select('*')
                 .eq('vendor_id', vendorId)
                 .order('created_at', { ascending: false });
-              if (isMounted && productData) setProducts(productData);
+              
+              if (isMounted && productData) {
+                // Regenerate presigned URLs for product images
+                // Handles both old (full presigned URLs) and new (S3 keys) formats
+                // Only regenerate if images exist
+                const productsWithImages = productData.filter(p => p.image_url);
+                
+                if (productsWithImages.length > 0) {
+                  try {
+                    // Collect all image URLs to regenerate (both formats)
+                    const imageUrlsToRegenerate = productsWithImages.map(p => p.image_url);
+                    
+                    console.log('🔄 Regenerating', imageUrlsToRegenerate.length, 'product image URLs');
+                    
+                    // Call API to regenerate all URLs at once
+                    const response = await fetch('/api/products/get-images', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        imageKeys: imageUrlsToRegenerate,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const { presignedUrls } = await response.json();
+                      console.log('✅ Received fresh presigned URLs for products');
+                      
+                      // Update products with fresh URLs
+                      const productsWithFreshUrls = productData.map(product => {
+                        if (product.image_url && presignedUrls[product.image_url]) {
+                          return {
+                            ...product,
+                            image_url: presignedUrls[product.image_url],
+                          };
+                        }
+                        return product;
+                      });
+                      
+                      setProducts(productsWithFreshUrls);
+                    } else {
+                      console.warn('⚠️ Failed to regenerate product image URLs, using originals');
+                      setProducts(productData);
+                    }
+                  } catch (err) {
+                    console.warn('⚠️ Error regenerating product image URLs:', err);
+                    setProducts(productData);
+                  }
+                } else {
+                  setProducts(productData);
+                }
+              }
 
               // Fetch services
               const { data: serviceData } = await supabase
@@ -214,38 +361,134 @@ export default function VendorProfilePage() {
     };
 
     if (vendorId) fetchData();
-  }, [vendorId, authLoading, authUser]);
+  }, [vendorId, authLoading, authUser?.id]);
 
-  const canEdit =
-    !!currentUser &&
-    (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
+  const canEdit = useMemo(() => {
+    const result = !!currentUser &&
+      (!!vendor?.user_id ? vendor.user_id === currentUser.id : vendor?.email === currentUser.email);
+    return result;
+  }, [currentUser?.id, currentUser?.email, vendor?.user_id, vendor?.email]);
 
   // Fetch RFQ Inbox data for vendor
   useEffect(() => {
-    // RFQ inbox feature disabled - requires get_vendor_rfq_inbox RPC function
-    // This feature will be re-enabled once the RPC function is properly created in Supabase
     const fetchRFQData = async () => {
       if (!canEdit || !vendor?.id) return;
       
       try {
         setRfqLoading(true);
-        // Commented out until get_vendor_rfq_inbox RPC function is created
-        // const { data: rfqs, error } = await supabase.rpc('get_vendor_rfq_inbox', {
-        //   p_vendor_id: vendor.id
-        // });
 
-        // Set empty data to prevent errors
-        setRfqInboxData([]);
-        setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
+        // Query 0: Fetch declined rfq_ids so we can exclude them
+        const { data: declinedResponses, error: declinedErr } = await supabase
+          .from('rfq_responses')
+          .select('rfq_id')
+          .eq('vendor_id', vendor.id)
+          .eq('status', 'declined');
+
+        if (declinedErr) {
+          console.error('Error loading declined responses:', declinedErr);
+        }
+
+        const declinedRfqIds = new Set((declinedResponses || []).map(r => r.rfq_id));
+        
+        // Query 1: Get RFQs from rfq_requests table (legacy direct RFQs)
+        const { data: directRfqs, error: directError } = await supabase
+          .from('rfq_requests')
+          .select('*')
+          .eq('vendor_id', vendor.id)
+          .order('created_at', { ascending: false });
+
+        if (directError) {
+          console.error('Error loading rfq_requests:', directError);
+        }
+
+        // Query 2: Get RFQs directly assigned to this vendor (new system)
+        const { data: assignedRfqs, error: assignedError } = await supabase
+          .from('rfqs')
+          .select('*')
+          .eq('assigned_vendor_id', vendor.id)
+          .order('created_at', { ascending: false });
+
+        if (assignedError) {
+          console.error('Error loading assigned rfqs:', assignedError);
+        }
+
+        // Combine both sources, avoiding duplicates and declined RFQs
+        const allRfqIds = new Set();
+        const combinedRfqs = [];
+
+        // Add assigned RFQs first (new system - more complete data) — skip declined
+        (assignedRfqs || []).forEach(rfq => {
+          if (!allRfqIds.has(rfq.id) && !declinedRfqIds.has(rfq.id)) {
+            allRfqIds.add(rfq.id);
+            combinedRfqs.push({
+              id: rfq.id,
+              title: rfq.title || rfq.project_title || 'Untitled RFQ',
+              category: rfq.category || 'General',
+              county: rfq.county || rfq.location || 'Not specified',
+              rfq_type: rfq.type || 'direct',
+              rfq_type_label: rfq.type === 'direct' ? 'Direct RFQ' : 'Public RFQ',
+              quote_count: rfq.quote_count || 0,
+              total_quotes: rfq.total_quotes || 0,
+              viewed_at: rfq.viewed_at,
+              created_at: rfq.created_at,
+              status: rfq.status || 'pending',
+              description: rfq.description,
+              budget_range: rfq.budget_range,
+              deadline: rfq.deadline,
+              user_id: rfq.user_id
+            });
+          }
+        });
+
+        // Add legacy rfq_requests (for backward compatibility) — skip declined
+        (directRfqs || []).forEach(rfq => {
+          // Check if we already have this RFQ (by rfq_id if present) or if it's declined
+          const rfqId = rfq.rfq_id || rfq.id;
+          if (rfq.rfq_id && allRfqIds.has(rfq.rfq_id)) return;
+          if (!rfq.rfq_id && allRfqIds.has(rfq.id)) return;
+          if (declinedRfqIds.has(rfqId)) return;
+          
+          allRfqIds.add(rfqId);
+          combinedRfqs.push({
+            id: rfqId,
+            title: rfq.project_title || 'Untitled RFQ',
+            category: rfq.category || 'General',
+            county: rfq.county || 'Not specified',
+            rfq_type: 'direct',
+            rfq_type_label: 'Direct RFQ',
+            quote_count: 0,
+            total_quotes: 0,
+            viewed_at: null,
+            created_at: rfq.created_at,
+            status: rfq.status || 'pending',
+            description: rfq.description,
+            user_id: rfq.user_id
+          });
+        });
+
+        // Sort by created_at descending
+        combinedRfqs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        setRfqInboxData(combinedRfqs);
+        
+        // Calculate stats
+        const stats = {
+          total: combinedRfqs.length,
+          unread: combinedRfqs.filter(r => r.viewed_at === null).length,
+          pending: combinedRfqs.filter(r => r.status === 'pending').length,
+          with_quotes: combinedRfqs.filter(r => r.quote_count > 0).length
+        };
+        setRfqStats(stats);
       } catch (err) {
         console.error('Error loading RFQ data:', err);
+        setRfqInboxData([]);
+        setRfqStats({ total: 0, unread: 0, pending: 0, with_quotes: 0 });
       } finally {
         setRfqLoading(false);
       }
     };
 
     fetchRFQData();
-    // Removed setInterval to prevent repeated connection errors
     return () => {};
   }, [vendor?.id, canEdit]);
 
@@ -297,9 +540,21 @@ export default function VendorProfilePage() {
         
         // Handle all responses gracefully - even 500 errors should return empty array
         const data = await response.json();
-        const { projects } = data;
+        let { projects } = data;
         
         console.log('✅ Portfolio projects fetched:', projects?.length || 0);
+        
+        // Sort projects: featured first, then by creation date (newest first)
+        if (projects && projects.length > 0) {
+          projects.sort((a, b) => {
+            // Featured projects first
+            if (a.isfeatured && !b.isfeatured) return -1;
+            if (!a.isfeatured && b.isfeatured) return 1;
+            // Then by creation date (newest first)
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+          });
+        }
+        
         setPortfolioProjects(projects || []);
       } catch (err) {
         console.error('Error fetching portfolio projects:', err);
@@ -330,13 +585,69 @@ export default function VendorProfilePage() {
 
         const { updates } = await response.json();
         console.log('✅ Status updates fetched:', updates?.length || 0);
-        console.log('📋 Update IDs:', updates?.map(u => u.id) || []);
-        setStatusUpdates(prev => {
-          console.log('🔹 useEffect setState - replacing with fetched updates');
-          return updates || [];
+        
+        // STRICT validation - all required fields must be present and non-null/non-empty
+        const validUpdates = (updates || []).filter(u => {
+          // Check update object exists
+          if (!u || typeof u !== 'object') {
+            console.warn('⚠️ Invalid update: not an object', u);
+            return false;
+          }
+          
+          // Check ID
+          if (!u.id || typeof u.id !== 'string') {
+            console.warn('⚠️ Invalid update: missing or invalid id', { id: u.id, update: u });
+            return false;
+          }
+          
+          // Check content - MUST be a non-empty string
+          if (!u.content || typeof u.content !== 'string' || !u.content.trim()) {
+            console.warn('⚠️ Invalid update: missing, invalid type, or empty content', { 
+              id: u.id,
+              content: u.content,
+              contentType: typeof u.content 
+            });
+            return false;
+          }
+          
+          // Check created_at - MUST be a valid date string or Date
+          if (!u.created_at) {
+            console.warn('⚠️ Invalid update: missing created_at', { id: u.id });
+            return false;
+          }
+          
+          // Verify created_at is a valid date
+          try {
+            const dateCheck = new Date(u.created_at);
+            if (isNaN(dateCheck.getTime())) {
+              console.warn('⚠️ Invalid update: created_at is not a valid date', { 
+                id: u.id, 
+                created_at: u.created_at 
+              });
+              return false;
+            }
+          } catch (e) {
+            console.warn('⚠️ Invalid update: created_at parse error', { 
+              id: u.id, 
+              created_at: u.created_at,
+              error: e.message 
+            });
+            return false;
+          }
+          
+          // All checks passed
+          console.log('✅ Valid update:', u.id, '- content length:', u.content.length);
+          return true;
         });
+        
+        console.log('✅ Valid updates after strict filtering:', validUpdates.length, 'of', updates?.length || 0);
+        if (validUpdates.length !== (updates?.length || 0)) {
+          console.warn(`⚠️ Filtered out ${(updates?.length || 0) - validUpdates.length} invalid/incomplete updates`);
+        }
+        
+        setStatusUpdates(validUpdates || []);
       } catch (err) {
-        console.error('Error fetching status updates:', err);
+        console.error('❌ Error fetching status updates:', err);
         setStatusUpdates([]);
       }
     };
@@ -470,25 +781,71 @@ export default function VendorProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+    if (file.size > maxSize) {
+      console.error('File too large:', file.size);
+      alert('File too large. Maximum size: 10MB');
+      return;
+    }
+
+    if (!allowedTypes.includes(file.type)) {
+      console.error('Invalid file type:', file.type);
+      alert('Invalid file type. Allowed: JPEG, PNG, WebP, GIF');
+      return;
+    }
+
     try {
       setUploadingLogo(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `logos/${vendor.id}/vendor-${vendor.id}-${Date.now()}.${fileExt}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from('vendor-assets')
-        .upload(fileName, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('vendor-assets').getPublicUrl(data.path);
-      const publicUrl = urlData?.publicUrl;
-
-      if (publicUrl) {
-        await supabase.from('vendors').update({ logo_url: publicUrl }).eq('id', vendor.id);
-        setVendor((prev) => ({ ...prev, logo_url: publicUrl }));
+      // Get current user session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('Not authenticated');
       }
+
+      // Upload through server (bypasses CORS)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('vendorId', vendor.id);
+
+      const uploadResponse = await fetch('/api/vendor-profile/upload-direct', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const { fileUrl } = await uploadResponse.json();
+      console.log('✅ Uploaded vendor profile image via server');
+
+      // Save S3 URL to database
+      const { error: updateError } = await supabase
+        .from('vendors')
+        .update({ 
+          logo_url: fileUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', vendor.id);
+
+      if (updateError) throw updateError;
+
+      console.log('✅ Updated vendor profile with new image');
+
+      // Step 4: Update local state
+      setVendor((prev) => ({ ...prev, logo_url: fileUrl }));
+      console.log('✅ Vendor profile image upload complete');
     } catch (err) {
-      console.error('Logo upload failed:', err);
+      console.error('❌ Logo upload failed:', err);
+      alert('Failed to upload image: ' + err.message);
     } finally {
       setUploadingLogo(false);
     }
@@ -500,6 +857,29 @@ export default function VendorProfilePage() {
       window.location.href = '/';
     } catch (err) {
       console.error('Logout error:', err);
+    }
+  };
+
+  const deleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('vendor_products')
+        .delete()
+        .eq('id', productId)
+        .eq('vendor_id', vendor.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProducts(products.filter(p => p.id !== productId));
+      console.log('✅ Product deleted successfully');
+    } catch (err) {
+      console.error('❌ Failed to delete product:', err);
+      alert('Failed to delete product: ' + err.message);
     }
   };
 
@@ -529,33 +909,13 @@ export default function VendorProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Bar */}
-      {canEdit && (
-        <nav className="bg-white border-b border-slate-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="flex items-center">
-                <img src="/zintrass-new-logo.png" alt="Zintra" className="h-8 w-auto" />
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
-                <LogOut className="w-5 h-5" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </nav>
-      )}
-
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-xl font-bold overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="relative flex-shrink-0">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-lg sm:text-xl font-bold overflow-hidden">
                   {vendor?.logo_url ? (
                     <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-cover" />
                   ) : (
@@ -580,11 +940,11 @@ export default function VendorProfilePage() {
                 />
               </div>
 
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold text-slate-900">{vendor.company_name}</h1>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-sm font-semibold">
-                    <ShieldCheck className="w-4 h-4" /> Verified
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 break-words">{vendor.company_name}</h1>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm font-semibold flex-shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Verified
                   </span>
                 </div>
                 
@@ -601,7 +961,7 @@ export default function VendorProfilePage() {
                   </div>
                 )}
                 
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 mt-1">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700 mt-1">
                   {vendor.location && (
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -636,19 +996,24 @@ export default function VendorProfilePage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {/* Show Inbox & Quotes buttons when vendor is logged into their own profile */}
               {canEdit ? (
                 <>
-                  <Link
-                    href="/vendor-messages"
-                    className="inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-4 py-2 font-semibold hover:bg-amber-700 transition"
+                  <button
+                    onClick={() => setShowInboxModal(true)}
+                    className="relative inline-flex items-center gap-2 rounded-lg bg-amber-600 text-white px-3 sm:px-4 py-2 font-semibold text-sm hover:bg-amber-700 transition"
                   >
                     <MessageSquare className="w-5 h-5" /> Inbox
-                  </Link>
+                    {unreadMessageCount > 0 && (
+                      <span className="absolute -top-2 -right-2 inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full shadow-lg border-2 border-white">
+                        {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                      </span>
+                    )}
+                  </button>
                   <Link
                     href="/vendor-quotes"
-                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100 transition"
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 sm:px-4 py-2 text-amber-800 font-semibold text-sm hover:bg-amber-100 transition"
                   >
                     📋 Quotes
                   </Link>
@@ -658,13 +1023,13 @@ export default function VendorProfilePage() {
                   {/* Show Contact & Request Quote buttons when viewing other vendors */}
                   <button
                     onClick={() => setShowMessaging(true)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 font-semibold hover:bg-amber-100"
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 sm:px-4 py-2 text-amber-800 font-semibold text-sm hover:bg-amber-100"
                   >
-                    <MessageSquare className="w-5 h-5" /> Contact Vendor
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" /> Contact Vendor
                   </button>
                   <button
                     onClick={() => router.push(`/post-rfq/vendor-request?vendorId=${vendor.id}`)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 sm:px-4 py-2 text-slate-700 font-semibold text-sm hover:border-slate-300 hover:bg-slate-50"
                   >
                     Request Quote
                   </button>
@@ -716,39 +1081,39 @@ export default function VendorProfilePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-sm text-slate-600">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-slate-600">
             <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-500" />
               {averageRating || '4.9'} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
             </div>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-1">
-              <Heart className="w-4 h-4 text-red-500 fill-red-500" />
+              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500 fill-red-500" />
               {profileStats.likes_count} {profileStats.likes_count === 1 ? 'like' : 'likes'}
             </div>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-1">
               👁️ {profileStats.views_count} {profileStats.views_count === 1 ? 'view' : 'views'}
             </div>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <span className="capitalize">Plan: {vendor.plan || 'Free'}</span>
-            <span className="w-px h-4 bg-slate-200" />
+            <span className="hidden sm:block w-px h-4 bg-slate-200" />
             <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4 text-slate-500" /> {vendor.response_time || '24 hrs'} response time
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500" /> {vendor.response_time || '24 hrs'} response
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2">
+        <div className="flex gap-1 sm:gap-2 mb-6 border-b border-slate-200 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {['updates', 'portfolio', 'products', 'services', 'reviews', ...(canEdit ? ['categories', 'rfqs'] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-semibold text-sm border-b-2 transition whitespace-nowrap ${
+              className={`px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 sm:gap-2 ${
                 activeTab === tab
                   ? 'border-amber-600 text-amber-700'
                   : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -756,6 +1121,17 @@ export default function VendorProfilePage() {
             >
               {tab === 'updates'
                 ? 'Updates'
+                : tab === 'inbox'
+                ? (
+                  <>
+                    📧 Inbox
+                    {unreadMessageCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                        {unreadMessageCount}
+                      </span>
+                    )}
+                  </>
+                )
                 : tab === 'rfqs'
                 ? 'RFQ Inbox'
                 : tab === 'categories'
@@ -768,7 +1144,7 @@ export default function VendorProfilePage() {
         </div>
 
         {/* Tab Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 sm:gap-6">
           {/* Left Column */}
           <div className="space-y-6">
             {/* Portfolio Tab */}
@@ -912,12 +1288,46 @@ export default function VendorProfilePage() {
                       setSelectedProject(null);
                     }}
                     onSave={async (updatedData) => {
-                      // TODO: Implement save to API
-                      console.log('Save project:', updatedData);
-                      // For now just refresh
-                      setShowEditProjectModal(false);
-                      // Refresh portfolio projects
-                      // await fetchPortfolioProjects();
+                      try {
+                        console.log('💾 Saving project:', updatedData);
+                        const response = await fetch(`/api/portfolio/projects/${selectedProject.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            title: updatedData.title,
+                            description: updatedData.description,
+                            categoryslug: updatedData.categorySlug,
+                            status: updatedData.status,
+                            budgetmin: updatedData.budgetMin,
+                            budgetmax: updatedData.budgetMax,
+                            timeline: updatedData.timeline,
+                            location: updatedData.location,
+                            completiondate: updatedData.completionDate,
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          const error = await response.json();
+                          throw new Error(error.message || 'Failed to update project');
+                        }
+
+                        const { project: updatedProject } = await response.json();
+                        console.log('✅ Project updated successfully');
+
+                        // Update local state
+                        setPortfolioProjects(prev =>
+                          prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+                        );
+
+                        setShowEditProjectModal(false);
+                        setSelectedProject(null);
+                        alert('Project updated successfully!');
+                      } catch (err) {
+                        console.error('❌ Save error:', err);
+                        alert('Failed to save project: ' + err.message);
+                      }
                     }}
                     onDelete={async () => {
                       try {
@@ -966,7 +1376,24 @@ export default function VendorProfilePage() {
                   
                   {statusUpdates.length > 0 ? (
                     <div className="space-y-4">
-                      {statusUpdates.map((update) => (
+                      {statusUpdates
+                        .filter(update => {
+                          // Safety check: verify all required fields exist before rendering
+                          if (!update || !update.id) {
+                            console.warn('⚠️ Render filter: Invalid update - missing id', update);
+                            return false;
+                          }
+                          if (!update.content || typeof update.content !== 'string') {
+                            console.warn('⚠️ Render filter: Invalid update - invalid content', { id: update.id, content: update.content });
+                            return false;
+                          }
+                          if (!update.created_at) {
+                            console.warn('⚠️ Render filter: Invalid update - missing created_at', { id: update.id });
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((update) => (
                         <StatusUpdateCard
                           key={update.id}
                           update={update}
@@ -1074,19 +1501,118 @@ export default function VendorProfilePage() {
             {products.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
                 {products.map((product) => (
-                  <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-200 transition p-4">
-                    {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="aspect-[4/3] rounded-lg object-cover mb-3"
-                      />
-                    )}
-                    <h4 className="font-semibold text-slate-900">{product.name}</h4>
-                    <p className="text-sm text-slate-600 mb-2">{product.price}</p>
-                    <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
-                      {product.status || 'In Stock'}
-                    </span>
+                  <div key={product.id} className="rounded-lg border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden bg-white group">
+                    {/* Image Container */}
+                    <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden flex items-center justify-center">
+                      {product.image_url ? (
+                        <>
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              console.warn('❌ Product image failed to load:', product.image_url);
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = '<svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" /></svg>';
+                            }}
+                          />
+                          {/* Status Badge */}
+                          <div className="absolute top-3 right-3">
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
+                              {product.status || 'In Stock'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-16 h-16 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-8 3 4 2.5-4 3.5 6z" />
+                          </svg>
+                          {/* Status Badge */}
+                          <div className="absolute top-3 right-3">
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
+                              {product.status || 'In Stock'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="p-4">
+                      {/* Category Badge */}
+                      {product.category && (
+                        <span className="inline-block bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full mb-2">
+                          {product.category}
+                        </span>
+                      )}
+                      
+                      {/* Product Name */}
+                      <h4 className="font-bold text-slate-900 text-base mb-2 line-clamp-2">
+                        {product.name}
+                      </h4>
+                      
+                      {/* Description */}
+                      {product.description && (
+                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">
+                          {product.description}
+                        </p>
+                      )}
+                      
+                      {/* Pricing Section */}
+                      <div className="mb-3 space-y-1">
+                        {/* Sale Price (if available) */}
+                        {product.sale_price ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold text-emerald-600">
+                              KSh {Number(product.sale_price).toLocaleString()}
+                            </span>
+                            <span className="text-sm font-medium text-slate-500 line-through">
+                              KSh {Number(product.price).toLocaleString()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-lg font-bold text-slate-900">
+                            KSh {Number(product.price || 0).toLocaleString()}
+                          </span>
+                        )}
+                        
+                        {/* Offer Label */}
+                        {product.offer_label && (
+                          <span className="inline-block bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded">
+                            🔥 {product.offer_label}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Unit */}
+                      {product.unit && (
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                          Per: {product.unit}
+                        </p>
+                      )}
+                      
+                      {/* Edit/Delete Actions (for vendor only) */}
+                      {canEdit && (
+                        <div className="flex gap-2 mt-4 pt-4 border-t border-slate-200">
+                          <button
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setShowProductModal(true);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold text-sm py-2 rounded-lg transition"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => deleteProduct(product.id)}
+                            className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-700 hover:bg-red-100 font-semibold text-sm py-2 rounded-lg transition"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1446,6 +1972,19 @@ export default function VendorProfilePage() {
             </section>
           )}
 
+          {/* ZCC Credits Card - Only show to vendor */}
+          {canEdit && (
+            <ZCCCreditsCard vendorId={vendorId} canEdit={canEdit} />
+          )}
+
+          {/* Verification Status Card */}
+          {canEdit && (
+            <VerificationStatusCard 
+              vendor={vendor}
+              canEdit={canEdit}
+            />
+          )}
+
           {/* Subscription Info */}
           {canEdit && (
             <section 
@@ -1508,10 +2047,21 @@ export default function VendorProfilePage() {
       {showProductModal && (
         <ProductUploadModal
           vendor={vendor}
-          onClose={() => setShowProductModal(false)}
-          onSuccess={(newProduct) => {
-            setProducts([newProduct, ...products]);
+          editingProduct={editingProduct}
+          onClose={() => {
             setShowProductModal(false);
+            setEditingProduct(null);
+          }}
+          onSuccess={(updatedProduct) => {
+            if (editingProduct) {
+              // Update existing product in list
+              setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+            } else {
+              // Add new product to list
+              setProducts([updatedProduct, ...products]);
+            }
+            setShowProductModal(false);
+            setEditingProduct(null);
           }}
         />
       )}
@@ -1640,6 +2190,7 @@ export default function VendorProfilePage() {
           rfqType="direct"
           isOpen={showDirectRFQ}
           onClose={() => setShowDirectRFQ(false)}
+          vendorId={vendor.id}
           vendorCategories={[
             vendor.primaryCategorySlug,
             ...(vendor.secondaryCategories || [])
@@ -1655,6 +2206,16 @@ export default function VendorProfilePage() {
           vendorName={vendor.company_name}
           userId={currentUser.id}
           onClose={() => setShowMessaging(false)}
+        />
+      )}
+
+      {/* Vendor Inbox Modal */}
+      {canEdit && (
+        <VendorInboxModal
+          isOpen={showInboxModal}
+          onClose={() => setShowInboxModal(false)}
+          vendorId={vendorId}
+          currentUser={currentUser}
         />
       )}
     </div>

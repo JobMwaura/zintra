@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { checkRfqResponseGate } from '@/lib/billing/gates';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -208,7 +209,7 @@ export async function POST(request, { params }) {
     // Get vendor profile - query vendors table (not vendor_profiles)
     const { data: vendorProfile } = await supabase
       .from('vendors')
-      .select('id, name, rating')
+      .select('id, company_name, rating')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -218,6 +219,20 @@ export async function POST(request, { params }) {
     if (!vendorId) {
       return NextResponse.json(
         { error: 'Vendor profile not found. Please complete your vendor registration first.' },
+        { status: 403 }
+      );
+    }
+
+    // ── Sprint B: Check RFQ response limit by vendor tier ──
+    const rfqGate = await checkRfqResponseGate(vendorId, user.id);
+    if (!rfqGate.allowed) {
+      return NextResponse.json(
+        {
+          error: rfqGate.reason,
+          upgrade: rfqGate.upgrade,
+          limit: rfqGate.limit,
+          active: rfqGate.active,
+        },
         { status: 403 }
       );
     }
@@ -373,7 +388,7 @@ export async function POST(request, { params }) {
           warranty: warranty || null,
           payment_terms: payment_terms || null,
           status: 'submitted',
-          vendor_name: vendorProfile?.business_name || 'Vendor',
+          vendor_name: vendorProfile?.company_name || 'Vendor',
           vendor_rating: vendorProfile?.rating || 0
         }
       ])
@@ -403,22 +418,16 @@ export async function POST(request, { params }) {
     }
 
     // Update RFQ recipient status if applicable
-    if (rfq.type === 'direct') {
-      await supabase
-        .from('rfq_recipients')
-        .update({ status: 'responded' })
-        .eq('rfq_id', rfq_id)
-        .eq('vendor_id', vendorProfile.id);
-    }
+    await supabase
+      .from('rfq_recipients')
+      .update({ status: 'responded' })
+      .eq('rfq_id', rfq_id)
+      .eq('vendor_id', vendorProfile.id);
 
-    // Fetch requester info for notification
-    const { data: requester } = await supabase
-      .from('users')
-      .select('email, user_metadata->>first_name')
-      .eq('id', rfq.user_id)
-      .single();
-
-    // Create notification (can be enhanced with actual email/SMS)
+    // =========================================================================
+    // NOTIFICATION 1: Notify the BUYER (RFQ requester) — quote has been submitted
+    // The buyer sees the vendor name but not the other way around
+    // =========================================================================
     const { error: notifError } = await supabase
       .from('notifications')
       .insert([
@@ -426,17 +435,57 @@ export async function POST(request, { params }) {
           user_id: rfq.user_id,
           type: 'rfq_response',
           title: 'New Quote Received',
-          message: `${vendorProfile.business_name} submitted a quote for "${rfq.title}"`,
-          resource_type: 'rfq_response',
-          resource_id: response.id,
-          data: {
+          body: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for "${rfq.title}"`,
+          related_type: 'rfq',
+          related_id: rfq_id,
+          metadata: {
             rfq_id: rfq_id,
-            vendor_name: vendorProfile.business_name,
-            quoted_price: quoted_price,
+            response_id: response.id,
+            vendor_name: vendorProfile?.company_name || 'Vendor',
+            quoted_price: total_price_calculated || quoted_price,
             currency: currency
           }
         }
       ]);
+
+    if (notifError) {
+      console.error('Error creating buyer notification:', notifError);
+    }
+
+    // =========================================================================
+    // NOTIFICATION 2: Notify all ADMINS — vendor has submitted a quote
+    // Admin sees: which vendor, which RFQ, and that it went to the user
+    // =========================================================================
+    try {
+      const { data: admins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+
+      if (admins?.length) {
+        const adminNotifs = admins.map(a => ({
+          user_id: a.user_id,
+          type: 'admin_quote_submitted',
+          title: '📩 Vendor Quote Submitted',
+          body: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for RFQ "${rfq.title}". The quote has been delivered to the requester.`,
+          related_type: 'rfq',
+          related_id: rfq_id,
+          metadata: {
+            rfq_id: rfq_id,
+            response_id: response.id,
+            vendor_id: vendorProfile.id,
+            vendor_name: vendorProfile?.company_name || 'Vendor',
+            quoted_price: total_price_calculated || quoted_price,
+            rfq_type: rfq.type,
+          }
+        }));
+
+        await supabase.from('notifications').insert(adminNotifs);
+        console.log('[QUOTE SUBMIT] ✅ Notified', admins.length, 'admin(s) about vendor quote submission');
+      }
+    } catch (adminErr) {
+      console.error('Admin notification error (non-critical):', adminErr.message);
+    }
 
     // Log audit trail
     await supabase
@@ -450,7 +499,8 @@ export async function POST(request, { params }) {
           details: {
             rfq_id: rfq_id,
             vendor_id: vendorProfile.id,
-            quoted_price: quoted_price,
+            vendor_name: vendorProfile?.company_name,
+            quoted_price: total_price_calculated || quoted_price,
             timestamp: new Date().toISOString()
           }
         }
@@ -467,10 +517,9 @@ export async function POST(request, { params }) {
           status: response.status,
           created_at: response.created_at
         },
-        message: 'Quote submitted successfully',
+        message: 'Quote submitted successfully! The buyer will be notified.',
         rfq_info: {
           rfq_title: rfq.title,
-          requester_name: requester?.user_metadata?.first_name || 'Customer',
           total_responses: responseCount + 1
         }
       },

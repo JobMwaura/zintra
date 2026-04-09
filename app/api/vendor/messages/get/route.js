@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { generateFileAccessUrl } from '@/lib/aws-s3';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -105,6 +106,87 @@ export async function GET(request) {
 
       if (updateError) {
         console.error('⚠️ Failed to mark messages as read:', updateError);
+      }
+
+      // Regenerate presigned URLs for message attachment images
+      console.log('🔄 Processing', messages.length, 'messages for image URL regeneration');
+      for (const msg of messages) {
+        try {
+          let attachments = [];
+          
+          // Parse message_text to extract attachments
+          if (typeof msg.message_text === 'string') {
+            try {
+              const parsed = JSON.parse(msg.message_text);
+              attachments = parsed.attachments || [];
+            } catch (e) {
+              // Not JSON, skip
+              continue;
+            }
+          } else if (typeof msg.message_text === 'object' && msg.message_text !== null) {
+            attachments = msg.message_text.attachments || [];
+          }
+
+          // Regenerate presigned URLs for image attachments
+          if (attachments.length > 0) {
+            console.log('  📎 Processing', attachments.length, 'attachments in message');
+            for (const att of attachments) {
+              if (!att.url) continue;
+              
+              try {
+                // Check if URL is an S3 URL or key that needs regeneration
+                if (typeof att.url === 'string' && att.url.includes('amazonaws.com')) {
+                  // Extract S3 key from S3 URL (presigned or direct)
+                  const urlObj = new URL(att.url);
+                  let path = urlObj.pathname.replace(/^\//, ''); // Remove leading slash
+
+                  // If path starts with bucket name, remove it
+                  if (path.includes('/')) {
+                    const parts = path.split('/');
+                    if (parts[0] === process.env.AWS_S3_BUCKET) {
+                      path = parts.slice(1).join('/');
+                    }
+                  }
+
+                  // Decode URI component (handle %20 for spaces, etc)
+                  const extractedKey = decodeURIComponent(path);
+                  console.log('    🔐 Regenerating presigned URL for attachment');
+                  
+                  try {
+                    const freshUrl = await generateFileAccessUrl(extractedKey);
+                    att.url = freshUrl;
+                    console.log('    ✅ Fresh presigned URL generated');
+                  } catch (urlErr) {
+                    console.warn('    ⚠️ Failed to regenerate URL:', urlErr.message);
+                    // Keep original URL as fallback
+                  }
+                } else if (typeof att.url === 'string' && !att.url.startsWith('http')) {
+                  // It's an S3 key, generate fresh presigned URL
+                  const freshUrl = await generateFileAccessUrl(att.url);
+                  att.url = freshUrl;
+                  console.log('    ✅ Fresh presigned URL generated from S3 key');
+                }
+              } catch (error) {
+                console.warn('    ⚠️ Failed to process attachment URL:', error.message);
+              }
+            }
+
+            // Update message_text with regenerated URLs
+            if (typeof msg.message_text === 'string') {
+              try {
+                const parsed = JSON.parse(msg.message_text);
+                parsed.attachments = attachments;
+                msg.message_text = JSON.stringify(parsed);
+              } catch (e) {
+                // Skip if not JSON
+              }
+            } else if (typeof msg.message_text === 'object' && msg.message_text !== null) {
+              msg.message_text.attachments = attachments;
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Error processing message attachments:', error.message);
+        }
       }
     }
 

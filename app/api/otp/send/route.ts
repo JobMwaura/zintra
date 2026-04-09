@@ -29,10 +29,20 @@ import { sendSMSOTP, sendSMSOTPCustom, sendEmailOTP, generateOTP, isOTPExpired }
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+let supabase: any = null;
+
+try {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+  } else {
+    console.warn('[OTP Send] Supabase environment variables not configured');
+  }
+} catch (error) {
+  console.error('[OTP Send] Error initializing Supabase:', error);
+}
 
 // ============================================================================
 // TYPES
@@ -178,21 +188,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
     // IMPORTANT: Invalidate previous unverified OTPs for this contact
     // This prevents users from using old OTP codes
     try {
-      if (validatedPhone) {
-        await supabase
-          .from('otp_verifications')
-          .delete()
-          .eq('phone_number', validatedPhone)
-          .eq('verified', false);
-        console.log('[OTP Send] Cleaned up previous unverified OTPs for phone');
-      }
-      if (validatedEmail) {
-        await supabase
-          .from('otp_verifications')
-          .delete()
-          .eq('email_address', validatedEmail)
-          .eq('verified', false);
-        console.log('[OTP Send] Cleaned up previous unverified OTPs for email');
+      if (supabase) {
+        if (validatedPhone) {
+          await supabase
+            .from('otp_verifications')
+            .delete()
+            .eq('phone_number', validatedPhone)
+            .eq('verified', false);
+          console.log('[OTP Send] Cleaned up previous unverified OTPs for phone');
+        }
+        if (validatedEmail) {
+          await supabase
+            .from('otp_verifications')
+            .delete()
+            .eq('email_address', validatedEmail)
+            .eq('verified', false);
+          console.log('[OTP Send] Cleaned up previous unverified OTPs for email');
+        }
       }
     } catch (cleanupError) {
       console.log('[OTP Send] Note: Could not cleanup previous OTPs:', cleanupError);
@@ -222,7 +234,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
       console.log(`[OTP Send - ${requestId}] SMS result:`, smsResult);
     }
 
-    if (channels.includes('email') && validatedEmail) {
+    // If SMS failed and we have an email, try email as fallback
+    if (channels.includes('sms') && !smsResult?.success && validatedEmail) {
+      console.log(`[OTP Send - ${requestId}] SMS failed, trying email as fallback`);
+      emailResult = await sendEmailOTP(validatedEmail, otp);
+    } else if (channels.includes('email') && validatedEmail) {
       emailResult = await sendEmailOTP(validatedEmail, otp);
     }
 
@@ -236,17 +252,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
       if (smsResult?.error) errors.push(`SMS: ${smsResult.error}`);
       if (emailResult?.error) errors.push(`Email: ${emailResult.error}`);
 
+      const errorMessage = errors.join(' | ') || 'Failed to send OTP via all channels';
+      console.error(`[OTP Send - ${requestId}] All channels failed:`, { errors, smsResult, emailResult });
+
       return NextResponse.json(
         {
           success: false,
-          error: errors.join(' | ') || 'Failed to send OTP via all channels'
+          error: errorMessage
         },
         { status: 500 }
       );
     }
 
     // Store OTP record in database for verification
-    if (anySuccess) {
+    if (anySuccess && supabase) {
       try {
         const insertResult = await supabase.from('otp_verifications').insert({
           id: otpId,
@@ -265,6 +284,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SendOTPRe
         console.error(`[OTP Send - ${requestId}] Database error storing OTP:`, dbError);
         // Don't fail the request if DB storage fails - OTP was still sent
       }
+    } else if (anySuccess && !supabase) {
+      console.warn('[OTP Send] Supabase not available - OTP sent but not stored in database');
     }
 
     // Return success response

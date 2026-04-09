@@ -121,6 +121,21 @@ export default function PublicRFQDetailPage() {
     );
   }
 
+  // Block access to private/pending RFQs unless the user is the creator or an admin
+  const isCreator = user && rfq.user_id === user.id;
+  if (rfq.visibility === 'private' && !isCreator) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center text-gray-500">
+        <AlertTriangle size={40} className="mx-auto mb-3 text-amber-400" />
+        <p className="text-lg font-medium">This RFQ is not yet public</p>
+        <p className="text-sm mt-2">This request is currently under review and not available for viewing.</p>
+        <Link href="/post-rfq" className="inline-block mt-4 text-orange-600 hover:text-orange-700">
+          ← Back to RFQ Marketplace
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
       {/* Breadcrumb */}
@@ -273,7 +288,7 @@ export default function PublicRFQDetailPage() {
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/auth/login"
+              href="/login"
               className="inline-flex items-center justify-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition-colors"
             >
               <LogIn className="w-5 h-5" />

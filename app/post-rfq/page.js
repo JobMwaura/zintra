@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import { Users, TrendingUp, Building2, CheckCircle, ArrowRight, Clock, MessageSquare, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import AuthGuard from '../../components/AuthGuard';
+import RFQDetailModal from '@/components/RFQDetailModal';
 
 function PostRFQContent() {
   const router = useRouter();
@@ -16,6 +17,31 @@ function PostRFQContent() {
   const [quoteStats, setQuoteStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedRFQ, setSelectedRFQ] = useState(null);
+  const [showRFQModal, setShowRFQModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isVendor, setIsVendor] = useState(false);
+  const [vendorProfile, setVendorProfile] = useState(null);
+
+  // Check auth and vendor status
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+      if (user) {
+        const { data: vendor } = await supabase
+          .from('vendors')
+          .select('id, company_name, verified, status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (vendor) {
+          setIsVendor(true);
+          setVendorProfile(vendor);
+        }
+      }
+    };
+    checkUser();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -31,10 +57,10 @@ function PostRFQContent() {
           (async () => {
             const { data, error: fetchError } = await supabase
               .from('rfqs')
-              .select('id, title, description, category, budget_range, location, county, deadline, status, created_at')
-              .eq('rfq_type', 'public')
+              .select('id, title, description, category_slug, budget_min, budget_max, budget_range, location, county, deadline, status, created_at, type')
+              .eq('type', 'public')
               .eq('visibility', 'public')
-              .eq('status', 'open')
+              .in('status', ['approved', 'open', 'active'])
               .order('created_at', { ascending: false });
 
             if (!isMounted) return;
@@ -303,19 +329,15 @@ function PostRFQContent() {
                   const daysLeft = calculateDaysLeft(rfq.deadline);
                   const quoteCount = quoteStats[rfq.id] || 0;
 
-                  const handleViewRFQ = async () => {
-                    // Track the view
-                    try {
-                      await fetch('/api/track-rfq-view', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rfqId: rfq.id }),
-                      });
-                    } catch (err) {
-                      console.error('Error tracking view:', err);
-                    }
-                    // Navigate to RFQ details
-                    router.push(`/rfq/${rfq.id}`);
+                  const handleViewRFQ = () => {
+                    setSelectedRFQ(rfq);
+                    setShowRFQModal(true);
+                    // Track the view in background
+                    fetch('/api/track-rfq-view', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ rfqId: rfq.id }),
+                    }).catch(() => {});
                   };
 
                   return (
@@ -336,15 +358,21 @@ function PostRFQContent() {
                       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                         <div>
                           <p className="text-gray-500 font-semibold text-xs">Budget</p>
-                          <p className="font-bold text-gray-900">{rfq.budget_range}</p>
+                          <p className="font-bold text-gray-900">
+                            {rfq.budget_min && rfq.budget_max
+                              ? `KES ${Number(rfq.budget_min).toLocaleString()} - ${Number(rfq.budget_max).toLocaleString()}`
+                              : rfq.budget_range || 'Flexible'}
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-500 font-semibold text-xs">Location</p>
-                          <p className="font-bold text-gray-900">{rfq.county}</p>
+                          <p className="font-bold text-gray-900">{rfq.county || rfq.location || 'Kenya'}</p>
                         </div>
                         <div>
                           <p className="text-gray-500 font-semibold text-xs">Category</p>
-                          <p className="font-bold text-gray-900 text-xs line-clamp-1">{rfq.category}</p>
+                          <p className="font-bold text-gray-900 text-xs line-clamp-1 capitalize">
+                            {rfq.category_slug ? rfq.category_slug.replace(/-/g, ' ') : rfq.category || 'General'}
+                          </p>
                         </div>
                         {daysLeft !== null && (
                           <div>
@@ -371,7 +399,7 @@ function PostRFQContent() {
                         className="w-full text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-all mt-auto"
                         style={{ backgroundColor: '#ca8637' }}
                       >
-                        View & Quote
+                        View RFQ
                       </button>
                     </div>
                   );
@@ -381,6 +409,17 @@ function PostRFQContent() {
           </div>
         </div>
       </div>
+
+      {/* RFQ Detail Modal */}
+      <RFQDetailModal
+        rfq={selectedRFQ}
+        isOpen={showRFQModal}
+        onClose={() => { setShowRFQModal(false); setSelectedRFQ(null); }}
+        user={currentUser}
+        isVendor={isVendor}
+        vendorProfile={vendorProfile}
+        quoteCount={selectedRFQ ? (quoteStats[selectedRFQ.id] || 0) : 0}
+      />
     </div>
   );
 }

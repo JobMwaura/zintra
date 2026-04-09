@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   Search,
+  Bell,
+  LayoutDashboard,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -74,15 +76,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo & Brand */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold">
+          <Link href="/" className="flex items-center gap-2 group hover:opacity-80 transition">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition">
               Z
             </div>
-            <span className="font-bold text-gray-900 hidden sm:inline">Zintra</span>
+            <span className="font-bold text-gray-900 hidden sm:inline text-lg">Zintra</span>
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             <Link
               href="/"
               className="flex items-center gap-2 text-gray-700 hover:text-orange-500 transition"
@@ -106,6 +108,26 @@ export default function Navbar() {
               <FileText className="w-4 h-4" />
               <span className="text-sm font-medium">Post RFQ</span>
             </Link>
+
+            {currentUser && (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 text-gray-700 hover:text-orange-500 transition"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span className="text-sm font-medium">Dashboard</span>
+                </Link>
+
+                <Link
+                  href="/notifications"
+                  className="flex items-center gap-2 text-gray-700 hover:text-orange-500 transition relative"
+                >
+                  <Bell className="w-4 h-4" />
+                  <span className="text-sm font-medium">Notifications</span>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Right Side: User Menu / Auth */}
@@ -127,20 +149,65 @@ export default function Navbar() {
 
                     {/* User Dropdown Menu */}
                     {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                        {/* User Info Header */}
+                        <div className="px-4 py-3 border-b border-gray-200">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account</p>
+                          <p className="text-sm font-medium text-gray-900 truncate mt-1">
+                            {currentUser.user_metadata?.full_name || 'User'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">
+                            {currentUser.email}
+                          </p>
+                        </div>
+
+                        {/* Menu Items */}
+                        <Link
+                          href="/dashboard"
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          <span className="text-sm font-medium">Dashboard</span>
+                        </Link>
+
                         <Link
                           href="/my-profile"
-                          className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
+                          onClick={() => setShowUserMenu(false)}
                         >
                           <User className="w-4 h-4" />
-                          <span className="text-sm">My Profile</span>
+                          <span className="text-sm font-medium">My Profile</span>
                         </Link>
+
+                        <Link
+                          href="/notifications"
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <Bell className="w-4 h-4" />
+                          <span className="text-sm font-medium">Notifications</span>
+                        </Link>
+
+                        <Link
+                          href="/rfq-dashboard"
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span className="text-sm font-medium">My RFQs</span>
+                        </Link>
+
+                        {/* Divider */}
+                        <div className="border-t border-gray-200 my-2"></div>
+
+                        {/* Sign Out */}
                         <button
                           onClick={handleLogout}
-                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-red-700 hover:bg-red-50 transition"
+                          className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition"
                         >
                           <LogOut className="w-4 h-4" />
-                          <span className="text-sm">Sign Out</span>
+                          <span className="text-sm font-medium">Sign Out</span>
                         </button>
                       </div>
                     )}
@@ -152,7 +219,7 @@ export default function Navbar() {
                         Sign In
                       </button>
                     </Link>
-                    <Link href="/register">
+                    <Link href="/user-registration">
                       <button className="px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
                         Sign Up
                       </button>
@@ -198,12 +265,58 @@ export default function Navbar() {
               </button>
             </Link>
             {currentUser && (
-              <Link href="/my-profile">
-                <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3">
-                  <User className="w-4 h-4" />
-                  <span className="text-sm font-medium">My Profile</span>
-                </button>
-              </Link>
+              <>
+                <Link href="/dashboard">
+                  <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3">
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span className="text-sm font-medium">Dashboard</span>
+                  </button>
+                </Link>
+                <Link href="/notifications">
+                  <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3">
+                    <Bell className="w-4 h-4" />
+                    <span className="text-sm font-medium">Notifications</span>
+                  </button>
+                </Link>
+                <Link href="/my-profile">
+                  <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3">
+                    <User className="w-4 h-4" />
+                    <span className="text-sm font-medium">My Profile</span>
+                  </button>
+                </Link>
+                <Link href="/rfq-dashboard">
+                  <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-3">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-sm font-medium">My RFQs</span>
+                  </button>
+                </Link>
+
+                {/* Mobile Sign Out */}
+                <div className="border-t border-gray-200 mt-2 pt-2">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition flex items-center gap-3"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm font-medium">Sign Out</span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!currentUser && (
+              <div className="border-t border-gray-200 mt-2 pt-2 flex gap-2 px-4">
+                <Link href="/login" className="flex-1">
+                  <button className="w-full py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    Sign In
+                  </button>
+                </Link>
+                <Link href="/user-registration" className="flex-1">
+                  <button className="w-full py-2 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
+                    Sign Up
+                  </button>
+                </Link>
+              </div>
             )}
           </div>
         )}

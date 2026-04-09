@@ -29,6 +29,7 @@ export default function EditPortfolioProjectModal({
     timeline: project?.timeline || '',
     location: project?.location || '',
     completionDate: project?.completionDate ? new Date(project.completionDate).toISOString().split('T')[0] : '',
+    isFeatured: project?.isFeatured || false,
   });
 
   const [images, setImages] = useState(project?.images || []);
@@ -317,6 +318,24 @@ export default function EditPortfolioProjectModal({
                   <span className="text-sm text-slate-700">Published</span>
                 </label>
               </div>
+            </div>
+
+            {/* Featured Project */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.isFeatured}
+                  onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
+                  className="w-5 h-5 cursor-pointer"
+                />
+                <div>
+                  <span className="text-sm font-semibold text-amber-900">⭐ Featured Project</span>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Featured projects appear first in your portfolio
+                  </p>
+                </div>
+              </label>
             </div>
 
             {/* Action Buttons */}

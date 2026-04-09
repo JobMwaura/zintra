@@ -1,13 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Heart, MessageCircle, Share2, MoreVertical, ChevronLeft, ChevronRight, Edit2, Trash2, X, Smile } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import ReactionPicker from './ReactionPicker';
+import EditCommentModal from './EditCommentModal';
 
 export default function StatusUpdateCard({ update, vendor, currentUser, onDelete }) {
+  const router = useRouter();
+  
+  // Safety check FIRST - before any hooks
+  // This prevents React from trying to call hooks on invalid data
+  if (!update || !update.id || !update.content || !update.created_at) {
+    console.error('❌ StatusUpdateCard: Critical validation failed - component unmountable', {
+      hasUpdate: !!update,
+      hasId: !!update?.id,
+      hasContent: !!update?.content,
+      hasCreatedAt: !!update?.created_at,
+      contentType: typeof update?.content,
+      createdAtType: typeof update?.created_at,
+      fullUpdate: update
+    });
+    return null;
+  }
+  
+  // Hooks MUST be called before any conditional checks
+  // Use optional chaining on ALL update properties
   const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(update.likes_count || 0);
-  const [commentsCount, setCommentsCount] = useState(update.comments_count || 0);
+  const [likesCount, setLikesCount] = useState(update?.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(update?.comments_count || 0);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +38,10 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentContent, setEditingCommentContent] = useState('');
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  
   // Handle both old format (array of strings) and new format (array of objects)
   const images = update.images || [];
   const imageUrls = images.map(img => 
@@ -106,6 +131,16 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
 
   const handleAddComment = async (e) => {
     e.preventDefault();
+    
+    // Check if user is signed in
+    if (!currentUser || !currentUser.id) {
+      // Store the current URL so we can return after login
+      const currentUrl = window.location.href;
+      sessionStorage.setItem('redirectAfterLogin', currentUrl);
+      router.push('/login');
+      return;
+    }
+    
     if (!commentText.trim()) return;
 
     setLoading(true);
@@ -116,6 +151,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
         body: JSON.stringify({
           updateId: update.id,
           content: commentText.trim(),
+          userId: currentUser.id,
         }),
       });
 
@@ -146,6 +182,8 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
     try {
       const response = await fetch(`/api/status-updates/comments/${commentId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser?.id }),
       });
 
       if (!response.ok) {
@@ -160,6 +198,47 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       setCommentsCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error('❌ Error deleting comment:', err);
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentContent(comment.content);
+  };
+
+  const handleSaveEdit = async (newContent) => {
+    if (!editingCommentId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/status-updates/comments/${editingCommentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          content: newContent,
+          userId: currentUser?.id 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update comment');
+      }
+
+      const data = await response.json();
+      console.log('✅ Comment updated:', editingCommentId);
+
+      // Update comment in list
+      setComments(prev => 
+        prev.map(c => c.id === editingCommentId ? data.comment : c)
+      );
+      setEditingCommentId(null);
+      setEditingCommentContent('');
+    } catch (err) {
+      console.error('❌ Error updating comment:', err);
       alert(err.message);
     } finally {
       setLoading(false);
@@ -263,7 +342,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
               {vendor?.company_name || 'Unknown Vendor'}
             </h4>
             <p className="text-xs text-slate-500">
-              {formatTime(update.created_at)}
+              {update?.created_at ? formatTime(update.created_at) : 'Unknown date'}
             </p>
           </div>
         </div>
@@ -316,7 +395,7 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       {/* Content */}
       <div className="px-4 py-3">
         <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
-          {update.content}
+          {update?.content || '(No content)'}
         </p>
       </div>
 
@@ -387,46 +466,70 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
       )}
 
       {/* Stats */}
-      <div className="px-4 py-3 flex items-center justify-between text-sm text-slate-600 border-b border-slate-100">
-        <button className="flex items-center gap-1.5 hover:text-red-600 transition">
-          <Heart className="w-4 h-4" />
-          <span>{likesCount} {likesCount === 1 ? 'like' : 'likes'}</span>
-        </button>
-        <button
-          onClick={handleShowComments}
-          className="flex items-center gap-1.5 hover:text-blue-600 transition"
-        >
-          <MessageCircle className="w-4 h-4" />
-          <span>{commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}</span>
-        </button>
+      <div className="px-4 py-3 border-b border-slate-200 bg-white">
+        <div className="flex items-center justify-between">
+          {/* Reactions Summary */}
+          <div className="flex items-center gap-3 flex-1">
+            {likesCount > 0 && (
+              <button className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 transition group">
+                <Heart className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-xs font-semibold text-red-700 group-hover:text-red-800">{likesCount}</span>
+              </button>
+            )}
+            {commentsCount > 0 && (
+              <button 
+                onClick={handleShowComments}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 transition group"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-xs font-semibold text-blue-700 group-hover:text-blue-800">{commentsCount}</span>
+              </button>
+            )}
+          </div>
+          {/* Spacer for centered look when no reactions */}
+          {likesCount === 0 && commentsCount === 0 && (
+            <div className="flex-1" />
+          )}
+        </div>
       </div>
 
       {/* Actions */}
-      <div className="px-4 py-2 flex gap-1.5">
+      <div className="px-4 py-2.5 flex gap-1 bg-white border-t border-slate-200">
         <button
-          onClick={handleLike}
-          disabled={loading}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm ${
-            liked
-              ? 'text-red-600 bg-red-50 hover:bg-red-100'
-              : 'text-slate-600 hover:bg-slate-100'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          onClick={() => setShowReactionPicker(!showReactionPicker)}
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition font-medium text-sm text-slate-700 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 active:from-amber-100 active:to-orange-100"
+          title="Add reaction"
         >
-          <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
-          Like
+          <Smile className="w-4 h-4" />
+          React
         </button>
         <button
           onClick={handleShowComments}
-          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100"
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition font-medium text-sm text-slate-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 active:from-blue-100 active:to-cyan-100"
         >
           <MessageCircle className="w-4 h-4" />
           Comment
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded transition font-medium text-sm text-slate-600 hover:bg-slate-100">
+        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition font-medium text-sm text-slate-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 active:from-purple-100 active:to-pink-100">
           <Share2 className="w-4 h-4" />
           Share
         </button>
       </div>
+
+      {/* Reaction Picker */}
+      {showReactionPicker && (
+        <div className="px-4 py-2 border-t border-slate-200 bg-slate-50">
+          <ReactionPicker 
+            updateId={update.id}
+            onReactionAdded={() => {
+              console.log('✅ Reaction added to update');
+              // Could refresh reactions here if needed
+            }}
+            currentUser={currentUser}
+            isUpdate={true}
+          />
+        </div>
+      )}
 
       {/* Comments Section */}
       {showComments && (
@@ -440,30 +543,45 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
             ) : (
               <div className="space-y-3">
                 {comments.map((comment) => (
-                  <div key={comment.id} className="bg-white rounded-lg p-3 text-sm">
-                    <div className="flex items-start justify-between gap-2 mb-1">
+                  <div key={comment.id} className="bg-white rounded-lg p-3 text-sm border border-slate-200 hover:border-slate-300 transition">
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <p className="font-medium text-slate-900">
-                          {comment.auth_users?.user_metadata?.name || comment.auth_users?.email || 'Anonymous'}
+                          {comment.userName || comment.userEmail || `User ${comment.user_id?.substring(0, 8)}`}
                         </p>
                         <p className="text-xs text-slate-500">
                           {formatTime(comment.created_at)}
+                          {comment.updated_at && comment.updated_at !== comment.created_at && (
+                            <span> (edited)</span>
+                          )}
                         </p>
                       </div>
                       {currentUser?.id === comment.user_id && (
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          disabled={loading}
-                          className="p-1 text-slate-400 hover:text-red-600 transition disabled:opacity-50"
-                          title="Delete comment"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditComment(comment)}
+                            disabled={loading}
+                            className="p-1 text-slate-400 hover:text-blue-600 transition disabled:opacity-50"
+                            title="Edit comment"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            disabled={loading}
+                            className="p-1 text-slate-400 hover:text-red-600 transition disabled:opacity-50"
+                            title="Delete comment"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
-                    <p className="text-slate-700 whitespace-pre-wrap break-words">
+                    <p className="text-slate-700 whitespace-pre-wrap break-words mb-2">
                       {comment.content}
                     </p>
+                    {/* Reaction Picker */}
+                    <ReactionPicker commentId={comment.id} currentUser={currentUser} />
                   </div>
                 ))}
               </div>
@@ -496,8 +614,19 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           )}
 
           {!currentUser && (
-            <div className="px-4 py-3 text-center text-sm text-slate-600 bg-white border-t border-slate-200">
-              <p>Sign in to comment</p>
+            <div className="px-4 py-3 text-center text-sm bg-white border-t border-slate-200">
+              <p className="text-slate-600 mb-3">Sign in to comment</p>
+              <button
+                onClick={() => {
+                  // Store the current URL so we can return after login
+                  const currentUrl = window.location.href;
+                  sessionStorage.setItem('redirectAfterLogin', currentUrl);
+                  router.push('/login');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition cursor-pointer"
+              >
+                Sign In
+              </button>
             </div>
           )}
         </div>
@@ -540,6 +669,18 @@ export default function StatusUpdateCard({ update, vendor, currentUser, onDelete
           </div>
         </div>
       )}
+
+      {/* Edit Comment Modal */}
+      <EditCommentModal
+        isOpen={editingCommentId !== null}
+        currentContent={editingCommentContent}
+        onClose={() => {
+          setEditingCommentId(null);
+          setEditingCommentContent('');
+        }}
+        onSave={handleSaveEdit}
+        isLoading={loading}
+      />
     </div>
   );
 }

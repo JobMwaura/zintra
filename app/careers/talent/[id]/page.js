@@ -1,0 +1,450 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { ArrowLeft, MapPin, Briefcase, Star, Mail, Phone, Award, CheckCircle2 } from 'lucide-react';
+import { mockTopRatedWorkers } from '@/lib/careers-mock-data';
+import { LevelBadge, VerificationBadges } from '@/components/careers/LevelBadge';
+
+export default function TalentProfilePage() {
+  const params = useParams();
+  const workerId = params.id;
+  const supabase = createClient();
+
+  const [worker, setWorker] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isMockData, setIsMockData] = useState(false);
+
+  useEffect(() => {
+    fetchWorkerProfile();
+  }, [workerId]);
+
+  async function fetchWorkerProfile() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Check if this is a mock worker ID (1-6)
+      const numId = parseInt(workerId);
+      if (numId >= 1 && numId <= 6) {
+        const mockWorker = mockTopRatedWorkers.find(w => w.id === numId);
+        if (mockWorker) {
+          setIsMockData(true);
+          setWorker({
+            id: mockWorker.id,
+            full_name: mockWorker.name,
+            avatar_url: null,
+            city: mockWorker.county,
+            phone: '+254700000000',
+            email: `${mockWorker.initials.toLowerCase()}@zintra.com`,
+            role: mockWorker.role,
+            bio: `Experienced ${mockWorker.role} with excellent track record. Highly skilled and professional.`,
+            skills: ['Masonry', 'Bricklaying', 'Foundation Work', 'Finishing'],
+            experience: 8,
+            certifications: ['Construction Safety', 'Quality Assurance'],
+            average_rating: mockWorker.rating,
+            ratings_count: mockWorker.reviews,
+            account_type: 'worker',
+            created_at: '2024-01-01',
+            reviews: [
+              { id: 1, rating: 5, comment: 'Excellent work quality and very reliable!', created_at: '2025-01-20', reviewer: { full_name: 'John Contractor' } },
+              { id: 2, rating: 5, comment: 'Great attention to detail. Highly recommend!', created_at: '2025-01-15', reviewer: { full_name: 'Sarah Builder' } },
+              { id: 3, rating: 4, comment: 'Good work. Communication could be better.', created_at: '2025-01-10', reviewer: { full_name: 'Mike Developer' } },
+            ],
+            applications: [],
+            completed_projects: 234,
+            success_rate: 98,
+            response_time: '< 1 hour',
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fetch worker profile from candidate_profiles (Career Centre data)
+      const { data: candidateData, error: candidateError } = await supabase
+        .from('candidate_profiles')
+        .select(`
+          id,
+          full_name,
+          avatar_url,
+          city,
+          phone,
+          email,
+          role,
+          bio,
+          skills,
+          certifications,
+          experience_years,
+          hourly_rate,
+          rate_per_day,
+          availability,
+          level,
+          verified_id,
+          verified_references,
+          tools_ready,
+          completed_gigs,
+          rating,
+          featured_until,
+          created_at,
+          updated_at
+        `)
+        .eq('id', workerId)
+        .maybeSingle();
+
+      // Fallback to base profiles table for shared fields
+      const { data: baseProfile } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, email, phone, location, created_at')
+        .eq('id', workerId)
+        .maybeSingle();
+
+      if (!candidateData && !baseProfile) {
+        throw new Error('Worker profile not found');
+      }
+
+      // Merge: candidate_profiles takes priority, fallback to profiles
+      const profileData = {
+        id: workerId,
+        full_name: candidateData?.full_name || baseProfile?.full_name,
+        avatar_url: candidateData?.avatar_url || baseProfile?.avatar_url,
+        city: candidateData?.city || baseProfile?.location,
+        phone: candidateData?.phone || baseProfile?.phone,
+        email: candidateData?.email || baseProfile?.email,
+        role: candidateData?.role,
+        bio: candidateData?.bio,
+        skills: candidateData?.skills,
+        experience: candidateData?.experience_years,
+        certifications: candidateData?.certifications,
+        hourly_rate: candidateData?.hourly_rate || candidateData?.rate_per_day,
+        availability: candidateData?.availability,
+        level: candidateData?.level,
+        verified_id: candidateData?.verified_id,
+        verified_references: candidateData?.verified_references,
+        tools_ready: candidateData?.tools_ready,
+        completed_gigs: candidateData?.completed_gigs,
+        average_rating: candidateData?.rating || 0,
+        ratings_count: 0,
+        featured_until: candidateData?.featured_until,
+        account_type: 'worker',
+        created_at: candidateData?.created_at || baseProfile?.created_at,
+        updated_at: candidateData?.updated_at,
+      };
+
+      // Fetch worker reviews/ratings (table may not exist yet for workers)
+      let reviewsData = [];
+      try {
+        const { data } = await supabase
+          .from('reviews')
+          .select('id, rating, comment, created_at, reviewer:author')
+          .eq('vendor_id', workerId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        reviewsData = data || [];
+      } catch {
+        // Reviews table may not support worker reviews yet
+      }
+
+      // Fetch worker applications and completed gigs
+      const { data: applicationsData } = await supabase
+        .from('applications')
+        .select(`
+          id,
+          status,
+          created_at,
+          listing:listing_id(title, pay_max)
+        `)
+        .eq('candidate_id', workerId)
+        .limit(5);
+
+      setWorker({
+        ...profileData,
+        reviews: reviewsData || [],
+        applications: applicationsData || [],
+      });
+    } catch (err) {
+      console.error('Error fetching worker profile:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex items-center justify-center pt-20">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !worker) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Link
+            href="/careers/talent"
+            className="inline-flex items-center gap-2 text-orange-500 hover:text-orange-600 mb-6"
+          >
+            <ArrowLeft size={20} />
+            Back to Talent
+          </Link>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <p className="text-red-800 font-semibold">
+              {error || 'Worker profile not found'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Parse skills if it's a string
+  const skills = typeof worker.skills === 'string' ? worker.skills.split(',').map(s => s.trim()) : (worker.skills || []);
+  const certifications = typeof worker.certifications === 'string' ? worker.certifications.split(',').map(c => c.trim()) : (worker.certifications || []);
+
+  // Get avatar color for mock data
+  const getAvatarColor = (id) => {
+    const colors = [
+      'from-blue-400 to-blue-600',
+      'from-purple-400 to-purple-600',
+      'from-pink-400 to-pink-600',
+      'from-green-400 to-green-600',
+      'from-yellow-400 to-yellow-600',
+      'from-red-400 to-red-600',
+    ];
+    return colors[(id - 1) % colors.length];
+  };
+
+  // Get initials for display
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const parts = name.split(' ');
+    return parts.map(p => p.charAt(0)).join('').toUpperCase();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+
+      {/* Back Button & Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Link
+            href="/careers/talent"
+            className="inline-flex items-center gap-2 text-orange-500 hover:text-orange-600 mb-6 font-semibold"
+          >
+            <ArrowLeft size={20} />
+            Back to Talent
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Profile Section */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Left Column: Profile Card */}
+          <div className="md:col-span-1">
+            <div className="bg-white rounded-lg shadow-md p-6 sticky top-20">
+              {/* Avatar */}
+              <div className={`w-full h-40 bg-gradient-to-br ${isMockData ? getAvatarColor(worker.id) : 'from-orange-400 to-orange-600'} rounded-lg mb-4 flex items-center justify-center overflow-hidden`}>
+                {worker.avatar_url ? (
+                  <img
+                    src={worker.avatar_url}
+                    alt={worker.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-6xl text-white font-bold">
+                    {getInitials(worker.full_name)}
+                  </span>
+                )}
+              </div>
+
+              {/* Name & Role */}
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">{worker.full_name}</h1>
+              {worker.role && (
+                <p className="text-lg text-orange-600 font-semibold mb-2">{worker.role}</p>
+              )}
+
+              {/* Level Badge */}
+              <div className="mb-2">
+                <LevelBadge level={worker.level || 'new'} size="md" />
+              </div>
+
+              {/* Verification Badges */}
+              <div className="mb-4">
+                <VerificationBadges
+                  verifiedId={worker.verified_id}
+                  verifiedReferences={worker.verified_references}
+                  toolsReady={worker.tools_ready}
+                  variant="full"
+                />
+              </div>
+
+              {/* Rating */}
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        size={18}
+                        className={i < Math.round(worker.average_rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-bold text-gray-900">
+                    {(worker.average_rating || 0).toFixed(1)}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Based on {worker.ratings_count || 0} reviews
+                </p>
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-3 mb-4 pb-4 border-b border-gray-200">
+                {worker.city && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <MapPin size={16} className="text-orange-500 flex-shrink-0" />
+                    <span className="text-sm">{worker.city}</span>
+                  </div>
+                )}
+                {worker.email && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Mail size={16} className="text-orange-500 flex-shrink-0" />
+                    <a href={`mailto:${worker.email}`} className="text-sm hover:text-orange-500 transition break-all">
+                      {worker.email}
+                    </a>
+                  </div>
+                )}
+                {worker.phone && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Phone size={16} className="text-orange-500 flex-shrink-0" />
+                    <a href={`tel:${worker.phone}`} className="text-sm hover:text-orange-500 transition">
+                      {worker.phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Hire Button */}
+              <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition">
+                Hire This Worker
+              </button>
+
+              {/* Edit Profile Button (only if own profile) */}
+              <Link
+                href="/careers/profile"
+                className="block w-full mt-2 text-center bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition text-sm"
+              >
+                Edit Profile
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Column: Details */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Bio */}
+            {worker.bio && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">About</h2>
+                <p className="text-gray-700 leading-relaxed">{worker.bio}</p>
+              </div>
+            )}
+
+            {/* Skills */}
+            {skills.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Award size={24} className="text-orange-500" />
+                  Skills
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Experience */}
+            {worker.experience && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Briefcase size={24} className="text-orange-500" />
+                  Experience
+                </h2>
+                <p className="text-gray-700 whitespace-pre-line">{worker.experience}</p>
+              </div>
+            )}
+
+            {/* Certifications */}
+            {certifications.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <CheckCircle2 size={24} className="text-orange-500" />
+                  Certifications
+                </h2>
+                <ul className="space-y-2">
+                  {certifications.map((cert, index) => (
+                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                      <CheckCircle2 size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>{cert}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Recent Reviews */}
+            {worker.reviews && worker.reviews.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Reviews</h2>
+                <div className="space-y-4">
+                  {worker.reviews.map(review => (
+                    <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900">
+                            {review.reviewer?.full_name || 'Anonymous'}
+                          </span>
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={14}
+                                className={i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {review.comment && (
+                        <p className="text-gray-700 text-sm">{review.comment}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

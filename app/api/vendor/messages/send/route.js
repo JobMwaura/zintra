@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { notifyBuyerOfNewMessage, notifyVendorOfNewMessage } from '@/lib/services/emailNotificationService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -117,6 +118,50 @@ export async function POST(request) {
       }
     }
 
+    // Parse message text if it's JSON, otherwise wrap it
+    let finalMessageText = messageText;
+    console.log('📝 Raw messageText received:', { 
+      type: typeof messageText,
+      length: messageText?.length,
+      first50chars: messageText?.substring(0, 50)
+    });
+    
+    try {
+      // Try to parse as JSON (from frontend with attachments)
+      const parsed = JSON.parse(messageText);
+      console.log('✅ Successfully parsed JSON:', { 
+        hasBody: !!parsed.body,
+        hasAttachments: Array.isArray(parsed.attachments),
+        bodyPreview: parsed.body?.substring(0, 30)
+      });
+      
+      if (parsed.body && Array.isArray(parsed.attachments)) {
+        // Already properly formatted from frontend
+        console.log('✅ Message already properly formatted, using as-is');
+        finalMessageText = messageText;
+      } else {
+        // Has JSON but not our format, re-wrap it
+        console.log('⚠️ JSON has wrong format, re-wrapping');
+        finalMessageText = JSON.stringify({
+          body: messageText,
+          attachments: []
+        });
+      }
+    } catch (e) {
+      // Not JSON, wrap it
+      console.log('⚠️ Not valid JSON, wrapping as plain text:', e.message);
+      finalMessageText = JSON.stringify({
+        body: messageText,
+        attachments: []
+      });
+    }
+    
+    console.log('📦 Final messageText to store:', {
+      type: typeof finalMessageText,
+      length: finalMessageText?.length,
+      first50chars: finalMessageText?.substring(0, 50)
+    });
+
     // Insert message
     const { data, error } = await supabase
       .from('vendor_messages')
@@ -124,7 +169,7 @@ export async function POST(request) {
         vendor_id: vendorId,
         user_id: actualUserId,
         sender_type: senderType,
-        message_text: messageText,
+        message_text: finalMessageText,
         is_read: false,
         sender_name: senderType === 'vendor' ? 'You' : senderName,
       })
@@ -136,6 +181,168 @@ export async function POST(request) {
         JSON.stringify({ error: error.message || 'Failed to send message' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Create notification for the recipient (async, don't block response)
+    try {
+      let notificationTitle = '';
+      let notificationBody = '';
+      let notificationType = 'message';
+
+      // Extract plain text message for notification
+      let messagePreview = messageText;
+      try {
+        const parsed = JSON.parse(messageText);
+        messagePreview = parsed.body || messageText;
+      } catch (e) {
+        // Use as-is if not JSON
+      }
+
+      // Truncate message for notification
+      const truncatedMessage = messagePreview.length > 100 
+        ? messagePreview.substring(0, 100) + '...' 
+        : messagePreview;
+
+      if (senderType === 'vendor') {
+        // Vendor sending to buyer
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('company_name')
+          .eq('id', vendorId)
+          .single();
+
+        notificationTitle = `New message from ${vendorData?.company_name || 'A vendor'}`;
+        notificationBody = truncatedMessage;
+        notificationType = 'vendor_message';
+
+        // Create notification in database
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: actualUserId,
+            title: notificationTitle,
+            body: notificationBody,
+            message: notificationBody,
+            type: notificationType,
+            related_id: vendorId,
+            related_type: 'vendor_message',
+            created_at: new Date().toISOString(),
+            read_at: null
+          });
+
+        console.log('[Notification] ✅ Buyer notification created for vendor message');
+      } else {
+        // User sending to vendor
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('user_id')
+          .eq('id', vendorId)
+          .single();
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', currentUserId)
+          .single();
+
+        if (vendorData?.user_id) {
+          notificationTitle = `New message from ${userData?.full_name || 'A buyer'}`;
+          notificationBody = truncatedMessage;
+          notificationType = 'vendor_message';
+
+          // Create notification for vendor owner
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: vendorData.user_id,
+              title: notificationTitle,
+              body: notificationBody,
+              message: notificationBody,
+              type: notificationType,
+              related_id: vendorId,
+              related_type: 'vendor_message',
+              created_at: new Date().toISOString(),
+              read_at: null
+            });
+
+          console.log('[Notification] ✅ Vendor owner notification created for buyer message');
+        }
+      }
+    } catch (notifError) {
+      // Don't fail the request if notification fails
+      console.error('[Notification] ⚠️ Failed to create notification (non-blocking):', notifError);
+    }
+
+    // Send email notification (async, don't block response)
+    try {
+      // Extract plain text message for email preview
+      let messagePreview = messageText;
+      try {
+        const parsed = JSON.parse(messageText);
+        messagePreview = parsed.body || messageText;
+      } catch (e) {
+        // Use as-is if not JSON
+      }
+
+      if (senderType === 'vendor') {
+        // Vendor sending to buyer - notify buyer via email
+        // Get buyer's email from auth.users
+        const { data: { user: buyerAuth } } = await supabase.auth.admin.getUserById(actualUserId);
+        const { data: buyerData } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', actualUserId)
+          .single();
+        
+        // Get vendor name
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('company_name')
+          .eq('id', vendorId)
+          .single();
+
+        if (buyerAuth?.email) {
+          // Send email notification in background (don't await)
+          notifyBuyerOfNewMessage({
+            buyerEmail: buyerAuth.email,
+            buyerName: buyerData?.full_name || 'there',
+            vendorName: vendorData?.company_name || 'A vendor',
+            messagePreview
+          }).catch(err => console.error('Email notification failed:', err));
+        }
+      } else {
+        // User sending to vendor - notify vendor via email
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('user_id, company_name')
+          .eq('id', vendorId)
+          .single();
+        
+        if (vendorData?.user_id) {
+          // Get vendor owner's email from auth.users
+          const { data: { user: vendorAuth } } = await supabase.auth.admin.getUserById(vendorData.user_id);
+          
+          // Get sender name
+          const { data: userData } = await supabase
+            .from('users')
+            .select('full_name')
+            .eq('id', currentUserId)
+            .single();
+
+          if (vendorAuth?.email) {
+            // Send email notification in background (don't await)
+            notifyVendorOfNewMessage({
+              vendorEmail: vendorAuth.email,
+              vendorName: vendorData.company_name || 'there',
+              buyerName: userData?.full_name || 'A user',
+              messagePreview
+            }).catch(err => console.error('Email notification failed:', err));
+          }
+        }
+      }
+    } catch (emailError) {
+      // Don't fail the request if email fails
+      console.error('❌ Email notification error (non-blocking):', emailError);
     }
 
     return new Response(

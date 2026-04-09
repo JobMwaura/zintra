@@ -1,0 +1,252 @@
+/**
+ * HeroSearch Component - Conversion-Focused
+ * Hero section with proof points + prominent search + clear CTA hierarchy
+ */
+
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { Search, CheckCircle2 } from 'lucide-react';
+import { getEmployerRedirectPath } from '@/lib/auth-helpers';
+import { KENYA_COUNTIES } from '@/lib/kenyaLocations';
+import { CANONICAL_CATEGORIES } from '@/lib/categories';
+
+export default function HeroSearch() {
+  const router = useRouter();
+  const [searchType, setSearchType] = useState('jobs');
+  const [searchData, setSearchData] = useState({
+    role: '',
+    location: '',
+  });
+  const [postJobLink, setPostJobLink] = useState('/vendor-registration');
+  const [postGigLink, setPostGigLink] = useState('/vendor-registration');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Add a small delay to ensure Supabase session is fully initialized
+    // This helps prevent timing issues where auth isn't ready yet
+    const timer = setTimeout(() => {
+      loadRedirectPaths();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  async function loadRedirectPaths() {
+    try {
+      console.log('[HeroSearch] Starting to load redirect paths...');
+      const jobPath = await getEmployerRedirectPath('job');
+      const gigPath = await getEmployerRedirectPath('gig');
+      console.log('[HeroSearch] Loaded paths:', { jobPath, gigPath });
+      setPostJobLink(jobPath);
+      setPostGigLink(gigPath);
+    } catch (error) {
+      console.error('[HeroSearch] Error loading redirect paths:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setSearchData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (searchData.role) params.set('q', searchData.role);
+    if (searchData.location) params.set('location', searchData.location);
+    
+    const queryString = params.toString();
+    if (searchType === 'jobs') {
+      router.push(`/careers/jobs${queryString ? '?' + queryString : ''}`);
+    } else {
+      router.push(`/careers/gigs${queryString ? '?' + queryString : ''}`);
+    }
+  };
+
+  return (
+    <section className="w-full bg-white border-b border-gray-200 py-12 sm:py-14 lg:py-16">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Hero Text with Proof Points */}
+        <div className="mb-8 text-center max-w-3xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 leading-tight">
+            Find Verified Construction Jobs & Gigs Across Kenya
+          </h1>
+          <p className="text-base sm:text-lg text-gray-700 mb-1 font-semibold">
+            Join 2,400+ workers earning KES 50K-150K monthly
+          </p>
+          <p className="text-sm sm:text-base text-gray-600 mb-4">
+            Work with 180+ trusted employers. Zero upfront fees. Fast, secure payments.
+          </p>
+          
+          {/* Proof Points */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={18} className="text-green-600" />
+              <span><strong>2,400+</strong> workers</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={18} className="text-green-600" />
+              <span><strong>180+</strong> verified employers</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={18} className="text-green-600" />
+              <span><strong>650+</strong> gigs completed</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Search Container - Prominent */}
+        <div className="max-w-3xl mx-auto mb-6">
+          <form
+            onSubmit={handleSearch}
+            className="bg-gray-50 border-2 border-gray-300 rounded-lg p-5 sm:p-6"
+          >
+            {/* Jobs/Gigs Toggle */}
+            <div className="flex gap-2 mb-4 border-b border-gray-200 pb-3">
+              <button
+                type="button"
+                onClick={() => setSearchType('jobs')}
+                className={`flex-1 py-2 px-3 text-sm font-semibold rounded text-center transition-colors ${
+                  searchType === 'jobs'
+                    ? 'bg-[#ea8f1e] text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                Find Jobs
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchType('gigs')}
+                className={`flex-1 py-2 px-3 text-sm font-semibold rounded text-center transition-colors ${
+                  searchType === 'gigs'
+                    ? 'bg-[#ea8f1e] text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                Find Gigs
+              </button>
+            </div>
+
+            {/* Search Inputs - Simplified for Mobile */}
+            {/* Desktop: 2 columns, Mobile: 1 column */}
+            <div className="hidden sm:grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Category or Skill
+                </label>
+                <select
+                  name="role"
+                  value={searchData.role}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-10"
+                >
+                  <option value="">All Categories</option>
+                  {CANONICAL_CATEGORIES.map((category) => (
+                    <option key={category.slug} value={category.label}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  County
+                </label>
+                <select
+                  name="location"
+                  value={searchData.location}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-10"
+                >
+                  <option value="">All Counties</option>
+                  {KENYA_COUNTIES.map((county) => (
+                    <option key={county.value} value={county.label}>
+                      {county.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Mobile: Single column (simplified) */}
+            <div className="sm:hidden grid grid-cols-1 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Category or Skill
+                </label>
+                <select
+                  name="role"
+                  value={searchData.role}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-11"
+                >
+                  <option value="">All Categories</option>
+                  {CANONICAL_CATEGORIES.map((category) => (
+                    <option key={category.slug} value={category.label}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  County
+                </label>
+                <select
+                  name="location"
+                  value={searchData.location}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#ea8f1e] focus:border-transparent text-sm h-11"
+                >
+                  <option value="">All Counties</option>
+                  {KENYA_COUNTIES.map((county) => (
+                    <option key={county.value} value={county.label}>
+                      {county.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Search Button */}
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#ea8f1e] text-white font-bold rounded-lg hover:bg-[#d97706] transition-colors text-sm"
+            >
+              <Search size={18} />
+              Search {searchType === 'jobs' ? 'Jobs' : 'Gigs'}
+            </button>
+          </form>
+        </div>
+
+        {/* Secondary CTA - Post a Job/Gig */}
+        <div className="text-center text-xs sm:text-sm text-gray-600">
+          <span>Are you an employer? </span>
+          <Link 
+            href={postJobLink} 
+            className="text-[#ea8f1e] font-semibold hover:underline"
+          >
+            Post a job
+          </Link>
+          <span> or </span>
+          <Link 
+            href={postGigLink} 
+            className="text-[#ea8f1e] font-semibold hover:underline"
+          >
+            post a gig
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}

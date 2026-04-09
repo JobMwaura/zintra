@@ -5,3 +5,12 @@ body {
   background-color: white;
   color: rgb(17, 24, 39);
 }
+
+/* Hide scrollbar for horizontal-scrolling tabs on mobile */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

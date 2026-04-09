@@ -44,7 +44,8 @@ export default function NotificationsPage() {
       const query = searchQuery.toLowerCase();
       result = result.filter(n =>
         n.title?.toLowerCase().includes(query) ||
-        n.body?.toLowerCase().includes(query)
+        n.body?.toLowerCase().includes(query) ||
+        n.message?.toLowerCase().includes(query)
       );
     }
 
@@ -93,13 +94,46 @@ export default function NotificationsPage() {
    */
   const getTypeLabel = (type) => {
     const labels = {
+      'rfq_response': 'Quote Received',
+      'rfq_received': 'RFQ Received',
+      'rfq_sent': 'RFQ Sent',
+      'rfq_status': 'RFQ Status Update',
+      'rfq_under_review': 'RFQ Under Review',
+      'rfq_pending_review': 'Pending Approval',
+      'rfq_admin_matched': 'Admin Matched',
+      'rfq_match': 'RFQ Match',
+      'rfq_unsuccessful': 'RFQ Not Successful',
+      'admin_rfq_intervention': 'Admin Intervention',
+      'admin_rfq_low_match': 'Low Vendor Match',
+      'admin_quote_submitted': 'Quote Submitted',
       'quote_received': 'Quote Received',
       'quote_accepted': 'Quote Accepted',
       'quote_rejected': 'Quote Rejected',
       'rfq_created': 'RFQ Created',
       'message_received': 'Message Received',
       'rfq_updated': 'RFQ Updated',
-      'vendor_message': 'Vendor Message'
+      'vendor_message': 'Vendor Message',
+      'new_rfq': 'New RFQ',
+      // Negotiation types
+      'negotiation_started': 'Negotiation Started',
+      'counter_offer': 'Counter Offer',
+      'offer_accepted': 'Offer Accepted',
+      'offer_rejected': 'Offer Declined',
+      'negotiation_cancelled': 'Negotiation Cancelled',
+      'negotiation_expired': 'Negotiation Expired',
+      'offer_expired': 'Offer Expired',
+      'qa_question': 'Question Asked',
+      'qa_answer': 'Question Answered',
+      // Job order types
+      'job_order_created': 'Job Order Created',
+      'job_order_confirmed': 'Job Order Confirmed',
+      'job_order_started': 'Work Started',
+      'job_order_completed': 'Job Completed',
+      'job_order_cancelled': 'Job Order Cancelled',
+      'job_order_disputed': 'Job Dispute Raised',
+      'negotiation_warning': 'Activity Flagged',
+      'admin_negotiation_report': 'Negotiation Report',
+      'admin_job_dispute': 'Job Dispute'
     };
     return labels[type] || type;
   };
@@ -109,13 +143,47 @@ export default function NotificationsPage() {
    */
   const getTypeIcon = (type) => {
     const icons = {
+      'rfq_response': '📋',
+      'rfq_received': '📨',
+      'rfq_sent': '📤',
+      'rfq_status': '🔄',
+      'rfq_under_review': '🔍',
+      'rfq_pending_review': '⏳',
+      'rfq_admin_matched': '✅',
+      'rfq_match': '🤝',
+      'rfq_unsuccessful': '😔',
+      'admin_rfq_intervention': '🚨',
+      'admin_rfq_low_match': '⚠️',
+      'admin_quote_submitted': '📩',
       'quote_received': '📋',
       'quote_accepted': '✅',
       'quote_rejected': '❌',
       'rfq_created': '📝',
       'message_received': '💬',
       'rfq_updated': '🔄',
-      'vendor_message': '👤'
+      'vendor_message': '👤',
+      'new_rfq': '🆕',
+      // Negotiation types
+      'negotiation_started': '🤝',
+      'counter_offer': '↩️',
+      'offer_accepted': '🎉',
+      'offer_rejected': '⛔',
+      'negotiation_cancelled': '🚫',
+      'negotiation_expired': '⏰',
+      'offer_expired': '⌛',
+      'qa_question': '❓',
+      'qa_answer': '💡',
+      // Job order types
+      'job_order_created': '📋',
+      'job_order_confirmed': '✅',
+      'job_order_started': '🚀',
+      'job_order_completed': '🏁',
+      'job_order_cancelled': '🚫',
+      'job_order_disputed': '⚠️',
+      // Safety types
+      'negotiation_warning': '🛡️',
+      'admin_negotiation_report': '🚩',
+      'admin_job_dispute': '🚨'
     };
     return icons[type] || '🔔';
   };
@@ -125,6 +193,66 @@ export default function NotificationsPage() {
    */
   const getTypeStyles = (type) => {
     const styles = {
+      'rfq_response': {
+        bg: 'bg-blue-50',
+        border: 'border-l-blue-500',
+        badge: 'bg-blue-100 text-blue-800'
+      },
+      'rfq_received': {
+        bg: 'bg-orange-50',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-100 text-orange-800'
+      },
+      'rfq_sent': {
+        bg: 'bg-green-50',
+        border: 'border-l-green-500',
+        badge: 'bg-green-100 text-green-800'
+      },
+      'rfq_status': {
+        bg: 'bg-yellow-50',
+        border: 'border-l-yellow-500',
+        badge: 'bg-yellow-100 text-yellow-800'
+      },
+      'rfq_under_review': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'rfq_pending_review': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'rfq_admin_matched': {
+        bg: 'bg-green-50',
+        border: 'border-l-green-500',
+        badge: 'bg-green-100 text-green-800'
+      },
+      'rfq_match': {
+        bg: 'bg-indigo-50',
+        border: 'border-l-indigo-500',
+        badge: 'bg-indigo-100 text-indigo-800'
+      },
+      'rfq_unsuccessful': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'admin_rfq_intervention': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'admin_rfq_low_match': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'admin_quote_submitted': {
+        bg: 'bg-purple-50',
+        border: 'border-l-purple-500',
+        badge: 'bg-purple-100 text-purple-800'
+      },
       'quote_received': {
         bg: 'bg-blue-50',
         border: 'border-l-blue-500',
@@ -149,6 +277,102 @@ export default function NotificationsPage() {
         bg: 'bg-pink-50',
         border: 'border-l-pink-500',
         badge: 'bg-pink-100 text-pink-800'
+      },
+      'new_rfq': {
+        bg: 'bg-orange-50',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-100 text-orange-800'
+      },
+      // Negotiation types
+      'negotiation_started': {
+        bg: 'bg-indigo-50',
+        border: 'border-l-indigo-500',
+        badge: 'bg-indigo-100 text-indigo-800'
+      },
+      'counter_offer': {
+        bg: 'bg-orange-50',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-100 text-orange-800'
+      },
+      'offer_accepted': {
+        bg: 'bg-green-50',
+        border: 'border-l-green-500',
+        badge: 'bg-green-100 text-green-800'
+      },
+      'offer_rejected': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'negotiation_cancelled': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'qa_question': {
+        bg: 'bg-purple-50',
+        border: 'border-l-purple-500',
+        badge: 'bg-purple-100 text-purple-800'
+      },
+      'qa_answer': {
+        bg: 'bg-teal-50',
+        border: 'border-l-teal-500',
+        badge: 'bg-teal-100 text-teal-800'
+      },
+      'negotiation_expired': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'offer_expired': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-500',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'job_order_created': {
+        bg: 'bg-blue-50',
+        border: 'border-l-blue-500',
+        badge: 'bg-blue-100 text-blue-800'
+      },
+      'job_order_confirmed': {
+        bg: 'bg-green-50',
+        border: 'border-l-green-500',
+        badge: 'bg-green-100 text-green-800'
+      },
+      'job_order_started': {
+        bg: 'bg-orange-50',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-100 text-orange-800'
+      },
+      'job_order_completed': {
+        bg: 'bg-emerald-50',
+        border: 'border-l-emerald-500',
+        badge: 'bg-emerald-100 text-emerald-800'
+      },
+      'job_order_cancelled': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'job_order_disputed': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-600',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'negotiation_warning': {
+        bg: 'bg-amber-50',
+        border: 'border-l-amber-600',
+        badge: 'bg-amber-100 text-amber-800'
+      },
+      'admin_negotiation_report': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-500',
+        badge: 'bg-red-100 text-red-800'
+      },
+      'admin_job_dispute': {
+        bg: 'bg-red-50',
+        border: 'border-l-red-600',
+        badge: 'bg-red-100 text-red-800'
       },
       'default': {
         bg: 'bg-slate-50',
@@ -260,11 +484,34 @@ export default function NotificationsPage() {
               className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition bg-white font-medium"
             >
               <option value="all">All Types</option>
-              <option value="quote_received">Quote Received</option>
-              <option value="quote_accepted">Quote Accepted</option>
-              <option value="quote_rejected">Quote Rejected</option>
-              <option value="rfq_created">RFQ Created</option>
+              <option value="rfq_response">Quote Received</option>
+              <option value="rfq_sent">RFQ Sent</option>
+              <option value="rfq_received">RFQ Received</option>
+              <option value="rfq_status">RFQ Status Update</option>
+              <option value="rfq_under_review">Under Review</option>
+              <option value="rfq_unsuccessful">RFQ Not Successful</option>
+              <option value="rfq_pending_review">Pending Approval</option>
+              <option value="rfq_admin_matched">Admin Matched</option>
+              <option value="admin_rfq_intervention">Admin Intervention</option>
+              <option value="admin_rfq_low_match">Low Vendor Match</option>
+              <option value="admin_quote_submitted">Quote Submitted</option>
               <option value="message_received">Message Received</option>
+              <option value="negotiation_started">Negotiation Started</option>
+              <option value="counter_offer">Counter Offer</option>
+              <option value="offer_accepted">Offer Accepted</option>
+              <option value="offer_rejected">Offer Declined</option>
+              <option value="negotiation_cancelled">Negotiation Cancelled</option>
+              <option value="negotiation_expired">Negotiation Expired</option>
+              <option value="offer_expired">Offer Expired</option>
+              <option value="qa_question">Question Asked</option>
+              <option value="qa_answer">Question Answered</option>
+              <option value="job_order_created">Job Order Created</option>
+              <option value="job_order_confirmed">Job Order Confirmed</option>
+              <option value="job_order_started">Work Started</option>
+              <option value="job_order_completed">Job Completed</option>
+              <option value="job_order_cancelled">Job Order Cancelled</option>
+              <option value="job_order_disputed">Job Dispute</option>
+              <option value="negotiation_warning">Activity Flagged</option>
             </select>
           </div>
         </div>
@@ -347,9 +594,9 @@ export default function NotificationsPage() {
                         {notif.title}
                       </h3>
 
-                      {notif.body && (
+                      {(notif.body || notif.message) && (
                         <p className="text-sm text-slate-600 mt-2">
-                          {notif.body}
+                          {notif.body || notif.message}
                         </p>
                       )}
 

@@ -16,15 +16,18 @@ export default function ForgotPasswordPage() {
       return;
     }
     setLoading(true);
+    
+    // Use the new secure flow: email → /auth/confirm → server verification → /auth/change-password
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/reset`,
+      redirectTo: `${window.location.origin}/auth/confirm`,
     });
+    
     setLoading(false);
     if (error) {
       setMessage('Error sending reset email: ' + error.message);
       return;
     }
-    setMessage('✅ Check your email for a reset link.');
+    setMessage('✅ Check your email for a reset link. The link will expire in 1 hour.');
   };
 
   return (

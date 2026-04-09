@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Search, Send, Loader, MessageCircle } from 'lucide-react';
+import { Search, Send, Loader, MessageCircle, Paperclip, X } from 'lucide-react';
 
 export default function UserVendorMessages() {
   const [conversations, setConversations] = useState([]);
@@ -15,7 +15,11 @@ export default function UserVendorMessages() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [messageType, setMessageType] = useState('all'); // 'all', 'vendors', 'admin'
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null); // For image modal
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   const searchDebounceTimer = useRef(null);
 
   // Debounce search input (300ms)
@@ -196,10 +200,92 @@ export default function UserVendorMessages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle image upload to AWS S3
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    try {
+      setUploading(true);
+      const newImages = [];
+
+      for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          alert('Please select only image files');
+          continue;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image size must be less than 5MB');
+          continue;
+        }
+
+        try {
+          // Get presigned URL from our backend API
+          const getUrlResponse = await fetch('/api/aws/upload-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${file.name}`,
+              fileType: file.type,
+              folder: 'user-messages'
+            })
+          });
+
+          if (!getUrlResponse.ok) {
+            throw new Error('Failed to get upload URL');
+          }
+
+          const { uploadUrl, fileUrl } = await getUrlResponse.json();
+
+          // Upload directly to S3 using presigned URL
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': file.type,
+            },
+            body: file
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload to S3');
+          }
+
+          newImages.push({
+            name: file.name,
+            url: fileUrl,
+            size: file.size,
+            type: file.type,
+          });
+        } catch (fileError) {
+          console.error('Error uploading file:', fileError);
+          alert(`Failed to upload ${file.name}`);
+        }
+      }
+
+      setUploadedImages(prev => [...prev, ...newImages]);
+    } catch (error) {
+      console.error('Image upload error:', error);
+      alert('Failed to upload images. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Remove uploaded image
+  const removeUploadedImage = (index) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Handle sending message
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedVendor || !currentUser || sending) return;
+    if ((!newMessage.trim() && uploadedImages.length === 0) || !selectedVendor || !currentUser || sending) return;
 
     try {
       setSending(true);
@@ -211,17 +297,36 @@ export default function UserVendorMessages() {
         return;
       }
 
+      // Prepare message with attachments
+      const messagePayload = {
+        body: newMessage.trim(),
+        attachments: uploadedImages.map(img => ({
+          name: img.name,
+          url: img.url,
+          type: img.type,
+          size: img.size,
+        }))
+      };
+
+      const requestBody = {
+        vendorId: selectedVendor.vendor_id,
+        messageText: JSON.stringify(messagePayload),
+        senderType: 'user',
+      };
+      
+      console.log('📤 Sending message:', {
+        messagePayload,
+        messageTextType: typeof requestBody.messageText,
+        messageTextPreview: requestBody.messageText.substring(0, 100),
+      });
+
       const response = await fetch('/api/vendor/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          vendorId: selectedVendor.vendor_id,
-          messageText: newMessage,
-          senderType: 'user',
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
@@ -235,6 +340,7 @@ export default function UserVendorMessages() {
       // Add message to local state
       setMessages([...messages, result.data[0]]);
       setNewMessage('');
+      setUploadedImages([]);
 
       // Update conversation in list
       setConversations(prevConversations =>
@@ -242,7 +348,7 @@ export default function UserVendorMessages() {
           conv.vendor_id === selectedVendor.vendor_id
             ? {
                 ...conv,
-                last_message: newMessage,
+                last_message: JSON.stringify(messagePayload),
                 last_message_time: new Date().toISOString(),
               }
             : conv
@@ -254,6 +360,47 @@ export default function UserVendorMessages() {
     } finally {
       setSending(false);
     }
+  };
+
+  // Parse message content from JSON or plain text
+  const parseMessageContent = (messageText) => {
+    // Handle null/undefined
+    if (!messageText) return '';
+    
+    // If it's already an object, extract body
+    if (typeof messageText === 'object') {
+      return messageText.body || JSON.stringify(messageText);
+    }
+    
+    // Try to parse as JSON string
+    try {
+      const parsed = JSON.parse(messageText);
+      // If parsed successfully and has body, return body
+      if (parsed && typeof parsed === 'object' && parsed.body) {
+        console.log('✅ Successfully parsed message, extracted body');
+        return parsed.body;
+      }
+      // If it parsed to a string, that might be double-encoded
+      if (typeof parsed === 'string') {
+        console.log('⚠️ Parsed to string, might be double-encoded, trying again');
+        try {
+          const doubleParsed = JSON.parse(parsed);
+          if (doubleParsed && doubleParsed.body) {
+            console.log('✅ Double-encoded! Extracted body');
+            return doubleParsed.body;
+          }
+        } catch {
+          return parsed;
+        }
+      }
+      // If it parsed to something else, return it
+      if (parsed) return String(parsed);
+    } catch (e) {
+      // Not JSON, return as-is
+      console.log('❌ Could not parse message:', e.message, 'Message preview:', messageText.substring(0, 100));
+    }
+    
+    return messageText;
   };
 
   // Filter conversations
@@ -353,7 +500,7 @@ export default function UserVendorMessages() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 truncate">{conv.last_message}</p>
+                    <p className="text-sm text-gray-600 truncate">{parseMessageContent(conv.last_message)}</p>
                     <p className="text-xs text-gray-500 mt-1">
                       {new Date(conv.last_message_time).toLocaleDateString()}
                     </p>
@@ -397,7 +544,57 @@ export default function UserVendorMessages() {
                           : 'bg-gray-200 text-gray-900'
                       }`}
                     >
-                      <p className="text-sm">{msg.message_text}</p>
+                      <p className="text-sm">{parseMessageContent(msg.message_text)}</p>
+                      
+                      {/* Display attachments if any */}
+                      {(() => {
+                        try {
+                          // Handle both string and object types
+                          let parsed;
+                          if (typeof msg.message_text === 'string') {
+                            parsed = JSON.parse(msg.message_text);
+                          } else {
+                            parsed = msg.message_text;
+                          }
+                          
+                          if (parsed.attachments && parsed.attachments.length > 0) {
+                            return (
+                              <div className="mt-2 space-y-2">
+                                {parsed.attachments.map((att, idx) => (
+                                  <div key={idx}>
+                                    {att.type && att.type.startsWith('image/') ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedImage(att)}
+                                        className="block"
+                                      >
+                                        <img 
+                                          src={att.url} 
+                                          alt={att.name}
+                                          className="max-w-xs rounded-lg cursor-pointer hover:opacity-80 transition"
+                                        />
+                                      </button>
+                                    ) : (
+                                      <a 
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs underline"
+                                      >
+                                        📎 {att.name}
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                        } catch {
+                          // Invalid JSON, skip
+                        }
+                        return null;
+                      })()}
+                      
                       <p
                         className={`text-xs mt-1 ${
                           msg.sender_type === 'user'
@@ -419,7 +616,51 @@ export default function UserVendorMessages() {
 
             {/* Message Input */}
             <div className="px-6 py-4 border-t border-gray-200 bg-white">
+              {/* Uploaded Images Preview */}
+              {uploadedImages.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {uploadedImages.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img
+                        src={img.url}
+                        alt={img.name}
+                        className="h-16 w-16 rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeUploadedImage(idx)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <form onSubmit={handleSendMessage} className="flex gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  multiple
+                  disabled={sending || uploading}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending || uploading}
+                  className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition disabled:opacity-50"
+                  title="Attach image"
+                >
+                  {uploading ? (
+                    <Loader className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Paperclip className="w-5 h-5" />
+                  )}
+                </button>
                 <input
                   type="text"
                   value={newMessage}
@@ -430,7 +671,7 @@ export default function UserVendorMessages() {
                 />
                 <button
                   type="submit"
-                  disabled={sending || !newMessage.trim()}
+                  disabled={sending || uploading || (!newMessage.trim() && uploadedImages.length === 0)}
                   className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {sending ? (
@@ -451,6 +692,42 @@ export default function UserVendorMessages() {
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div 
+            className="relative bg-white rounded-lg max-w-3xl max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 bg-gray-900 text-white rounded-full p-2 hover:bg-gray-700 transition z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Image */}
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.name}
+              className="w-full h-auto"
+            />
+
+            {/* Image Info */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-sm font-medium text-gray-900">{selectedImage.name}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Size: {(selectedImage.size / 1024).toFixed(2)} KB
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

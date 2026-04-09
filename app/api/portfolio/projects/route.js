@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import { generateFileAccessUrl } from '@/lib/aws-s3';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -229,9 +230,61 @@ export async function GET(request) {
           uploadedAt: img.uploadedat,
         })) || [];
 
+        // Regenerate presigned URLs for S3 images
+        const imageUrlPromises = transformedImages.map(async (img) => {
+          try {
+            // Check if imageUrl is a full URL or just an S3 key
+            if (img.imageUrl) {
+              if (img.imageUrl.startsWith('http')) {
+                // It's a full URL (presigned or direct)
+                if (img.imageUrl.includes('amazonaws.com')) {
+                  // It's an S3 presigned URL that may have expired
+                  // Try to extract the key and regenerate a fresh presigned URL
+                  try {
+                    const urlObj = new URL(img.imageUrl);
+                    let path = urlObj.pathname.replace(/^\//, ''); // Remove leading slash
+                    // If path starts with bucket name, remove it
+                    if (path.includes('/')) {
+                      const parts = path.split('/');
+                      if (parts[0] === process.env.AWS_S3_BUCKET) {
+                        path = parts.slice(1).join('/');
+                      }
+                    }
+                    const freshKey = path;
+                    console.log('🔄 Regenerating presigned URL for S3 key:', freshKey);
+                    const freshUrl = await generateFileAccessUrl(freshKey);
+                    img.imageUrl = freshUrl;
+                    console.log('✅ Fresh presigned URL generated (from stored URL)');
+                  } catch (parseError) {
+                    console.warn('⚠️ Failed to extract key from presigned URL, using stored URL:', parseError.message);
+                    // If parsing fails, try to use the stored URL as-is
+                    // It might still work if not yet expired
+                  }
+                } else if (img.imageUrl.includes('googleapis.com')) {
+                  // It's a Google Cloud Storage URL, skip regeneration
+                  console.log('⏭️ Google Cloud Storage URL, skipping regeneration');
+                }
+              } else {
+                // It's an S3 key, generate a fresh presigned URL
+                console.log('🔄 Regenerating presigned URL for S3 key:', img.imageUrl);
+                const freshUrl = await generateFileAccessUrl(img.imageUrl);
+                img.imageUrl = freshUrl;
+                console.log('✅ Presigned URL regenerated');
+              }
+            }
+            return img;
+          } catch (error) {
+            console.error('❌ Error regenerating presigned URL for image', img.id, ':', error.message);
+            // Return image with original URL if regeneration fails
+            return img;
+          }
+        });
+
+        const imagesWithFreshUrls = await Promise.all(imageUrlPromises);
+
         // Attach images to projects
         const imagesByProjectId = {};
-        transformedImages.forEach(img => {
+        imagesWithFreshUrls.forEach(img => {
           if (!imagesByProjectId[img.portfolioProjectId]) {
             imagesByProjectId[img.portfolioProjectId] = [];
           }

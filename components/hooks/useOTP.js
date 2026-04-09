@@ -22,21 +22,25 @@ export function useOTP() {
   /**
    * Send OTP to phone or email
    */
-  const sendOTP = useCallback(async (phoneNumber, channel = 'sms', type = 'registration') => {
+  const sendOTP = useCallback(async (contact, channel = 'sms', type = 'registration') => {
     setLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
+      // Determine if contact is email or phone
+      const isEmail = contact.includes('@');
+      const actualChannel = channel === 'auto' ? (isEmail ? 'email' : 'sms') : channel;
+
       const response = await fetch('/api/otp/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phoneNumber: channel === 'sms' ? phoneNumber : undefined,
-          email: channel === 'email' ? phoneNumber : undefined,
-          channel,
+          phoneNumber: actualChannel === 'sms' ? contact : undefined,
+          email: actualChannel === 'email' ? contact : undefined,
+          channel: actualChannel,
           type,
         }),
       });
@@ -90,8 +94,12 @@ export function useOTP() {
       const body = { otpCode: code };
       
       if (identifier) {
-        // If identifier looks like a phone number (starts with + or 0 or contains digits)
-        if (identifier.startsWith('+') || identifier.startsWith('0') || /\d/.test(identifier)) {
+        // If identifier looks like an email
+        if (identifier.includes('@')) {
+          body.email = identifier;
+        }
+        // If identifier looks like a phone number (starts with + or 0 or contains digits only)
+        else if (identifier.startsWith('+') || identifier.startsWith('0') || /^\d+$/.test(identifier.replace(/[\s-()]/g, ''))) {
           body.phoneNumber = identifier;
         } else {
           // Otherwise treat it as otpId
