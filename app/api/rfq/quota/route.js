@@ -8,6 +8,47 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+async function buildQuotaFallback(userId, quotaResetsOn) {
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const { data: userRfqs, error } = await supabase
+    .from('rfqs')
+    .select('type')
+    .eq('user_id', userId)
+    .eq('status', 'submitted')
+    .gte('created_at', monthStart.toISOString());
+
+  if (error) {
+    throw error;
+  }
+
+  const byType = { direct: 0, wizard: 0, public: 0 };
+
+  for (const rfq of userRfqs || []) {
+    if (rfq.type === 'direct') {
+      byType.direct += 1;
+    } else if (rfq.type === 'wizard' || rfq.type === 'matched') {
+      byType.wizard += 1;
+    } else if (rfq.type === 'public') {
+      byType.public += 1;
+    }
+  }
+
+  const totalThisMonth = byType.direct + byType.wizard + byType.public;
+  const freeRemaining = Math.max(0, 3 - totalThisMonth);
+
+  return {
+    free_remaining: freeRemaining,
+    total_this_month: totalThisMonth,
+    by_type: byType,
+    can_submit_free: freeRemaining > 0,
+    quota_resets_on: quotaResetsOn,
+    source: 'rfqs_fallback'
+  };
+}
+
 /**
  * GET /api/rfq/quota
  * 
@@ -56,10 +97,8 @@ export async function GET(request) {
 
     if (quotaError && quotaError.code !== 'PGRST116') {
       console.error('Error fetching quota:', quotaError);
-      return NextResponse.json(
-        { error: 'Error fetching quota' },
-        { status: 500 }
-      );
+      const fallback = await buildQuotaFallback(user.id, `${nextMonth}-01`);
+      return NextResponse.json(fallback);
     }
 
     // If no quota record, create one
@@ -79,6 +118,12 @@ export async function GET(request) {
           quota_resets_on: `${nextMonth}-01`,
           message: 'Fresh quota for this month'
         });
+      }
+
+      if (createError) {
+        console.error('Error creating quota record:', createError);
+        const fallback = await buildQuotaFallback(user.id, `${nextMonth}-01`);
+        return NextResponse.json(fallback);
       }
     }
 
