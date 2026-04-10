@@ -347,7 +347,6 @@ export default function ZintraHomepage() {
       fetchVendorProfile();
     }
 
-    return () => subscription?.unsubscribe();
     const fetchData = async () => {
       // Use comprehensive construction categories
       setCategories([
@@ -390,6 +389,8 @@ export default function ZintraHomepage() {
     };
     fetchVendorProfile();
     fetchData();
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   // Close menus when clicking outside

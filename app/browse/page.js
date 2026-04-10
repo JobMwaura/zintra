@@ -2,30 +2,55 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Search, MapPin, Star, Filter, X } from 'lucide-react';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT, filterVendorsByCategory } from '@/lib/constructionCategories';
 import { CANONICAL_CATEGORIES, CATEGORY_LABEL_TO_SLUG } from '@/lib/categories/canonicalCategories';
 
+function normalizeCategoryValue(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[_-]+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default function BrowseVendors() {
-  const searchParams = useSearchParams();
   const [vendors, setVendors] = useState([]);
   const [categories, setCategories] = useState(['All Categories']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('query') || '');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [selectedCounty, setSelectedCounty] = useState(searchParams.get('county') || '');
-  const [selectedTown, setSelectedTown] = useState(searchParams.get('location') || '');
+  const [selectedCounty, setSelectedCounty] = useState('');
+  const [selectedTown, setSelectedTown] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [vendorProfileLink, setVendorProfileLink] = useState('');
 
   // ✅ Initialize from URL params
   useEffect(() => {
-    const categoryParam = searchParams.get('category');
+    const params = new URLSearchParams(window.location.search);
+    const categoryParam = params.get('category');
+    const queryParam = params.get('query');
+    const countyParam = params.get('county');
+    const locationParam = params.get('location');
+
+    if (queryParam) {
+      setSearchQuery(queryParam);
+    }
+
+    if (countyParam) {
+      setSelectedCounty(countyParam);
+    }
+
+    if (locationParam) {
+      setSelectedTown(locationParam);
+    }
+
     if (categoryParam) {
       // Category from home page could be a slug, so try to find matching label
       const categoryObj = CANONICAL_CATEGORIES.find(
@@ -38,7 +63,7 @@ export default function BrowseVendors() {
         setSelectedCategory(categoryParam);
       }
     }
-  }, [searchParams]);
+  }, []);
 
   // ✅ Fetch vendors and extract filters
   useEffect(() => {
@@ -153,6 +178,9 @@ export default function BrowseVendors() {
     if (!matchesCategory && selectedCategory) {
       // Get the slug for the selected category label
       const selectedSlug = CATEGORY_LABEL_TO_SLUG[selectedCategory];
+      const normalizedSelectedCategory = normalizeCategoryValue(selectedCategory);
+      const normalizedSelectedSlug = normalizeCategoryValue(selectedSlug);
+      const normalizedVendorCategory = normalizeCategoryValue(vendor.category);
       
       if (selectedSlug) {
         // Check primary category match
@@ -163,6 +191,12 @@ export default function BrowseVendors() {
         else if (Array.isArray(vendor.secondary_categories) && vendor.secondary_categories.length > 0) {
           matchesCategory = vendor.secondary_categories.includes(selectedSlug);
         }
+      }
+
+      if (!matchesCategory && normalizedVendorCategory) {
+        matchesCategory =
+          normalizedVendorCategory === normalizedSelectedCategory ||
+          normalizedVendorCategory === normalizedSelectedSlug;
       }
     }
     
