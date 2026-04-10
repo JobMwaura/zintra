@@ -14,6 +14,41 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+async function loadVendorProfile(userId) {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return { data, error };
+}
+
+async function loadRecipientRows(vendorId) {
+  const preferredSelects = [
+    'rfq_id, recipient_type, status',
+    'rfq_id, recipient_type',
+    '*',
+  ];
+
+  for (const selectClause of preferredSelects) {
+    const { data, error } = await supabase
+      .from('rfq_recipients')
+      .select(selectClause)
+      .eq('vendor_id', vendorId);
+
+    if (!error) {
+      return { data: data || [], error: null };
+    }
+
+    if (error.code !== '42703') {
+      return { data: [], error };
+    }
+  }
+
+  return { data: [], error: null };
+}
+
 /**
  * GET /api/vendor/eligible-rfqs
  * 
@@ -63,13 +98,9 @@ export async function GET(request) {
     }
 
     // Get vendor profile to check if they're a vendor
-    const { data: vendorProfile } = await supabase
-      .from('vendors')
-      .select('id, category, primary_category_slug, secondary_categories, location')
-      .eq('user_id', user.id)
-      .single();
+    const { data: vendorProfile, error: vendorProfileError } = await loadVendorProfile(user.id);
 
-    if (!vendorProfile) {
+    if (vendorProfileError || !vendorProfile) {
       return NextResponse.json(
         { error: 'Vendor profile not found. Only vendors can view RFQs.' },
         { status: 403 }
@@ -88,10 +119,7 @@ export async function GET(request) {
     const offset = (page - 1) * limit;
     const allowedStatuses = ['assigned', 'in_review', 'submitted', 'approved', 'open', 'active'];
 
-    const { data: recipientRows, error: recipientError } = await supabase
-      .from('rfq_recipients')
-      .select('rfq_id, recipient_type, status')
-      .eq('vendor_id', vendorProfile.id);
+    const { data: recipientRows, error: recipientError } = await loadRecipientRows(vendorProfile.id);
 
     if (recipientError) {
       console.error('Error loading RFQ recipients for vendor:', recipientError);
