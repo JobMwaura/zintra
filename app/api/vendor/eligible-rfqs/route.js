@@ -41,7 +41,7 @@ async function loadRecipientRows(vendorId) {
       return { data: data || [], error: null };
     }
 
-    if (error.code !== '42703') {
+    if (!['42703', 'PGRST204'].includes(error.code)) {
       return { data: [], error };
     }
   }
