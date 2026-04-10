@@ -283,10 +283,10 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if vendor is eligible to respond
-    // For DIRECT RFQs: vendor must be explicitly assigned
-    // For WIZARD/PUBLIC RFQs: vendor must have been auto-matched
-    if (normalizedRfq.type === 'direct' || normalizedRfq.type === 'wizard') {
+    // Check if vendor is eligible to respond.
+    // Direct and vendor-request RFQs may be authorized via assigned_vendor_id
+    // when legacy environments fail to persist rfq_recipients rows.
+    if (['direct', 'wizard', 'vendor-request'].includes(normalizedRfq.type)) {
       const { data: recipient } = await supabase
         .from('rfq_recipients')
         .select('id, vendor_id, recipient_type')
@@ -294,10 +294,13 @@ export async function POST(request, { params }) {
         .eq('vendor_id', vendorId)
         .maybeSingle();
 
-      if (!recipient) {
-        const errorMsg = normalizedRfq.type === 'direct'
-          ? 'You are not assigned to this direct RFQ' 
-          : 'You were not matched to this wizard RFQ. Only vendors matched by the system can submit quotes.';
+      const hasDirectAssignment = ['direct', 'vendor-request'].includes(normalizedRfq.type)
+        && normalizedRfq.assigned_vendor_id === vendorId;
+
+      if (!recipient && !hasDirectAssignment) {
+        const errorMsg = normalizedRfq.type === 'wizard'
+          ? 'You were not matched to this wizard RFQ. Only vendors matched by the system can submit quotes.'
+          : 'You are not assigned to this direct RFQ';
         return NextResponse.json(
           { error: errorMsg },
           { status: 403 }
