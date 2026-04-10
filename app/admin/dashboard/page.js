@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { ADMIN_PENDING_RFQ_STATUSES } from '@/lib/rfqUtils';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -25,10 +26,11 @@ export default function AdminDashboardPage() {
           .from('vendors')
           .select('*', { count: 'exact', head: true });
 
-        // Get RFQs count
-        const { count: rfqCount } = await supabase
+        // Get pending RFQs count
+        const { count: pendingRfqCount } = await supabase
           .from('rfqs')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true })
+          .in('status', ADMIN_PENDING_RFQ_STATUSES);
 
         // Get users count
         const { count: userCount } = await supabase
@@ -53,7 +55,7 @@ export default function AdminDashboardPage() {
 
         setStats({
           totalVendors: vendorCount || 0,
-          pendingRFQs: rfqCount || 0,
+          pendingRFQs: pendingRfqCount || 0,
           activeUsers: userCount || 0,
           totalCategories: categoryCount || 0,
           activeSubscriptions: activeSubCount || 0,

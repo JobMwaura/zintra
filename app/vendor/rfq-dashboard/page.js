@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import RFQModalDispatcher from '@/components/modals/RFQModalDispatcher';
 import {
+  getVendorCategoryDisplayName,
+  normalizeRfqRecord,
+} from '@/lib/rfqUtils';
+import {
   ChevronRight,
   Filter,
   Search,
@@ -19,7 +23,6 @@ import {
   MapPin,
   DollarSign,
   Calendar,
-  XCircle,
   Ban
 } from 'lucide-react';
 
@@ -84,8 +87,8 @@ function RFQSkeleton() {
 // Stats skeleton
 function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-      {[...Array(4)].map((_, i) => (
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+      {[...Array(5)].map((_, i) => (
         <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse border-l-4 border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -105,7 +108,7 @@ export default function VendorRFQDashboard() {
   const [rfqs, setRfqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(searchTerm, 300);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterUrgency, setFilterUrgency] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all'); // all, not_responded, responded
@@ -117,7 +120,8 @@ export default function VendorRFQDashboard() {
     total_eligible: 0,
     pending_response: 0,
     submitted_quotes: 0,
-    accepted_quotes: 0
+    accepted_quotes: 0,
+    declined_rfqs: 0
   });
   const [showRFQModal, setShowRFQModal] = useState(false);
   const [selectedRfq, setSelectedRfq] = useState(null);
@@ -157,7 +161,6 @@ export default function VendorRFQDashboard() {
     } else if (filterStatus === 'declined') {
       filtered = filtered.filter(rfq => rfq.vendor_response?.status === 'declined');
     } else {
-      // 'all' — hide declined by default to keep the list clean
       filtered = filtered.filter(rfq => rfq.vendor_response?.status !== 'declined');
     }
 
@@ -199,11 +202,11 @@ export default function VendorRFQDashboard() {
 
       if (rfqRes.ok) {
         const rfqData = await rfqRes.json();
-        const rfqsList = rfqData.rfqs || [];
+        const rfqsList = (rfqData.rfqs || []).map(normalizeRfqRecord);
         setRfqs(rfqsList);
 
         // Extract unique categories (safely handle null rfqs)
-        const uniqueCategories = [...new Set(rfqsList?.map(r => r?.category)?.filter(Boolean))].filter(Boolean);
+        const uniqueCategories = [...new Set(rfqsList.map((rfq) => rfq?.category).filter(Boolean))].filter(Boolean);
         setCategories(uniqueCategories);
 
         // Calculate stats
@@ -324,7 +327,7 @@ export default function VendorRFQDashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900">RFQ Opportunities</h1>
-              <p className="text-gray-600 mt-2">Find and bid on construction projects{vendorProfile?.primary_category_slug ? ` in ${vendorProfile.primary_category_slug}` : ''}</p>
+              <p className="text-gray-600 mt-2">Find and bid on construction projects{vendorProfile ? ` in ${getVendorCategoryDisplayName(vendorProfile) || 'your category'}` : ''}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Welcome back</p>
@@ -370,7 +373,7 @@ export default function VendorRFQDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-emerald-500">
             <div className="flex items-center justify-between">
               <div>

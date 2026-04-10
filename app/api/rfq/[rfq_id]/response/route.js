@@ -2,7 +2,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { checkRfqResponseGate } from '@/lib/billing/gates';
+import { insertAdminAudit, updateRfqRecipientStatus } from '@/lib/rfqPersistence';
+import { normalizeRfqRecord, rfqMatchesVendorCategory } from '@/lib/rfqUtils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -213,6 +214,8 @@ export async function POST(request, { params }) {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    const vendorName = vendorProfile?.company_name || 'Vendor';
+
     // Use vendor profile ID - required for vendor to submit quotes
     const vendorId = vendorProfile?.id;
     
@@ -223,24 +226,10 @@ export async function POST(request, { params }) {
       );
     }
 
-    // ── Sprint B: Check RFQ response limit by vendor tier ──
-    const rfqGate = await checkRfqResponseGate(vendorId, user.id);
-    if (!rfqGate.allowed) {
-      return NextResponse.json(
-        {
-          error: rfqGate.reason,
-          upgrade: rfqGate.upgrade,
-          limit: rfqGate.limit,
-          active: rfqGate.active,
-        },
-        { status: 403 }
-      );
-    }
-
     // Check if RFQ exists and is eligible for response
     const { data: rfq, error: rfqError } = await supabase
       .from('rfqs')
-      .select('id, title, user_id, status, type, expires_at, category')
+      .select('id, title, user_id, status, type, rfq_type, expires_at, category, category_slug')
       .eq('id', rfq_id)
       .single();
 
@@ -251,24 +240,28 @@ export async function POST(request, { params }) {
       );
     }
 
+    const normalizedRfq = normalizeRfqRecord(rfq);
+
     // Check if RFQ is still open for responses
     // Allows: submitted (default), open (user can quote), pending (awaiting approval)
     // Prevents: closed, completed, cancelled, archived
-    const acceptableStatuses = ['submitted', 'open', 'pending', 'assigned', 'in_review'];
-    if (!acceptableStatuses.includes(rfq.status)) {
+    const acceptableStatuses = ['submitted', 'approved', 'open', 'pending', 'assigned', 'in_review'];
+    if (!acceptableStatuses.includes(normalizedRfq.status)) {
       return NextResponse.json(
-        { error: `RFQ is ${rfq.status} and cannot accept responses` },
+        { error: `RFQ is ${normalizedRfq.status} and cannot accept responses` },
         { status: 410 }
       );
     }
 
     // Check if RFQ has expired
-    const expiresAt = new Date(rfq.expires_at);
-    if (expiresAt < new Date()) {
-      return NextResponse.json(
-        { error: 'RFQ has expired' },
-        { status: 410 }
-      );
+    if (normalizedRfq.expires_at) {
+      const expiresAt = new Date(normalizedRfq.expires_at);
+      if (!Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) {
+        return NextResponse.json(
+          { error: 'RFQ has expired' },
+          { status: 410 }
+        );
+      }
     }
 
     // Check if vendor already responded
@@ -293,7 +286,7 @@ export async function POST(request, { params }) {
     // Check if vendor is eligible to respond
     // For DIRECT RFQs: vendor must be explicitly assigned
     // For WIZARD/PUBLIC RFQs: vendor must have been auto-matched
-    if (rfq.type === 'direct' || rfq.type === 'wizard') {
+    if (normalizedRfq.type === 'direct' || normalizedRfq.type === 'wizard') {
       const { data: recipient } = await supabase
         .from('rfq_recipients')
         .select('id, vendor_id, recipient_type')
@@ -302,7 +295,7 @@ export async function POST(request, { params }) {
         .maybeSingle();
 
       if (!recipient) {
-        const errorMsg = rfq.type === 'direct' 
+        const errorMsg = normalizedRfq.type === 'direct'
           ? 'You are not assigned to this direct RFQ' 
           : 'You were not matched to this wizard RFQ. Only vendors matched by the system can submit quotes.';
         return NextResponse.json(
@@ -313,10 +306,10 @@ export async function POST(request, { params }) {
     }
 
     // For PUBLIC RFQs: any vendor in the same category can respond
-    if (rfq.type === 'public') {
+    if (normalizedRfq.type === 'public') {
       const { data: vendorData } = await supabase
         .from('vendors')
-        .select('id, primary_category, secondary_categories')
+        .select('id, category, primary_category_slug, secondary_categories')
         .eq('id', vendorId)
         .single();
 
@@ -327,11 +320,7 @@ export async function POST(request, { params }) {
         );
       }
 
-      // Check if vendor is in the RFQ category
-      const inCategory = vendorData.primary_category === rfq.category || 
-        (vendorData.secondary_categories && vendorData.secondary_categories.includes(rfq.category));
-      
-      if (!inCategory) {
+      if (!rfqMatchesVendorCategory(normalizedRfq, vendorData)) {
         return NextResponse.json(
           { error: 'You are not in the required category for this public RFQ' },
           { status: 403 }
@@ -388,7 +377,7 @@ export async function POST(request, { params }) {
           warranty: warranty || null,
           payment_terms: payment_terms || null,
           status: 'submitted',
-          vendor_name: vendorProfile?.company_name || 'Vendor',
+          vendor_name: vendorName,
           vendor_rating: vendorProfile?.rating || 0
         }
       ])
@@ -404,13 +393,15 @@ export async function POST(request, { params }) {
     }
 
     // Update RFQ status if first response
-    const { data: responseCount } = await supabase
+    const { count: responseCount } = await supabase
       .from('rfq_responses')
-      .select('id', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('rfq_id', rfq_id)
       .eq('status', 'submitted');
 
-    if (responseCount === 1) {
+    const totalResponses = responseCount || 0;
+
+    if (totalResponses === 1) {
       await supabase
         .from('rfqs')
         .update({ status: 'in_review' })
@@ -418,16 +409,20 @@ export async function POST(request, { params }) {
     }
 
     // Update RFQ recipient status if applicable
-    await supabase
-      .from('rfq_recipients')
-      .update({ status: 'responded' })
-      .eq('rfq_id', rfq_id)
-      .eq('vendor_id', vendorProfile.id);
+    if (normalizedRfq.type === 'direct') {
+      const { error: recipientStatusError } = await updateRfqRecipientStatus(
+        supabase,
+        rfq_id,
+        vendorProfile.id,
+        'responded'
+      );
 
-    // =========================================================================
-    // NOTIFICATION 1: Notify the BUYER (RFQ requester) — quote has been submitted
-    // The buyer sees the vendor name but not the other way around
-    // =========================================================================
+      if (recipientStatusError) {
+        console.error('Error updating RFQ recipient status:', recipientStatusError);
+      }
+    }
+
+    // Create notification (can be enhanced with actual email/SMS)
     const { error: notifError } = await supabase
       .from('notifications')
       .insert([
@@ -435,76 +430,40 @@ export async function POST(request, { params }) {
           user_id: rfq.user_id,
           type: 'rfq_response',
           title: 'New Quote Received',
-          body: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for "${rfq.title}"`,
-          related_type: 'rfq',
-          related_id: rfq_id,
-          metadata: {
+          message: `${vendorName} submitted a quote for "${rfq.title}"`,
+          resource_type: 'rfq_response',
+          resource_id: response.id,
+          data: {
             rfq_id: rfq_id,
-            response_id: response.id,
-            vendor_name: vendorProfile?.company_name || 'Vendor',
-            quoted_price: total_price_calculated || quoted_price,
+            vendor_name: vendorName,
+            quoted_price: quoted_price,
             currency: currency
           }
         }
       ]);
 
     if (notifError) {
-      console.error('Error creating buyer notification:', notifError);
+      console.error('Error creating notification:', notifError);
     }
 
-    // =========================================================================
-    // NOTIFICATION 2: Notify all ADMINS — vendor has submitted a quote
-    // Admin sees: which vendor, which RFQ, and that it went to the user
-    // =========================================================================
-    try {
-      const { data: admins } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-
-      if (admins?.length) {
-        const adminNotifs = admins.map(a => ({
-          user_id: a.user_id,
-          type: 'admin_quote_submitted',
-          title: '📩 Vendor Quote Submitted',
-          body: `${vendorProfile?.company_name || 'A vendor'} submitted a quote for RFQ "${rfq.title}". The quote has been delivered to the requester.`,
-          related_type: 'rfq',
-          related_id: rfq_id,
-          metadata: {
-            rfq_id: rfq_id,
-            response_id: response.id,
-            vendor_id: vendorProfile.id,
-            vendor_name: vendorProfile?.company_name || 'Vendor',
-            quoted_price: total_price_calculated || quoted_price,
-            rfq_type: rfq.type,
-          }
-        }));
-
-        await supabase.from('notifications').insert(adminNotifs);
-        console.log('[QUOTE SUBMIT] ✅ Notified', admins.length, 'admin(s) about vendor quote submission');
-      }
-    } catch (adminErr) {
-      console.error('Admin notification error (non-critical):', adminErr.message);
-    }
-
-    // Log audit trail
-    await supabase
-      .from('rfq_admin_audit')
-      .insert([
-        {
-          action: 'response_submitted',
-          resource_type: 'rfq_response',
-          resource_id: response.id,
-          user_id: user.id,
-          details: {
-            rfq_id: rfq_id,
-            vendor_id: vendorProfile.id,
-            vendor_name: vendorProfile?.company_name,
-            quoted_price: total_price_calculated || quoted_price,
-            timestamp: new Date().toISOString()
-          }
+    const { error: auditError } = await insertAdminAudit(supabase, [
+      {
+        action: 'response_submitted',
+        resource_type: 'rfq_response',
+        resource_id: response.id,
+        user_id: user.id,
+        details: {
+          rfq_id: rfq_id,
+          vendor_id: vendorProfile.id,
+          quoted_price: quoted_price,
+          timestamp: new Date().toISOString()
         }
-      ]);
+      }
+    ]);
+
+    if (auditError) {
+      console.error('Error writing RFQ admin audit:', auditError);
+    }
 
     return NextResponse.json(
       {
@@ -517,10 +476,11 @@ export async function POST(request, { params }) {
           status: response.status,
           created_at: response.created_at
         },
-        message: 'Quote submitted successfully! The buyer will be notified.',
+        message: 'Quote submitted successfully',
         rfq_info: {
           rfq_title: rfq.title,
-          total_responses: responseCount + 1
+          requester_name: 'Customer',
+          total_responses: totalResponses
         }
       },
       { status: 201 }

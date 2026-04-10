@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import QuoteFormSections from '@/components/vendor/QuoteFormSections';
+import { normalizeRfqRecord } from '@/lib/rfqUtils';
 import {
   ArrowLeft,
   AlertCircle,
@@ -126,7 +127,6 @@ export default function RFQRespond() {
       await Promise.race([
         (async () => {
           try {
-            // Get the session access token (not user ID!)
             const { data: { session } } = await supabase.auth.getSession();
 
             if (!session) {
@@ -169,12 +169,14 @@ export default function RFQRespond() {
             }
 
             // Check if expired
-            const expiresAt = new Date(rfqData.expires_at);
-            if (expiresAt < new Date()) {
-              if (isMounted) {
-                setError('This RFQ has expired and is no longer accepting responses');
+            if (rfqData.expires_at) {
+              const expiresAt = new Date(rfqData.expires_at);
+              if (!Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) {
+                if (isMounted) {
+                  setError('This RFQ has expired and is no longer accepting responses');
+                }
+                return;
               }
-              return;
             }
 
             // Check if already responded
@@ -193,7 +195,7 @@ export default function RFQRespond() {
             }
 
             if (isMounted) {
-              setRfq(rfqData);
+              setRfq(normalizeRfqRecord(rfqData));
             }
           } catch (err) {
             console.error('Error in data fetch:', err);
@@ -496,8 +498,11 @@ export default function RFQRespond() {
     );
   }
 
-  const expiresAt = new Date(rfq.expires_at);
-  const daysUntilExpiry = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
+  const expiresAt = rfq.expires_at ? new Date(rfq.expires_at) : null;
+  const hasValidExpiry = expiresAt && !Number.isNaN(expiresAt.getTime());
+  const daysUntilExpiry = hasValidExpiry
+    ? Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 p-4 md:p-8">
@@ -523,8 +528,8 @@ export default function RFQRespond() {
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Expires In</p>
-              <p className={`font-semibold ${daysUntilExpiry < 3 ? 'text-red-600' : 'text-gray-900'}`}>
-                {daysUntilExpiry} days
+              <p className={`font-semibold ${daysUntilExpiry !== null && daysUntilExpiry < 3 ? 'text-red-600' : 'text-gray-900'}`}>
+                {daysUntilExpiry === null ? 'Open' : `${daysUntilExpiry} days`}
               </p>
             </div>
             <div>

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { hasActiveAdminAccess } from '@/lib/adminAccess';
 import {
   LayoutDashboard,
   Building2,
@@ -104,25 +105,34 @@ export default function AdminDashboardLayout({ children }) {
 
         // Session exists - get user details
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserEmail(user.email || '');
-          setIsAuthenticated(true);
+        if (!user) {
+          router.push('/admin/login');
+          return;
         }
 
-        // Fetch unread messages count
+        const { isAdmin, error } = await hasActiveAdminAccess(supabase, user.id);
+        if (error || !isAdmin) {
+          await supabase.auth.signOut();
+          router.push('/admin/login');
+          return;
+        }
+
         try {
-          const { data: unreadMessages, error } = await supabase
+          const { data: unreadMessages, error: unreadError } = await supabase
             .from('messages')
             .select('id')
             .eq('is_read', false)
             .eq('message_type', 'vendor_to_admin');
 
-          if (!error && unreadMessages) {
+          if (!unreadError && unreadMessages) {
             setUnreadMessageCount(unreadMessages.length);
           }
-        } catch (error) {
-          console.error('Error fetching unread messages:', error);
+        } catch (messageError) {
+          console.error('Error fetching unread messages:', messageError);
         }
+
+        setUserEmail(user.email || '');
+        setIsAuthenticated(true);
       } catch (error) {
         console.error('Auth check error:', error);
         router.push('/admin/login');
@@ -140,7 +150,6 @@ export default function AdminDashboardLayout({ children }) {
       }
     });
 
-    // Subscribe to real-time message updates
     const messageSubscription = supabase
       .channel('messages')
       .on('postgres_changes', {
@@ -148,7 +157,6 @@ export default function AdminDashboardLayout({ children }) {
         schema: 'public',
         table: 'messages'
       }, () => {
-        // Refetch unread count when messages change
         supabase
           .from('messages')
           .select('id')
@@ -224,7 +232,7 @@ export default function AdminDashboardLayout({ children }) {
                 {section.items.map(({ name, icon: Icon, href }) => {
                   const active = pathname.startsWith(href);
                   const isMessagesLink = href === '/admin/dashboard/messages';
-                  
+
                   return (
                     <Link
                       key={name}
@@ -242,8 +250,8 @@ export default function AdminDashboardLayout({ children }) {
                       </div>
                       {isMessagesLink && unreadMessageCount > 0 && (
                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                          active 
-                            ? 'bg-white text-orange-500' 
+                          active
+                            ? 'bg-white text-orange-500'
                             : 'bg-red-500 text-white'
                         }`}>
                           {unreadMessageCount}

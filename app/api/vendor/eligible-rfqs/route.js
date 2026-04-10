@@ -2,6 +2,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import {
+  getVendorCategoryDisplayName,
+  getVendorCategorySlugs,
+  normalizeRfqRecord,
+  rfqMatchesVendorCategory,
+} from '@/lib/rfqUtils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -59,7 +65,7 @@ export async function GET(request) {
     // Get vendor profile to check if they're a vendor
     const { data: vendorProfile } = await supabase
       .from('vendors')
-      .select('id, category, location')
+      .select('id, category, primary_category_slug, secondary_categories, location')
       .eq('user_id', user.id)
       .single();
 
@@ -80,21 +86,25 @@ export async function GET(request) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, parseInt(searchParams.get('limit') || '20'));
     const offset = (page - 1) * limit;
+    const allowedStatuses = ['assigned', 'in_review', 'submitted', 'approved', 'open', 'active'];
+
+    const { data: recipientRows, error: recipientError } = await supabase
+      .from('rfq_recipients')
+      .select('rfq_id, recipient_type, status')
+      .eq('vendor_id', vendorProfile.id);
+
+    if (recipientError) {
+      console.error('Error loading RFQ recipients for vendor:', recipientError);
+    }
+
+    const recipientsByRfq = new Map(
+      (recipientRows || []).map((recipient) => [recipient.rfq_id, recipient])
+    );
 
     // Build query - query rfqs table directly instead of incomplete view
     let query = supabase
       .from('rfqs')
-      .select('*', { count: 'exact' });
-
-    // Filter by status (assigned or in_review)
-    query = query.in('status', ['assigned', 'in_review', 'submitted', 'approved']);
-
-    // Filter by vendor's category if not specified
-    if (category) {
-      query = query.eq('category', category);
-    } else if (vendorProfile.category) {
-      query = query.eq('category', vendorProfile.category);
-    }
+      .select('*');
 
     // Filter by location
     if (location) {
@@ -107,13 +117,9 @@ export async function GET(request) {
     }
 
     // Filter by status
-    const statusFilter = status || 'assigned';
-    if (['assigned', 'in_review', 'submitted'].includes(statusFilter)) {
-      query = query.eq('status', statusFilter);
+    if (status && allowedStatuses.includes(status)) {
+      query = query.eq('status', status);
     }
-
-    // Filter out expired RFQs
-    query = query.gt('expires_at', new Date().toISOString());
 
     // Apply sorting
     switch (sort) {
@@ -124,7 +130,7 @@ export async function GET(request) {
         query = query.order('urgency', { ascending: false }).order('created_at', { ascending: false });
         break;
       case 'budget':
-        query = query.order('budget_estimate', { ascending: false });
+        query = query.order('budget_max', { ascending: false, nullsFirst: false });
         break;
       case 'newest':
       default:
@@ -132,10 +138,7 @@ export async function GET(request) {
         break;
     }
 
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1);
-
-    const { data: rfqs, error: rfqError, count } = await query;
+    const { data: rfqs, error: rfqError } = await query;
 
     if (rfqError) {
       console.error('Error fetching eligible RFQs:', rfqError);
@@ -145,8 +148,60 @@ export async function GET(request) {
       );
     }
 
+    const now = new Date();
+    const hasVendorCategories = getVendorCategorySlugs(vendorProfile).length > 0;
+    const normalizedRfqs = (rfqs || [])
+      .map(normalizeRfqRecord)
+      .filter((rfq) => {
+        const recipient = recipientsByRfq.get(rfq.id);
+        const recipientStatus = recipient?.status || null;
+        const recipientVisible = !recipientStatus || !['pending_approval', 'cancelled'].includes(recipientStatus);
+        const isDirectAssignment = ['direct', 'vendor-request'].includes(rfq.type);
+        const assignedVendorMatch = !rfq.assigned_vendor_id || rfq.assigned_vendor_id === vendorProfile.id;
+
+        if (rfq.expires_at) {
+          const expiresAt = new Date(rfq.expires_at);
+          if (!Number.isNaN(expiresAt.getTime()) && expiresAt <= now) {
+            return false;
+          }
+        }
+
+        if (recipient && recipientVisible) {
+          return true;
+        }
+
+        if (recipient && !recipientVisible) {
+          return false;
+        }
+
+        if (isDirectAssignment) {
+          return assignedVendorMatch && Boolean(rfq.assigned_vendor_id === vendorProfile.id);
+        }
+
+        if (rfq.assigned_vendor_id && rfq.assigned_vendor_id !== vendorProfile.id) {
+          return false;
+        }
+
+        if (!allowedStatuses.includes(rfq.status)) {
+          return false;
+        }
+
+        if (category) {
+          return rfqMatchesVendorCategory(rfq, category);
+        }
+
+        if (hasVendorCategories) {
+          return rfqMatchesVendorCategory(rfq, vendorProfile);
+        }
+
+        return true;
+      });
+
+    const total = normalizedRfqs.length;
+    const paginatedRfqs = normalizedRfqs.slice(offset, offset + limit);
+
     // Enhance RFQ data with vendor's existing responses
-    const rfqIds = rfqs.map(r => r.id);
+    const rfqIds = paginatedRfqs.map((rfq) => rfq.id);
     let vendorResponses = {};
 
     if (rfqIds.length > 0) {
@@ -167,29 +222,30 @@ export async function GET(request) {
     }
 
     // Format response
-    const enrichedRfqs = rfqs.map(rfq => ({
+    const enrichedRfqs = paginatedRfqs.map((rfq) => ({
       ...rfq,
+      recipient_assignment: recipientsByRfq.get(rfq.id) || null,
       vendor_response: vendorResponses[rfq.id] || null,
-      can_respond: !vendorResponses[rfq.id], // Can only respond if no existing response (including declined)
-      days_until_expiry: Math.ceil(
-        (new Date(rfq.expires_at) - new Date()) / (1000 * 60 * 60 * 24)
-      )
+      can_respond: !vendorResponses[rfq.id], // Can only respond if no existing response
+      days_until_expiry: rfq.expires_at
+        ? Math.ceil((new Date(rfq.expires_at) - now) / (1000 * 60 * 60 * 24))
+        : null,
     }));
 
     return NextResponse.json({
       success: true,
       rfqs: enrichedRfqs,
       pagination: {
-        total: count,
+        total,
         page: page,
         limit: limit,
-        has_more: offset + limit < count
+        has_more: offset + limit < total
       },
       filters_applied: {
-        category: category || vendorProfile.category,
+        category: category || getVendorCategoryDisplayName(vendorProfile) || null,
         location: location || null,
         urgency: urgency || null,
-        status: statusFilter,
+        status: status || 'all_eligible',
         sort: sort
       }
     });

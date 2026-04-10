@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { normalizeRfqRecord } from '@/lib/rfqUtils';
 import {
   ArrowLeft,
   AlertCircle,
@@ -17,7 +18,6 @@ import {
   CheckCircle,
   X,
   XCircle,
-  ThumbsDown,
   Ban
 } from 'lucide-react';
 
@@ -35,8 +35,6 @@ export default function VendorRFQDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
-
-  // Decline modal state
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [declineNotes, setDeclineNotes] = useState('');
@@ -111,7 +109,7 @@ export default function VendorRFQDetails() {
             }
 
             if (isMounted) {
-              setRfq(rfqData);
+              setRfq(normalizeRfqRecord(rfqData));
             }
 
             // Fetch response count
@@ -198,14 +196,11 @@ export default function VendorRFQDetails() {
 
       setDeclineSuccess(true);
       setShowDeclineModal(false);
-
-      // Update local state to reflect decline
       setUserResponse({
         status: 'declined',
         description: `Decline reason: ${declineReason}`,
         created_at: new Date().toISOString()
       });
-
     } catch (err) {
       console.error('Error declining RFQ:', err);
       setDeclineError(err.message || 'Something went wrong');
@@ -246,9 +241,12 @@ export default function VendorRFQDetails() {
     );
   }
 
-  const expiresAt = new Date(rfq.expires_at);
-  const daysUntilExpiry = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
-  const hasExpired = daysUntilExpiry < 0;
+  const expiresAt = rfq.expires_at ? new Date(rfq.expires_at) : null;
+  const hasValidExpiry = expiresAt && !Number.isNaN(expiresAt.getTime());
+  const daysUntilExpiry = hasValidExpiry
+    ? Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+  const hasExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 p-4 md:p-8">
@@ -301,7 +299,7 @@ export default function VendorRFQDetails() {
               <div className="bg-white rounded-lg shadow-md p-4">
                 <p className="text-xs text-gray-500 mb-2">Expires In</p>
                 <p className={`text-lg font-bold ${hasExpired ? 'text-red-600' : 'text-gray-900'}`}>
-                  {hasExpired ? 'Expired' : `${daysUntilExpiry} days`}
+                  {daysUntilExpiry === null ? 'Open' : hasExpired ? 'Expired' : `${daysUntilExpiry} days`}
                 </p>
               </div>
               <div className="bg-white rounded-lg shadow-md p-4">
@@ -369,6 +367,7 @@ export default function VendorRFQDetails() {
                 </div>
               </div>
             )}
+
             {userResponse && userResponse.status !== 'declined' && (
               <div className="bg-green-50 border-l-4 border-green-500 rounded-lg p-6">
                 <div className="flex items-start gap-3">
@@ -402,13 +401,13 @@ export default function VendorRFQDetails() {
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Expires</p>
                   <p className={`font-semibold ${hasExpired ? 'text-red-600' : 'text-gray-900'}`}>
-                    {expiresAt.toLocaleDateString()}
+                    {hasValidExpiry ? expiresAt.toLocaleDateString() : 'Not set'}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Time Remaining</p>
                   <p className={`font-semibold ${hasExpired ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {hasExpired ? 'Expired' : `${daysUntilExpiry} days`}
+                      {daysUntilExpiry === null ? 'Open' : hasExpired ? 'Expired' : `${daysUntilExpiry} days`}
                   </p>
                 </div>
               </div>
@@ -429,7 +428,6 @@ export default function VendorRFQDetails() {
                   Quick response increases your chances of winning
                 </p>
 
-                {/* Decline / Not Interested */}
                 <div className="mt-4 pt-4 border-t border-emerald-200">
                   <button
                     onClick={() => {
@@ -444,7 +442,7 @@ export default function VendorRFQDetails() {
                     Not Interested
                   </button>
                   <p className="text-xs text-gray-500 mt-2 text-center">
-                    Opt out if this project isn&apos;t a good fit
+                    Opt out if this project is not a good fit
                   </p>
                 </div>
               </div>
@@ -510,11 +508,9 @@ export default function VendorRFQDetails() {
         </div>
       </div>
 
-      {/* Decline Modal */}
       {showDeclineModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
@@ -522,7 +518,7 @@ export default function VendorRFQDetails() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Decline RFQ</h2>
-                  <p className="text-xs text-gray-500">Let us know why this isn&apos;t a good fit</p>
+                  <p className="text-xs text-gray-500">Let us know why this is not a fit</p>
                 </div>
               </div>
               <button
@@ -533,15 +529,12 @@ export default function VendorRFQDetails() {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 space-y-5">
-              {/* RFQ Title Reference */}
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Declining</p>
                 <p className="font-semibold text-gray-900 text-sm">{rfq.title}</p>
               </div>
 
-              {/* Reason Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Why are you declining? <span className="text-red-500">*</span>
@@ -570,7 +563,6 @@ export default function VendorRFQDetails() {
                 </div>
               </div>
 
-              {/* Additional Notes */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Additional notes <span className="text-gray-400 font-normal">(optional)</span>
@@ -586,7 +578,6 @@ export default function VendorRFQDetails() {
                 <p className="text-xs text-gray-400 mt-1 text-right">{declineNotes.length}/500</p>
               </div>
 
-              {/* Error */}
               {declineError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700 text-sm">
                   <AlertCircle size={16} />
@@ -594,15 +585,13 @@ export default function VendorRFQDetails() {
                 </div>
               )}
 
-              {/* Info Notice */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-xs text-blue-700">
-                  <span className="font-semibold">Note:</span> The buyer will be notified that you&apos;ve opted out. This RFQ will be removed from your active opportunities. This action cannot be undone.
+                  <span className="font-semibold">Note:</span> The buyer will be notified that you opted out, and this RFQ will be removed from your active opportunities.
                 </p>
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => setShowDeclineModal(false)}
@@ -614,33 +603,22 @@ export default function VendorRFQDetails() {
               <button
                 onClick={handleDecline}
                 disabled={declining || !declineReason}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg font-medium transition text-sm flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg font-medium transition text-sm"
               >
-                {declining ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Declining...
-                  </>
-                ) : (
-                  <>
-                    <ThumbsDown size={16} />
-                    Confirm Decline
-                  </>
-                )}
+                {declining ? 'Declining...' : 'Confirm Decline'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Decline Success Toast */}
       {declineSuccess && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-fade-in">
-          <CheckCircle size={20} className="text-green-400" />
+        <div className="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50">
+          <Ban size={18} />
           <span className="text-sm font-medium">RFQ declined successfully</span>
           <button
             onClick={() => setDeclineSuccess(false)}
-            className="ml-2 text-gray-400 hover:text-white"
+            className="ml-2 text-gray-300 hover:text-white"
           >
             <X size={16} />
           </button>
