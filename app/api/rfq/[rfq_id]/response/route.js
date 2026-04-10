@@ -229,7 +229,7 @@ export async function POST(request, { params }) {
     // Check if RFQ exists and is eligible for response
     const { data: rfq, error: rfqError } = await supabase
       .from('rfqs')
-      .select('id, title, user_id, status, type, rfq_type, expires_at, category, category_slug')
+      .select('id, title, user_id, status, type, rfq_type, expires_at, category, category_slug, assigned_vendor_id')
       .eq('id', rfq_id)
       .single();
 
