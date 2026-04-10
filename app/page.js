@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock, Bell, Briefcase } from 'lucide-react';
+import { Search, Building2, Trees, Home, DoorOpen, Layers, Droplet, Zap, ChefHat, Wind, MapPin, Star, ArrowRight, Users, CheckCircle, MessageSquare, TrendingUp, Shield, Clock, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
@@ -9,8 +9,6 @@ import { CountyTownFilter } from '@/components/LocationSelector';
 import { KENYA_COUNTIES, KENYA_TOWNS_BY_COUNTY } from '@/lib/kenyaLocations';
 import { ALL_CATEGORIES_FLAT } from '@/lib/constructionCategories';
 import { useNotifications } from '@/hooks/useNotifications';
-import { VendorCard } from '@/components/VendorCard';
-import RFQDetailModal from '@/components/RFQDetailModal';
 
 function HowItWorksCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -231,7 +229,6 @@ export default function ZintraHomepage() {
   const [categories, setCategories] = useState([]);
   const [featuredVendors, setFeaturedVendors] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
-  const [featuredRFQs, setFeaturedRFQs] = useState([]);
   const [showSignUpDropdown, setShowSignUpDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [stats, setStats] = useState([
@@ -243,10 +240,6 @@ export default function ZintraHomepage() {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedRFQ, setSelectedRFQ] = useState(null);
-  const [showRFQModal, setShowRFQModal] = useState(false);
-  const [isVendor, setIsVendor] = useState(false);
-  const [vendorProfile, setVendorProfile] = useState(null);
   
   // Refs for menu management
   const userMenuRef = useRef(null);
@@ -298,8 +291,6 @@ export default function ZintraHomepage() {
           console.log('No user logged in');
           setCurrentUser(null);
           setVendorProfileLink('');
-          setIsVendor(false);
-          setVendorProfile(null);
           return;
         }
 
@@ -311,7 +302,7 @@ export default function ZintraHomepage() {
           const { data: vendor, error } = await Promise.race([
             supabase
               .from('vendors')
-              .select('id, company_name, verified, status')
+              .select('id')
               .eq('user_id', user.id)
               .maybeSingle(),
             new Promise((_, reject) =>
@@ -327,19 +318,13 @@ export default function ZintraHomepage() {
           if (vendor?.id) {
             console.log('Vendor found, setting profile link:', vendor.id);
             setVendorProfileLink(`/vendor-profile/${vendor.id}`);
-            setIsVendor(true);
-            setVendorProfile(vendor);
           } else {
             console.log('No vendor found for user:', user.id);
             setVendorProfileLink('');
-            setIsVendor(false);
-            setVendorProfile(null);
           }
         } catch (vendorErr) {
           console.warn('Error in vendor check:', vendorErr.message);
           setVendorProfileLink('');
-          setIsVendor(false);
-          setVendorProfile(null);
         }
       } catch (err) {
         console.error('Error in fetchVendorProfile:', err);
@@ -355,8 +340,6 @@ export default function ZintraHomepage() {
       } else {
         setCurrentUser(null);
         setVendorProfileLink('');
-        setIsVendor(false);
-        setVendorProfile(null);
       }
     });
 
@@ -364,6 +347,7 @@ export default function ZintraHomepage() {
       fetchVendorProfile();
     }
 
+    return () => subscription?.unsubscribe();
     const fetchData = async () => {
       // Use comprehensive construction categories
       setCategories([
@@ -374,35 +358,13 @@ export default function ZintraHomepage() {
         })),
       ]);
 
-      // Featured vendors - fetch all, prioritize those with images, then sort by rating
-      const { data: allVendors, error: vendorError } = await supabase
+      // Featured vendors (top rated, verified)
+      const { data: vendors } = await supabase
         .from('vendors')
-        .select('*');
-      
-      if (vendorError) {
-        console.error('Error fetching vendors:', vendorError);
-        setFeaturedVendors([]);
-      } else if (allVendors && allVendors.length > 0) {
-        console.log('Fetched total vendors:', allVendors.length);
-        
-        // Separate vendors with images and without
-        const vendorsWithImages = allVendors.filter(v => v.logo_url || v.business_logo || v.cover_image);
-        const vendorsWithoutImages = allVendors.filter(v => !v.logo_url && !v.business_logo && !v.cover_image);
-        
-        // Sort each group by rating (descending)
-        const sortByRating = (a, b) => (b.rating || 0) - (a.rating || 0);
-        vendorsWithImages.sort(sortByRating);
-        vendorsWithoutImages.sort(sortByRating);
-        
-        // Combine: with images first, then without
-        const sortedVendors = [...vendorsWithImages, ...vendorsWithoutImages].slice(0, 6);
-        
-        console.log('Featured vendors (prioritized with images):', sortedVendors.length);
-        setFeaturedVendors(sortedVendors);
-      } else {
-        console.warn('No vendors found');
-        setFeaturedVendors([]);
-      }
+        .select('id, company_name, category, county, rating, logo_url, verified')
+        .order('rating', { ascending: false })
+        .limit(6);
+      if (vendors) setFeaturedVendors(vendors);
 
       // Products teaser
       const { data: products } = await supabase
@@ -411,32 +373,6 @@ export default function ZintraHomepage() {
         .order('created_at', { ascending: false })
         .limit(4);
       if (products) setTopProducts(products);
-
-      // Featured RFQs - fetch active public RFQs
-      try {
-        const { data: rfqs, error: rfqError } = await supabase
-          .from('rfqs')
-          .select('id, title, description, category_slug, budget_min, budget_max, budget_range, location, county, deadline, status, created_at, type')
-          .eq('type', 'public')
-          .eq('visibility', 'public')
-          .in('status', ['approved', 'open', 'active'])
-          .order('created_at', { ascending: false })
-          .limit(6);
-        
-        if (rfqError) {
-          console.error('Error fetching RFQs:', rfqError);
-          setFeaturedRFQs([]);
-        } else if (rfqs && rfqs.length > 0) {
-          console.log('Fetched RFQs:', rfqs.length);
-          setFeaturedRFQs(rfqs);
-        } else {
-          console.warn('No public RFQs found');
-          setFeaturedRFQs([]);
-        }
-      } catch (rfqErr) {
-        console.error('Error in RFQ fetch:', rfqErr);
-        setFeaturedRFQs([]);
-      }
 
       // Stats
       const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true });
@@ -452,11 +388,8 @@ export default function ZintraHomepage() {
         { icon: Clock, value: 'Fast', label: 'Response Time' }
       ]);
     };
-    
     fetchVendorProfile();
     fetchData();
-
-    return () => subscription?.unsubscribe();
   }, []);
 
   // Close menus when clicking outside
@@ -480,12 +413,7 @@ export default function ZintraHomepage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <img 
-                src="/zintrass-new-logo.png" 
-                alt="Zintra" 
-                className="h-32 w-auto"
-              />
-              <span className="text-2xl font-bold text-gray-900">Zintra</span>
+              <img src="/zintrass-new-logo.png" alt="Zintra" className="h-32 w-auto" />
             </Link>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/" className="text-gray-700 hover:text-gray-900 font-medium transition-colors">Home</Link>
@@ -939,30 +867,28 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      {/* SECTION 1: CATEGORIES */}
       <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Categories</h2>
-            <Link href="/browse">
-              <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
-                View More <ArrowRight className="w-5 h-5 ml-1" />
-              </button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {CATEGORY_CARDS.slice(0, 6).map((category, index) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {CATEGORY_CARDS.map((category, index) => {
               const IconComponent = category.icon;
               return (
-                <Link key={index} href={`/browse?category=${encodeURIComponent(category.name)}`}>
-                  <div className="bg-white p-4 rounded-lg shadow-sm border-2 border-gray-100 hover:border-orange-200 hover:shadow-lg transition-all cursor-pointer group h-full flex flex-col">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mb-3" style={{ backgroundColor: '#ca863720' }}>
-                      <IconComponent className="w-5 h-5" style={{ color: '#ca8637' }} />
+                <Link key={index} href={`/browse?category=${encodeURIComponent(category.slug)}`}>
+                  <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-100 hover:border-orange-200 hover:shadow-lg transition-all cursor-pointer group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ backgroundColor: '#ca863720' }}>
+                        <IconComponent className="w-7 h-7" style={{ color: '#ca8637' }} />
+                      </div>
+                      <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${
+                        category.type === 'services' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-green-50 text-green-700 border border-green-200'
+                      }`}>
+                        {category.type === 'services' ? 'Service' : 'Materials'}
+                      </span>
                     </div>
-                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">{category.name}</h3>
-                    <p className="text-gray-600 text-xs leading-relaxed flex-grow line-clamp-2">{category.description}</p>
-                    <div className="mt-3 flex items-center text-xs font-medium group-hover:translate-x-1 transition-transform" style={{ color: '#ca8637' }}>
-                      Browse <ArrowRight className="w-3 h-3 ml-1" />
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{category.name}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{category.description}</p>
+                    <div className="mt-4 flex items-center text-sm font-medium group-hover:translate-x-1 transition-transform" style={{ color: '#ca8637' }}>
+                      Browse <ArrowRight className="w-4 h-4 ml-1" />
                     </div>
                   </div>
                 </Link>
@@ -972,126 +898,53 @@ export default function ZintraHomepage() {
         </div>
       </section>
 
-      {/* SECTION 2: FEATURED VENDORS */}
-      <section className="bg-gray-50 py-12">
+      <section className="bg-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Featured Vendors</h2>
+            <div>
+              <h2 className="text-4xl font-bold mb-2" style={{ color: '#535554' }}>Featured Vendors</h2>
+              <p className="text-gray-600 text-lg">Top-rated construction professionals in Kenya</p>
+            </div>
             <Link href="/browse">
               <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
-                View More <ArrowRight className="w-5 h-5 ml-1" />
+                View All <ArrowRight className="w-5 h-5 ml-1" />
               </button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredVendors.length > 0 ? (
-              featuredVendors.map((vendor) => (
-                <VendorCard key={vendor.id} vendor={vendor} />
-              ))
-            ) : (
-              <div className="col-span-3 text-center py-12">
-                <p className="text-gray-500 font-medium">No vendors available yet. Check back soon!</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 3: FEATURED RFQs */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Featured RFQs</h2>
-            <Link href="/post-rfq">
-              <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
-                View More <ArrowRight className="w-5 h-5 ml-1" />
-              </button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredRFQs.length > 0 ? (
-              featuredRFQs.map((rfq) => (
-                <div
-                  key={rfq.id}
-                  onClick={() => { setSelectedRFQ(rfq); setShowRFQModal(true); }}
-                  className="bg-white rounded-lg shadow-sm border border-gray-100 hover:border-orange-300 hover:shadow-lg transition-all p-4 flex flex-col cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">{rfq.title}</h3>
-                      <p className="text-xs text-gray-600 line-clamp-1">{rfq.description}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {featuredVendors.map((vendor) => (
+              <div key={vendor.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all">
+                <div className="relative h-40 bg-gray-50 flex items-center justify-center overflow-hidden">
+                  {vendor.logo_url ? (
+                    <img src={vendor.logo_url} alt={vendor.company_name} className="w-full h-full object-contain p-6" />
+                  ) : (
+                    <Building2 className="w-16 h-16 text-gray-300" />
+                  )}
+                  {vendor.verified && (
+                    <span className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                      <Shield className="w-3 h-3" /> Verified
+                    </span>
+                  )}
+                </div>
+                <div className="p-5">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">{vendor.company_name || 'Vendor'}</h3>
+                  <p className="text-xs text-gray-500 mb-3">{vendor.category || '—'}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-sm font-bold text-gray-900 ml-1.5">{vendor.rating || '—'}</span>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium ml-2 flex-shrink-0 whitespace-nowrap">Open</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                    <div>
-                      <p className="text-gray-500 font-semibold text-xs">Budget</p>
-                      <p className="font-bold text-gray-900 text-xs">
-                        {rfq.budget_min && rfq.budget_max
-                          ? `KES ${Number(rfq.budget_min).toLocaleString()} - ${Number(rfq.budget_max).toLocaleString()}`
-                          : rfq.budget_range || 'Flexible'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 font-semibold text-xs">Location</p>
-                      <p className="font-bold text-gray-900 text-xs">{rfq.county || rfq.location || 'Kenya'}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-gray-500 font-semibold text-xs">Category</p>
-                      <p className="font-bold text-gray-900 text-xs line-clamp-1 capitalize">
-                        {rfq.category_slug ? rfq.category_slug.replace(/-/g, ' ') : rfq.category || 'General'}
-                      </p>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      {vendor.county || 'Location'}
                     </div>
                   </div>
-                  
-                  <span className="w-full text-white py-2 rounded-lg font-semibold text-xs text-center hover:opacity-90 transition-all mt-auto" style={{ backgroundColor: '#5f6466' }}>
-                    View RFQ
-                  </span>
+                  <Link href={`/vendor-profile/${vendor.id}`}>
+                    <button className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all shadow-sm" style={{ backgroundColor: '#ca8637' }}>
+                      View Profile
+                    </button>
+                  </Link>
                 </div>
-              ))
-            ) : (
-              <div className="col-span-3 text-center py-12">
-                <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">No active RFQs at the moment</p>
-                <p className="text-gray-400 text-sm mt-1">Check back soon or post your own RFQ</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 4: FEATURED GIGS/JOBS */}
-      <section className="py-12 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold" style={{ color: '#535554' }}>Featured Gigs & Jobs</h2>
-            <Link href="/careers/gigs">
-              <button className="font-semibold flex items-center hover:opacity-80 transition-opacity" style={{ color: '#ca8637' }}>
-                View More <ArrowRight className="w-5 h-5 ml-1" />
-              </button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Test data for Gigs */}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={`test-gig-${i}`} className="bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-lg transition-all p-4 flex flex-col">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-5 h-5" style={{ color: '#ca8637' }} />
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Gig</span>
-                </div>
-                <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2">Job Title {i + 1}</h3>
-                <p className="text-xs text-gray-600 mb-3 line-clamp-2">Short term opportunity at a great company</p>
-                <div className="mb-3 flex-grow">
-                  <p className="text-xs text-gray-500 mb-1"><strong>Pay:</strong> KES {2000 * (i + 1)} - {3000 * (i + 1)}</p>
-                  <p className="text-xs text-gray-500"><strong>Location:</strong> Nairobi</p>
-                  <p className="text-xs text-gray-500"><strong>Duration:</strong> 1-2 weeks</p>
-                </div>
-                <button className="w-full text-white py-2 rounded-lg font-semibold text-xs hover:opacity-90 transition-all" style={{ backgroundColor: '#ea8f1e' }}>
-                  Apply Now
-                </button>
               </div>
             ))}
           </div>
@@ -1255,11 +1108,7 @@ export default function ZintraHomepage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="bg-white p-4 rounded-lg inline-block mb-4">
-                <img 
-                  src="/zintrass-new-logo.png" 
-                  alt="Zintra" 
-                  className="h-32 w-auto"
-                />
+                <img src="/zintrass-new-logo.png" alt="Zintra" className="h-32 w-auto" />
               </div>
               <p className="text-gray-200 text-lg font-medium mb-4 leading-tight">
                 The smarter way to source, hire, and build.
@@ -1289,7 +1138,7 @@ export default function ZintraHomepage() {
               <h3 className="text-lg font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-gray-300">
                 <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
-                <li><Link href="/careers" className="hover:text-white transition-colors">Career Centre</Link></li>
+                <li><Link href="/about" className="hover:text-white transition-colors">Careers</Link></li>
                 <li><Link href="/about" className="hover:text-white transition-colors">Blog</Link></li>
                 <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
               </ul>
@@ -1308,17 +1157,6 @@ export default function ZintraHomepage() {
           </div>
         </div>
       </footer>
-
-      {/* RFQ Detail Modal */}
-      <RFQDetailModal
-        rfq={selectedRFQ}
-        isOpen={showRFQModal}
-        onClose={() => { setShowRFQModal(false); setSelectedRFQ(null); }}
-        user={currentUser}
-        isVendor={isVendor}
-        vendorProfile={vendorProfile}
-        quoteCount={0}
-      />
     </div>
   );
 }
