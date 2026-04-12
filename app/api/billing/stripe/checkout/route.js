@@ -98,7 +98,7 @@ export async function POST(request) {
     }
 
     // ── Create Checkout Session ──
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zintra-sandy.vercel.app';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zintraconstruction.com';
 
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
