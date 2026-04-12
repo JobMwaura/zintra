@@ -15,11 +15,57 @@ export async function POST(request) {
     );
 
     const body = await request.json();
+    const authHeader = request.headers.get('authorization');
+    const requestedUserId = typeof body.user_id === 'string' ? body.user_id.trim() : body.user_id;
+    const trimmedEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
 
-    if (!body.company_name || !body.email) {
+    if (!body.company_name || !trimmedEmail) {
       return NextResponse.json(
         { error: 'Company name and email are required' },
         { status: 400 }
+      );
+    }
+
+    if (!requestedUserId) {
+      return NextResponse.json(
+        { error: 'user_id is required to create a vendor profile' },
+        { status: 400 }
+      );
+    }
+
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'Invalid authentication token' },
+          { status: 401 }
+        );
+      }
+
+      if (user.id !== requestedUserId) {
+        return NextResponse.json(
+          { error: 'Authenticated user does not match the vendor profile request' },
+          { status: 403 }
+        );
+      }
+    }
+
+    const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(requestedUserId);
+
+    if (authUserError || !authUserData?.user) {
+      return NextResponse.json(
+        { error: 'Auth account not found for this vendor profile request' },
+        { status: 404 }
+      );
+    }
+
+    const authEmail = (authUserData.user.email || '').trim().toLowerCase();
+    if (!authEmail || authEmail !== trimmedEmail) {
+      return NextResponse.json(
+        { error: 'Vendor email must match the authenticated account email' },
+        { status: 403 }
       );
     }
 
@@ -27,7 +73,7 @@ export async function POST(request) {
     const { data: existingVendor, error: checkError } = await supabase
       .from('vendors')
       .select('id, email')
-      .eq('email', body.email.trim())
+      .eq('email', trimmedEmail)
       .limit(1);
 
     if (checkError) {
@@ -50,13 +96,13 @@ export async function POST(request) {
     }
 
     const vendorPayload = {
-      user_id: body.user_id || null,  // ← ALWAYS include this, even if null
+      user_id: requestedUserId,
       company_name: body.company_name,
       description: body.description || null,
       phone: body.phone || null,
       phone_verified: body.phone_verified || false,
       phone_verified_at: body.phone_verified_at || null,
-      email: body.email.trim(),
+      email: trimmedEmail,
       county: body.county || null,
       location: body.location || null,
       category: body.category || null,

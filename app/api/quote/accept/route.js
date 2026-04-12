@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendQuoteAcceptedSMS, sendVendorQuoteAcceptedSMS } from '@/lib/services/smsService';
+import { isMissingColumnError, isMissingRelationError } from '@/lib/rfqPersistence';
 
 // Create a Supabase client with the service role key to bypass RLS
 const supabaseAdmin = createClient(
@@ -13,6 +14,85 @@ const supabaseAdmin = createClient(
     }
   }
 );
+
+function stripField(payload, fieldName) {
+  const nextPayload = { ...payload };
+  delete nextPayload[fieldName];
+  return nextPayload;
+}
+
+async function updateSingleRecord(table, id, payload, optionalFields = []) {
+  let nextPayload = { ...payload };
+
+  for (;;) {
+    const result = await supabaseAdmin
+      .from(table)
+      .update(nextPayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!result.error) {
+      return result;
+    }
+
+    const removableField = optionalFields.find(
+      (field) => Object.prototype.hasOwnProperty.call(nextPayload, field) && isMissingColumnError(result.error, field)
+    );
+
+    if (!removableField) {
+      return result;
+    }
+
+    nextPayload = stripField(nextPayload, removableField);
+  }
+}
+
+async function loadUserContact(userId) {
+  if (!userId) {
+    return null;
+  }
+
+  for (const tableName of ['users', 'profiles']) {
+    const { data, error } = await supabaseAdmin
+      .from(tableName)
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error) {
+      if (data) {
+        return data;
+      }
+      continue;
+    }
+
+    if (!isMissingRelationError(error, tableName)) {
+      console.error(`API: Failed to load ${tableName} contact`, error);
+    }
+  }
+
+  return null;
+}
+
+async function loadVendorContact(vendorId) {
+  if (!vendorId) {
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('vendors')
+    .select('*')
+    .eq('id', vendorId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('API: Failed to load vendor contact', error);
+    return null;
+  }
+
+  return data || null;
+}
 
 /**
  * POST /api/quote/accept
@@ -31,6 +111,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { quoteId, rfqId, userId } = body;
+    const authHeader = request.headers.get('authorization');
 
     console.log('API: Accept Quote called with:', { quoteId, rfqId, userId });
 
@@ -39,6 +120,30 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Missing required fields: quoteId, rfqId, userId' },
         { status: 400 }
+      );
+    }
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: authenticatedUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !authenticatedUser) {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    }
+
+    if (authenticatedUser.id !== userId) {
+      return NextResponse.json(
+        { error: 'Authenticated user does not match request user' },
+        { status: 403 }
       );
     }
 
@@ -91,15 +196,15 @@ export async function POST(request) {
     }
 
     // STEP 3: Update the quote status to 'accepted'
-    const { data: updatedQuote, error: updateError } = await supabaseAdmin
-      .from('rfq_responses')
-      .update({ 
+    const { data: updatedQuote, error: updateError } = await updateSingleRecord(
+      'rfq_responses',
+      quoteId,
+      {
         status: 'accepted',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', quoteId)
-      .select()
-      .single();
+        updated_at: new Date().toISOString(),
+      },
+      ['updated_at']
+    );
 
     console.log('API: Update result:', { updatedQuote, updateError });
 
@@ -112,14 +217,24 @@ export async function POST(request) {
     }
 
     // STEP 4: Optionally update the RFQ status
-    await supabaseAdmin
-      .from('rfqs')
-      .update({ 
+    const { error: rfqUpdateError } = await updateSingleRecord(
+      'rfqs',
+      rfqId,
+      {
         status: 'assigned',
         assigned_vendor_id: quote.vendor_id,
-        assigned_at: new Date().toISOString()
-      })
-      .eq('id', rfqId);
+        assigned_at: new Date().toISOString(),
+      },
+      ['assigned_at']
+    );
+
+    if (rfqUpdateError) {
+      console.error('API: RFQ assignment update error:', rfqUpdateError);
+      return NextResponse.json(
+        { error: 'Failed to update RFQ assignment: ' + rfqUpdateError.message },
+        { status: 500 }
+      );
+    }
 
     // =========================================================================
     // STEP 5: Fetch buyer and vendor profiles for notifications & contact reveal
@@ -128,29 +243,11 @@ export async function POST(request) {
     let vendorProfile = null;
 
     try {
-      // Fetch buyer profile (the RFQ creator)
-      const { data: buyer } = await supabaseAdmin
-        .from('profiles')
-        .select('id, full_name, email, phone, phone_number, phone_verified')
-        .eq('id', userId)
-        .maybeSingle();
-      buyerProfile = buyer;
+      buyerProfile = await loadUserContact(userId);
+      vendorProfile = await loadVendorContact(quote.vendor_id);
 
-      // Fetch vendor profile
-      const { data: vendor } = await supabaseAdmin
-        .from('vendors')
-        .select('id, user_id, company_name, contact_email, contact_phone, phone_number, phone')
-        .eq('id', quote.vendor_id)
-        .maybeSingle();
-      vendorProfile = vendor;
-
-      // If vendor found, also get their user profile for phone/email
-      if (vendor?.user_id) {
-        const { data: vendorUser } = await supabaseAdmin
-          .from('profiles')
-          .select('id, full_name, email, phone, phone_number, phone_verified')
-          .eq('id', vendor.user_id)
-          .maybeSingle();
+      if (vendorProfile?.user_id) {
+        const vendorUser = await loadUserContact(vendorProfile.user_id);
         if (vendorUser) {
           vendorProfile = {
             ...vendorProfile,
@@ -162,7 +259,6 @@ export async function POST(request) {
       }
     } catch (profileErr) {
       console.error('API: Error fetching profiles:', profileErr);
-      // Don't fail — profiles are for notifications, not core logic
     }
 
     const buyerName = buyerProfile?.full_name || 'Buyer';
@@ -288,6 +384,7 @@ export async function PATCH(request) {
   try {
     const body = await request.json();
     const { quoteId, rfqId, userId } = body;
+    const authHeader = request.headers.get('authorization');
 
     console.log('API: Reject Quote called with:', { quoteId, rfqId, userId });
 
@@ -295,6 +392,30 @@ export async function PATCH(request) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      );
+    }
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: authenticatedUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !authenticatedUser) {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    }
+
+    if (authenticatedUser.id !== userId) {
+      return NextResponse.json(
+        { error: 'Authenticated user does not match request user' },
+        { status: 403 }
       );
     }
 
@@ -313,15 +434,15 @@ export async function PATCH(request) {
     }
 
     // Update quote status to rejected
-    const { data: updatedQuote, error: updateError } = await supabaseAdmin
-      .from('rfq_responses')
-      .update({ 
+    const { data: updatedQuote, error: updateError } = await updateSingleRecord(
+      'rfq_responses',
+      quoteId,
+      {
         status: 'rejected',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', quoteId)
-      .select()
-      .single();
+        updated_at: new Date().toISOString(),
+      },
+      ['updated_at']
+    );
 
     if (updateError) {
       return NextResponse.json(
@@ -334,17 +455,13 @@ export async function PATCH(request) {
     try {
       const vendorId = updatedQuote.vendor_id;
       if (vendorId) {
+        const vendorProfile = await loadVendorContact(vendorId);
         // Get buyer name for notification context
-        const { data: buyerProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('full_name')
-          .eq('id', userId)
-          .single();
-
+        const buyerProfile = await loadUserContact(userId);
         const buyerName = buyerProfile?.full_name || 'The buyer';
 
         await supabaseAdmin.from('notifications').insert({
-          user_id: vendorId,
+          user_id: vendorProfile?.user_id || vendorId,
           type: 'quote_rejected',
           title: 'Quote Not Selected',
           body: `${buyerName} has chosen a different vendor for "${rfq.title}". Don't worry — more opportunities are available on the platform.`,
