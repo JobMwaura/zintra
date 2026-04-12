@@ -31,6 +31,19 @@ export default function AdminManagement() {
     fetchAdmins();
   }, []);
 
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error('Authentication expired. Please sign in again.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  };
+
   const fetchCurrentUserRole = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -53,35 +66,17 @@ export default function AdminManagement() {
       setLoading(true);
       setError(null);
 
-      // Fetch all admins with user information
-      const { data: adminsData, error: adminsError } = await supabase
-        .from('admin_users')
-        .select(`
-          id,
-          user_id,
-          role,
-          status,
-          created_at,
-          updated_at,
-          notes
-        `)
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/admin/admins', {
+        method: 'GET',
+        headers: await getAuthHeaders(),
+      });
 
-      if (adminsError) throw adminsError;
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load admins');
+      }
 
-      // Fetch user details for each admin
-      const enrichedAdmins = await Promise.all(
-        (adminsData || []).map(async (admin) => {
-          const { data: { user } } = await supabase.auth.admin.getUserById(admin.user_id);
-          return {
-            ...admin,
-            email: user?.email || 'Unknown',
-            lastSignIn: user?.last_sign_in_at
-          };
-        })
-      );
-
-      setAdmins(enrichedAdmins);
+      setAdmins(data.admins || []);
     } catch (err) {
       console.error('Error fetching admins:', err);
       setError(err.message || 'Failed to load admins');
@@ -118,36 +113,19 @@ export default function AdminManagement() {
       setLoading(true);
       setMessage('Adding admin...');
 
-      // First, get the user by email
-      const { data: { user: existingUser } } = await supabase.auth.admin.getUserByEmail(formData.email);
-
-      let userId;
-      if (existingUser) {
-        userId = existingUser.id;
-      } else {
-        // Create new auth user
-        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+      const response = await fetch('/api/admin/admins', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
           email: formData.email,
-          password: Math.random().toString(36).slice(-12), // Temporary password
-          email_confirm: true
-        });
-
-        if (createError) throw createError;
-        userId = newUser.user?.id;
-      }
-
-      // Add to admin_users table
-      const { error: adminError } = await supabase
-        .from('admin_users')
-        .insert({
-          user_id: userId,
           role: formData.role,
           status: formData.status,
           notes: formData.notes,
-          is_admin: true
-        });
+        }),
+      });
 
-      if (adminError) throw adminError;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to add admin');
 
       setMessage('Admin added successfully!');
       setFormData({ email: '', role: 'admin', status: 'active', notes: '' });
@@ -170,16 +148,19 @@ export default function AdminManagement() {
       setLoading(true);
       setMessage('Updating admin...');
 
-      const { error } = await supabase
-        .from('admin_users')
-        .update({
+      const response = await fetch('/api/admin/admins', {
+        method: 'PUT',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          id: selectedAdmin.id,
           role: formData.role,
           status: formData.status,
-          notes: formData.notes
-        })
-        .eq('id', selectedAdmin.id);
+          notes: formData.notes,
+        }),
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to update admin');
 
       setMessage('Admin updated successfully!');
       setShowEditModal(false);
@@ -200,12 +181,13 @@ export default function AdminManagement() {
     try {
       setLoading(true);
 
-      const { error } = await supabase
-        .from('admin_users')
-        .delete()
-        .eq('id', adminId);
+      const response = await fetch(`/api/admin/admins?id=${encodeURIComponent(adminId)}`, {
+        method: 'DELETE',
+        headers: await getAuthHeaders(),
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to delete admin');
 
       setMessage('Admin removed successfully!');
       await fetchAdmins();
@@ -333,8 +315,8 @@ export default function AdminManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{new Date(admin.created_at).toLocaleDateString()}</p>
-                      <p className="text-xs text-gray-500">Updated {new Date(admin.updated_at).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-900">{admin.created_at ? new Date(admin.created_at).toLocaleDateString() : 'Unknown'}</p>
+                      <p className="text-xs text-gray-500">Updated {admin.updated_at ? new Date(admin.updated_at).toLocaleDateString() : '—'}</p>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
