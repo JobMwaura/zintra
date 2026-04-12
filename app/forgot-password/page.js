@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -16,18 +14,29 @@ export default function ForgotPasswordPage() {
       return;
     }
     setLoading(true);
-    
-    // Use the new secure flow: email → /auth/confirm → server verification → /auth/change-password
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/confirm`,
-    });
-    
-    setLoading(false);
-    if (error) {
-      setMessage('Error sending reset email: ' + error.message);
-      return;
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const payload = await response.json();
+      setLoading(false);
+
+      if (!response.ok) {
+        setMessage('Error sending reset email: ' + (payload.error || 'Unknown error'));
+        return;
+      }
+
+      setMessage('✅ Check your email for a reset link. The link will expire in 1 hour.');
+    } catch (error) {
+      setLoading(false);
+      setMessage('Error sending reset email: ' + (error.message || 'Unknown error'));
     }
-    setMessage('✅ Check your email for a reset link. The link will expire in 1 hour.');
   };
 
   return (
